@@ -1,2 +1,3 @@
 tests/fixtures/phase1/inputs/stl/*.stl text eol=lf
 examples/geometry/*.stl text eol=lf
+THIRD_PARTY_LICENSES/*.txt whitespace=-trailing-space

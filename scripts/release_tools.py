@@ -30,28 +30,87 @@ _ZIP_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
 _CI_WORKFLOW = "ci.yml"
 _PROTECTED_BRANCH = "main"
 _DOCS_LICENSE_DIRECTORY = "THIRD_PARTY_LICENSES"
+_RTD_CSS_LICENSES = (
+    "SPHINX-RTD-THEME-1.2.0-MIT.txt",
+    "WYRM-1.0.9-MIT.txt",
+    "BOURBON-4.3.4-MIT.txt",
+    "BOURBON-NEAT-1.9.1-MIT.txt",
+    "FONT-AWESOME-4.7.0-MIT-AND-OFL-1.1.txt",
+    "LATO-3.0.0-OFL-1.1.txt",
+    "ROBOTO-SLAB-0.10.0-APACHE-2.0.txt",
+)
 _DOCS_THEME_ASSET_LICENSES = {
-    "css/base.css": ("MKDOCS-BSD-2-CLAUSE.txt",),
-    "css/bootstrap.min.css": ("BOOTSWATCH-MIT.txt", "BOOTSTRAP-MIT.txt"),
-    "css/bootstrap.min.css.map": ("BOOTSWATCH-MIT.txt", "BOOTSTRAP-MIT.txt"),
-    "css/brands.min.css": ("FONT-AWESOME-FREE-6.5.1.txt",),
-    "css/fontawesome.min.css": ("FONT-AWESOME-FREE-6.5.1.txt",),
-    "css/solid.min.css": ("FONT-AWESOME-FREE-6.5.1.txt",),
-    "css/v4-font-face.min.css": ("FONT-AWESOME-FREE-6.5.1.txt",),
+    "css/fonts/Roboto-Slab-Bold.woff": (
+        "ROBOTO-SLAB-0.10.0-APACHE-2.0.txt",
+    ),
+    "css/fonts/Roboto-Slab-Bold.woff2": (
+        "ROBOTO-SLAB-0.10.0-APACHE-2.0.txt",
+    ),
+    "css/fonts/Roboto-Slab-Regular.woff": (
+        "ROBOTO-SLAB-0.10.0-APACHE-2.0.txt",
+    ),
+    "css/fonts/Roboto-Slab-Regular.woff2": (
+        "ROBOTO-SLAB-0.10.0-APACHE-2.0.txt",
+    ),
+    "css/fonts/fontawesome-webfont.eot": (
+        "FONT-AWESOME-4.7.0-MIT-AND-OFL-1.1.txt",
+    ),
+    "css/fonts/fontawesome-webfont.svg": (
+        "FONT-AWESOME-4.7.0-MIT-AND-OFL-1.1.txt",
+    ),
+    "css/fonts/fontawesome-webfont.ttf": (
+        "FONT-AWESOME-4.7.0-MIT-AND-OFL-1.1.txt",
+    ),
+    "css/fonts/fontawesome-webfont.woff": (
+        "FONT-AWESOME-4.7.0-MIT-AND-OFL-1.1.txt",
+    ),
+    "css/fonts/fontawesome-webfont.woff2": (
+        "FONT-AWESOME-4.7.0-MIT-AND-OFL-1.1.txt",
+    ),
+    "css/fonts/lato-bold-italic.woff": ("LATO-3.0.0-OFL-1.1.txt",),
+    "css/fonts/lato-bold-italic.woff2": ("LATO-3.0.0-OFL-1.1.txt",),
+    "css/fonts/lato-bold.woff": ("LATO-3.0.0-OFL-1.1.txt",),
+    "css/fonts/lato-bold.woff2": ("LATO-3.0.0-OFL-1.1.txt",),
+    "css/fonts/lato-normal-italic.woff": ("LATO-3.0.0-OFL-1.1.txt",),
+    "css/fonts/lato-normal-italic.woff2": ("LATO-3.0.0-OFL-1.1.txt",),
+    "css/fonts/lato-normal.woff": ("LATO-3.0.0-OFL-1.1.txt",),
+    "css/fonts/lato-normal.woff2": ("LATO-3.0.0-OFL-1.1.txt",),
+    "css/theme.css": _RTD_CSS_LICENSES,
+    "css/theme_extra.css": ("MKDOCS-BSD-2-CLAUSE.txt",),
     "img/favicon.ico": ("MKDOCS-BSD-2-CLAUSE.txt",),
-    "img/grid.png": ("MKDOCS-BSD-2-CLAUSE.txt",),
-    "js/base.js": ("MKDOCS-BSD-2-CLAUSE.txt",),
-    "js/bootstrap.bundle.min.js": ("BOOTSTRAP-MIT.txt", "POPPER-MIT.txt"),
-    "js/bootstrap.bundle.min.js.map": ("BOOTSTRAP-MIT.txt", "POPPER-MIT.txt"),
-    "js/darkmode.js": ("MKDOCS-BSD-2-CLAUSE.txt",),
-    "webfonts/fa-brands-400.ttf": ("FONT-AWESOME-FREE-6.5.1.txt",),
-    "webfonts/fa-brands-400.woff2": ("FONT-AWESOME-FREE-6.5.1.txt",),
-    "webfonts/fa-regular-400.ttf": ("FONT-AWESOME-FREE-6.5.1.txt",),
-    "webfonts/fa-regular-400.woff2": ("FONT-AWESOME-FREE-6.5.1.txt",),
-    "webfonts/fa-solid-900.ttf": ("FONT-AWESOME-FREE-6.5.1.txt",),
-    "webfonts/fa-solid-900.woff2": ("FONT-AWESOME-FREE-6.5.1.txt",),
-    "webfonts/fa-v4compatibility.ttf": ("FONT-AWESOME-FREE-6.5.1.txt",),
-    "webfonts/fa-v4compatibility.woff2": ("FONT-AWESOME-FREE-6.5.1.txt",),
+    "js/html5shiv.min.js": ("HTML5SHIV-3.7.3-MIT-OR-GPL-2.0.txt",),
+    "js/jquery-3.6.0.min.js": ("JQUERY-3.6.0-MIT.txt",),
+    "js/theme.js": (
+        "SPHINX-RTD-THEME-1.2.0-MIT.txt",
+        "WEBPACK-4.46.0-MIT.txt",
+    ),
+    "js/theme_extra.js": ("MKDOCS-BSD-2-CLAUSE.txt",),
+}
+_DOCS_THEME_ASSET_SHA256 = {
+    "css/fonts/Roboto-Slab-Bold.woff": "9fec87cadbe2413b255f1ec577573a83f1ca2e1c37aa023dbebcd3a7b864636a",
+    "css/fonts/Roboto-Slab-Bold.woff2": "1a0c024dd1a267c52d5575469ffe8570d1e84164de7d393cf3414bafd17d7a0c",
+    "css/fonts/Roboto-Slab-Regular.woff": "9f32630e2c0c5135bf1e86e36cb65b3932e4410644235bc2bd995e9c7f6ff117",
+    "css/fonts/Roboto-Slab-Regular.woff2": "874e42222856d7af03b3f438d21d923a4280d47fe67c48510e2174a1579795ef",
+    "css/fonts/fontawesome-webfont.eot": "7bfcab6db99d5cfbf1705ca0536ddc78585432cc5fa41bbd7ad0f009033b2979",
+    "css/fonts/fontawesome-webfont.svg": "ad6157926c1622ba4e1d03d478f1541368524bfc46f51e42fe0d945f7ef323e4",
+    "css/fonts/fontawesome-webfont.ttf": "aa58f33f239a0fb02f5c7a6c45c043d7a9ac9a093335806694ecd6d4edc0d6a8",
+    "css/fonts/fontawesome-webfont.woff": "ba0c59deb5450f5cb41b3f93609ee2d0d995415877ddfa223e8a8a7533474f07",
+    "css/fonts/fontawesome-webfont.woff2": "2adefcbc041e7d18fcf2d417879dc5a09997aa64d675b7a3c4b6ce33da13f3fe",
+    "css/fonts/lato-bold-italic.woff": "980c8592e5488df256192c999e92db8fd302db8cd8909b7fa266a684e37e45f8",
+    "css/fonts/lato-bold-italic.woff2": "c0916a33340d063f7b05679e08031e729d1888444706f04804705da5966d895d",
+    "css/fonts/lato-bold.woff": "0e56b17d142eb366c8007031d14e34da48c70b4a9d9a0ca492e696a7bae45e1e",
+    "css/fonts/lato-bold.woff2": "ae88fc0d7a961832f809527d30bd3983a6866d42f66a56ade23f543681594db6",
+    "css/fonts/lato-normal-italic.woff": "26318a1467a5e5caf10b04cfa942d079632560cd7a29cec565fd1dc9f7ec5081",
+    "css/fonts/lato-normal-italic.woff2": "4465765f2f6eddcdad34ffd7cab559e56bc0e75e45e192f85e9562b0771481dc",
+    "css/fonts/lato-normal.woff": "5b9025dda4d7688e3311b0c17eddc501133b807def33effaef6593843cf5416e",
+    "css/fonts/lato-normal.woff2": "983b0caf336e8542214fc17019a4fc5e0360864b92806ca14d55c1fc1c2c5a0f",
+    "css/theme.css": "54c8391152107ac2b225db433700e2a48223977a16fd69ffeeffc7da4cf39808",
+    "css/theme_extra.css": "aa215350b1098cf20efeafb8c89eded1c1a5138d252007d1376a2d998d0109dc",
+    "img/favicon.ico": "f16b45bd53fbacaa2cd8f22e8482db5c59e0cef9bd21394474a429a18a98ffd0",
+    "js/html5shiv.min.js": "3d458f51bc559f7855995e21fd2225c32f660d603970267b376c237bec08232f",
+    "js/jquery-3.6.0.min.js": "ff1523fb7389539c84c65aba19260648793bb4f5e29329d2ee8804bc37a3fe6e",
+    "js/theme.js": "a64cfe718ca86fb1aac8d2280c0741d69e7afa226e5fffb373740b4d28a87514",
+    "js/theme_extra.js": "7b7fe33ea4a7da3b82aa151f747a3a4549d5f1d81bb5776759bc9099d9b50b46",
 }
 _DOCS_REQUIRED_LICENSES = frozenset(
     license_name
@@ -60,10 +119,16 @@ _DOCS_REQUIRED_LICENSES = frozenset(
 )
 _DOCS_NOTICE_MARKERS = (
     "MkDocs 1.6.1",
-    "Bootswatch 5.3.2",
-    "Bootstrap 5.3.2",
-    "Popper 2.11.8",
-    "Font Awesome Free 6.5.1",
+    "Sphinx RTD Theme 1.2.0",
+    "Wyrm 1.0.9",
+    "Bourbon 4.3.4",
+    "Bourbon Neat 1.9.1",
+    "Font Awesome 4.7.0",
+    "Lato 3.0.0",
+    "Roboto fontface 0.10.0",
+    "jQuery 3.6.0",
+    "HTML5 Shiv 3.7.3",
+    "webpack 4.46.0",
 )
 
 
@@ -244,6 +309,22 @@ def verify_offline_documentation_licenses(
         raise RuntimeError(
             "offline documentation has unaudited theme assets: "
             f"{sorted(unknown_assets)}"
+        )
+    if set(_DOCS_THEME_ASSET_SHA256) != expected_assets:
+        raise RuntimeError("offline documentation asset hash inventory is incomplete")
+    actual_hashes = {
+        name: hashlib.sha256(read_member(name)).hexdigest()
+        for name in expected_assets
+    }
+    changed_assets = {
+        name: actual_hash
+        for name, actual_hash in actual_hashes.items()
+        if actual_hash != _DOCS_THEME_ASSET_SHA256[name]
+    }
+    if changed_assets:
+        raise RuntimeError(
+            "offline documentation theme assets changed since the license audit: "
+            f"{sorted(changed_assets)}"
         )
 
     missing_licenses = {
