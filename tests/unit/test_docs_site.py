@@ -92,6 +92,7 @@ class DocumentationSiteTests(unittest.TestCase):
             "js/theme.js",
             "js/theme_extra.js",
             "assets/stylesheets/panelsolver-docs.css",
+            "assets/javascripts/panelsolver-docs.js",
             "css/fonts/Roboto-Slab-Bold.woff",
             "css/fonts/Roboto-Slab-Bold.woff2",
             "css/fonts/Roboto-Slab-Regular.woff",
@@ -129,12 +130,17 @@ class DocumentationSiteTests(unittest.TestCase):
             "js/jquery-3.6.0.min.js",
             "js/theme_extra.js",
             "js/theme.js",
+            "assets/javascripts/panelsolver-docs.js",
         )
         for relative in representative_pages:
             html = (self.site / relative).read_text(encoding="utf-8")
             with self.subTest(relative=relative):
                 positions = [html.index(f'src="../{script}"') for script in expected_scripts]
                 self.assertEqual(sorted(positions), positions)
+                self.assertLess(
+                    positions[-1],
+                    html.index("SphinxRtdTheme.Navigation.enable("),
+                )
                 self.assertNotIn("search.html", html)
                 if relative.endswith("-input.html"):
                     self.assertIn("<table>", html)
@@ -145,6 +151,9 @@ class DocumentationSiteTests(unittest.TestCase):
         )
         project_css = (
             self.site / "assets/stylesheets/panelsolver-docs.css"
+        ).read_text(encoding="utf-8")
+        project_js = (
+            self.site / "assets/javascripts/panelsolver-docs.js"
         ).read_text(encoding="utf-8")
         self.assertIn("$('div.rst-content table').addClass('docutils')", theme_extra_js)
         self.assertIn("<div class='wy-table-responsive'>", theme_js)
@@ -162,6 +171,23 @@ class DocumentationSiteTests(unittest.TestCase):
             r"\.wy-table-responsive > table\.docutils \{[^}]*"
             r"min-width: max-content;[^}]*width: 100%;",
         )
+        self.assertRegex(
+            project_css,
+            r'\.rst-content math\[display="block"\] \{[^}]*'
+            r"max-width: 100%;[^}]*overflow-x: auto;",
+        )
+        for expected in (
+            "window.SphinxRtdTheme",
+            "window.SphinxRtdTheme.Navigation",
+            "nav.hashChange = function ()",
+            "var self = this",
+            "self.linkScroll = true",
+            'self.win.one("hashchange"',
+            "self.linkScroll = false",
+        ):
+            with self.subTest(expected=expected):
+                self.assertIn(expected, project_js)
+        self.assertNotRegex(project_js, r"(?:https?:)?//")
 
     def test_audited_build_dependency_versions_are_exact_and_current(self) -> None:
         with (ROOT / "pyproject.toml").open("rb") as stream:

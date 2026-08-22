@@ -152,6 +152,8 @@ class ReleaseToolTests(unittest.TestCase):
             "index.html": b"home",
             "solvers/fmf.html": b"fmf",
             "solvers/hypersonic.html": b"hypersonic",
+            "assets/javascripts/panelsolver-docs.js": b"project script\n",
+            "assets/stylesheets/panelsolver-docs.css": b"project styles\n",
             "LICENSE": b"license\n",
             "THIRD_PARTY_NOTICES.md": (
                 repository / "THIRD_PARTY_NOTICES.md"
@@ -344,6 +346,10 @@ class ReleaseToolTests(unittest.TestCase):
             docs_zip, _examples_zip = create_release_archives(repository)
             with zipfile.ZipFile(wheel) as archive:
                 names = set(archive.namelist())
+                self.assertIn(
+                    "panelsolver/_docs_site/assets/javascripts/panelsolver-docs.js",
+                    names,
+                )
                 for license_name in _DOCS_REQUIRED_LICENSES:
                     docs_license = (
                         "panelsolver/_docs_site/THIRD_PARTY_LICENSES/"
@@ -365,6 +371,10 @@ class ReleaseToolTests(unittest.TestCase):
                         archive.read(metadata_license),
                     )
             with zipfile.ZipFile(docs_zip) as archive:
+                self.assertIn(
+                    "assets/javascripts/panelsolver-docs.js",
+                    archive.namelist(),
+                )
                 verify_offline_documentation_licenses(
                     set(archive.namelist()),
                     archive.read,
@@ -413,6 +423,52 @@ class ReleaseToolTests(unittest.TestCase):
                     members - {missing},
                     payloads.__getitem__,
                 )
+
+    def test_adapted_assets_and_polyfill_have_complete_license_mapping(self) -> None:
+        css_licenses = set(_DOCS_THEME_ASSET_LICENSES["css/theme.css"])
+        js_licenses = set(_DOCS_THEME_ASSET_LICENSES["js/theme.js"])
+        self.assertIn("MKDOCS-BSD-2-CLAUSE.txt", css_licenses)
+        self.assertIn("MKDOCS-BSD-2-CLAUSE.txt", js_licenses)
+        self.assertIn("SPHINX-RTD-THEME-1.2.0-MIT.txt", css_licenses)
+        self.assertIn("SPHINX-RTD-THEME-1.2.0-MIT.txt", js_licenses)
+        polyfill_license = "REQUESTANIMATIONFRAME-POLYFILL-MIT.txt"
+        self.assertIn(polyfill_license, js_licenses)
+        self.assertIn(polyfill_license, _DOCS_REQUIRED_LICENSES)
+        self.assertNotIn(
+            "assets/javascripts/panelsolver-docs.js",
+            _DOCS_THEME_ASSET_LICENSES,
+        )
+        self.assertNotIn(
+            "assets/stylesheets/panelsolver-docs.css",
+            _DOCS_THEME_ASSET_LICENSES,
+        )
+        self.assertTrue(
+            {
+                "requestAnimationFrame polyfill",
+                "Erik Möller",
+                "Paul Irish",
+                "Tino Zijdel",
+            }.issubset(_DOCS_NOTICE_MARKERS)
+        )
+
+        members, payloads = self.audited_docs_payloads()
+        license_path = f"THIRD_PARTY_LICENSES/{polyfill_license}"
+        with self.assertRaisesRegex(RuntimeError, "missing third-party license"):
+            verify_offline_documentation_licenses(
+                members - {license_path},
+                payloads.__getitem__,
+            )
+
+        members, payloads = self.audited_docs_payloads()
+        omitted_marker = "requestAnimationFrame polyfill"
+        payloads["THIRD_PARTY_NOTICES.md"] = (
+            "\n".join(
+                marker for marker in _DOCS_NOTICE_MARKERS if marker != omitted_marker
+            )
+            + "\n"
+        ).encode()
+        with self.assertRaisesRegex(RuntimeError, "notices omit audited components"):
+            verify_offline_documentation_licenses(members, payloads.__getitem__)
 
     def test_changed_audited_asset_fails_hash_gate(self) -> None:
         members, payloads = self.audited_docs_payloads()

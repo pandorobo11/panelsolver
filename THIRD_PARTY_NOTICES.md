@@ -64,17 +64,19 @@ vendored release-artifact exception to the separately installed dependency
 boundary described below. The site uses the built-in `readthedocs` theme from
 the locked MkDocs 1.6.1 distribution. The external `sphinx-rtd-theme` Python
 package is not installed or added as a runtime dependency. MkDocs carries an
-adapted Sphinx RTD Theme asset snapshot: its CSS was updated from Sphinx RTD
-Theme 1.2.0, while its separately loaded theme JavaScript retains the
-upstream 1.0.0 build header and the navigation behavior carried forward in
-1.2.0. The versions below are established from the MkDocs 1.6.1 source, its
-theme-upgrade commits, the Sphinx RTD Theme 1.2.0 tag and lockfile, tagged
-component sources, file headers, and embedded font metadata.
+adapted Sphinx RTD Theme asset snapshot. MkDocs made changes to both the CSS
+updated from Sphinx RTD Theme 1.2.0 and the separately loaded theme JavaScript,
+which retains the upstream 1.0.0 build header and navigation behavior carried
+forward in 1.2.0. The JavaScript also embeds the webpack bootstrap runtime and
+an independently licensed requestAnimationFrame polyfill. The versions below
+are established from the MkDocs 1.6.1 source and theme-upgrade history, the
+Sphinx RTD Theme 1.2.0 tag and lockfile, tagged component sources, file headers,
+and embedded font metadata.
 
 | Redistributed content | Copyright holder | License | Required preservation |
 |---|---|---|---|
-| MkDocs 1.6.1 templates, `theme_extra` CSS/JS, and favicon | Copyright © 2014-present Tom Christie | BSD-2-Clause | copyright, conditions, and disclaimer |
-| Sphinx RTD Theme 1.2.0 CSS and navigation JavaScript adapted by MkDocs | Copyright © 2013-2018 Dave Snider, Read the Docs, Inc. and contributors | MIT | copyright and permission notice |
+| MkDocs 1.6.1 templates, adaptations in `css/theme.css` and `js/theme.js`, `theme_extra` CSS/JS, and favicon | Copyright © 2014-present Tom Christie | BSD-2-Clause | copyright, conditions, and disclaimer |
+| Sphinx RTD Theme 1.2.0 CSS and navigation JavaScript source adapted by MkDocs | Copyright © 2013-2018 Dave Snider, Read the Docs, Inc. and contributors | MIT | copyright and permission notice |
 | Wyrm 1.0.9 styles compiled into `css/theme.css` | Copyright © 2013 Dave Snider | MIT | copyright and permission notice |
 | Bourbon 4.3.4 styles compiled into `css/theme.css` | Copyright © 2011-2017 thoughtbot, inc. | MIT | copyright and permission notice |
 | Bourbon Neat 1.9.1 styles compiled into `css/theme.css` | Copyright © 2012-2015 thoughtbot, inc. | MIT | copyright and permission notice |
@@ -84,6 +86,7 @@ component sources, file headers, and embedded font metadata.
 | jQuery 3.6.0 | Copyright OpenJS Foundation and other contributors | MIT | copyright and permission notice |
 | HTML5 Shiv 3.7.3 | Copyright © 2014 Alexander Farkas | MIT OR GPL-2.0-only; redistributed under the MIT option | upstream dual-license statement and complete MIT/GPL-2.0 texts |
 | webpack 4.46.0 bootstrap runtime embedded in `js/theme.js` | Copyright JS Foundation and other contributors | MIT | copyright and permission notice |
+| requestAnimationFrame polyfill embedded in `js/theme.js` | By Erik Möller; fixes from Paul Irish and Tino Zijdel (the upstream source provides no separate copyright line) | MIT | upstream attribution and complete permission notice |
 
 The required copyright notices and license texts are preserved under
 `THIRD_PARTY_LICENSES/`. That directory and this notice are copied into
@@ -94,8 +97,9 @@ files. All static references are local; no CDN, external font, or external
 JavaScript is required. These third-party works are not covered or relicensed
 by Panel Solver's project Apache-2.0 `LICENSE`.
 
-The small `assets/stylesheets/panelsolver-docs.css` table-width correction is
-Panel Solver-owned project code under Apache-2.0; it is kept outside the
+The small `assets/stylesheets/panelsolver-docs.css` table-width correction and
+`assets/javascripts/panelsolver-docs.js` navigation correction are Panel
+Solver-owned project code under Apache-2.0; they are kept outside the
 third-party theme asset prefixes and license mapping.
 
 ## Runtime dependencies

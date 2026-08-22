@@ -7,3 +7,10 @@
   min-width: max-content;
   width: 100%;
 }
+
+/* Keep long pre-rendered block MathML inside the article on narrow screens. */
+.rst-content math[display="block"] {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}

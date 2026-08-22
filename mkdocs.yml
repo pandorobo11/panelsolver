@@ -8,6 +8,8 @@ theme:
 plugins: []
 extra_css:
   - assets/stylesheets/panelsolver-docs.css
+extra_javascript:
+  - assets/javascripts/panelsolver-docs.js
 markdown_extensions:
   - tables
   - panelsolver_docs_math

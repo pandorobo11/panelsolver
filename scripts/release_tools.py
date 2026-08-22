@@ -31,6 +31,7 @@ _CI_WORKFLOW = "ci.yml"
 _PROTECTED_BRANCH = "main"
 _DOCS_LICENSE_DIRECTORY = "THIRD_PARTY_LICENSES"
 _RTD_CSS_LICENSES = (
+    "MKDOCS-BSD-2-CLAUSE.txt",
     "SPHINX-RTD-THEME-1.2.0-MIT.txt",
     "WYRM-1.0.9-MIT.txt",
     "BOURBON-4.3.4-MIT.txt",
@@ -81,8 +82,10 @@ _DOCS_THEME_ASSET_LICENSES = {
     "js/html5shiv.min.js": ("HTML5SHIV-3.7.3-MIT-OR-GPL-2.0.txt",),
     "js/jquery-3.6.0.min.js": ("JQUERY-3.6.0-MIT.txt",),
     "js/theme.js": (
+        "MKDOCS-BSD-2-CLAUSE.txt",
         "SPHINX-RTD-THEME-1.2.0-MIT.txt",
         "WEBPACK-4.46.0-MIT.txt",
+        "REQUESTANIMATIONFRAME-POLYFILL-MIT.txt",
     ),
     "js/theme_extra.js": ("MKDOCS-BSD-2-CLAUSE.txt",),
 }
@@ -129,6 +132,10 @@ _DOCS_NOTICE_MARKERS = (
     "jQuery 3.6.0",
     "HTML5 Shiv 3.7.3",
     "webpack 4.46.0",
+    "requestAnimationFrame polyfill",
+    "Erik Möller",
+    "Paul Irish",
+    "Tino Zijdel",
 )
 
 
