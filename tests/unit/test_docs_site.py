@@ -60,6 +60,8 @@ class DocumentationSiteTests(unittest.TestCase):
             "solvers/hypersonic.html",
             "reference/fmf-input.html",
             "reference/hypersonic-input.html",
+            "reference/output-formats.html",
+            "user-guide/outputs.html",
             "LICENSE",
             "THIRD_PARTY_NOTICES.md",
         ):
@@ -75,6 +77,91 @@ class DocumentationSiteTests(unittest.TestCase):
                 packaged = self.site / "THIRD_PARTY_LICENSES" / license_file.name
                 self.assertTrue(packaged.is_file())
                 self.assertEqual(license_file.read_bytes(), packaged.read_bytes())
+
+    def test_readthedocs_theme_configuration_and_assets_are_complete(self) -> None:
+        mkdocs_config = (ROOT / "mkdocs.yml").read_text(encoding="utf-8")
+        self.assertRegex(mkdocs_config, r"theme:\n  name: readthedocs\n  highlightjs: false")
+        self.assertRegex(mkdocs_config, r"(?m)^use_directory_urls: false$")
+        self.assertRegex(mkdocs_config, r"(?m)^plugins: \[\]$")
+        for relative in (
+            "css/theme.css",
+            "css/theme_extra.css",
+            "img/favicon.ico",
+            "js/html5shiv.min.js",
+            "js/jquery-3.6.0.min.js",
+            "js/theme.js",
+            "js/theme_extra.js",
+            "assets/stylesheets/panelsolver-docs.css",
+            "css/fonts/Roboto-Slab-Bold.woff",
+            "css/fonts/Roboto-Slab-Bold.woff2",
+            "css/fonts/Roboto-Slab-Regular.woff",
+            "css/fonts/Roboto-Slab-Regular.woff2",
+            "css/fonts/fontawesome-webfont.eot",
+            "css/fonts/fontawesome-webfont.svg",
+            "css/fonts/fontawesome-webfont.ttf",
+            "css/fonts/fontawesome-webfont.woff",
+            "css/fonts/fontawesome-webfont.woff2",
+            "css/fonts/lato-bold-italic.woff",
+            "css/fonts/lato-bold-italic.woff2",
+            "css/fonts/lato-bold.woff",
+            "css/fonts/lato-bold.woff2",
+            "css/fonts/lato-normal-italic.woff",
+            "css/fonts/lato-normal-italic.woff2",
+            "css/fonts/lato-normal.woff",
+            "css/fonts/lato-normal.woff2",
+        ):
+            with self.subTest(relative=relative):
+                self.assertTrue((self.site / relative).is_file())
+        self.assertFalse((self.site / "404.html").exists())
+        self.assertFalse((self.site / "search").exists())
+        self.assertFalse((self.site / "search.html").exists())
+        asset_names = {path.name.casefold() for path in self.site.rglob("*")}
+        self.assertFalse(any("highlight" in name for name in asset_names))
+
+    def test_tables_have_rtd_runtime_hooks_and_responsive_local_styles(self) -> None:
+        representative_pages = (
+            "reference/fmf-input.html",
+            "reference/hypersonic-input.html",
+            "reference/output-formats.html",
+            "user-guide/outputs.html",
+        )
+        expected_scripts = (
+            "js/jquery-3.6.0.min.js",
+            "js/theme_extra.js",
+            "js/theme.js",
+        )
+        for relative in representative_pages:
+            html = (self.site / relative).read_text(encoding="utf-8")
+            with self.subTest(relative=relative):
+                positions = [html.index(f'src="../{script}"') for script in expected_scripts]
+                self.assertEqual(sorted(positions), positions)
+                self.assertNotIn("search.html", html)
+                if relative.endswith("-input.html"):
+                    self.assertIn("<table>", html)
+        theme_extra_js = (self.site / "js/theme_extra.js").read_text(encoding="utf-8")
+        theme_js = (self.site / "js/theme.js").read_text(encoding="utf-8")
+        theme_extra_css = (self.site / "css/theme_extra.css").read_text(
+            encoding="utf-8"
+        )
+        project_css = (
+            self.site / "assets/stylesheets/panelsolver-docs.css"
+        ).read_text(encoding="utf-8")
+        self.assertIn("$('div.rst-content table').addClass('docutils')", theme_extra_js)
+        self.assertIn("<div class='wy-table-responsive'>", theme_js)
+        self.assertRegex(
+            theme_extra_css,
+            r"\.rst-content \.section \.docutils \{[^}]*overflow: auto;[^}]*display: block;",
+        )
+        self.assertIn("border: 1px solid #e1e4e5 !important", theme_extra_css)
+        self.assertRegex(
+            project_css,
+            r"\.wy-table-responsive \{[^}]*width: 100%;",
+        )
+        self.assertRegex(
+            project_css,
+            r"\.wy-table-responsive > table\.docutils \{[^}]*"
+            r"min-width: max-content;[^}]*width: 100%;",
+        )
 
     def test_audited_build_dependency_versions_are_exact_and_current(self) -> None:
         with (ROOT / "pyproject.toml").open("rb") as stream:
@@ -130,6 +217,21 @@ class DocumentationSiteTests(unittest.TestCase):
                     self.assertEqual("", split.scheme)
                     self.assertEqual("", split.netloc)
                     self.assertTrue((css.parent / unquote(split.path)).is_file())
+
+    def test_generated_html_has_no_external_script_font_or_stylesheet_dependency(self) -> None:
+        forbidden = re.compile(
+            r"(?:\bsrc|<link\b[^>]*\bhref)=[\"'](?:https?:)?//",
+            flags=re.IGNORECASE,
+        )
+        for html in self.site.rglob("*.html"):
+            text = html.read_text(encoding="utf-8")
+            for match in forbidden.finditer(text):
+                with self.subTest(page=html.relative_to(self.site), value=match.group()):
+                    self.fail(f"external executable or style resource: {match.group()}")
+            self.assertNotIn("cdnjs.cloudflare.com", text)
+            self.assertNotIn("highlight.js", text.casefold())
+            self.assertNotIn("mathjax", text.casefold())
+            self.assertNotIn("katex", text.casefold())
 
     def test_internal_links_resolve_from_file_urls(self) -> None:
         parsed: dict[Path, _ResourceParser] = {}
@@ -192,6 +294,8 @@ class DocumentationSiteTests(unittest.TestCase):
         self.assertTrue(index.is_file())
         self.assertEqual(root, site.resolve().parent)
         self.assertTrue(site.resolve("solvers/hypersonic.html").is_file())
+        self.assertTrue(site.resolve("reference/fmf-input.html").is_file())
+        self.assertTrue(site.resolve("reference/output-formats.html").is_file())
         site.close()
         self.assertFalse(root.exists())
 

@@ -6,6 +6,10 @@ migration baselines and runtime artifact version semantics are recorded in ADR
 
 ## [Unreleased]
 
+- Restore the offline documentation to the audited MkDocs 1.6.1 built-in
+  Read the Docs theme, improving technical tables, navigation, and code
+  readability. Add complete license texts and release-gate coverage for the
+  newly bundled theme assets; numerical behavior and public APIs are unchanged.
 - Allow PySide6 6.9.3 through the Qt 6 series and require PyVistaQt 0.12 or
   newer, removing the obsolete cross-platform PySide6 6.9.3 exact pin.
 - Improve GUI file workflows by remembering the last successfully opened input

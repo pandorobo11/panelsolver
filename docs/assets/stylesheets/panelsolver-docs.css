@@ -1,0 +1,9 @@
+/* Panel Solver-owned correction for MkDocs tables inside the RTD scroll wrapper. */
+.wy-table-responsive {
+  width: 100%;
+}
+
+.wy-table-responsive > table.docutils {
+  min-width: max-content;
+  width: 100%;
+}
