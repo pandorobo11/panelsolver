@@ -27,10 +27,10 @@ migration baselines and runtime artifact version semantics are recorded in ADR
 - Allow PySide6 6.9.3 through the Qt 6 series and require PyVistaQt 0.12 or
   newer, removing the obsolete cross-platform PySide6 6.9.3 exact pin.
 - Improve GUI file workflows by remembering the last successfully opened input
-  directory, resolving relative Summary CSV, VTP, image, and `out_dir` paths
-  from the input table's directory, and adding domain-specific
-  `File > New from Example` workspaces copied with packaged geometry to a
-  user-selected writable directory before opening.
+  directory for the current GUI session, resolving relative Summary CSV, VTP,
+  image, and `out_dir` paths from the input table's directory, and adding
+  domain-specific `File > New from Example` workspaces copied with packaged
+  geometry to a user-selected writable directory before opening.
 - Improve batch CLI presentation with Rich, including progress display and
   `--verbose`, `--plain`, and `--debug`, while preserving plain-text output for
   non-interactive use.

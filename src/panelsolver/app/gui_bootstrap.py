@@ -18,6 +18,9 @@ class GuiAdaptersUnavailable(RuntimeError):
 
 
 _WINDOWS_APP_USER_MODEL_ID = "io.github.pandorobo11.panelsolver"
+_APPLICATION_NAME = "Panel Solver"
+_ORGANIZATION_NAME = "pandorobo11"
+_ORGANIZATION_DOMAIN = "pandorobo11.github.io"
 
 
 def _set_windows_app_user_model_id() -> None:
@@ -47,6 +50,15 @@ def _application_icon() -> QtGui.QIcon:
     if not pixmap.loadFromData(payload, "PNG"):
         raise RuntimeError("Could not load the packaged Panel Solver icon")
     return QtGui.QIcon(pixmap)
+
+
+def _configure_application(application: QtWidgets.QApplication) -> None:
+    """Apply the canonical Qt identity to a new or reused application."""
+    application.setApplicationName(_APPLICATION_NAME)
+    application.setApplicationDisplayName(_APPLICATION_NAME)
+    application.setOrganizationName(_ORGANIZATION_NAME)
+    application.setOrganizationDomain(_ORGANIZATION_DOMAIN)
+    application.setWindowIcon(_application_icon())
 
 
 def _unavailable_adapters(product_id: str) -> SolverGuiAdapters:
@@ -108,7 +120,7 @@ def run_gui(
             raise TypeError("application_factory must be callable")
         _set_windows_app_user_model_id()
         application = application_factory(list(sys.argv if argv is None else argv))
-    application.setWindowIcon(_application_icon())
+    _configure_application(application)
     window = create_main_window(spec, window_factory=window_factory)
     window.show()
     return int(application.exec())

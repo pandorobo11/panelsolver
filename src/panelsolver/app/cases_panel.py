@@ -102,7 +102,6 @@ class CasesPanel(QtWidgets.QWidget):
         parent=None,
         *,
         artifact_reader=pv.read,
-        settings: QtCore.QSettings | None = None,
     ) -> None:
         if not isinstance(spec, SolverSpec):
             raise TypeError("spec must be a SolverSpec")
@@ -113,11 +112,7 @@ class CasesPanel(QtWidgets.QWidget):
         super().__init__(parent)
         self.spec = spec
         self._artifact_reader = artifact_reader
-        self._settings = (
-            QtCore.QSettings("pandorobo11", "panelsolver")
-            if settings is None
-            else settings
-        )
+        self._last_input_directory: Path | None = None
         self.case_rows: tuple[CaseRow, ...] = ()
         self.input_path: Path | None = None
         self._table_columns: tuple[str, ...] = ()
@@ -200,9 +195,8 @@ class CasesPanel(QtWidgets.QWidget):
         self.log.appendPlainText(message)
 
     def input_dialog_directory(self) -> Path:
-        """Return the persisted existing directory, or the current directory."""
-        stored = self._settings.value("gui/last_input_directory", "")
-        candidate = Path(str(stored)).expanduser() if stored else None
+        """Return this session's existing input directory, or the current one."""
+        candidate = self._last_input_directory
         if candidate is not None and candidate.is_dir():
             return candidate
         return Path.cwd()
@@ -258,10 +252,7 @@ class CasesPanel(QtWidgets.QWidget):
         self._populate_case_table()
         self.btn_run.setEnabled(True)
         if remember_directory:
-            self._settings.setValue(
-                "gui/last_input_directory",
-                str(self.input_path.parent),
-            )
+            self._last_input_directory = self.input_path.parent
         self.logln(f"[OK] Loaded {len(self.case_rows)} case(s). Select and run.")
         self.input_path_changed.emit(self.input_path)
         self.cases_updated.emit(self.case_rows)
