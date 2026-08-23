@@ -493,7 +493,6 @@ def gui_spec(
         model_id="hypersonic",
         window_title="Panel Solver — Hypersonic",
         domain_name="Hypersonic",
-        documentation_page="solvers/hypersonic.html",
         case_columns=CSV_PROJECTION_POLICY.input_columns,
         preferred_scalars=_PREFERRED_SCALARS,
         format_case=format_case,

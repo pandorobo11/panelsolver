@@ -18,8 +18,6 @@ and `newtsolver-gui` remain available with their existing titles and behavior.
 Every launcher uses the shared **Help** menu:
 
 - **Documentation** opens the bundled offline site home;
-- **Current Domain Documentation** opens the FMF Sentman page or the
-  Hypersonic pressure-model page selected by the domain specification;
 - **About** shows Panel Solver, the installed `panelsolver` distribution
   version, the active FMF or Hypersonic domain, and the Apache-2.0 license.
 

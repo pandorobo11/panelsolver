@@ -461,7 +461,6 @@ def gui_spec(
         model_id="sentman",
         window_title="Panel Solver — FMF",
         domain_name="FMF",
-        documentation_page="solvers/fmf.html",
         case_columns=CSV_PROJECTION_POLICY.input_columns,
         preferred_scalars=_PREFERRED_SCALARS,
         format_case=format_case,

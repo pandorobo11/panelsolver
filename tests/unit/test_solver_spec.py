@@ -23,7 +23,6 @@ def _valid_spec(**changes) -> SolverSpec:
         "model_id": "model",
         "window_title": "Synthetic GUI",
         "domain_name": "Synthetic",
-        "documentation_page": "solvers/synthetic.html",
         "case_columns": ("case_id", "value"),
         "preferred_scalars": ("Cp_n", "area_m2"),
         "format_case": _format,
@@ -78,10 +77,6 @@ class SolverSpecTests(unittest.TestCase):
             _valid_spec(format_case=None)
         with self.assertRaises(TypeError):
             _valid_spec(adapters=object())
-        for page in ("../index.html", "solvers\\fmf.html", "solvers/fmf.md"):
-            with self.subTest(page=page), self.assertRaises(ValueError):
-                _valid_spec(documentation_page=page)
-
     def test_adapter_bundle_requires_every_member_to_be_callable(self) -> None:
         adapters = SolverGuiAdapters(
             read_cases=lambda _path: (),
@@ -106,13 +101,11 @@ class SolverSpecTests(unittest.TestCase):
         self.assertEqual("Sentman FMF Solver (GUI)", fmf.window_title)
         self.assertEqual("sentman", fmf.model_id)
         self.assertEqual("FMF", fmf.domain_name)
-        self.assertEqual("solvers/fmf.html", fmf.documentation_page)
         self.assertIn("S", fmf.case_columns)
         self.assertNotIn("gamma", fmf.case_columns)
         self.assertEqual("newtsolver (GUI)", newt.window_title)
         self.assertEqual("hypersonic", newt.model_id)
         self.assertEqual("Hypersonic", newt.domain_name)
-        self.assertEqual("solvers/hypersonic.html", newt.documentation_page)
         self.assertIn("gamma", newt.case_columns)
         self.assertNotIn("S", newt.case_columns)
         self.assertEqual(fmf.preferred_scalars, newt.preferred_scalars)
