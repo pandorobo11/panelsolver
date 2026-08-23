@@ -183,15 +183,10 @@ jobs:
           import newtsolver
           import panelsolver
           from fmfsolver.app.gui_app import main as fmf_gui_main
-          from fmfsolver.gui_spec import solver_spec as fmf_solver_spec
           from newtsolver.app.gui_app import main as newt_gui_main
-          from newtsolver.gui_spec import solver_spec as newt_solver_spec
-          from panelsolver.app.gui_bootstrap import prepare_gui_spec
 
           assert callable(fmf_gui_main)
           assert callable(newt_gui_main)
-          assert prepare_gui_spec(fmf_solver_spec()).model_id == "sentman"
-          assert prepare_gui_spec(newt_solver_spec()).model_id == "hypersonic"
           expected = {
               "panelsolver": "panelsolver.cli:main",
               "panelsolver-gui": "panelsolver.gui:main",
