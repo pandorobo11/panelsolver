@@ -93,25 +93,24 @@ class HelpMenuTests(unittest.TestCase):
             documentation_site=site,
         )
 
-    def test_canonical_and_legacy_guis_open_domain_pages_without_branching(self) -> None:
+    def test_canonical_and_legacy_guis_share_documentation_and_about_menu(self) -> None:
         with tempfile.TemporaryDirectory(prefix="panel docs ünicode ") as directory:
             root = Path(directory) / "site with spaces"
-            (root / "solvers").mkdir(parents=True)
-            for page in ("index.html", "solvers/fmf.html", "solvers/hypersonic.html"):
-                (root / page).touch()
+            root.mkdir(parents=True)
+            (root / "index.html").touch()
 
             specifications = (
-                (canonical_fmf_spec(), "solvers/fmf.html"),
-                (legacy_fmf_spec(), "solvers/fmf.html"),
-                (canonical_hypersonic_spec(), "solvers/hypersonic.html"),
-                (legacy_hypersonic_spec(), "solvers/hypersonic.html"),
+                canonical_fmf_spec(),
+                legacy_fmf_spec(),
+                canonical_hypersonic_spec(),
+                legacy_hypersonic_spec(),
             )
-            for spec, expected_page in specifications:
+            for spec in specifications:
                 with self.subTest(product=spec.product_id):
                     site = _Site(root)
                     window = self._window(spec, site)
                     self.assertEqual(
-                        ["Documentation", "Current Domain Documentation", "", "About"],
+                        ["Documentation", "", "About"],
                         [action.text() for action in window.help_menu.actions()],
                     )
                     opened = []
@@ -122,10 +121,9 @@ class HelpMenuTests(unittest.TestCase):
                         ),
                     ):
                         window.documentation_action.trigger()
-                        window.domain_documentation_action.trigger()
-                    self.assertEqual(["index.html", expected_page], site.pages)
+                    self.assertEqual(["index.html"], site.pages)
                     self.assertEqual(
-                        [root / "index.html", root / expected_page],
+                        [root / "index.html"],
                         [Path(url.toLocalFile()) for url in opened],
                     )
                     window.close()

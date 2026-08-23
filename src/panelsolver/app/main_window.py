@@ -124,15 +124,6 @@ class MainWindow(QtWidgets.QMainWindow):
             lambda: self._open_documentation("index.html")
         )
         self.help_menu.addAction(self.documentation_action)
-
-        self.domain_documentation_action = QtGui.QAction(
-            "Current Domain Documentation",
-            self,
-        )
-        self.domain_documentation_action.triggered.connect(
-            lambda: self._open_documentation(self.spec.documentation_page)
-        )
-        self.help_menu.addAction(self.domain_documentation_action)
         self.help_menu.addSeparator()
 
         self.about_action = QtGui.QAction("About", self)

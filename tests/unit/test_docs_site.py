@@ -24,14 +24,18 @@ class _ResourceParser(HTMLParser):
         super().__init__()
         self.resources: list[str] = []
         self.links: list[str] = []
+        self.anchors: list[tuple[str, str, str]] = []
         self.ids: set[str] = set()
+        self._anchor: tuple[str, str, list[str]] | None = None
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         values = dict(attrs)
         if values.get("id"):
             self.ids.add(str(values["id"]))
         if tag == "a" and values.get("href"):
-            self.links.append(str(values["href"]))
+            href = str(values["href"])
+            self.links.append(href)
+            self._anchor = (href, str(values.get("class", "")), [])
         if tag in {"img", "script", "source"} and values.get("src"):
             self.resources.append(str(values["src"]))
         if (
@@ -40,6 +44,16 @@ class _ResourceParser(HTMLParser):
             and values.get("href")
         ):
             self.resources.append(str(values["href"]))
+
+    def handle_data(self, data: str) -> None:
+        if self._anchor is not None:
+            self._anchor[2].append(data)
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag == "a" and self._anchor is not None:
+            href, class_name, text = self._anchor
+            self.anchors.append((href, "".join(text).strip(), class_name))
+            self._anchor = None
 
 
 class DocumentationSiteTests(unittest.TestCase):
@@ -118,6 +132,39 @@ class DocumentationSiteTests(unittest.TestCase):
         self.assertFalse((self.site / "search.html").exists())
         asset_names = {path.name.casefold() for path in self.site.rglob("*")}
         self.assertFalse(any("highlight" in name for name in asset_names))
+
+    def test_sidebar_real_pages_use_local_html_links(self) -> None:
+        parser = _ResourceParser()
+        parser.feed((self.site / "index.html").read_text(encoding="utf-8"))
+        sidebar_links = {
+            (href, label)
+            for href, label, class_name in parser.anchors
+            if class_name == "reference internal"
+        }
+        expected_links = {
+            ("getting-started/installation.html", "Installation"),
+            ("getting-started/quickstart.html", "Quickstart"),
+            ("user-guide/troubleshooting.html", "Troubleshooting"),
+            ("solvers/fmf-overview.html", "Overview"),
+            ("reference/fmf-input.html", "Input"),
+            ("solvers/fmf.html", "Sentman model"),
+            ("solvers/hypersonic-overview.html", "Overview"),
+            ("reference/hypersonic-input.html", "Input"),
+            ("solvers/hypersonic.html", "Pressure models"),
+            ("user-guide/gui.html", "GUI"),
+            ("user-guide/cli.html", "CLI"),
+            ("user-guide/outputs.html", "Outputs"),
+            ("reference/numerical-conventions.html", "Numerical conventions"),
+            ("reference/environment-variables.html", "Environment variables"),
+            ("reference/compatibility.html", "Compatibility"),
+            ("reference/output-formats.html", "Output formats"),
+            ("reference/us1976-data-provenance.html", "US1976 provenance"),
+            (
+                "reference/license-and-third-party-notices.html",
+                "License / third-party notices",
+            ),
+        }
+        self.assertLessEqual(expected_links, sidebar_links)
 
     def test_tables_have_rtd_runtime_hooks_and_responsive_local_styles(self) -> None:
         representative_pages = (
