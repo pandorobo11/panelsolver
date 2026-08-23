@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6 import QtWidgets
+from PySide6 import QtCore, QtWidgets
 
 from fmfsolver._frontend import _legacy_gui_spec as fmf_solver_spec
 from fmfsolver.app import gui_app as fmf_gui_app
@@ -18,6 +18,9 @@ from newtsolver.app import gui_app as newt_gui_app
 from panelsolver import gui as canonical_gui
 from panelsolver.app import GuiRunResult, SolverGuiAdapters
 from panelsolver.app.gui_bootstrap import (
+    _APPLICATION_NAME,
+    _ORGANIZATION_DOMAIN,
+    _ORGANIZATION_NAME,
     _WINDOWS_APP_USER_MODEL_ID,
     GuiAdaptersUnavailable,
     _application_icon,
@@ -108,6 +111,10 @@ class GuiBootstrapTests(unittest.TestCase):
         execute.assert_called_once_with()
         set_window_icon.assert_called_once()
         self.assertFalse(set_window_icon.call_args.args[0].isNull())
+        self.assertEqual(_APPLICATION_NAME, self.app.applicationName())
+        self.assertEqual(_APPLICATION_NAME, self.app.applicationDisplayName())
+        self.assertEqual(_ORGANIZATION_NAME, self.app.organizationName())
+        self.assertEqual(_ORGANIZATION_DOMAIN, self.app.organizationDomain())
         self.assertTrue(made[0].shown)
         self.assertEqual("sentman", made[0].spec.model_id)
 
@@ -133,6 +140,7 @@ class GuiBootstrapTests(unittest.TestCase):
         icon = _application_icon()
         self.assertFalse(icon.isNull())
         self.assertTrue(icon.availableSizes())
+        self.assertIn(QtCore.QSize(1024, 1024), icon.availableSizes())
         image = icon.pixmap(icon.availableSizes()[0]).toImage()
         self.assertTrue(image.hasAlphaChannel())
         self.assertEqual(0, image.pixelColor(0, 0).alpha())

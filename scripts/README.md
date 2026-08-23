@@ -16,3 +16,9 @@ drift without network access.
 `generate_docs_angle_response_plots.py` produces the committed SVG figures
 directly from Panel Solver model output. The script and generated figures are
 project material distributed under Apache-2.0.
+
+`prepare_app_icon.py` turns a source RGBA icon into the canonical 1024 x 1024
+application PNG. It scales the complete source canvas to 86% with LANCZOS
+resampling, centers it on transparency, strips source metadata, and writes a
+losslessly compressed PNG. Pass the source and output as separate paths so an
+already prepared icon is not scaled a second time.

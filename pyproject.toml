@@ -49,7 +49,10 @@ newtsolver-gui = "newtsolver.app.gui_app:main"
 newtsolver-cli = "newtsolver.app.cli_app:main"
 
 [dependency-groups]
-dev = ["ruff"]
+dev = [
+  "pillow",
+  "ruff",
+]
 docs = [
   "latex2mathml==3.81.0",
   "matplotlib",
