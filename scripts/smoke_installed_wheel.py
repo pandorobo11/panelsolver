@@ -101,6 +101,7 @@ EXPECTED_CLI_DESCRIPTIONS = {
     "newtsolver": "Run newtsolver from CSV/XLSX/XLSM input without GUI.",
 }
 _TUNING_PREFIXES = ("PANELSOLVER_", "FMFSOLVER_", "NEWTSOLVER_")
+_EXPECTED_GUI_HELP_MENU = ("Documentation", "", "About")
 
 
 def _smoke_high_level_api(staging: Path, inputs: Path) -> None:
@@ -221,6 +222,11 @@ def _smoke_canonical_gui_entrypoint() -> None:
     }
     constructed: list[tuple[str, str, str]] = []
 
+    def verify_help_menu(window, *, identity: str) -> None:
+        actions = tuple(action.text() for action in window.help_menu.actions())
+        if actions != _EXPECTED_GUI_HELP_MENU:
+            raise RuntimeError(f"{identity} GUI Help menu changed: {actions!r}")
+
     def construct(spec, argv):
         if len(argv) != 1:
             raise RuntimeError(f"canonical GUI leaked dispatcher arguments: {argv!r}")
@@ -232,13 +238,7 @@ def _smoke_canonical_gui_entrypoint() -> None:
             ),
         )
         constructed.append((spec.product_id, spec.model_id, window.windowTitle()))
-        if [action.text() for action in window.help_menu.actions()] != [
-            "Documentation",
-            "Current Domain Documentation",
-            "",
-            "About",
-        ]:
-            raise RuntimeError("canonical GUI Help menu changed")
+        verify_help_menu(window, identity="canonical")
         window.close()
         return 0
 
@@ -269,8 +269,7 @@ def _smoke_canonical_gui_entrypoint() -> None:
         legacy_constructed.append(
             (spec.product_id, spec.model_id, window.windowTitle())
         )
-        if not hasattr(window, "domain_documentation_action"):
-            raise RuntimeError("legacy GUI does not share documentation infrastructure")
+        verify_help_menu(window, identity="legacy")
         window.close()
     if tuple(legacy_constructed) != legacy_expected:
         raise RuntimeError(f"legacy GUI identity changed: {legacy_constructed!r}")
