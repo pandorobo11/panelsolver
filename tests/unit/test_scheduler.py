@@ -199,6 +199,52 @@ class SchedulerTests(unittest.TestCase):
         )
         self.assertEqual({"ray": len(hints)}, remaining)
 
+    def test_bucket_chunking_closes_before_splitting_the_next_group(self) -> None:
+        affinity_a = SchedulingAffinityHint(("cache", "a"), priority=1)
+        affinity_b = SchedulingAffinityHint(("cache", "b"), priority=1)
+        hints = ((affinity_a,),) * 3 + ((affinity_b,),) * 3
+
+        chunks, _remaining = scheduler_module._build_bucket_chunks(
+            tuple(range(len(hints))),
+            ("ray",) * len(hints),
+            hints,
+            4,
+        )
+
+        self.assertEqual(((0, 1, 2), (3, 4, 5)), tuple(chunks["ray"]))
+
+    def test_bucket_chunking_packs_small_whole_groups_together(self) -> None:
+        affinities = tuple(
+            SchedulingAffinityHint(("cache", identity), priority=1)
+            for identity in ("a", "b", "c")
+        )
+        hints = tuple((affinity,) for affinity in affinities for _ in range(2))
+
+        chunks, _remaining = scheduler_module._build_bucket_chunks(
+            tuple(range(len(hints))),
+            ("ray",) * len(hints),
+            hints,
+            8,
+        )
+
+        self.assertEqual((tuple(range(6)),), tuple(chunks["ray"]))
+
+    def test_bucket_chunking_splits_only_an_oversized_single_group(self) -> None:
+        affinity = SchedulingAffinityHint(("cache", "large"), priority=1)
+        hints = ((affinity,),) * 10
+
+        chunks, _remaining = scheduler_module._build_bucket_chunks(
+            tuple(range(len(hints))),
+            ("ray",) * len(hints),
+            hints,
+            4,
+        )
+
+        self.assertEqual(
+            ((0, 1, 2, 3), (4, 5, 6, 7), (8, 9)),
+            tuple(chunks["ray"]),
+        )
+
     def test_none_and_empty_affinities_preserve_fifo_bucket_chunking(self) -> None:
         order = (5, 2, 0, 4, 1, 3)
         bucket_keys = ("a", "a", "b", "a", "b", "a")
@@ -457,8 +503,10 @@ class SchedulerTests(unittest.TestCase):
             ("b", 0.03),
             ("a", 0.03),
             ("b", 0.03),
+            ("a", 0.03),
+            ("b", 0.03),
         )
-        order = (1, 0, 3, 2)
+        order = (1, 0, 3, 2, 5, 4)
 
         def run_probe(affinity_hints=None, snapshot_cb=None):
             return dict(
@@ -471,7 +519,7 @@ class SchedulerTests(unittest.TestCase):
                     execution_order=order,
                     bucket_keys=("one-ray-bucket",) * len(cases),
                     affinity_hints=affinity_hints,
-                    chunk_cases=2,
+                    chunk_cases=4,
                     snapshot_cb=snapshot_cb,
                 )
             )
@@ -479,7 +527,14 @@ class SchedulerTests(unittest.TestCase):
         baseline = run_probe()
         snapshots = []
         grouped = run_probe(
-            ((affinity_a,), (affinity_b,), (affinity_a,), (affinity_b,)),
+            (
+                (affinity_a,),
+                (affinity_b,),
+                (affinity_a,),
+                (affinity_b,),
+                (affinity_a,),
+                (affinity_b,),
+            ),
             snapshots.append,
         )
 

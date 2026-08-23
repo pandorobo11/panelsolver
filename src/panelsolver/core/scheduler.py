@@ -262,27 +262,34 @@ def _build_bucket_chunks(
     chunks: dict[Hashable, deque[tuple[int, ...]]] = {}
     remaining: dict[Hashable, int] = {}
     for key, indices in buckets.items():
-        grouped_indices = _stable_affinity_grouped_indices(indices, affinity_hints)
-        chunks[key] = deque(
-            tuple(grouped_indices[start : start + chunk_cases])
-            for start in range(0, len(grouped_indices), chunk_cases)
-        )
-        remaining[key] = len(grouped_indices)
+        affinity_groups = _stable_affinity_groups(indices, affinity_hints)
+        if affinity_groups is None:
+            bucket_chunks = tuple(
+                tuple(indices[start : start + chunk_cases])
+                for start in range(0, len(indices), chunk_cases)
+            )
+        else:
+            bucket_chunks = _chunks_preserving_affinity_groups(
+                affinity_groups,
+                chunk_cases,
+            )
+        chunks[key] = deque(bucket_chunks)
+        remaining[key] = len(indices)
     return chunks, remaining
 
 
-def _stable_affinity_grouped_indices(
+def _stable_affinity_groups(
     indices: Sequence[int],
     affinity_hints: Sequence[Sequence[SchedulingAffinityHint]],
-) -> tuple[int, ...]:
+) -> tuple[tuple[int, ...], ...] | None:
     """Group one primary bucket once, without interpreting hint identities.
 
     Each case groups by its highest-priority hint.  Hashable identities receive
     stable first-encounter ranks because the scheduler cannot require them to be
     mutually orderable; that rank also breaks ties when a case has multiple
     hints at the same priority.  Other hints remain available for worker scoring
-    and history.  Python's stable sort retains source order within each selected
-    identity group, and cases without hints remain stable after those groups.
+    and history.  Each selected identity group retains source order, and cases
+    without hints remain stable after those groups.
     """
     identity_order: dict[Hashable, int] = {}
     for index in indices:
@@ -290,7 +297,7 @@ def _stable_affinity_grouped_indices(
             if hint.identity not in identity_order:
                 identity_order[hint.identity] = len(identity_order)
     if not identity_order:
-        return tuple(indices)
+        return None
 
     def grouping_key(index: int) -> tuple[int, int]:
         hints = affinity_hints[index]
@@ -301,7 +308,36 @@ def _stable_affinity_grouped_indices(
             for hint in hints
         )
 
-    return tuple(sorted(indices, key=grouping_key))
+    grouped: dict[tuple[int, int], list[int]] = {}
+    for index in indices:
+        grouped.setdefault(grouping_key(index), []).append(index)
+    return tuple(tuple(grouped[key]) for key in sorted(grouped))
+
+
+def _chunks_preserving_affinity_groups(
+    affinity_groups: Sequence[Sequence[int]],
+    chunk_cases: int,
+) -> tuple[tuple[int, ...], ...]:
+    """Pack whole affinity groups when possible under the chunk size limit."""
+    chunks: list[tuple[int, ...]] = []
+    current: list[int] = []
+    for group in affinity_groups:
+        if current and len(group) > chunk_cases - len(current):
+            chunks.append(tuple(current))
+            current = []
+
+        offset = 0
+        while len(group) - offset > chunk_cases:
+            chunks.append(tuple(group[offset : offset + chunk_cases]))
+            offset += chunk_cases
+        current.extend(group[offset:])
+        if len(current) == chunk_cases:
+            chunks.append(tuple(current))
+            current = []
+
+    if current:
+        chunks.append(tuple(current))
+    return tuple(chunks)
 
 
 def _affinity_score(

@@ -32,9 +32,10 @@ secondary hints to keep reusable tangent-cone and tangent-wedge `(Mach, gamma)`
 work in the same worker process when practical; tangent-cone reuse is preferred
 because its table construction is more expensive. The scheduler also groups
 these secondary hints when constructing chunks inside a reusable shielding
-bucket; it does not split or change the primary shielding bucket itself. These
-hints can further change execution order, but checkpoint and final output order
-remains the input order.
+bucket and preserves an affinity-group boundary when practical; chunks may be
+smaller than the configured maximum, but the primary shielding bucket is never
+split or changed. These hints can further change execution order, but checkpoint
+and final output order remains the input order.
 
 Both products forward worker logs and retain successful cases completed before a
 later case in the same chunk fails. `--checkpoint-every-cases N` controls
