@@ -21,6 +21,7 @@ import tomllib
 import zipfile
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import pyvista as pv
 
@@ -322,6 +323,61 @@ def _load_phase1_comparator(repository: Path):
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+def _record_array(record: dict[str, object]) -> np.ndarray:
+    return np.asarray(record["values"]).reshape(record["shape"])
+
+
+def _float_array_record(value: np.ndarray) -> dict[str, object]:
+    array = np.asarray(value)
+    return {
+        "dtype": f"float{array.dtype.itemsize * 8}",
+        "shape": list(array.shape),
+        "values": array.tolist(),
+    }
+
+
+def _current_expected_vtp(product: str, golden: dict[str, object]) -> dict[str, object]:
+    expected = copy.deepcopy(golden["vtp"])
+    cell_data = expected["cell_data"]
+    legacy_normal = cell_data.pop("Cp_n")
+    if product == "newtsolver":
+        cell_data["cp"] = legacy_normal
+        return expected
+    if product != "fmfsolver":
+        raise ValueError(f"unknown installed-smoke product: {product!r}")
+
+    cell_data["normal_traction_coeff"] = legacy_normal
+    normals_out_stl = _record_array(
+        golden["npz"]["arrays"]["normals_out_stl"]
+    )
+    velocity_hat_stl = _record_array(golden["npz"]["arrays"]["Vhat_stl"])
+    normal_dot_velocity = normals_out_stl @ velocity_hat_stl
+    tangent_stl = (
+        velocity_hat_stl[None, :]
+        - normal_dot_velocity[:, None] * normals_out_stl
+    )
+    tangent_norm = np.linalg.norm(tangent_stl, axis=1)
+    tangent_hat_stl = np.zeros_like(tangent_stl)
+    defined = tangent_norm > 1.0e-12
+    tangent_hat_stl[defined] = (
+        tangent_stl[defined]
+        / tangent_norm[defined, None]
+    )
+    c_face_stl = _record_array(golden["vtp"]["cell_data"]["C_face_stl"])
+    area_m2 = _record_array(golden["vtp"]["cell_data"]["area_m2"])
+    aref_m2 = golden["normalized_input"]["Aref_m2"]
+    traction_coeff_stl = c_face_stl * (aref_m2 / area_m2)[:, None]
+    tangential_traction_coeff = np.einsum(
+        "ij,ij->i",
+        traction_coeff_stl,
+        tangent_hat_stl,
+    )
+    cell_data["tangential_traction_coeff"] = _float_array_record(
+        tangential_traction_coeff
+    )
+    return expected
 
 
 def _validate_cli_help(product: str, help_text: str) -> None:
@@ -865,7 +921,7 @@ def main(argv: list[str] | None = None) -> int:
                             for row in golden["csv"]["rows"]
                         ],
                     },
-                    "vtp": copy.deepcopy(golden["vtp"]),
+                    "vtp": _current_expected_vtp(product, golden),
                 }
                 for expected_row in expected["csv"]["rows"]:
                     expected_row["solver_version"] = installed_version
