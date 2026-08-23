@@ -164,7 +164,7 @@ class Phase4bHypersonicGoldenTests(unittest.TestCase):
                     "vtp": {
                         "cell_data": {
                             "C_face_stl": _array_record(face_force),
-                            "Cp_n": _array_record(loads.cell_scalars["Cp_n"]),
+                            "Cp_n": _array_record(loads.cell_scalars["cp"]),
                             "theta_deg": _array_record(
                                 loads.cell_scalars["theta_deg"]
                             ),
@@ -176,7 +176,7 @@ class Phase4bHypersonicGoldenTests(unittest.TestCase):
                                 name: _array_record(actual_npz_values[name])
                                 for name in npz_names
                             },
-                            "Cp_n": _array_record(loads.cell_scalars["Cp_n"]),
+                            "Cp_n": _array_record(loads.cell_scalars["cp"]),
                         }
                     },
                     "csv": {"rows": actual_rows},
@@ -213,7 +213,7 @@ class Phase4bHypersonicGoldenTests(unittest.TestCase):
                         np.zeros((int(flow_state.shielded.sum()), 3)),
                     )
                     np.testing.assert_array_equal(
-                        loads.cell_scalars["Cp_n"][flow_state.shielded],
+                        loads.cell_scalars["cp"][flow_state.shielded],
                         np.zeros(int(flow_state.shielded.sum())),
                     )
 

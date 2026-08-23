@@ -200,27 +200,50 @@ def _sentman_response() -> SentmanResponse:
     )
     loads = SentmanModel().evaluate(panels.geometry, panels.flow_state, case)
     traction = loads.traction_coeff_stl
-    cp_n = np.asarray(loads.cell_scalars["Cp_n"], dtype=np.float64)
-    normal = np.einsum("ij,ij->i", traction, panels.normals_in_stl)
-    tangential = np.einsum("ij,ij->i", traction, panels.tangent_hat_stl)
+    normal = np.asarray(
+        loads.cell_scalars["normal_traction_coeff"],
+        dtype=np.float64,
+    )
+    tangential = np.asarray(
+        loads.cell_scalars["tangential_traction_coeff"],
+        dtype=np.float64,
+    )
 
-    _require_finite("Sentman C_n", normal)
-    _require_finite("Sentman C_t", tangential)
+    _require_finite("Sentman normal traction coefficient", normal)
+    _require_finite("Sentman tangential traction coefficient", tangential)
     if normal.shape != panels.delta_deg.shape or tangential.shape != normal.shape:
         raise RuntimeError("Sentman response arrays do not match the angle grid")
-    if not np.allclose(normal, cp_n, rtol=1.0e-12, atol=1.0e-13):
-        maximum_error = float(np.max(np.abs(normal - cp_n)))
+    expected_normal = np.einsum("ij,ij->i", traction, panels.normals_in_stl)
+    expected_tangential = np.einsum(
+        "ij,ij->i",
+        traction,
+        panels.tangent_hat_stl,
+    )
+    if not np.allclose(normal, expected_normal, rtol=1.0e-12, atol=1.0e-13):
+        maximum_error = float(np.max(np.abs(normal - expected_normal)))
         raise RuntimeError(
-            "Sentman normal traction does not match model Cp_n; "
+            "Sentman normal traction scalar is inconsistent with traction; "
+            f"maximum absolute error={maximum_error:.3e}"
+        )
+    if not np.allclose(
+        tangential,
+        expected_tangential,
+        rtol=1.0e-12,
+        atol=1.0e-13,
+    ):
+        maximum_error = float(np.max(np.abs(tangential - expected_tangential)))
+        raise RuntimeError(
+            "Sentman tangential traction scalar is inconsistent with traction; "
             f"maximum absolute error={maximum_error:.3e}"
         )
     grazing = _index_at(panels.delta_deg, 0.0)
     facing = _index_at(panels.delta_deg, 90.0)
     if normal[grazing] <= 0.0 or tangential[grazing] <= 0.0:
-        raise RuntimeError("Sentman grazing C_n and C_t must both be positive")
-    tangential[facing] = 0.0
+        raise RuntimeError("Sentman grazing traction components must both be positive")
     if tangential[facing] != 0.0:
-        raise RuntimeError("Sentman C_t at 90 deg must use its zero continuous limit")
+        raise RuntimeError(
+            "Sentman tangential traction at 90 deg must use its zero limit"
+        )
     return SentmanResponse(panels.delta_deg, normal, tangential)
 
 
@@ -241,7 +264,7 @@ def _hypersonic_cp(
         },
     )
     loads = HypersonicModel().evaluate(panels.geometry, panels.flow_state, case)
-    cp = np.asarray(loads.cell_scalars["Cp_n"], dtype=np.float64)
+    cp = np.asarray(loads.cell_scalars["cp"], dtype=np.float64)
     _require_finite(f"Hypersonic Cp ({windward_eq}, {leeward_eq})", cp)
     if cp.shape != panels.delta_deg.shape:
         raise RuntimeError("Hypersonic Cp array does not match the angle grid")
@@ -252,7 +275,7 @@ def _hypersonic_cp(
         rtol=1.0e-12,
         atol=1.0e-13,
     ):
-        raise RuntimeError("Hypersonic Cp_n is inconsistent with pressure traction")
+        raise RuntimeError("Hypersonic cp is inconsistent with pressure traction")
     return cp
 
 
@@ -402,7 +425,7 @@ def _plot_sentman(response: SentmanResponse, path: Path) -> None:
         color=COLORS["blue"],
         linewidth=2.0,
         linestyle="-",
-        label=r"$C_n$ (normal)",
+        label="Normal traction coeff.",
     )
     axes.plot(
         x,
@@ -410,7 +433,7 @@ def _plot_sentman(response: SentmanResponse, path: Path) -> None:
         color=COLORS["red"],
         linewidth=2.0,
         linestyle="--",
-        label=r"$C_t$ (tangential)",
+        label="Tangential traction coeff.",
     )
     axes.text(
         -15.0,

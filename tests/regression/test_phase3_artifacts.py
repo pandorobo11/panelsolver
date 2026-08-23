@@ -56,6 +56,21 @@ def _scalar(record: dict) -> object:
     return _record_array(record).item()
 
 
+def _array_record(value: np.ndarray) -> dict[str, object]:
+    array = np.asarray(value)
+    logical_dtype = {
+        "b": "bool",
+        "i": f"int{array.dtype.itemsize * 8}",
+        "u": f"uint{array.dtype.itemsize * 8}",
+        "f": f"float{array.dtype.itemsize * 8}",
+    }[array.dtype.kind]
+    return {
+        "dtype": logical_dtype,
+        "shape": list(array.shape),
+        "values": array.tolist(),
+    }
+
+
 def _tolerance(golden: dict) -> tuple[float, float]:
     profile = MANIFEST["tolerance_profiles"][golden["provenance"]["tolerance_profile"]]
     names = [profile["default"]]
@@ -98,6 +113,31 @@ class Phase3ArtifactGoldenTests(unittest.TestCase):
                     for name, record in vtp_records["cell_data"].items()
                     if name not in GEOMETRY_CELL_FIELDS
                 }
+                legacy_normal_scalar = cell_scalars.pop("Cp_n")
+                if path.parent.name == "fmfsolver":
+                    cell_scalars["normal_traction_coeff"] = legacy_normal_scalar
+                    velocity = _npz_array(golden, "Vhat_stl")
+                    normal_dot_velocity = geometry.normals_out_stl @ velocity
+                    tangent = (
+                        velocity[None, :]
+                        - normal_dot_velocity[:, None] * geometry.normals_out_stl
+                    )
+                    tangent_norm = np.linalg.norm(tangent, axis=1)
+                    tangent_hat = np.zeros_like(tangent)
+                    defined = tangent_norm > 1.0e-12
+                    tangent_hat[defined] = (
+                        tangent[defined] / tangent_norm[defined, None]
+                    )
+                    traction = face_force * (
+                        normalized["Aref_m2"] / geometry.areas_m2
+                    )[:, None]
+                    cell_scalars["tangential_traction_coeff"] = np.einsum(
+                        "ij,ij->i",
+                        traction,
+                        tangent_hat,
+                    )
+                else:
+                    cell_scalars["cp"] = legacy_normal_scalar
                 common_case = CommonCasePayload(
                     case_id=normalized["case_id"],
                     Aref_m2=normalized["Aref_m2"],
@@ -141,12 +181,27 @@ class Phase3ArtifactGoldenTests(unittest.TestCase):
 
                 vtp = project_vtp_artifact(mesh, results, policy)
                 atol, rtol = _tolerance(golden)
+                expected_cell_data = {
+                    name: record
+                    for name, record in vtp_records["cell_data"].items()
+                    if name != "Cp_n"
+                }
+                if path.parent.name == "fmfsolver":
+                    expected_cell_data["normal_traction_coeff"] = vtp_records[
+                        "cell_data"
+                    ]["Cp_n"]
+                    expected_cell_data["tangential_traction_coeff"] = _array_record(
+                        cell_scalars["tangential_traction_coeff"]
+                    )
+                else:
+                    expected_cell_data["cp"] = vtp_records["cell_data"]["Cp_n"]
+                expected_cell_data = dict(sorted(expected_cell_data.items()))
 
                 self._assert_record(vtp.points, vtp_records["points"], atol, rtol)
                 self._assert_record(vtp.faces, vtp_records["faces"], atol, rtol)
-                self.assertEqual(list(vtp_records["cell_data"]), list(vtp.cell_data))
+                self.assertEqual(list(expected_cell_data), list(vtp.cell_data))
                 self.assertEqual(list(vtp_records["field_data"]), list(vtp.field_data))
-                for name, record in vtp_records["cell_data"].items():
+                for name, record in expected_cell_data.items():
                     self._assert_record(vtp.cell_data[name], record, atol, rtol)
                 for name, record in vtp_records["field_data"].items():
                     self._assert_record(vtp.field_data[name], record, atol, rtol)

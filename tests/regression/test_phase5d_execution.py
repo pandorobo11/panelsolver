@@ -138,6 +138,9 @@ class Phase5dExecutionGoldenTests(unittest.TestCase):
                         for name in COEFFICIENTS
                     },
                 }
+                legacy_normal_scalar = loads.cell_scalars[
+                    "normal_traction_coeff" if model_id == "sentman" else "cp"
+                ]
                 expected = {
                     "vtp": {
                         "cell_data": {
@@ -171,7 +174,7 @@ class Phase5dExecutionGoldenTests(unittest.TestCase):
                                 execution.shielding.shielded.astype(np.uint8)
                             ),
                             "C_face_stl": _array_record(face_force),
-                            "Cp_n": _array_record(loads.cell_scalars["Cp_n"]),
+                            "Cp_n": _array_record(legacy_normal_scalar),
                             "theta_deg": _array_record(
                                 loads.cell_scalars["theta_deg"]
                             ),
@@ -183,7 +186,7 @@ class Phase5dExecutionGoldenTests(unittest.TestCase):
                                 name: _array_record(actual_npz[name])
                                 for name in actual_npz
                             },
-                            "Cp_n": _array_record(loads.cell_scalars["Cp_n"]),
+                            "Cp_n": _array_record(legacy_normal_scalar),
                         }
                     },
                     "csv": {"rows": actual_rows},

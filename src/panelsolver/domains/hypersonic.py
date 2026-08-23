@@ -8,6 +8,7 @@ from pathlib import Path
 import pandas as pd
 
 from panelsolver.app import (
+    COMMON_SCALAR_LABELS,
     DEFAULT_CHECKPOINT_CASES,
     ArtifactSignatureCandidates,
     GuiRunRequest,
@@ -404,7 +405,7 @@ GUI_ADAPTERS = SolverGuiAdapters(
 )
 
 _PREFERRED_SCALARS = (
-    "Cp_n",
+    "cp",
     "shielded",
     "theta_deg",
     "area_m2",
@@ -413,6 +414,10 @@ _PREFERRED_SCALARS = (
     "center_z_stl_m",
     "stl_index",
 )
+_SCALAR_LABELS = {
+    **COMMON_SCALAR_LABELS,
+    "cp": "Cp",
+}
 _DEFAULT_ADAPTERS = object()
 
 _GUI_EXAMPLES = (
@@ -495,6 +500,7 @@ def gui_spec(
         domain_name="Hypersonic",
         case_columns=CSV_PROJECTION_POLICY.input_columns,
         preferred_scalars=_PREFERRED_SCALARS,
+        scalar_labels=_SCALAR_LABELS,
         format_case=format_case,
         adapters=selected_adapters,  # type: ignore[arg-type]
         examples=_GUI_EXAMPLES,

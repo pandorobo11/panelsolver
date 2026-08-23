@@ -48,8 +48,13 @@ Cell arrays are aligned with mesh face order:
 
 ```text
 C_face_stl, area_m2, center_x_stl_m, center_y_stl_m, center_z_stl_m,
-shielded, stl_index, Cp_n, theta_deg
+shielded, stl_index, theta_deg
 ```
+
+Hypersonic additionally stores `cp`. FMF additionally stores
+`normal_traction_coeff` and `tangential_traction_coeff`. These model scalars are
+derived from the same `traction_coeff_stl` that the common engine integrates;
+`Cp_n` is not emitted.
 
 Common field data is:
 
@@ -58,7 +63,8 @@ alpha_t_deg_resolved, attitude_input_used, beta_t_deg_resolved, case_id,
 case_signature, ray_backend_used, solver_version, stl_count, stl_paths_json
 ```
 
-Hypersonic additionally stores `windward_eq_used` and `leeward_eq_used`. FMF's
+Hypersonic field data additionally stores `windward_eq_used` and
+`leeward_eq_used`. FMF's
 resolved `mode`, `out_S`, and `out_Ti_K` values are carried by Summary CSV, not
 VTP. `Tw_K` remains an FMF input column.
 

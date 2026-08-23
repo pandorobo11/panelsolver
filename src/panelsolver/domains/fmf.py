@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 
 from panelsolver.app import (
+    COMMON_SCALAR_LABELS,
     DEFAULT_CHECKPOINT_CASES,
     ArtifactSignatureCandidates,
     GuiRunRequest,
@@ -379,7 +380,8 @@ GUI_ADAPTERS = SolverGuiAdapters(
 )
 
 _PREFERRED_SCALARS = (
-    "Cp_n",
+    "normal_traction_coeff",
+    "tangential_traction_coeff",
     "shielded",
     "theta_deg",
     "area_m2",
@@ -388,6 +390,11 @@ _PREFERRED_SCALARS = (
     "center_z_stl_m",
     "stl_index",
 )
+_SCALAR_LABELS = {
+    **COMMON_SCALAR_LABELS,
+    "normal_traction_coeff": "Normal traction coeff.",
+    "tangential_traction_coeff": "Tangential traction coeff.",
+}
 _DEFAULT_ADAPTERS = object()
 
 _GUI_EXAMPLES = (
@@ -463,6 +470,7 @@ def gui_spec(
         domain_name="FMF",
         case_columns=CSV_PROJECTION_POLICY.input_columns,
         preferred_scalars=_PREFERRED_SCALARS,
+        scalar_labels=_SCALAR_LABELS,
         format_case=format_case,
         adapters=selected_adapters,  # type: ignore[arg-type]
         examples=_GUI_EXAMPLES,

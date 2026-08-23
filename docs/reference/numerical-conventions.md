@@ -60,8 +60,11 @@ moment numerator is `(center_body - reference_body) × C_face_body`; roll, pitch
 and yaw components are divided by `Lref_Cl_m`, `Lref_Cm_m`, and `Lref_Cn_m`.
 Component coefficients use the same global reference quantities as the total.
 
-`theta_deg = acos(normal_out_stl · Vhat_stl)`. `Cp_n` is the model's local normal
-traction scalar, and ray-shielded panels have exact-zero traction.
+`theta_deg = acos(normal_out_stl · Vhat_stl)`. Hypersonic exposes its local
+pressure coefficient as `cp`. FMF derives `normal_traction_coeff` and
+`tangential_traction_coeff` from `traction_coeff_stl`; the tangential positive
+direction is the normalized in-plane projection of `velocity_hat_stl`.
+Ray-shielded panels have exact-zero traction.
 
 Quantity-specific golden tolerances remain historical regression policy in
 [Phase 1 tolerances](../history/migration/phase1/TOLERANCES.md); there is no

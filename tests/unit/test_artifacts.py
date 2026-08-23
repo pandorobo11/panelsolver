@@ -47,7 +47,7 @@ def fixture(
     flow = PanelFlowState([1, 0, 0], [False, False])
     loads = LocalLoads(
         [[2, 0, 0], [2, 0, 0]],
-        {"Cp_n": [2, 2], "theta_deg": [0, 0]},
+        {"cp": [2, 2], "theta_deg": [0, 0]},
     )
     case = CommonCasePayload(
         case_id=case_id,
@@ -97,7 +97,7 @@ def results_for_mesh(mesh: PanelMesh, *, case_id: str = "artifact") -> object:
         LocalLoads(
             np.tile([[2.0, 0.0, 0.0]], (face_count, 1)),
             {
-                "Cp_n": np.full(face_count, 2.0),
+                "cp": np.full(face_count, 2.0),
                 "theta_deg": np.zeros(face_count),
             },
         ),

@@ -167,14 +167,14 @@ class ScalarDiscoveryTests(unittest.TestCase):
             {
                 "model_extra": np.array([1.0, 2.0]),
                 "stl_index": np.array([0, 1], dtype=np.int32),
-                "Cp_n": np.array([0.1, 0.2]),
+                "cp": np.array([0.1, 0.2]),
                 "shielded": np.array([False, True]),
             },
             n_cells=2,
-            preferred=("Cp_n", "missing", "shielded"),
+            preferred=("cp", "missing", "shielded"),
         )
         self.assertEqual(
-            ("Cp_n", "shielded", "model_extra", "stl_index"),
+            ("cp", "shielded", "model_extra", "stl_index"),
             tuple(field.name for field in fields),
         )
         self.assertFalse(fields[0].categorical)
@@ -197,7 +197,7 @@ class ScalarDiscoveryTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             discover_scalar_fields({}, n_cells=0)
         with self.assertRaises(ValueError):
-            discover_scalar_fields({}, n_cells=1, preferred=("Cp_n", "Cp_n"))
+            discover_scalar_fields({}, n_cells=1, preferred=("cp", "cp"))
 
     def test_color_limits_keep_categorical_zero_one_and_numeric_extrema(self) -> None:
         categorical, numeric = discover_scalar_fields(

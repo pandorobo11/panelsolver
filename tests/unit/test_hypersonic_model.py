@@ -80,6 +80,12 @@ class HypersonicModelTests(unittest.TestCase):
             loads.traction_coeff_stl,
             np.array([[2.0, 0.0, 0.0]]),
         )
+        self.assertEqual(("cp", "theta_deg"), tuple(loads.cell_scalars))
+        self.assertNotIn("Cp_n", loads.cell_scalars)
+        np.testing.assert_array_equal(
+            loads.traction_coeff_stl,
+            -loads.cell_scalars["cp"][:, None] * geometry.normals_out_stl,
+        )
 
     def test_newtonian_flat_plate_matches_independent_reference(self) -> None:
         model = HypersonicModel()
@@ -125,7 +131,7 @@ class HypersonicModelTests(unittest.TestCase):
         )
         self.assertGreater(cp_max, 0.0)
         self.assertLess(cp_max, 2.0)
-        self.assertAlmostEqual(cp_max, loads.cell_scalars["Cp_n"][0], places=12)
+        self.assertAlmostEqual(cp_max, loads.cell_scalars["cp"][0], places=12)
 
     def test_tangent_wedge_attached_and_detached_branches_are_retained(self) -> None:
         mach = 2.0
@@ -218,10 +224,10 @@ class HypersonicModelTests(unittest.TestCase):
             ),
             _case(windward_eq="newtonian;modified_newtonian"),
         )
-        self.assertEqual(2.0, loads.cell_scalars["Cp_n"][0])
+        self.assertEqual(2.0, loads.cell_scalars["cp"][0])
         self.assertAlmostEqual(
             modified_newtonian_cp_max(6.0, 1.4),
-            loads.cell_scalars["Cp_n"][1],
+            loads.cell_scalars["cp"][1],
             places=12,
         )
 
@@ -245,7 +251,7 @@ class HypersonicModelTests(unittest.TestCase):
         )
         loads = HypersonicModel().evaluate(geometry, flow, _case())
         np.testing.assert_array_equal(loads.traction_coeff_stl, np.zeros((2, 3)))
-        np.testing.assert_array_equal(loads.cell_scalars["Cp_n"], np.zeros(2))
+        np.testing.assert_array_equal(loads.cell_scalars["cp"], np.zeros(2))
         np.testing.assert_array_equal(
             loads.cell_scalars["theta_deg"],
             np.array([180.0, 0.0]),

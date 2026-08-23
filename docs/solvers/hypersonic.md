@@ -1,7 +1,7 @@
 # Hypersonic Panel Methods
 
 The Hypersonic domain evaluates pressure-only panel traction for
-Newtonian-family flow models. The local load is `-Cp` times the outward panel
+Newtonian-family flow models. The local load is `-cp` times the outward panel
 normal; the shared engine
 owns geometry scaling, shielding, integration, components, and artifacts.
 
@@ -55,7 +55,7 @@ C_p
 \left(\frac{p}{p_\infty}-1\right),
 ```
 
-where $\gamma$ is the specific-heat ratio, not the incidence cosine. `Cp_n` is
+where $\gamma$ is the specific-heat ratio, not the incidence cosine. `cp` is
 the Hypersonic domain's local panel pressure-coefficient output. The model
 returns local pressure-only traction
 
@@ -80,7 +80,7 @@ with constant $\gamma$; they are not general CFD. They omit boundary layers,
 viscosity, heat transfer, real-gas chemistry, shock--shock and
 shock--boundary-layer interactions, and coupled flow between neighboring
 panels. Tangent methods estimate pressure from each panel's local angle rather
-than solving a global three-dimensional flow field. `Cp_n` remains a local
+than solving a global three-dimensional flow field. `cp` remains a local
 value until the common engine performs the area integration. The code's input
 domain checks establish only that a selected relation can be evaluated; they do
 not establish that its physical approximation is accurate for a particular

@@ -215,14 +215,34 @@ class SentmanModel:
         theta_deg = np.degrees(
             np.arccos(np.clip(normal_dot_velocity, -1.0, 1.0))
         )
-        cp_n = -np.einsum(
+        normal_traction_coeff = -np.einsum(
             "ij,ij->i",
             traction,
             geometry.normals_out_stl,
         )
+        tangent_stl = (
+            flow_state.velocity_hat_stl[None, :]
+            - normal_dot_velocity[:, None] * geometry.normals_out_stl
+        )
+        tangent_norm = np.linalg.norm(tangent_stl, axis=1)
+        tangent_hat_stl = np.zeros_like(tangent_stl)
+        tangent_is_defined = tangent_norm > 1.0e-12
+        tangent_hat_stl[tangent_is_defined] = (
+            tangent_stl[tangent_is_defined]
+            / tangent_norm[tangent_is_defined, None]
+        )
+        tangential_traction_coeff = np.einsum(
+            "ij,ij->i",
+            traction,
+            tangent_hat_stl,
+        )
         return LocalLoads(
             traction_coeff_stl=traction,
-            cell_scalars={"Cp_n": cp_n, "theta_deg": theta_deg},
+            cell_scalars={
+                "normal_traction_coeff": normal_traction_coeff,
+                "tangential_traction_coeff": tangential_traction_coeff,
+                "theta_deg": theta_deg,
+            },
             metadata={
                 "mode": resolved.mode,
                 "S": resolved.speed_ratio,

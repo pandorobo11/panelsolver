@@ -15,6 +15,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PySide6 import QtWidgets
 
 from fmfsolver._frontend import _legacy_gui_spec as fmf_solver_spec
+from newtsolver._frontend import _legacy_gui_spec as newt_solver_spec
 from panelsolver.app import (
     ArtifactSignatureCandidates,
     SolverGuiAdapters,
@@ -136,7 +137,7 @@ class ViewerPanelTests(unittest.TestCase):
             {
                 "model_extra": [4.0, 5.0],
                 "shielded": [0, 1],
-                "Cp_n": [0.2, 0.4],
+                "normal_traction_coeff": [0.2, 0.4],
             },
             {"case_id": ["case"]},
         )
@@ -147,31 +148,58 @@ class ViewerPanelTests(unittest.TestCase):
         )
         self.assertTrue(loaded)
         self.assertEqual(
-            ["Cp_n", "shielded", "model_extra"],
+            ["Normal traction coeff.", "Shielded", "model_extra"],
             [viewer.cmb_scalar.itemText(i) for i in range(viewer.cmb_scalar.count())],
         )
-        self.assertEqual("Cp_n", viewer.cmb_scalar.currentText())
+        self.assertEqual("Normal traction coeff.", viewer.cmb_scalar.currentText())
+        self.assertEqual("normal_traction_coeff", viewer.cmb_scalar.currentData())
         self.assertEqual(2, len(plotter.mesh_calls))
         self.assertEqual(1.0, plotter.mesh_calls[0][1]["opacity"])
         self.assertEqual(0.30, plotter.mesh_calls[1][1]["opacity"])
         self.assertEqual("jet", plotter.mesh_calls[0][1]["cmap"])
+        self.assertEqual(
+            "normal_traction_coeff",
+            plotter.mesh_calls[0][1]["scalars"],
+        )
+        self.assertEqual(
+            {"title": "Normal traction coeff."},
+            plotter.mesh_calls[0][1]["scalar_bar_args"],
+        )
         self.assertEqual((0.2, 0.4), plotter.mesh_calls[0][1]["clim"])
         self.assertIn("case_id=case", plotter.text_calls[-1])
         self.assertTrue(plotter.parallel_enabled)
 
+    def test_hypersonic_scalar_label_selects_cp_and_titles_colorbar(self) -> None:
+        viewer, plotter = self.make_viewer(spec=newt_solver_spec())
+        self.assertTrue(viewer.load_vtp("/tmp/case.vtp", FakePoly({"cp": [0.7]})))
+        self.assertEqual("Cp", viewer.cmb_scalar.currentText())
+        self.assertEqual("cp", viewer.cmb_scalar.currentData())
+        self.assertEqual("cp", plotter.mesh_calls[0][1]["scalars"])
+        self.assertEqual(
+            {"title": "Cp"},
+            plotter.mesh_calls[0][1]["scalar_bar_args"],
+        )
+
     def test_reload_uses_first_available_preferred_scalar(self) -> None:
         viewer, _plotter = self.make_viewer()
-        viewer.load_vtp("/tmp/first.vtp", FakePoly({"Cp_n": [1.0]}))
+        viewer.load_vtp(
+            "/tmp/first.vtp",
+            FakePoly({"normal_traction_coeff": [1.0]}),
+        )
         viewer.load_vtp(
             "/tmp/second.vtp",
             FakePoly({"model_extra": [3.0], "shielded": [0]}),
         )
-        self.assertEqual("shielded", viewer.cmb_scalar.currentText())
+        self.assertEqual("Shielded", viewer.cmb_scalar.currentText())
+        self.assertEqual("shielded", viewer.cmb_scalar.currentData())
         self.assertEqual((0.0, 1.0), viewer._automatic_limits("shielded"))
 
     def test_redraw_preserves_camera_and_buttons_set_expected_vectors(self) -> None:
         viewer, plotter = self.make_viewer()
-        viewer.load_vtp("/tmp/case.vtp", FakePoly({"Cp_n": [1.0]}))
+        viewer.load_vtp(
+            "/tmp/case.vtp",
+            FakePoly({"normal_traction_coeff": [1.0]}),
+        )
         plotter.camera.position = (9.0, 8.0, 7.0)
         viewer.chk_edges.setChecked(False)
         self.assertEqual((9.0, 8.0, 7.0), plotter.camera.position)
@@ -187,7 +215,7 @@ class ViewerPanelTests(unittest.TestCase):
         )
         viewer.load_vtp(
             "/tmp/case.vtp",
-            FakePoly({"Cp_n": [1.0]}),
+            FakePoly({"normal_traction_coeff": [1.0]}),
             {"case_id": "case"},
         )
         viewer.set_view_wind()
@@ -203,7 +231,7 @@ class ViewerPanelTests(unittest.TestCase):
         )
         viewer.set_case_rows(({"case_id": "case"},))
         poly = FakePoly(
-            {"Cp_n": [1.0]},
+            {"normal_traction_coeff": [1.0]},
             {"case_id": ["case"], "case_signature": [stale.digest]},
         )
         self.assertTrue(viewer.load_vtp("/tmp/stale.vtp", poly))
@@ -215,7 +243,10 @@ class ViewerPanelTests(unittest.TestCase):
             raise ValueError("broken")
 
         viewer, plotter = self.make_viewer(reader=broken)
-        viewer.load_vtp("/tmp/good.vtp", FakePoly({"Cp_n": [1.0]}))
+        viewer.load_vtp(
+            "/tmp/good.vtp",
+            FakePoly({"normal_traction_coeff": [1.0]}),
+        )
         messages: list[str] = []
         viewer.log_message.connect(messages.append)
         self.assertFalse(viewer.load_vtp("/tmp/broken.vtp"))
@@ -229,7 +260,7 @@ class ViewerPanelTests(unittest.TestCase):
         self.assertIn("Invalid VTP cell data", messages[-1])
 
     def test_dialog_manual_open_and_range_controls(self) -> None:
-        poly = FakePoly({"Cp_n": [1.0, 3.0]})
+        poly = FakePoly({"normal_traction_coeff": [1.0, 3.0]})
         viewer, _plotter = self.make_viewer(reader=lambda _path: poly)
         with patch.object(
             QtWidgets.QFileDialog,
@@ -240,7 +271,10 @@ class ViewerPanelTests(unittest.TestCase):
         self.assertEqual(Path("/tmp/manual.vtp"), viewer._loaded_vtp_path)
         viewer.edit_vmin.setText("0")
         viewer.edit_vmax.setText("10")
-        self.assertEqual((0.0, 10.0), viewer._automatic_limits("Cp_n"))
+        self.assertEqual(
+            (0.0, 10.0),
+            viewer._automatic_limits("normal_traction_coeff"),
+        )
         viewer.clear_range()
         self.assertEqual("", viewer.edit_vmin.text())
         self.assertEqual("", viewer.edit_vmax.text())
@@ -310,7 +344,7 @@ class ViewerPanelTests(unittest.TestCase):
                     raise ValueError("unreadable")
                 digest = stale.digest if case_id == "stale" else current.digest
                 return FakePoly(
-                    {"Cp_n": [1.0]},
+                    {"normal_traction_coeff": [1.0]},
                     {"case_id": [case_id], "case_signature": [digest]},
                 )
 

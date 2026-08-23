@@ -44,6 +44,7 @@ from .runtime import (
     run_product_cases,
 )
 from .solver_spec import (
+    COMMON_SCALAR_LABELS,
     ArtifactSignatureCandidates,
     GuiRunRequest,
     GuiRunResult,
@@ -64,6 +65,7 @@ from .viewer_data import (
 
 __all__ = (
     "ATTITUDE_INPUT_VALUES",
+    "COMMON_SCALAR_LABELS",
     "DEFAULT_CHECKPOINT_CASES",
     "DEFAULT_OUTPUT_DIRECTORY",
     "DURABLE_CSV_WRITE_POLICY",

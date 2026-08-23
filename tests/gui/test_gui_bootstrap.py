@@ -74,6 +74,7 @@ class GuiBootstrapTests(unittest.TestCase):
             "window_title",
             "case_columns",
             "preferred_scalars",
+            "scalar_labels",
             "format_case",
         ):
             self.assertEqual(getattr(selected, field), getattr(runtime, field))
@@ -217,7 +218,7 @@ class GuiBootstrapTests(unittest.TestCase):
         self.assertEqual("hypersonic", newt.model_id)
         self.assertIn("gamma", newt.case_columns)
         self.assertNotIn("S", newt.case_columns)
-        self.assertEqual(fmf.preferred_scalars, newt.preferred_scalars)
+        self.assertNotEqual(fmf.preferred_scalars, newt.preferred_scalars)
         self.assertIsNot(fmf.format_case, newt.format_case)
 
     def test_canonical_launcher_reuses_specs_with_domain_visible_identity(self) -> None:

@@ -107,6 +107,51 @@ class SentmanModelTests(unittest.TestCase):
                 != 0.0
             )
         )
+        self.assertEqual(
+            (
+                "normal_traction_coeff",
+                "tangential_traction_coeff",
+                "theta_deg",
+            ),
+            tuple(loads.cell_scalars),
+        )
+        self.assertNotIn("Cp_n", loads.cell_scalars)
+        np.testing.assert_allclose(
+            loads.cell_scalars["normal_traction_coeff"],
+            -np.einsum(
+                "ij,ij->i",
+                loads.traction_coeff_stl,
+                geometry.normals_out_stl,
+            ),
+            rtol=0.0,
+            atol=0.0,
+        )
+        tangent = velocity - np.dot(velocity, geometry.normals_out_stl[0]) * (
+            geometry.normals_out_stl[0]
+        )
+        tangent_hat = tangent / np.linalg.norm(tangent)
+        self.assertAlmostEqual(
+            np.dot(loads.traction_coeff_stl[0], tangent_hat),
+            loads.cell_scalars["tangential_traction_coeff"][0],
+            places=15,
+        )
+
+    def test_normal_incidence_has_zero_tangential_traction_scalar(self) -> None:
+        geometry = _geometry(
+            np.array([[-1.0, 0.0, 0.0], [1.0, 0.0, 0.0]])
+        )
+        loads = SentmanModel().evaluate(
+            geometry,
+            PanelFlowState(
+                np.array([1.0, 0.0, 0.0]),
+                np.array([False, False]),
+            ),
+            _mode_a_case(),
+        )
+        np.testing.assert_array_equal(
+            loads.cell_scalars["tangential_traction_coeff"],
+            np.zeros(2),
+        )
 
     def test_flat_plate_matches_independent_sentman_reference(self) -> None:
         model = SentmanModel()
@@ -163,7 +208,8 @@ class SentmanModelTests(unittest.TestCase):
             loads.traction_coeff_stl[1],
             np.zeros(3),
         )
-        self.assertEqual(0.0, loads.cell_scalars["Cp_n"][1])
+        self.assertEqual(0.0, loads.cell_scalars["normal_traction_coeff"][1])
+        self.assertEqual(0.0, loads.cell_scalars["tangential_traction_coeff"][1])
         self.assertEqual(180.0, loads.cell_scalars["theta_deg"][1])
 
     def test_mode_b_resolves_the_pinned_atmosphere_values(self) -> None:
