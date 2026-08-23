@@ -33,10 +33,10 @@ def _signature(label: str) -> CaseSignature:
     return CaseSignature(digest, payload, envelope)
 
 
-def _adapters(rows, signatures, *, validator=None, reader_error=None):
+def _adapters(rows, signatures, *, validator=None, reader=None):
     def read_cases(_path):
-        if reader_error is not None:
-            raise reader_error
+        if reader is not None:
+            return reader(_path)
         return rows
 
     return SolverGuiAdapters(
@@ -164,16 +164,24 @@ class CasesPanelTests(unittest.TestCase):
     def test_success_updates_last_input_directory_and_failure_does_not(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            panel, _ = self.make_panel()
-            self.assertTrue(panel.load_input_file(root / "input.csv"))
-            self.assertEqual(root, panel.input_dialog_directory())
+            remembered = root / "remembered"
+            remembered.mkdir()
+            rows = _rows()
 
-            failed, _ = self.make_panel(
-                reader_error=ValueError("broken input"),
-            )
+            def read_cases(path):
+                if Path(path).name == "bad.csv":
+                    raise ValueError("broken input")
+                return rows
+
+            panel, _ = self.make_panel(rows, reader=read_cases)
+            self.assertTrue(panel.load_input_file(remembered / "input.csv"))
+            self.assertEqual(remembered, panel.input_dialog_directory())
+
             with patch.object(QtWidgets.QMessageBox, "critical"):
-                self.assertFalse(failed.load_input_file(root / "other" / "bad.csv"))
-            self.assertEqual(Path.cwd(), failed.input_dialog_directory())
+                self.assertFalse(panel.load_input_file(root / "other" / "bad.csv"))
+            self.assertEqual((), panel.case_rows)
+            self.assertIsNone(panel.input_path)
+            self.assertEqual(remembered, panel.input_dialog_directory())
 
     def test_later_input_picker_starts_from_successfully_loaded_parent(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -307,8 +315,12 @@ class CasesPanelTests(unittest.TestCase):
     def test_validation_failure_clears_prior_state_and_shows_structured_issues(self) -> None:
         panel, _ = self.make_panel()
         panel.load_input_file("/tmp/good.csv")
+
+        def read_invalid(_path):
+            raise StructuredError()
+
         failing_spec = fmf_solver_spec(
-            adapters=_adapters((), {}, reader_error=StructuredError())
+            adapters=_adapters((), {}, reader=read_invalid)
         )
         panel.spec = failing_spec
         with patch.object(ValidationIssuesDialog, "exec", return_value=0) as show:
