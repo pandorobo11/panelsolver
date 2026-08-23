@@ -8,6 +8,7 @@ import tarfile
 import tempfile
 import unittest
 import zipfile
+from importlib import resources
 from pathlib import Path
 from unittest.mock import patch
 
@@ -15,6 +16,7 @@ from scripts.release_tools import (
     _DOCS_NOTICE_MARKERS,
     _DOCS_REQUIRED_LICENSES,
     _DOCS_THEME_ASSET_LICENSES,
+    _DOCS_THEME_ASSET_SHA256,
     _github_api_json,
     create_dist_manifest,
     create_release_archives,
@@ -42,6 +44,38 @@ from scripts.smoke_installed_wheel import (
 
 
 class ReleaseToolTests(unittest.TestCase):
+    def theme_asset_payloads(self) -> dict[str, bytes]:
+        theme = resources.files("mkdocs").joinpath("themes", "readthedocs")
+        return {
+            name: theme.joinpath(*name.split("/")).read_bytes()
+            for name in _DOCS_THEME_ASSET_LICENSES
+        }
+
+    def audited_docs_payloads(self) -> tuple[set[str], dict[str, bytes]]:
+        members = {
+            *_DOCS_THEME_ASSET_LICENSES,
+            "LICENSE",
+            "THIRD_PARTY_NOTICES.md",
+            *(
+                f"THIRD_PARTY_LICENSES/{name}"
+                for name in _DOCS_REQUIRED_LICENSES
+            ),
+        }
+        payloads = {
+            **self.theme_asset_payloads(),
+            "LICENSE": b"project license\n",
+            "THIRD_PARTY_NOTICES.md": (
+                "\n".join(_DOCS_NOTICE_MARKERS) + "\n"
+            ).encode(),
+            **{
+                f"THIRD_PARTY_LICENSES/{name}": (
+                    f"third-party license: {name}\n"
+                ).encode()
+                for name in _DOCS_REQUIRED_LICENSES
+            },
+        }
+        return members, payloads
+
     def make_repository(self, root: Path, *, version: str = "2.3.4") -> Path:
         repository = root / "repository"
         repository.mkdir()
@@ -118,14 +152,14 @@ class ReleaseToolTests(unittest.TestCase):
             "index.html": b"home",
             "solvers/fmf.html": b"fmf",
             "solvers/hypersonic.html": b"hypersonic",
+            "assets/javascripts/panelsolver-docs.js": b"project script\n",
+            "assets/stylesheets/panelsolver-docs.css": b"project styles\n",
             "LICENSE": b"license\n",
             "THIRD_PARTY_NOTICES.md": (
                 repository / "THIRD_PARTY_NOTICES.md"
             ).read_bytes(),
         }
-        docs.update(
-            {asset_name: b"audited theme asset\n" for asset_name in _DOCS_THEME_ASSET_LICENSES}
-        )
+        docs.update(self.theme_asset_payloads())
         docs.update(
             {
                 f"THIRD_PARTY_LICENSES/{license_name}": (
@@ -312,6 +346,10 @@ class ReleaseToolTests(unittest.TestCase):
             docs_zip, _examples_zip = create_release_archives(repository)
             with zipfile.ZipFile(wheel) as archive:
                 names = set(archive.namelist())
+                self.assertIn(
+                    "panelsolver/_docs_site/assets/javascripts/panelsolver-docs.js",
+                    names,
+                )
                 for license_name in _DOCS_REQUIRED_LICENSES:
                     docs_license = (
                         "panelsolver/_docs_site/THIRD_PARTY_LICENSES/"
@@ -333,6 +371,10 @@ class ReleaseToolTests(unittest.TestCase):
                         archive.read(metadata_license),
                     )
             with zipfile.ZipFile(docs_zip) as archive:
+                self.assertIn(
+                    "assets/javascripts/panelsolver-docs.js",
+                    archive.namelist(),
+                )
                 verify_offline_documentation_licenses(
                     set(archive.namelist()),
                     archive.read,
@@ -356,6 +398,7 @@ class ReleaseToolTests(unittest.TestCase):
             "THIRD_PARTY_NOTICES.md",
         }
         payloads = {
+            **self.theme_asset_payloads(),
             "LICENSE": b"project license\n",
             "THIRD_PARTY_NOTICES.md": (
                 "\n".join(_DOCS_NOTICE_MARKERS) + "\n"
@@ -363,6 +406,135 @@ class ReleaseToolTests(unittest.TestCase):
         }
         with self.assertRaisesRegex(RuntimeError, "missing third-party license"):
             verify_offline_documentation_licenses(members, payloads.__getitem__)
+
+    def test_every_audited_readthedocs_asset_is_required(self) -> None:
+        self.assertEqual(
+            set(_DOCS_THEME_ASSET_LICENSES),
+            set(_DOCS_THEME_ASSET_SHA256),
+        )
+        members, payloads = self.audited_docs_payloads()
+        verify_offline_documentation_licenses(members, payloads.__getitem__)
+        for missing in _DOCS_THEME_ASSET_LICENSES:
+            with self.subTest(missing=missing), self.assertRaisesRegex(
+                RuntimeError,
+                "missing audited theme assets",
+            ):
+                verify_offline_documentation_licenses(
+                    members - {missing},
+                    payloads.__getitem__,
+                )
+
+    def test_adapted_assets_and_polyfill_have_complete_license_mapping(self) -> None:
+        css_licenses = set(_DOCS_THEME_ASSET_LICENSES["css/theme.css"])
+        js_licenses = set(_DOCS_THEME_ASSET_LICENSES["js/theme.js"])
+        self.assertIn("MKDOCS-BSD-2-CLAUSE.txt", css_licenses)
+        self.assertIn("MKDOCS-BSD-2-CLAUSE.txt", js_licenses)
+        self.assertIn("SPHINX-RTD-THEME-1.2.0-MIT.txt", css_licenses)
+        self.assertIn("SPHINX-RTD-THEME-1.2.0-MIT.txt", js_licenses)
+        polyfill_license = "REQUESTANIMATIONFRAME-POLYFILL-MIT.txt"
+        self.assertIn(polyfill_license, js_licenses)
+        self.assertIn(polyfill_license, _DOCS_REQUIRED_LICENSES)
+        self.assertNotIn(
+            "assets/javascripts/panelsolver-docs.js",
+            _DOCS_THEME_ASSET_LICENSES,
+        )
+        self.assertNotIn(
+            "assets/javascripts/panelsolver-docs.js",
+            _DOCS_THEME_ASSET_SHA256,
+        )
+        self.assertNotIn(
+            "assets/stylesheets/panelsolver-docs.css",
+            _DOCS_THEME_ASSET_LICENSES,
+        )
+        self.assertTrue(
+            {
+                "requestAnimationFrame polyfill",
+                "Erik Möller",
+                "Paul Irish",
+                "Tino Zijdel",
+            }.issubset(_DOCS_NOTICE_MARKERS)
+        )
+
+        members, payloads = self.audited_docs_payloads()
+        license_path = f"THIRD_PARTY_LICENSES/{polyfill_license}"
+        with self.assertRaisesRegex(RuntimeError, "missing third-party license"):
+            verify_offline_documentation_licenses(
+                members - {license_path},
+                payloads.__getitem__,
+            )
+
+        members, payloads = self.audited_docs_payloads()
+        omitted_marker = "requestAnimationFrame polyfill"
+        payloads["THIRD_PARTY_NOTICES.md"] = (
+            "\n".join(
+                marker for marker in _DOCS_NOTICE_MARKERS if marker != omitted_marker
+            )
+            + "\n"
+        ).encode()
+        with self.assertRaisesRegex(RuntimeError, "notices omit audited components"):
+            verify_offline_documentation_licenses(members, payloads.__getitem__)
+
+    def test_changed_audited_asset_fails_hash_gate(self) -> None:
+        members, payloads = self.audited_docs_payloads()
+        asset = "css/theme.css"
+        payloads[asset] += b"\nchanged after audit\n"
+        with self.assertRaisesRegex(RuntimeError, "changed since the license audit"):
+            verify_offline_documentation_licenses(members, payloads.__getitem__)
+
+    def test_unknown_css_javascript_and_font_assets_fail(self) -> None:
+        for unknown in (
+            "css/unlicensed-theme.css",
+            "js/unlicensed-theme.js",
+            "css/fonts/unlicensed-theme.woff2",
+        ):
+            members, payloads = self.audited_docs_payloads()
+            members.add(unknown)
+            payloads[unknown] = b"unknown\n"
+            with self.subTest(unknown=unknown), self.assertRaisesRegex(
+                RuntimeError,
+                "unaudited theme assets",
+            ):
+                verify_offline_documentation_licenses(
+                    members,
+                    payloads.__getitem__,
+                )
+
+    def test_missing_empty_license_and_missing_notice_marker_fail(self) -> None:
+        license_name = min(_DOCS_REQUIRED_LICENSES)
+        license_path = f"THIRD_PARTY_LICENSES/{license_name}"
+        members, payloads = self.audited_docs_payloads()
+        with self.assertRaisesRegex(RuntimeError, "missing third-party license"):
+            verify_offline_documentation_licenses(
+                members - {license_path},
+                payloads.__getitem__,
+            )
+        payloads[license_path] = b" \n"
+        with self.assertRaisesRegex(RuntimeError, "license text is empty"):
+            verify_offline_documentation_licenses(members, payloads.__getitem__)
+        payloads[license_path] = b"restored third-party license\n"
+        payloads["THIRD_PARTY_NOTICES.md"] = (
+            "\n".join(_DOCS_NOTICE_MARKERS[1:]) + "\n"
+        ).encode()
+        with self.assertRaisesRegex(RuntimeError, "notices omit audited components"):
+            verify_offline_documentation_licenses(members, payloads.__getitem__)
+
+    def test_old_mkdocs_theme_assets_fail_as_unaudited(self) -> None:
+        for old_asset in (
+            "css/bootstrap.min.css",
+            "js/bootstrap.bundle.min.js",
+            "webfonts/fa-solid-900.woff2",
+        ):
+            members, payloads = self.audited_docs_payloads()
+            members.add(old_asset)
+            payloads[old_asset] = b"obsolete theme asset\n"
+            with self.subTest(old_asset=old_asset), self.assertRaisesRegex(
+                RuntimeError,
+                "unaudited theme assets",
+            ):
+                verify_offline_documentation_licenses(
+                    members,
+                    payloads.__getitem__,
+                )
 
     def test_sdist_requires_the_pdas_regeneration_snapshot(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

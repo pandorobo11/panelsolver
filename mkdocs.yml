@@ -3,9 +3,13 @@ site_description: Offline documentation for the panelsolver distribution.
 docs_dir: docs
 use_directory_urls: false
 theme:
-  name: mkdocs
+  name: readthedocs
   highlightjs: false
 plugins: []
+extra_css:
+  - assets/stylesheets/panelsolver-docs.css
+extra_javascript:
+  - assets/javascripts/panelsolver-docs.js
 markdown_extensions:
   - tables
   - panelsolver_docs_math
