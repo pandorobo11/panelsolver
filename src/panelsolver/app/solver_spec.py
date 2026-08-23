@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from types import MappingProxyType
 
 from panelsolver.core import CaseSignature, match_case_signature
 
@@ -20,6 +21,19 @@ type ValidateOutputPathCallback = Callable[
 ]
 type ResolveVelocityCallback = Callable[[CaseRow], object]
 type FormatCaseCallback = Callable[[CaseRow], str]
+
+
+COMMON_SCALAR_LABELS: Mapping[str, str] = MappingProxyType(
+    {
+        "shielded": "Shielded",
+        "theta_deg": "Theta [deg]",
+        "area_m2": "Area [m^2]",
+        "center_x_stl_m": "Center X [m]",
+        "center_y_stl_m": "Center Y [m]",
+        "center_z_stl_m": "Center Z [m]",
+        "stl_index": "STL index",
+    }
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -161,6 +175,29 @@ def _unique_names(value: object, *, field: str) -> tuple[str, ...]:
     return names
 
 
+def _scalar_label_mapping(value: object) -> Mapping[str, str]:
+    if not isinstance(value, Mapping):
+        raise TypeError("SolverSpec.scalar_labels must be a mapping")
+    labels: dict[str, str] = {}
+    for raw_name, raw_label in value.items():
+        name = _nonempty_text(
+            raw_name,
+            field="SolverSpec.scalar_labels key",
+        )
+        label = _nonempty_text(
+            raw_label,
+            field=f"SolverSpec.scalar_labels.{name}",
+        )
+        if name in labels:
+            raise ValueError(
+                "SolverSpec.scalar_labels must contain unique internal names"
+            )
+        labels[name] = label
+    if len(labels) != len(set(labels.values())):
+        raise ValueError("SolverSpec.scalar_labels must contain unique labels")
+    return MappingProxyType(labels)
+
+
 @dataclass(frozen=True, slots=True)
 class SolverSpec:
     """Identity and presentation policy consumed by every shared GUI widget."""
@@ -171,6 +208,7 @@ class SolverSpec:
     domain_name: str
     case_columns: tuple[str, ...]
     preferred_scalars: tuple[str, ...]
+    scalar_labels: Mapping[str, str]
     format_case: FormatCaseCallback
     adapters: SolverGuiAdapters | None = None
     examples: tuple[ExampleDefinition, ...] = ()
@@ -211,6 +249,14 @@ class SolverSpec:
                 field="SolverSpec.preferred_scalars",
             ),
         )
+        scalar_labels = _scalar_label_mapping(self.scalar_labels)
+        missing_labels = set(self.preferred_scalars) - set(scalar_labels)
+        if missing_labels:
+            raise ValueError(
+                "SolverSpec.scalar_labels must label every preferred scalar: "
+                f"{sorted(missing_labels)}"
+            )
+        object.__setattr__(self, "scalar_labels", scalar_labels)
         if not callable(self.format_case):
             raise TypeError("SolverSpec.format_case must be callable")
         if self.adapters is not None and not isinstance(
@@ -234,6 +280,7 @@ class SolverSpec:
 
 
 __all__ = (
+    "COMMON_SCALAR_LABELS",
     "ArtifactSignatureCandidates",
     "BuildCaseSignaturesCallback",
     "CancelRequestedCallback",

@@ -93,7 +93,7 @@ class Phase4aSentmanGoldenTests(unittest.TestCase):
                     atol=1.0e-10,
                 )
                 np.testing.assert_allclose(
-                    loads.cell_scalars["Cp_n"],
+                    loads.cell_scalars["normal_traction_coeff"],
                     _record_array(golden["vtp"]["cell_data"]["Cp_n"]),
                     rtol=0.0,
                     atol=1.0e-10,
@@ -103,6 +103,25 @@ class Phase4aSentmanGoldenTests(unittest.TestCase):
                     _record_array(golden["vtp"]["cell_data"]["theta_deg"]),
                     rtol=0.0,
                     atol=1.0e-12,
+                )
+                normal_dot_velocity = np.einsum(
+                    "ij,j->i",
+                    geometry.normals_out_stl,
+                    flow_state.velocity_hat_stl,
+                )
+                tangent = (
+                    flow_state.velocity_hat_stl[None, :]
+                    - normal_dot_velocity[:, None] * geometry.normals_out_stl
+                )
+                tangent_norm = np.linalg.norm(tangent, axis=1)
+                tangent_hat = np.zeros_like(tangent)
+                defined = tangent_norm > 1.0e-12
+                tangent_hat[defined] = tangent[defined] / tangent_norm[defined, None]
+                np.testing.assert_allclose(
+                    loads.cell_scalars["tangential_traction_coeff"],
+                    np.einsum("ij,ij->i", loads.traction_coeff_stl, tangent_hat),
+                    rtol=0.0,
+                    atol=1.0e-15,
                 )
                 np.testing.assert_allclose(
                     result.total.force_coeff_stl,
@@ -165,7 +184,7 @@ class Phase4aSentmanGoldenTests(unittest.TestCase):
                         np.zeros((int(flow_state.shielded.sum()), 3)),
                     )
                     np.testing.assert_array_equal(
-                        loads.cell_scalars["Cp_n"][flow_state.shielded],
+                        loads.cell_scalars["normal_traction_coeff"][flow_state.shielded],
                         np.zeros(int(flow_state.shielded.sum())),
                     )
 

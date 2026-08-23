@@ -64,7 +64,7 @@ class SyntheticModel:
         return LocalLoads(
             traction_coeff_stl=traction,
             cell_scalars={
-                "Cp_n": -np.einsum(
+                "normal_traction_coeff": -np.einsum(
                     "ij,ij->i",
                     traction,
                     geometry.normals_out_stl,

@@ -159,22 +159,37 @@ thermal motion. These curves show the local response of one isolated,
 unshielded panel before multiplication by $A_j/A_{\mathrm{ref}}$. They are not
 whole-vehicle aerodynamic polars.
 
-The plotted normal component is the local normal traction coefficient
-$C_n=\boldsymbol\tau\mathbin{\boldsymbol\cdot}\boldsymbol n_{\mathrm{in}}$,
-which equals the model's `Cp_n` scalar but is not described here as a pressure
-coefficient. The tangential component is
+The plotted normal component is the `normal_traction_coeff` scalar,
+
+```math
+\mathtt{normal\_traction\_coeff}
+=
+-\boldsymbol\tau\mathbin{\boldsymbol\cdot}\boldsymbol n_{\mathrm{out}}.
+```
+
+The tangential positive direction is the in-plane projection of the uniform
+flow direction,
 
 ```math
 \hat{\boldsymbol t}
 =
-\frac{\hat{\boldsymbol V}-\mu\boldsymbol n_{\mathrm{in}}}
-{\sqrt{1-\mu^2}},
-\qquad
-C_t=\boldsymbol\tau\mathbin{\boldsymbol\cdot}\hat{\boldsymbol t}.
+\frac{
+\hat{\boldsymbol V}
+-(\hat{\boldsymbol V}\mathbin{\boldsymbol\cdot}\boldsymbol n_{\mathrm{out}})
+\boldsymbol n_{\mathrm{out}}
+}{
+\left\lVert
+\hat{\boldsymbol V}
+-(\hat{\boldsymbol V}\mathbin{\boldsymbol\cdot}\boldsymbol n_{\mathrm{out}})
+\boldsymbol n_{\mathrm{out}}
+\right\rVert
+},
 ```
 
-At the directly facing endpoint, where the in-plane direction is not unique,
-the graph uses the continuous limit $C_t=0$. At grazing incidence the load is
+and `tangential_traction_coeff` is
+$\boldsymbol\tau\mathbin{\boldsymbol\cdot}\hat{\boldsymbol t}$. At normal
+incidence, where the in-plane direction is not unique, it is exactly zero. At
+grazing incidence the load is
 not exactly zero, Sentman retains tangential traction, and a negative local
 angle does not make the response immediately vanish because random molecular
 thermal motion remains. Geometrically occluded faces are handled separately:
@@ -197,8 +212,11 @@ panel's load to zero; see
 
 ## Outputs and scope
 
-FMF VTP data includes `Cp_n` and `theta_deg`. Summary CSV includes resolved
-`mode`, `out_S`, and `out_Ti_K`; `Tw_K` remains an input column.
+FMF VTP data includes `normal_traction_coeff`,
+`tangential_traction_coeff`, and `theta_deg`. Summary CSV includes resolved
+`mode`, `out_S`, and `out_Ti_K`; `Tw_K` remains an input column. Both displayed
+traction scalars are derived from the model's `traction_coeff_stl`; they do not
+participate in whole-vehicle integration.
 
 Use this model only when the free-molecular/Sentman assumptions are appropriate
 for the intended regime and surface interaction. Mode B is tied to the bundled,

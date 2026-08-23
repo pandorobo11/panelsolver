@@ -10,6 +10,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import numpy as np
 import pyvista as pv
 
 from fmfsolver._frontend import (
@@ -31,6 +32,23 @@ FIXTURE_ROOT = REPOSITORY_ROOT / "tests" / "fixtures" / "phase1"
 GOLDEN_ROOT = FIXTURE_ROOT / "golden"
 MANIFEST = json.loads((FIXTURE_ROOT / "manifest.json").read_text(encoding="utf-8"))
 LEGACY_ARTIFACT_VERSIONS = {"1.3.8", "1.0.3"}
+
+
+def _record_array(record: dict) -> np.ndarray:
+    return np.asarray(record["values"]).reshape(record["shape"])
+
+
+def _npz_array(golden: dict, name: str) -> np.ndarray:
+    return _record_array(golden["npz"]["arrays"][name])
+
+
+def _array_record(value: np.ndarray) -> dict[str, object]:
+    array = np.asarray(value)
+    return {
+        "dtype": f"float{array.dtype.itemsize * 8}",
+        "shape": list(array.shape),
+        "values": array.tolist(),
+    }
 
 
 def _load_comparator_module():
@@ -142,6 +160,37 @@ class Phase7RuntimeGoldenTests(unittest.TestCase):
                         expected["vtp"]["field_data"]["solver_version"]["values"] = [
                             installed_version
                         ]
+                        legacy_normal = expected["vtp"]["cell_data"].pop("Cp_n")
+                        if product == "fmfsolver":
+                            expected["vtp"]["cell_data"][
+                                "normal_traction_coeff"
+                            ] = legacy_normal
+                            normals = _npz_array(golden, "normals_out_stl")
+                            velocity = _npz_array(golden, "Vhat_stl")
+                            normal_dot_velocity = normals @ velocity
+                            tangent = (
+                                velocity[None, :]
+                                - normal_dot_velocity[:, None] * normals
+                            )
+                            tangent_norm = np.linalg.norm(tangent, axis=1)
+                            tangent_hat = np.zeros_like(tangent)
+                            defined = tangent_norm > 1.0e-12
+                            tangent_hat[defined] = (
+                                tangent[defined] / tangent_norm[defined, None]
+                            )
+                            traction = _record_array(
+                                golden["vtp"]["cell_data"]["C_face_stl"]
+                            ) * (
+                                golden["normalized_input"]["Aref_m2"]
+                                / _npz_array(golden, "areas_m2")
+                            )[:, None]
+                            expected["vtp"]["cell_data"][
+                                "tangential_traction_coeff"
+                            ] = _array_record(
+                                np.einsum("ij,ij->i", traction, tangent_hat)
+                            )
+                        else:
+                            expected["vtp"]["cell_data"]["cp"] = legacy_normal
                         differences = self.comparator._compare_values(
                             expected,
                             actual,
@@ -173,6 +222,7 @@ class Phase7RuntimeGoldenTests(unittest.TestCase):
                             if csv_row["scope"] == "total"
                         )
                         poly = pv.read(staged / "outputs" / f"{case_id}.vtp")
+                        self.assertNotIn("Cp_n", poly.cell_data)
                         vtp_version = str(poly.field_data["solver_version"][0])
                         self.assertEqual(installed_version, vtp_version)
                         self.assertEqual(raw_total["solver_version"], vtp_version)

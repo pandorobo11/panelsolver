@@ -64,6 +64,22 @@ When a case saves VTP, the first selected case's result is loaded automatically.
 selected row also loads an existing `<out_dir>/<case_id>.vtp` when its case ID
 and accepted signature match. The viewer can switch among available cell
 scalars, adjust the camera and coloring, open another VTP, and save images.
+Scalar controls and color bars use human-readable labels such as `Cp`,
+`Normal traction coeff.`, and `Tangential traction coeff.` while VTP retains
+explicit machine-oriented field names.
+
+| VTP/internal field | GUI label |
+|---|---|
+| `cp` | Cp |
+| `normal_traction_coeff` | Normal traction coeff. |
+| `tangential_traction_coeff` | Tangential traction coeff. |
+| `shielded` | Shielded |
+| `theta_deg` | Theta [deg] |
+| `area_m2` | Area [m^2] |
+| `center_x_stl_m` | Center X [m] |
+| `center_y_stl_m` | Center Y [m] |
+| `center_z_stl_m` | Center Z [m] |
+| `stl_index` | STL index |
 Relative `out_dir` values, automatic VTP loading, and default image directories
 are all resolved from the loaded input table's directory.
 

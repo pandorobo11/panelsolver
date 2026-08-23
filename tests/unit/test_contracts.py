@@ -137,7 +137,7 @@ class ArrayOwnershipTests(unittest.TestCase):
     def test_pickle_round_trip_preserves_contract_immutability(self) -> None:
         original = LocalLoads(
             traction_coeff_stl=np.array([[-2.0, 0.25, 0.0]]),
-            cell_scalars={"Cp_n": np.array([2.0])},
+            cell_scalars={"cp": np.array([2.0])},
             metadata={"equations": ["synthetic"]},
         )
         restored = pickle.loads(pickle.dumps(original))
@@ -280,9 +280,9 @@ class GeometryAndFlowValidationTests(unittest.TestCase):
             (
                 lambda: LocalLoads(
                     traction_coeff_stl=np.zeros((2, 3)),
-                    cell_scalars={"Cp_n": [[1.0], [2.0, 3.0]]},
+                    cell_scalars={"cp": [[1.0], [2.0, 3.0]]},
                 ),
-                "LocalLoads.cell_scalars.Cp_n",
+                "LocalLoads.cell_scalars.cp",
             ),
             (
                 lambda: PanelGeometry(
@@ -305,12 +305,12 @@ class LocalLoadsTests(unittest.TestCase):
         cp = np.array([2.0, 1.0])
         loads = LocalLoads(
             traction_coeff_stl=traction,
-            cell_scalars={"Cp_n": cp, "windward": np.array([True, True])},
+            cell_scalars={"cp": cp, "windward": np.array([True, True])},
             metadata={"family": "synthetic", "selectors": ["a", "b"]},
         )
 
         self.assertEqual((2, 3), loads.traction_coeff_stl.shape)
-        self.assertEqual((2,), loads.cell_scalars["Cp_n"].shape)
+        self.assertEqual((2,), loads.cell_scalars["cp"].shape)
         self.assertEqual(np.dtype(np.bool_), loads.cell_scalars["windward"].dtype)
         self.assertEqual(0.5, loads.traction_coeff_stl[0, 1])
         self.assertEqual(("a", "b"), loads.metadata["selectors"])
@@ -318,7 +318,7 @@ class LocalLoadsTests(unittest.TestCase):
         traction[0, 1] = 99.0
         cp[0] = 99.0
         self.assertEqual(0.5, loads.traction_coeff_stl[0, 1])
-        self.assertEqual(2.0, loads.cell_scalars["Cp_n"][0])
+        self.assertEqual(2.0, loads.cell_scalars["cp"][0])
 
     def test_local_loads_validate_vector_scalars_and_metadata(self) -> None:
         cases = (
@@ -333,14 +333,14 @@ class LocalLoadsTests(unittest.TestCase):
             (
                 {
                     "traction_coeff_stl": np.zeros((2, 3)),
-                    "cell_scalars": {"Cp_n": np.ones(1)},
+                    "cell_scalars": {"cp": np.ones(1)},
                 },
                 ShapeError,
             ),
             (
                 {
                     "traction_coeff_stl": np.zeros((1, 3)),
-                    "cell_scalars": {"Cp_n": np.array([np.inf])},
+                    "cell_scalars": {"cp": np.array([np.inf])},
                 },
                 NonFiniteError,
             ),

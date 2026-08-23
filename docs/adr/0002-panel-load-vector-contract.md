@@ -47,8 +47,10 @@ integrator will apply the already-approved semantic relation
 C_face_stl = traction_coeff_stl * (area_m2 / Aref_m2)
 ```
 
-and will own force/moment integration. `Cp_n` can be a named cell scalar, but it
-is never the universal computational value.
+and will own force/moment integration. Model-specific visualization scalars are
+derived from this vector: Hypersonic exposes `cp`, while Sentman exposes
+`normal_traction_coeff` and `tangential_traction_coeff`. None of these scalars is
+the universal computational value.
 
 Models implement this structural protocol:
 

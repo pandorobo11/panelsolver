@@ -24,7 +24,11 @@ def _valid_spec(**changes) -> SolverSpec:
         "window_title": "Synthetic GUI",
         "domain_name": "Synthetic",
         "case_columns": ("case_id", "value"),
-        "preferred_scalars": ("Cp_n", "area_m2"),
+        "preferred_scalars": ("model_scalar", "area_m2"),
+        "scalar_labels": {
+            "model_scalar": "Model scalar",
+            "area_m2": "Area [m^2]",
+        },
         "format_case": _format,
     }
     values.update(changes)
@@ -72,11 +76,24 @@ class SolverSpecTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             _valid_spec(case_columns=("case_id", "case_id"))
         with self.assertRaises(ValueError):
-            _valid_spec(preferred_scalars=("Cp_n", "Cp_n"))
+            _valid_spec(preferred_scalars=("model_scalar", "model_scalar"))
+        with self.assertRaises(TypeError):
+            _valid_spec(scalar_labels=())
+        with self.assertRaises(ValueError):
+            _valid_spec(scalar_labels={"model_scalar": "Same", "area_m2": "Same"})
+        with self.assertRaises(ValueError):
+            _valid_spec(scalar_labels={"model_scalar": "Model scalar"})
         with self.assertRaises(TypeError):
             _valid_spec(format_case=None)
         with self.assertRaises(TypeError):
             _valid_spec(adapters=object())
+
+        labels = {"model_scalar": "Model scalar", "area_m2": "Area [m^2]"}
+        spec = _valid_spec(scalar_labels=labels)
+        labels["model_scalar"] = "Changed"
+        self.assertEqual("Model scalar", spec.scalar_labels["model_scalar"])
+        with self.assertRaises(TypeError):
+            spec.scalar_labels["model_scalar"] = "Changed"
     def test_adapter_bundle_requires_every_member_to_be_callable(self) -> None:
         adapters = SolverGuiAdapters(
             read_cases=lambda _path: (),
@@ -108,7 +125,51 @@ class SolverSpecTests(unittest.TestCase):
         self.assertEqual("Hypersonic", newt.domain_name)
         self.assertIn("gamma", newt.case_columns)
         self.assertNotIn("S", newt.case_columns)
-        self.assertEqual(fmf.preferred_scalars, newt.preferred_scalars)
+        self.assertEqual(
+            (
+                "normal_traction_coeff",
+                "tangential_traction_coeff",
+                "shielded",
+                "theta_deg",
+                "area_m2",
+                "center_x_stl_m",
+                "center_y_stl_m",
+                "center_z_stl_m",
+                "stl_index",
+            ),
+            fmf.preferred_scalars,
+        )
+        self.assertEqual(
+            (
+                "cp",
+                "shielded",
+                "theta_deg",
+                "area_m2",
+                "center_x_stl_m",
+                "center_y_stl_m",
+                "center_z_stl_m",
+                "stl_index",
+            ),
+            newt.preferred_scalars,
+        )
+        self.assertEqual("Normal traction coeff.", fmf.scalar_labels["normal_traction_coeff"])
+        self.assertEqual(
+            "Tangential traction coeff.",
+            fmf.scalar_labels["tangential_traction_coeff"],
+        )
+        self.assertEqual("Cp", newt.scalar_labels["cp"])
+        expected_common = {
+            "shielded": "Shielded",
+            "theta_deg": "Theta [deg]",
+            "area_m2": "Area [m^2]",
+            "center_x_stl_m": "Center X [m]",
+            "center_y_stl_m": "Center Y [m]",
+            "center_z_stl_m": "Center Z [m]",
+            "stl_index": "STL index",
+        }
+        for name, label in expected_common.items():
+            self.assertEqual(label, fmf.scalar_labels[name])
+            self.assertEqual(label, newt.scalar_labels[name])
 
     def test_product_case_formatting_remains_independent(self) -> None:
         self.assertEqual(

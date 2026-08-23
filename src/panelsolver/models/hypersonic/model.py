@@ -220,7 +220,7 @@ class HypersonicModel:
             )
             else 2.0
         )
-        traction, cp_n = _pressure_traction_coefficients(
+        traction, cp = _pressure_traction_coefficients(
             velocity_hat_stl=flow_state.velocity_hat_stl,
             normals_out_stl=geometry.normals_out_stl,
             component_ids=geometry.component_ids,
@@ -241,7 +241,7 @@ class HypersonicModel:
         )
         return LocalLoads(
             traction_coeff_stl=traction,
-            cell_scalars={"Cp_n": cp_n, "theta_deg": theta_deg},
+            cell_scalars={"cp": cp, "theta_deg": theta_deg},
             metadata={
                 "Mach": resolved.mach,
                 "gamma": resolved.gamma,
@@ -266,10 +266,10 @@ def _pressure_traction_coefficients(
     """Evaluate pinned pressure branches and adapt out legacy ``/Aref``."""
     n_faces = normals_out_stl.shape[0]
     traction = np.zeros((n_faces, 3), dtype=np.float64)
-    cp_n = np.zeros(n_faces, dtype=np.float64)
+    cp = np.zeros(n_faces, dtype=np.float64)
     active = ~shielded
     if not np.any(active):
-        return traction, cp_n
+        return traction, cp
 
     n_in = -normals_out_stl[active]
     incidence_cosine = n_in @ velocity_hat_stl
@@ -312,12 +312,12 @@ def _pressure_traction_coefficients(
                 deltar=turning,
             )
         local_indices = active_indices[local]
-        cp_n[local_indices] = cp_local
+        cp[local_indices] = cp_local
 
-    nonzero = np.abs(cp_n) > 0.0
+    nonzero = np.abs(cp) > 0.0
     if np.any(nonzero):
-        traction[nonzero] = -cp_n[nonzero, None] * normals_out_stl[nonzero]
-    return traction, cp_n
+        traction[nonzero] = -cp[nonzero, None] * normals_out_stl[nonzero]
+    return traction, cp
 
 
 def panel_force_density(

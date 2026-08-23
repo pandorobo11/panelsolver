@@ -6,6 +6,14 @@ migration baselines and runtime artifact version semantics are recorded in ADR
 
 ## [Unreleased]
 
+- **Breaking:** Replace the Hypersonic VTP cell scalar `Cp_n` with `cp`, and
+  replace the FMF `Cp_n` scalar with `normal_traction_coeff` and
+  `tangential_traction_coeff`, without a compatibility alias. The FMF
+  tangential direction is the in-plane projection of the uniform-flow vector.
+  Existing VTP files must be regenerated when the new scalars are required.
+  `traction_coeff_stl`, pressure and Sentman equations, case-input semantics,
+  model algorithm versions, case signatures, and whole-vehicle force and
+  moment coefficients are unchanged.
 - **Breaking:** Remove unsupported direct-Python APIs under `fmfsolver.*` and
   `newtsolver.*`, including legacy readers/writers/exporters, runners,
   scheduler, mesh, shielding, and physics-helper import paths. Preserve all six

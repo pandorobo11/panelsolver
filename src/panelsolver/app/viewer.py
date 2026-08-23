@@ -319,14 +319,19 @@ class ViewerPanel(QtWidgets.QWidget):
         return True
 
     def _set_scalar_fields(self, fields: Sequence[ScalarField]) -> None:
-        previous = self.cmb_scalar.currentText()
+        previous = self._selected_scalar_name()
         self._scalar_fields = {field.name: field for field in fields}
         blocker = QtCore.QSignalBlocker(self.cmb_scalar)
         self.cmb_scalar.clear()
-        self.cmb_scalar.addItems(list(self._scalar_fields))
+        for name in self._scalar_fields:
+            self.cmb_scalar.addItem(self.spec.scalar_labels.get(name, name), name)
         if previous in self._scalar_fields:
-            self.cmb_scalar.setCurrentText(previous)
+            self.cmb_scalar.setCurrentIndex(self.cmb_scalar.findData(previous))
         del blocker
+
+    def _selected_scalar_name(self) -> str | None:
+        name = self.cmb_scalar.currentData()
+        return name if isinstance(name, str) and name in self._scalar_fields else None
 
     def default_artifact_dir(self) -> Path:
         if self._loaded_vtp_path is not None:
@@ -545,14 +550,17 @@ class ViewerPanel(QtWidgets.QWidget):
             self._capture_camera_state() if self._camera_initialized else None
         )
         self.plotter.clear()
-        scalar = self.cmb_scalar.currentText()
-        scalar_name = scalar if scalar in self._scalar_fields else None
+        scalar_name = self._selected_scalar_name()
         common = {
             "scalars": scalar_name,
             "cmap": self.cmb_cmap.currentText(),
-            "clim": self._automatic_limits(scalar),
+            "clim": self._automatic_limits(scalar_name or ""),
             "show_edges": self.chk_edges.isChecked(),
         }
+        if scalar_name is not None:
+            common["scalar_bar_args"] = {
+                "title": self.spec.scalar_labels.get(scalar_name, scalar_name)
+            }
         shield = self._shield_mask()
         if shield is None:
             self.plotter.add_mesh(self._poly, opacity=1.0, **common)

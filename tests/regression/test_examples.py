@@ -115,6 +115,16 @@ class ExampleRegressionTests(unittest.TestCase):
             self.assertTrue(artifact.resolve().is_relative_to(self.root.resolve()))
         self.assertEqual([], list(self.root.rglob("*.npz")))
 
+        fmf_cell_data = set(pv.read(self.artifacts["fmf_basic"]).cell_data)
+        self.assertIn("normal_traction_coeff", fmf_cell_data)
+        self.assertIn("tangential_traction_coeff", fmf_cell_data)
+        self.assertNotIn("Cp_n", fmf_cell_data)
+        hypersonic_cell_data = set(
+            pv.read(self.artifacts["hypersonic_basic"]).cell_data
+        )
+        self.assertIn("cp", hypersonic_cell_data)
+        self.assertNotIn("Cp_n", hypersonic_cell_data)
+
     def test_fmf_flow_modes_resolve_to_matching_coefficients(self) -> None:
         mode_a, mode_b = self._total_rows("fmf", "flow_modes")
         self.assertEqual("A", mode_a["mode"])
@@ -217,20 +227,20 @@ class ExampleRegressionTests(unittest.TestCase):
         local_cp: list[float] = []
         for case_id in windward_ids:
             poly = pv.read(self.artifacts[case_id])
-            cp_n = np.asarray(poly.cell_data["Cp_n"], dtype=float)
+            cp = np.asarray(poly.cell_data["cp"], dtype=float)
             turning_deg = np.asarray(poly.cell_data["theta_deg"], dtype=float) - 90.0
-            self.assertTrue(np.isfinite(cp_n).all())
+            self.assertTrue(np.isfinite(cp).all())
             np.testing.assert_allclose(
                 turning_deg,
                 np.full(turning_deg.shape, 15.0),
                 rtol=0.0,
                 atol=1e-12,
             )
-            local_cp.append(float(cp_n[0]))
+            local_cp.append(float(cp[0]))
         self.assertEqual(4, len({round(value, 12) for value in local_cp}))
 
         pm_poly = pv.read(self.artifacts["newt_pm"])
-        pm_cp = np.asarray(pm_poly.cell_data["Cp_n"], dtype=float)
+        pm_cp = np.asarray(pm_poly.cell_data["cp"], dtype=float)
         self.assertTrue(np.isfinite(pm_cp).all())
         self.assertTrue((pm_cp < 0.0).any())
 
