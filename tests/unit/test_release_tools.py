@@ -439,6 +439,10 @@ class ReleaseToolTests(unittest.TestCase):
             _DOCS_THEME_ASSET_LICENSES,
         )
         self.assertNotIn(
+            "assets/javascripts/panelsolver-docs.js",
+            _DOCS_THEME_ASSET_SHA256,
+        )
+        self.assertNotIn(
             "assets/stylesheets/panelsolver-docs.css",
             _DOCS_THEME_ASSET_LICENSES,
         )

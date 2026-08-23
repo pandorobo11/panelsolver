@@ -181,12 +181,25 @@ class DocumentationSiteTests(unittest.TestCase):
             "window.SphinxRtdTheme.Navigation",
             "nav.hashChange = function ()",
             "var self = this",
+            "var initialHash = window.location.hash",
             "self.linkScroll = true",
-            'self.win.one("hashchange"',
             "self.linkScroll = false",
+            "window.setTimeout(function ()",
         ):
             with self.subTest(expected=expected):
                 self.assertIn(expected, project_js)
+        self.assertRegex(
+            project_js,
+            r'self\.win\s*\.off\("hashchange\.panelsolverDocs"\)\s*'
+            r'\.one\("hashchange\.panelsolverDocs"',
+        )
+        self.assertRegex(
+            project_js,
+            r"if \(window\.location\.hash === initialHash\) \{[^}]*"
+            r"self\.linkScroll = false;[^}]*"
+            r'self\.win\.off\("hashchange\.panelsolverDocs"\);',
+        )
+        self.assertNotIn('self.win.off("hashchange")', project_js)
         self.assertNotRegex(project_js, r"(?:https?:)?//")
 
     def test_audited_build_dependency_versions_are_exact_and_current(self) -> None:
