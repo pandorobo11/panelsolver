@@ -31,10 +31,12 @@ alive for the lifetime of the window.
 ## Run cases
 
 1. Choose **Select Input File** or **File > Open Input File...** and open a CSV,
-   XLSX, or XLSM case table. If no remembered input directory exists, the dialog
-   starts in the current directory. After a successful normal load, later dialogs
-   start in that file's directory. If the remembered directory no longer exists,
-   the dialog falls back to the current directory.
+   XLSX, or XLSM case table. Immediately after a new GUI launch, the dialog starts
+   in the process current working directory. After a successful normal load, later
+   dialogs in the same GUI session start in that file's parent directory. This
+   directory is not carried over after the GUI exits and restarts. If it is deleted
+   during the session, the dialog falls back to the process current working
+   directory.
 2. Select one or more table rows. With no selection, **Run Selected Cases** runs
    every loaded row.
 3. Set **Workers**. Use `1` for the simplest deterministic run.
@@ -53,7 +55,8 @@ Choose **File > New from Example** to see only the examples for the active FMF
 or Hypersonic domain. Select a workspace directory; the GUI copies the chosen
 case table and its required geometry there with their relative layout intact,
 then opens the copied table. Packaged examples are never run in place, and
-opening one does not replace the remembered directory for normal input files.
+opening one does not replace the session's remembered directory for normal input
+files.
 
 ## View and export
 
