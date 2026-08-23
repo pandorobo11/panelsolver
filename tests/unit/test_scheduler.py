@@ -171,6 +171,56 @@ class SchedulerTests(unittest.TestCase):
             with self.subTest(value=value), self.assertRaises(SchedulerError):
                 resolve_parallel_chunk_cases(value)
 
+    def test_bucket_chunking_stably_groups_higher_priority_affinities(self) -> None:
+        high_a = SchedulingAffinityHint(("high", "a"), priority=2)
+        high_b = SchedulingAffinityHint(("high", "b"), priority=2)
+        low = SchedulingAffinityHint(("low", "c"), priority=1)
+        hints = (
+            (low,),
+            (high_a,),
+            (high_b,),
+            (high_a, low),
+            (high_b,),
+            (low,),
+            (),
+            (),
+        )
+
+        chunks, remaining = scheduler_module._build_bucket_chunks(
+            tuple(range(len(hints))),
+            ("ray",) * len(hints),
+            hints,
+            2,
+        )
+
+        self.assertEqual(
+            ((1, 3), (2, 4), (0, 5), (6, 7)),
+            tuple(chunks["ray"]),
+        )
+        self.assertEqual({"ray": len(hints)}, remaining)
+
+    def test_none_and_empty_affinities_preserve_fifo_bucket_chunking(self) -> None:
+        order = (5, 2, 0, 4, 1, 3)
+        bucket_keys = ("a", "a", "b", "a", "b", "a")
+        raw_hints = (None, tuple(() for _ in bucket_keys))
+
+        for provided in raw_hints:
+            with self.subTest(provided="none" if provided is None else "empty"):
+                hints = scheduler_module._validated_affinity_hints(
+                    len(bucket_keys),
+                    provided,
+                )
+                chunks, remaining = scheduler_module._build_bucket_chunks(
+                    order,
+                    bucket_keys,
+                    hints,
+                    2,
+                )
+                self.assertEqual(("a", "b"), tuple(chunks))
+                self.assertEqual(((5, 0), (1, 3)), tuple(chunks["a"]))
+                self.assertEqual(((2, 4),), tuple(chunks["b"]))
+                self.assertEqual({"a": 4, "b": 2}, remaining)
+
     def test_primary_bucket_continuity_precedes_secondary_affinity(self) -> None:
         cone = SchedulingAffinityHint(("cone", 5.0, 1.4), priority=2)
         bucket_chunks = {
@@ -187,8 +237,8 @@ class SchedulerTests(unittest.TestCase):
             {"ray-a": 0, "ray-b": 1},
             ((), (), (cone,), (cone,), (cone,), (cone,)),
         )
-        # Primary locality wins across buckets, and stable order is retained
-        # inside that primary bucket.
+        # Primary locality wins across buckets and consumes the next chunk that
+        # was prebuilt for that bucket.
         self.assertEqual(("ray-a", (1,)), picked)
 
     def test_unowned_bucket_precedes_affine_owned_bucket(self) -> None:
@@ -394,6 +444,62 @@ class SchedulerTests(unittest.TestCase):
         self.assertEqual(0, baseline_hits)
         self.assertEqual(2, affinity_hits)
         self.assertEqual((0, 1, 2, 3), tuple(index for index, _ in snapshots[-1]))
+        self.assert_no_new_worker_resources(before)
+
+    def test_bucket_local_grouping_reduces_worker_affinity_spread_without_more_steal(
+        self,
+    ) -> None:
+        before = _worker_resource_state()
+        affinity_a = SchedulingAffinityHint(("expensive", "a"), priority=2)
+        affinity_b = SchedulingAffinityHint(("expensive", "b"), priority=2)
+        cases = (
+            ("a", 0.03),
+            ("b", 0.03),
+            ("a", 0.03),
+            ("b", 0.03),
+        )
+        order = (1, 0, 3, 2)
+
+        def run_probe(affinity_hints=None, snapshot_cb=None):
+            return dict(
+                iter_case_results_parallel(
+                    cases,
+                    2,
+                    _pid_worker,
+                    log_policy=WorkerLogPolicy.DROP,
+                    partial_result_policy=PartialResultPolicy.YIELD_COMPLETED,
+                    execution_order=order,
+                    bucket_keys=("one-ray-bucket",) * len(cases),
+                    affinity_hints=affinity_hints,
+                    chunk_cases=2,
+                    snapshot_cb=snapshot_cb,
+                )
+            )
+
+        baseline = run_probe()
+        snapshots = []
+        grouped = run_probe(
+            ((affinity_a,), (affinity_b,), (affinity_a,), (affinity_b,)),
+            snapshots.append,
+        )
+
+        def affinity_worker_spread(results, label):
+            return len(
+                {
+                    result[0]
+                    for result in results.values()
+                    if result[1] == label
+                }
+            )
+
+        self.assertEqual(2, affinity_worker_spread(baseline, "a"))
+        self.assertEqual(2, affinity_worker_spread(baseline, "b"))
+        self.assertEqual(1, affinity_worker_spread(grouped, "a"))
+        self.assertEqual(1, affinity_worker_spread(grouped, "b"))
+        # Both modes use one owner plus one steal for the sole primary bucket.
+        self.assertEqual(2, len({result[0] for result in baseline.values()}))
+        self.assertEqual(2, len({result[0] for result in grouped.values()}))
+        self.assertEqual(order, tuple(index for index, _ in snapshots[-1]))
         self.assert_no_new_worker_resources(before)
 
     def test_forward_logs_and_discard_failed_chunk_results(self) -> None:

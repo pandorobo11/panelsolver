@@ -248,11 +248,13 @@ def _validated_affinity_hints(
 def _build_bucket_chunks(
     execution_order: Sequence[int],
     bucket_keys: Sequence[Hashable],
+    affinity_hints: Sequence[Sequence[SchedulingAffinityHint]],
     chunk_cases: int,
 ) -> tuple[
     dict[Hashable, deque[tuple[int, ...]]],
     dict[Hashable, int],
 ]:
+    """Build unchanged primary buckets and affinity-local chunks within them."""
     buckets: OrderedDict[Hashable, list[int]] = OrderedDict()
     for index in execution_order:
         buckets.setdefault(bucket_keys[index], []).append(index)
@@ -260,12 +262,46 @@ def _build_bucket_chunks(
     chunks: dict[Hashable, deque[tuple[int, ...]]] = {}
     remaining: dict[Hashable, int] = {}
     for key, indices in buckets.items():
+        grouped_indices = _stable_affinity_grouped_indices(indices, affinity_hints)
         chunks[key] = deque(
-            tuple(indices[start : start + chunk_cases])
-            for start in range(0, len(indices), chunk_cases)
+            tuple(grouped_indices[start : start + chunk_cases])
+            for start in range(0, len(grouped_indices), chunk_cases)
         )
-        remaining[key] = len(indices)
+        remaining[key] = len(grouped_indices)
     return chunks, remaining
+
+
+def _stable_affinity_grouped_indices(
+    indices: Sequence[int],
+    affinity_hints: Sequence[Sequence[SchedulingAffinityHint]],
+) -> tuple[int, ...]:
+    """Group one primary bucket once, without interpreting hint identities.
+
+    Each case groups by its highest-priority hint.  Hashable identities receive
+    stable first-encounter ranks because the scheduler cannot require them to be
+    mutually orderable; that rank also breaks ties when a case has multiple
+    hints at the same priority.  Other hints remain available for worker scoring
+    and history.  Python's stable sort retains source order within each selected
+    identity group, and cases without hints remain stable after those groups.
+    """
+    identity_order: dict[Hashable, int] = {}
+    for index in indices:
+        for hint in affinity_hints[index]:
+            if hint.identity not in identity_order:
+                identity_order[hint.identity] = len(identity_order)
+    if not identity_order:
+        return tuple(indices)
+
+    def grouping_key(index: int) -> tuple[int, int]:
+        hints = affinity_hints[index]
+        if not hints:
+            return (0, 0)
+        return min(
+            (-hint.priority, identity_order[hint.identity])
+            for hint in hints
+        )
+
+    return tuple(sorted(indices, key=grouping_key))
 
 
 def _affinity_score(
@@ -300,7 +336,12 @@ def _record_worker_affinities(
     worker_affinities: OrderedDict[Hashable, None],
     completed_case_hints: Sequence[SchedulingAffinityHint],
 ) -> None:
-    """Update bounded parent-side LRU evidence after successful execution."""
+    """Update bounded likely-cache evidence after successful execution.
+
+    A successful case does not prove that every hinted numerical path ran, so
+    this history intentionally remains a performance-only heuristic rather than
+    a mirror of actual worker cache contents.
+    """
     for hint in completed_case_hints:
         worker_affinities.pop(hint.identity, None)
         worker_affinities[hint.identity] = None
@@ -363,9 +404,8 @@ def _pick_next_chunk(
             return None
         worker_last_bucket[worker_id] = bucket
 
-    # Keep stable chunk order inside the selected primary bucket.  The same
-    # worker already retains its process-local caches, and a repeated full scan
-    # for a more affine chunk would make large buckets quadratic to dispatch.
+    # Bucket-local affinity grouping was completed once before dispatch.  Keep
+    # the hot path O(1) rather than rescanning a large bucket for every chunk.
     indices = bucket_chunks[bucket].popleft()
     bucket_remaining[bucket] -= len(indices)
     if bucket_remaining[bucket] == 0:
@@ -805,7 +845,8 @@ def iter_case_results_parallel[CaseT, ResultT](
 
     Final and checkpoint order is recovered with ``ordered_success_snapshot``.
     Primary bucket continuity always precedes optional, performance-only worker
-    affinity hints.
+    affinity hints.  Those hints may also pre-group cases inside each unchanged
+    primary bucket before chunk construction.
     The two legacy log and failure-partial behaviors are required policy inputs,
     not silently normalized defaults.
     """
@@ -839,6 +880,7 @@ def iter_case_results_parallel[CaseT, ResultT](
     bucket_chunks, bucket_remaining = _build_bucket_chunks(
         order,
         keys,
+        hints,
         resolved_chunk_cases,
     )
     bucket_owner: dict[Hashable, int | None] = {
