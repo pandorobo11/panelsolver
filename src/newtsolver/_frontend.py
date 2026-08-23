@@ -1,22 +1,29 @@
-"""Legacy newtsolver signature fallback around canonical case adaptation."""
+"""Private newtsolver command/GUI identity and legacy artifact matching."""
 
 from __future__ import annotations
 
-import importlib
 from collections.abc import Mapping
+from dataclasses import replace
 
+from panelsolver._compat.legacy_signatures import (
+    LegacySignaturePolicy,
+    build_artifact_signature_candidates,
+)
+from panelsolver._compat.versions import NEWTSOLVER_COMPATIBILITY_VERSION
 from panelsolver.app.case_io import expand_component_values
-from panelsolver.app.solver_spec import ArtifactSignatureCandidates
-from panelsolver.domains.hypersonic import CASE_POLICY, adapt_row
+from panelsolver.app.solver_spec import (
+    ArtifactSignatureCandidates,
+    SolverGuiAdapters,
+    SolverSpec,
+)
+from panelsolver.core import prepare_case_signature
+from panelsolver.domains.hypersonic import DEFAULTS, GUI_ADAPTERS, adapt_row
+from panelsolver.domains.hypersonic import gui_spec as canonical_gui_spec
 from panelsolver.models import ModelRegistry
 from panelsolver.models.hypersonic.selectors import (
     normalize_leeward_equation,
     normalize_windward_equation,
 )
-
-from ._version import NEWTSOLVER_COMPATIBILITY_VERSION
-
-LEGACY_SIGNATURE_POLICY: object
 
 _SIGNATURE_KEYS = (
     "case_id",
@@ -102,26 +109,42 @@ def _adapt_legacy_payload(
     )
 
 
-def build_signatures(
+_LEGACY_SIGNATURE_POLICY = LegacySignaturePolicy(
+    keys=_SIGNATURE_KEYS,
+    numeric_keys=_NUMERIC_SIGNATURE_KEYS,
+    compatibility_version=NEWTSOLVER_COMPATIBILITY_VERSION,
+    file_identity_style="newtsolver",
+    adapt_payload=_adapt_legacy_payload,
+)
+_DEFAULT_ADAPTERS = object()
+
+
+def _build_artifact_signatures(
     row: Mapping[str, object],
     *,
     registry: ModelRegistry | None = None,
 ) -> ArtifactSignatureCandidates:
-    adapter = importlib.import_module(f"{__package__}.signature_adapter")
-    return adapter.build_signatures(row, registry=registry)
+    primary = prepare_case_signature(adapt_row(row, registry=registry).request)
+    return build_artifact_signature_candidates(
+        row,
+        primary=primary,
+        defaults=DEFAULTS,
+        policy=_LEGACY_SIGNATURE_POLICY,
+    )
 
 
-def __getattr__(name: str):
-    if name == "LEGACY_SIGNATURE_POLICY":
-        adapter = importlib.import_module(f"{__package__}.signature_adapter")
-        return adapter.LEGACY_SIGNATURE_POLICY
-    raise AttributeError(name)
-
-
-__all__ = (
-    "CASE_POLICY",
-    "LEGACY_SIGNATURE_POLICY",
-    "NEWTSOLVER_COMPATIBILITY_VERSION",
-    "adapt_row",
-    "build_signatures",
-)
+def _legacy_gui_spec(
+    *,
+    adapters: SolverGuiAdapters | None | object = _DEFAULT_ADAPTERS,
+) -> SolverSpec:
+    selected_adapters = adapters
+    if adapters is _DEFAULT_ADAPTERS:
+        selected_adapters = replace(
+            GUI_ADAPTERS,
+            build_case_signatures=_build_artifact_signatures,
+        )
+    return replace(
+        canonical_gui_spec(adapters=selected_adapters),  # type: ignore[arg-type]
+        product_id="newtsolver",
+        window_title="newtsolver (GUI)",
+    )

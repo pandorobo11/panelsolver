@@ -7,8 +7,6 @@ from pathlib import Path
 
 import numpy as np
 
-from fmfsolver import csv_adapter as fmf_csv
-from newtsolver import csv_adapter as newt_csv
 from panelsolver.core import (
     CommonCasePayload,
     LocalLoads,
@@ -17,6 +15,8 @@ from panelsolver.core import (
     PanelGeometry,
     assemble_common_results,
 )
+from panelsolver.domains import fmf as fmf_csv
+from panelsolver.domains import hypersonic as newt_csv
 
 FIXTURE_ROOT = Path(__file__).parents[1] / "fixtures" / "phase1"
 GOLDEN_ROOT = FIXTURE_ROOT / "golden"

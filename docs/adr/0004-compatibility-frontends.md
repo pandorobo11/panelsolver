@@ -4,6 +4,11 @@
 - Date: 2026-08-12
 - Refined by: ADR 0008 (supported-domain surface)
 
+The package-import and best-effort direct-Python portions of this decision are
+superseded by [ADR 0014](0014-remove-legacy-direct-python-api.md). Its command,
+GUI identity, file, artifact, and numerical compatibility decisions remain in
+force.
+
 ## Context
 
 Users and automation may rely on two command families, package imports, input

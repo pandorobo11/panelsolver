@@ -6,6 +6,12 @@ migration baselines and runtime artifact version semantics are recorded in ADR
 
 ## [Unreleased]
 
+- **Breaking:** Remove unsupported direct-Python APIs under `fmfsolver.*` and
+  `newtsolver.*`, including legacy readers/writers/exporters, runners,
+  scheduler, mesh, shielding, and physics-helper import paths. Preserve all six
+  legacy commands, legacy GUI identities, legacy artifact-signature fallback,
+  the canonical `panelsolver` API, file/artifact contracts, and numerical
+  behavior.
 - Restore the offline documentation to the audited MkDocs 1.6.1 built-in
   Read the Docs theme, improving technical tables, navigation, and code
   readability. Add complete license texts and release-gate coverage for the
@@ -51,8 +57,7 @@ migration baselines and runtime artifact version semantics are recorded in ADR
 - Change Summary CSV and VTP `solver_version` provenance to the installed
   `panelsolver` distribution version for both FMF and Hypersonic. The legacy
   `fmfsolver 1.3.8` and `newtsolver 1.0.3` values remain migration baselines for
-  legacy signatures and best-effort direct-Python compatibility; numerical
-  results and case signatures are unchanged.
+  legacy signatures; numerical results and case signatures are unchanged.
 - Add canonical `panelsolver fmf` and `panelsolver hypersonic` batch selectors
   plus `panelsolver-gui fmf` and `panelsolver-gui hypersonic`, while retaining
   all six legacy compatibility commands. Add the small domain-specific

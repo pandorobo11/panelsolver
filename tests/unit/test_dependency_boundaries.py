@@ -119,7 +119,7 @@ class DependencyBoundaryTests(unittest.TestCase):
 
     def test_complete_internal_graph_has_no_cycles_or_self_loops(self) -> None:
         graph = internal_dependency_graph()
-        self.assertEqual(131, len(graph), "Update the recorded production module count")
+        self.assertEqual(71, len(graph), "Update the recorded production module count")
         self.assertEqual(
             [],
             sorted(node for node, edges in graph.items() if node in edges),
@@ -186,17 +186,10 @@ class DependencyBoundaryTests(unittest.TestCase):
         self.assert_edges_avoid(("fmfsolver",), ("newtsolver",))
         self.assert_edges_avoid(("newtsolver",), ("fmfsolver",))
 
-    def test_compatibility_implementation_is_isolated_in_private_package(self) -> None:
+    def test_only_signature_compatibility_remains_in_private_package(self) -> None:
         old_modules = sorted((SRC_ROOT / "panelsolver" / "app").glob("legacy_*.py"))
         self.assertEqual([], old_modules)
-        expected = {
-            "legacy_adapter.py",
-            "legacy_mesh.py",
-            "legacy_results.py",
-            "legacy_scheduler.py",
-            "legacy_shielding.py",
-            "legacy_signatures.py",
-        }
+        expected = {"legacy_signatures.py"}
         actual = {
             path.name
             for path in (SRC_ROOT / "panelsolver" / "_compat").glob("legacy_*.py")
@@ -300,34 +293,7 @@ class DependencyBoundaryTests(unittest.TestCase):
         )
         self.assert_edges_avoid(
             gui_modules,
-            (
-                "panelsolver.models",
-                "fmfsolver.core.sentman_core",
-                "fmfsolver.physics",
-                "newtsolver.core.pressure_models",
-                "newtsolver.surface_equations",
-            ),
-        )
-
-    def test_compatibility_numerical_modules_remain_forwarders(self) -> None:
-        numerical_frontends = (
-            "fmfsolver.core",
-            "fmfsolver.physics",
-            "newtsolver.core",
-            "newtsolver.surface_equations",
-        )
-        prohibited = ("numpy", "pyvista", "scipy", "trimesh", "rtree")
-        violations: list[str] = []
-        for current, path in production_modules().items():
-            if not _matches(current, numerical_frontends):
-                continue
-            for imported in sorted(imported_names(path, current)):
-                if _matches(imported, prohibited):
-                    violations.append(f"{current} -> {imported}")
-        self.assertEqual(
-            [],
-            violations,
-            "Frontend numerical imports:\n" + "\n".join(violations),
+            ("panelsolver.models",),
         )
 
 

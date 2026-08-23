@@ -17,20 +17,21 @@ inside the supported domain. The current supported surfaces are:
 - supported numerical values, signs, frames, normalizations, and model-specific
   behavior.
 
-Legacy direct-Python implementation details are best effort as described in
-[Python API support](python-api.md). Invalid-input quirks, exact exceptions and
-tracebacks, object identity, pickle globals, and cache internals are not frozen
-product differences.
+Direct-Python APIs under `fmfsolver.*` and `newtsolver.*` are not supported and
+have been removed. The legacy package names remain only as private command
+frontends. See [Python API support](python-api.md) and
+[ADR 0014](../adr/0014-remove-legacy-direct-python-api.md). Invalid-input quirks,
+exact exceptions and tracebacks, object identity, pickle globals, and cache
+internals are not frozen product differences.
 
 The canonical `fmf` token selects the free-molecular-flow domain and its current
 Sentman model. `hypersonic` selects the hypersonic panel-method domain and its
 Newtonian-family methods. Neither token identifies a legacy product. The naming
 contract is recorded in [ADR 0011](../adr/0011-canonical-domain-naming.md).
 
-Best-effort implementation lives in private `panelsolver._compat`, which points
-only inward to the shared layers. Supported CLI/GUI runtime does not import that
-package directly; the `fmfsolver` and `newtsolver` frontends select it only for
-legacy direct-Python translation.
+Private `panelsolver._compat` retains only legacy artifact-signature
+reconstruction. Canonical CLI/GUI runtime does not import it; the legacy GUI
+frontends use it only when matching artifacts from the pinned legacy products.
 
 ## Distribution version and migration baselines
 
@@ -50,8 +51,8 @@ The original implementations used for compatibility and migration work were:
 
 Use `importlib.metadata.version("panelsolver")` for the installed distribution
 version. The baseline values are not current solver or domain versions. They
-remain in private compatibility code only where legacy signature reconstruction
-or best-effort direct-Python `__version__` behavior requires them. Detailed
+remain in private compatibility code only for legacy signature reconstruction.
+Detailed
 source commits and migration evidence are in
 [Migration history](../history/migration/MIGRATION_SOURCES.md). The shared and
 legacy distributions cannot safely coexist.

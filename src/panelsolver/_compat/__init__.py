@@ -1,3 +1,3 @@
-"""Private best-effort compatibility implementation for legacy frontends."""
+"""Private compatibility plumbing required by legacy command frontends."""
 
 __all__: tuple[str, ...] = ()

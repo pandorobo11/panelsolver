@@ -11,13 +11,6 @@ from unittest import mock
 import numpy as np
 import pyvista as pv
 
-from fmfsolver.io.io_cases import read_cases as read_fmf_cases
-from fmfsolver.runtime import GUI_ADAPTERS as FMF_GUI_ADAPTERS
-from fmfsolver.runtime import RUNTIME_POLICY as FMF_POLICY
-from fmfsolver.runtime import run_cases as run_fmf_cases
-from newtsolver.io.io_cases import read_cases as read_newt_cases
-from newtsolver.runtime import RUNTIME_POLICY as NEWT_POLICY
-from newtsolver.runtime import run_cases as run_newt_cases
 from panelsolver.app import (
     DEFAULT_CHECKPOINT_CASES,
     GuiRunRequest,
@@ -35,6 +28,13 @@ from panelsolver.core import (
     clear_shielding_cache,
     shielding_cache_stats,
 )
+from panelsolver.domains.fmf import GUI_ADAPTERS as FMF_GUI_ADAPTERS
+from panelsolver.domains.fmf import RUNTIME_POLICY as FMF_POLICY
+from panelsolver.domains.fmf import read_cases as read_fmf_cases
+from panelsolver.domains.fmf import run_cases as run_fmf_cases
+from panelsolver.domains.hypersonic import RUNTIME_POLICY as NEWT_POLICY
+from panelsolver.domains.hypersonic import read_cases as read_newt_cases
+from panelsolver.domains.hypersonic import run_cases as run_newt_cases
 from tests.current_case_fixtures import read_current_cases
 
 INPUTS = Path(__file__).parents[1] / "fixtures" / "phase1" / "inputs"

@@ -18,6 +18,8 @@ Accepted ADRs are retained as decision records:
     artifacts](0012-runtime-artifact-distribution-version.md)
 13. [Use panelsolver as the canonical project
     identity](0013-canonical-project-identity.md)
+14. [Remove the legacy direct-Python compatibility
+    surface](0014-remove-legacy-direct-python-api.md)
 
 ADRs describe why the current contracts exist. Migration execution records and
 phase evidence are indexed separately in [History](../history/README.md).

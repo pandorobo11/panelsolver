@@ -39,12 +39,10 @@ Cancellation is observed between cases. A currently executing ray query or
 physical-model solve is allowed to finish. Treat artifacts from failed or
 canceled runs as partial state.
 
-## Legacy imports or versions are surprising
+## A legacy Python import fails
 
 The installed distribution is `panelsolver`; its version appears in newly
-generated FMF and Hypersonic Summary CSV/VTP artifacts. Best-effort legacy
-`fmfsolver.__version__` and `newtsolver.__version__` retain the `1.3.8` and
-`1.0.3` migration-baseline values for direct-Python compatibility. Do not
-install the shared and legacy distributions together. The documented
-`panelsolver` package-root API is stable; legacy direct-Python implementation
-details are best effort.
+generated FMF and Hypersonic Summary CSV/VTP artifacts. Direct-Python APIs under
+`fmfsolver.*` and `newtsolver.*`, including legacy `__version__` attributes, have
+been removed. Use the documented `panelsolver` package-root API or a supported
+command. Do not install the shared and legacy distributions together.

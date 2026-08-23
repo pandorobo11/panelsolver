@@ -7,16 +7,6 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-import pandas as pd
-
-from fmfsolver import csv_adapter as fmf_csv
-from fmfsolver.app.cli_app import CLI_POLICY as FMF_CLI_POLICY
-from fmfsolver.io.csv_out import append_results_csv as append_fmf_results_csv
-from fmfsolver.runtime import GUI_ADAPTERS as FMF_GUI_ADAPTERS
-from newtsolver import csv_adapter as newt_csv
-from newtsolver.app.cli_app import CLI_POLICY as NEWT_CLI_POLICY
-from newtsolver.io.csv_out import append_results_csv as append_newt_results_csv
-from newtsolver.runtime import GUI_ADAPTERS as NEWT_GUI_ADAPTERS
 from panelsolver.app.csv_writer import (
     CSV_ENCODING,
     DURABLE_CSV_WRITE_POLICY,
@@ -25,6 +15,12 @@ from panelsolver.app.csv_writer import (
     write_csv_atomic,
 )
 from panelsolver.core import CsvProjection
+from panelsolver.domains import fmf as fmf_csv
+from panelsolver.domains import hypersonic as newt_csv
+from panelsolver.domains.fmf import CANONICAL_CLI_POLICY as FMF_CLI_POLICY
+from panelsolver.domains.fmf import GUI_ADAPTERS as FMF_GUI_ADAPTERS
+from panelsolver.domains.hypersonic import CANONICAL_CLI_POLICY as NEWT_CLI_POLICY
+from panelsolver.domains.hypersonic import GUI_ADAPTERS as NEWT_GUI_ADAPTERS
 
 
 def projection() -> CsvProjection:
@@ -108,33 +104,6 @@ class CsvWriterTests(unittest.TestCase):
                         [{"case_id": "日本語ケース", "note": "日本語メモ"}],
                         list(csv.DictReader(handle)),
                     )
-
-    def test_legacy_append_paths_use_bom_encoding_for_unicode_rows(self) -> None:
-        inputs = pd.DataFrame([{"case_id": "日本語ケース"}])
-        results = pd.DataFrame(
-            [
-                {
-                    "case_id": "日本語ケース",
-                    "scope": "total",
-                    "component_id": "",
-                    "component_stl_path": "",
-                    "note": "日本語メモ",
-                }
-            ]
-        )
-        for append in (append_fmf_results_csv, append_newt_results_csv):
-            with self.subTest(append=append.__module__), tempfile.TemporaryDirectory() as td:
-                output = Path(td) / "legacy-append.csv"
-                append(output, inputs, results)
-                append(output, inputs, results)
-                self.assertEqual(b"\xef\xbb\xbf", output.read_bytes()[:3])
-                frame = pd.read_csv(output, encoding=CSV_ENCODING)
-                self.assertEqual(
-                    ["日本語ケース", "日本語ケース"], frame["case_id"].tolist()
-                )
-                self.assertEqual(
-                    ["日本語メモ", "日本語メモ"], frame["note"].tolist()
-                )
 
     def test_both_policies_preserve_output_and_clean_temp_on_failure(self) -> None:
         for policy in (fmf_csv.CSV_WRITE_POLICY, newt_csv.CSV_WRITE_POLICY):

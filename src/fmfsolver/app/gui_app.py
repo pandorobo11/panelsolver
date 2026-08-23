@@ -6,12 +6,9 @@ from typing import NoReturn
 
 from panelsolver.app import gui_bootstrap
 
-from ..gui_spec import solver_spec
+from .._frontend import _legacy_gui_spec
 
 
 def main() -> NoReturn:
     """Launch the shared GUI with the pinned FMF specification."""
-    raise SystemExit(gui_bootstrap.run_gui(solver_spec()))
-
-
-__all__ = ("main",)
+    raise SystemExit(gui_bootstrap.run_gui(_legacy_gui_spec()))

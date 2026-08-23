@@ -10,9 +10,9 @@ import numpy as np
 import pandas as pd
 from openpyxl import Workbook
 
-from fmfsolver.io.io_cases import read_cases as read_fmf_cases
-from newtsolver.io.io_cases import read_cases as read_newt_cases
 from panelsolver.app.case_io import InputValidationError, normalize_optional_text
+from panelsolver.domains.fmf import read_cases as read_fmf_cases
+from panelsolver.domains.hypersonic import read_cases as read_newt_cases
 from tests.current_case_fixtures import read_current_cases
 
 _INPUTS = Path(__file__).parents[1] / "fixtures" / "phase1" / "inputs"

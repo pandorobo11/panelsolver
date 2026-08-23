@@ -8,30 +8,24 @@ from unittest.mock import patch
 
 import pandas as pd
 
-import fmfsolver.io.io_cases as fmf_case_module
-import newtsolver.io.io_cases as newt_case_module
-from fmfsolver.case_adapter import (
+from fmfsolver._frontend import (
+    _build_artifact_signatures as build_fmf_signatures,
+)
+from newtsolver._frontend import (
+    _build_artifact_signatures as build_newt_signatures,
+)
+from panelsolver._compat.versions import (
     FMFSOLVER_COMPATIBILITY_VERSION,
-)
-from fmfsolver.case_adapter import (
-    adapt_row as adapt_fmf_row,
-)
-from fmfsolver.case_adapter import (
-    build_signatures as build_fmf_signatures,
-)
-from fmfsolver.io.io_cases import read_cases as read_fmf_cases
-from newtsolver.case_adapter import (
     NEWTSOLVER_COMPATIBILITY_VERSION,
 )
-from newtsolver.case_adapter import (
-    adapt_row as adapt_newt_row,
-)
-from newtsolver.case_adapter import (
-    build_signatures as build_newt_signatures,
-)
-from newtsolver.io.io_cases import read_cases as read_newt_cases
 from panelsolver.app.csv_writer import CSV_ENCODING
 from panelsolver.core import MeshValidationPolicy, execute_case
+from panelsolver.domains import fmf as fmf_case_module
+from panelsolver.domains import hypersonic as newt_case_module
+from panelsolver.domains.fmf import adapt_row as adapt_fmf_row
+from panelsolver.domains.fmf import read_cases as read_fmf_cases
+from panelsolver.domains.hypersonic import adapt_row as adapt_newt_row
+from panelsolver.domains.hypersonic import read_cases as read_newt_cases
 from tests.current_case_fixtures import read_current_cases
 
 _INPUTS = Path(__file__).parents[1] / "fixtures" / "phase1" / "inputs"

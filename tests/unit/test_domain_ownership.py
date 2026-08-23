@@ -6,12 +6,8 @@ import unittest
 from importlib.metadata import version
 from pathlib import Path
 
-from fmfsolver.app.cli_app import CLI_POLICY as LEGACY_FMF_CLI_POLICY
-from fmfsolver.io.io_cases import read_cases as legacy_read_fmf_cases
-from fmfsolver.runtime import RUNTIME_POLICY as LEGACY_FMF_RUNTIME_POLICY
-from newtsolver.app.cli_app import CLI_POLICY as LEGACY_HYPERSONIC_CLI_POLICY
-from newtsolver.io.io_cases import read_cases as legacy_read_hypersonic_cases
-from newtsolver.runtime import RUNTIME_POLICY as LEGACY_HYPERSONIC_RUNTIME_POLICY
+from fmfsolver.app.cli_app import _CLI_POLICY as LEGACY_FMF_CLI_POLICY
+from newtsolver.app.cli_app import _CLI_POLICY as LEGACY_HYPERSONIC_CLI_POLICY
 from panelsolver.domains import fmf, hypersonic
 
 REPOSITORY_ROOT = Path(__file__).parents[2]
@@ -25,11 +21,7 @@ class DomainOwnershipTests(unittest.TestCase):
         self.assertEqual("hypersonic", hypersonic.CASE_POLICY.product_id)
         self.assertEqual("hypersonic", hypersonic.RUNTIME_POLICY.product_id)
 
-    def test_legacy_batch_surfaces_delegate_to_canonical_domain_objects(self) -> None:
-        self.assertIs(fmf.read_cases, legacy_read_fmf_cases)
-        self.assertIs(hypersonic.read_cases, legacy_read_hypersonic_cases)
-        self.assertIs(fmf.RUNTIME_POLICY, LEGACY_FMF_RUNTIME_POLICY)
-        self.assertIs(hypersonic.RUNTIME_POLICY, LEGACY_HYPERSONIC_RUNTIME_POLICY)
+    def test_legacy_cli_frontends_delegate_to_canonical_domain_objects(self) -> None:
         self.assertIs(
             fmf.RUNTIME_POLICY,
             LEGACY_FMF_CLI_POLICY.runtime_policy,

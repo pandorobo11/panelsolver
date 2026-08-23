@@ -18,10 +18,10 @@ panelsolver.models   panelsolver.core
           |
     panelsolver.core
 
-fmfsolver / newtsolver compatibility frontends
+fmfsolver / newtsolver command frontends
           |                         |
           +----> panelsolver domains/app/models/core
-          +----> panelsolver._compat (legacy behavior only)
+          +----> panelsolver._compat (artifact signatures only)
 ```
 
 ## Layer ownership
@@ -33,8 +33,8 @@ fmfsolver / newtsolver compatibility frontends
 | `panelsolver.core` | immutable contracts, geometry, frames, shielding, integration, aggregation, signatures, mesh/shielding caches, scheduler |
 | `panelsolver.models` | Sentman and hypersonic case validation, equations, model scalars, model signature payloads |
 | `panelsolver.app` | case-table mechanics, product assembly, environment resolution, CLI/GUI orchestration, artifact and CSV serialization |
-| `panelsolver._compat` | private legacy adapters, result/mesh/shielding translation, D015 scheduler/error translation, and D017/D018 signature reconstruction |
-| `fmfsolver`, `newtsolver` | legacy import/command identities, GUI titles, direct-Python translations, and legacy signature fallback |
+| `panelsolver._compat` | private D017/D018 legacy artifact-signature reconstruction and historical signature inputs |
+| `fmfsolver`, `newtsolver` | legacy command entry points, visible GUI identities, and private legacy signature selection |
 
 Allowed dependency directions are canonical user surfaces to `panelsolver.domains`,
 domains to `app/models/core`, `app -> models -> core`, `app -> core`, and
@@ -46,10 +46,11 @@ code. Product selection and compatibility environment names are resolved in the
 domain/application boundary. Core receives product-neutral configuration values
 and does not inspect process environment variables.
 
-`panelsolver._compat` depends inward on app, models, or core. Core, models, app,
-and the shared GUI never import `_compat`; normal shared runtime therefore does
-not require compatibility implementation. The two thin frontends may import the
-private package for best-effort direct-Python behavior.
+`panelsolver._compat` depends inward on app and core. Core, models, app, and the
+shared GUI never import `_compat`; canonical runtime therefore does not require
+compatibility implementation. The two private GUI frontends import it only for
+legacy artifact recognition. Legacy direct-Python APIs are not part of the
+architecture.
 
 ## Numerical boundary
 

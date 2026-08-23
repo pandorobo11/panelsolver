@@ -11,10 +11,10 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6 import QtWidgets
 
+from fmfsolver._frontend import _legacy_gui_spec as fmf_solver_spec
 from fmfsolver.app import gui_app as fmf_gui_app
-from fmfsolver.gui_spec import solver_spec as fmf_solver_spec
+from newtsolver._frontend import _legacy_gui_spec as newt_solver_spec
 from newtsolver.app import gui_app as newt_gui_app
-from newtsolver.gui_spec import solver_spec as newt_solver_spec
 from panelsolver import gui as canonical_gui
 from panelsolver.app import GuiRunResult, SolverGuiAdapters
 from panelsolver.app.gui_bootstrap import (

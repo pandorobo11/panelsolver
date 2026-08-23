@@ -54,39 +54,35 @@ flow, model, signature, and execution policy objects explicitly.
 
 These modules are not re-exported wholesale from the package root.
 
-## 3. Best-effort legacy direct-Python compatibility
+## 3. Legacy package imports are unsupported
 
-Legacy paths under `fmfsolver` and `newtsolver`, including `run_case`,
-`run_cases`, exporters, mesh/shielding helpers, and model-specific helpers, remain
-importable on a best-effort basis. Exact keyword names, function/class identity,
-defining module, qualname, pickle global, cache object, exception text or chain,
-traceback, and validation timing are not compatibility contracts.
+`fmfsolver.*` and `newtsolver.*` direct-Python APIs have been removed. Those
+package names remain in the distribution only because the six legacy console
+commands use small internal frontends. Their modules, attributes, functions,
+classes, and version names are not public APIs and may change without
+deprecation.
 
-Direct calls that bypass `read_cases()` must supply the fields their adapter
-needs; file-reader defaults are not guaranteed to be inserted. Prefer the case
-file plus CLI interface for durable automation. See
-[Compatibility](compatibility.md) and [ADR 0008](../adr/0008-supported-domain-compatibility.md).
+Migrate integrations to the stable package-root API above. Use the canonical or
+legacy commands for case-table execution and artifact generation. The supported
+case-file and output contracts are documented in [Compatibility](compatibility.md).
+This transition is recorded in
+[ADR 0014](../adr/0014-remove-legacy-direct-python-api.md).
 
 ## 4. Private compatibility implementation
 
-Legacy translation implementation is isolated under `panelsolver._compat`.
-This fourth layer is not a public API and may change without deprecation. The
-former internal `panelsolver.app.legacy_*` module paths have been removed rather
-than keeping app-to-compatibility reverse dependencies; use the product frontend
-paths for best-effort direct calls.
+`panelsolver._compat` retains only internal legacy artifact-signature
+reconstruction and its historical version inputs. This package and the private
+legacy command frontends are not public APIs.
 
-These four layers are intentionally distinct: the package-root API above is the
-stable canonical high-level API; `panelsolver.core`, `panelsolver.models`, and
-`panelsolver.app` are lower-level architecture APIs; `fmfsolver` and
-`newtsolver` direct Python paths are best-effort legacy compatibility; and
-`panelsolver._compat` is private implementation.
+The package-root API above is the stable canonical high-level API;
+`panelsolver.core`, `panelsolver.models`, and `panelsolver.app` are lower-level
+architecture APIs; and the legacy command plumbing is private implementation.
 
 ## Test-policy classification
 
 - Release contracts are covered by command, normal GUI, case-table,
   Summary CSV/VTP, installed-wheel, and supported numerical regression tests.
-- Direct-Python tests under the compatibility suite are best-effort smoke and
-  diagnostic coverage; exact identity, qualname, traceback, and cache details
-  asserted by historical tests do not promote those details to public contract.
+- Installed-wheel tests reject removed legacy direct-Python modules and verify
+  that the legacy packages contain only command and GUI compatibility plumbing.
 - Phase 1 fixtures/goldens and Phase 3 adapter regressions are historical
   evidence and remain read-only inputs to compatibility decisions.

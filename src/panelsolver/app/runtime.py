@@ -302,18 +302,6 @@ def _maybe_log_ray_accel_hint(policy: ProductRuntimePolicy, logfn: LogCallback) 
     _RAY_ACCEL_HINTED_PRODUCTS.add(policy.product_id)
 
 
-def _run_product_case_without_orchestration(
-    row: CaseRow,
-    policy: ProductRuntimePolicy,
-    *,
-    logfn: LogCallback,
-    registry: ModelRegistry | None = None,
-) -> ProductCaseRunResult:
-    """Run one direct-Python case without batch-owned log messages."""
-    prepared = prepare_product_cases((row,), policy, registry=registry)
-    return _run_prepared_product_case(prepared[0], logfn)
-
-
 def run_product_cases(
     rows: Sequence[CaseRow],
     policy: ProductRuntimePolicy,

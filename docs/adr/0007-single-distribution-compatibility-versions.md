@@ -5,12 +5,15 @@
 
 The Summary CSV and VTP version-metadata portion of this decision is superseded
 by [ADR 0012](0012-runtime-artifact-distribution-version.md). Its packaging,
-release-tag, legacy-signature, and best-effort Python compatibility decisions
-remain in force.
+release-tag, and legacy-signature decisions remain in force.
 
 The distribution name and corresponding metadata lookup/uninstall spelling are
 superseded by [ADR 0013](0013-canonical-project-identity.md). The historical
 `panel-solvers` wording below records the decision as accepted at the time.
+
+The best-effort direct-Python and legacy Python version-name portions are
+superseded by [ADR 0014](0014-remove-legacy-direct-python-api.md). The historical
+versions remain private legacy-signature inputs.
 
 ## Context
 

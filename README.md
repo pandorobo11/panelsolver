@@ -101,9 +101,9 @@ and Hypersonic `newtsolver 1.0.3` remain documented migration baselines and
 private legacy-compatibility inputs, not current domain versions. Supported
 commands, normal GUI use, documented case files,
 and documented Summary CSV/VTP semantics are compatibility surfaces. The small
-`panelsolver` package-root Python API is stable; lower-level architecture APIs,
-legacy direct-Python compatibility, and private implementation have distinct
-support levels. See the
+`panelsolver` package-root Python API is stable. Direct-Python APIs under
+`fmfsolver.*` and `newtsolver.*` are unsupported and have been removed; those
+package names remain only as private command frontends. See the
 [compatibility policy](docs/reference/compatibility.md) and
 [CHANGELOG.md](CHANGELOG.md).
 

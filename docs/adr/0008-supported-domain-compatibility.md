@@ -11,6 +11,10 @@ The legacy BIFF `.xls` case-file portion of this decision is superseded by
 [ADR 0010](0010-remove-legacy-xls-input.md). Its CSV, XLSX, XLSM, VTP,
 numerical, and other supported-domain decisions remain in force.
 
+The best-effort legacy direct-Python portion is superseded by
+[ADR 0014](0014-remove-legacy-direct-python-api.md). The command, GUI, file,
+artifact, and numerical supported-domain decisions remain in force.
+
 ## Context
 
 Phase 1 correctly recorded every observable difference between the pinned FMF
