@@ -12,6 +12,7 @@ import importlib.util
 import inspect
 import json
 import os
+import pkgutil
 import shutil
 import subprocess
 import sys
@@ -20,7 +21,6 @@ import tomllib
 import zipfile
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 import pyvista as pv
 
@@ -40,62 +40,6 @@ EXPECTED_ENTRY_POINTS = {
     **EXPECTED_COMPATIBILITY_ENTRY_POINTS,
 }
 
-EXPECTED_PANEL_CORE_ALL = [
-    "ATTITUDE_INPUT_VALUES",
-    "WINDWARD_EQUATION_VALUES",
-    "LEEWARD_EQUATION_VALUES",
-    "_resolve_attitude_mode",
-    "normalize_windward_equation",
-    "normalize_leeward_equation",
-    "modified_newtonian_cp_max",
-    "_oblique_theta_from_beta",
-    "_tangent_wedge_detach_limit",
-    "_weak_oblique_shock_beta",
-    "tangent_wedge_pressure_coefficient",
-    "_tangent_cone_detach_limit",
-    "tangent_cone_pressure_coefficient",
-    "_prandtl_meyer_nu",
-    "_inverse_prandtl_meyer",
-    "resolve_attitude_to_vhat",
-    "panel_force_density",
-    "stl_to_body",
-    "rot_y",
-]
-EXPECTED_PRESSURE_MODELS_ALL = [
-    "modified_newtonian_cp_max",
-    "_prandtl_meyer_nu",
-    "_inverse_prandtl_meyer",
-    "prandtl_meyer_pressure_coefficient",
-    "_oblique_theta_from_beta",
-    "_tangent_wedge_detach_limit",
-    "_weak_oblique_shock_beta",
-    "tangent_wedge_pressure_coefficient",
-    "_tangent_cone_detach_limit",
-    "tangent_cone_pressure_coefficient",
-]
-EXPECTED_EXPORTER_SIGNATURES = {
-    "export_vtp": (
-        "(out_path: 'str', vertices: 'np.ndarray', faces: 'np.ndarray', "
-        "cell_data: 'dict', field_data: 'dict | None' = None)"
-    ),
-}
-EXPECTED_DIRECT_COMPONENT_KEYS = [
-    "scope",
-    "component_id",
-    "component_stl_path",
-    "CA",
-    "CY",
-    "CN",
-    "Cl",
-    "Cm",
-    "Cn",
-    "CD",
-    "CL",
-    "faces",
-    "shielded_faces",
-    "vtp_path",
-]
-MESH_WARNING = "[WARN] Mesh is not watertight (trimesh). Continuing anyway."
 EXPECTED_CLI_DESCRIPTIONS = {
     "fmfsolver": "Run FMF solver from CSV/XLSX/XLSM input without GUI.",
     "newtsolver": "Run newtsolver from CSV/XLSX/XLSM input without GUI.",
@@ -178,9 +122,10 @@ def _smoke_high_level_api(staging: Path, inputs: Path) -> None:
 def _smoke_canonical_gui_entrypoint() -> None:
     from PySide6 import QtCore, QtWidgets
 
-    from fmfsolver.gui_spec import solver_spec as legacy_fmf_spec
-    from newtsolver.gui_spec import solver_spec as legacy_hypersonic_spec
+    from fmfsolver._frontend import _legacy_gui_spec as legacy_fmf_spec
+    from newtsolver._frontend import _legacy_gui_spec as legacy_hypersonic_spec
     from panelsolver import gui as canonical_gui
+    from panelsolver.app import gui_bootstrap
     from panelsolver.app.gui_bootstrap import _application_icon, create_main_window
     from panelsolver.app.main_window import MainWindow
 
@@ -274,6 +219,39 @@ def _smoke_canonical_gui_entrypoint() -> None:
     if tuple(legacy_constructed) != legacy_expected:
         raise RuntimeError(f"legacy GUI identity changed: {legacy_constructed!r}")
 
+    legacy_commands = {
+        "fmfsolver": legacy_expected[0],
+        "fmfsolver-gui": legacy_expected[0],
+        "newtsolver": legacy_expected[1],
+        "newtsolver-gui": legacy_expected[1],
+    }
+    legacy_dispatched: list[tuple[str, str, str]] = []
+
+    def capture_legacy(spec) -> int:
+        legacy_dispatched.append((spec.product_id, spec.model_id, spec.window_title))
+        return 0
+
+    entry_points = {
+        item.name: item
+        for item in importlib.metadata.distribution("panelsolver").entry_points
+        if item.group == "console_scripts"
+    }
+    original_run_gui = gui_bootstrap.run_gui
+    gui_bootstrap.run_gui = capture_legacy
+    try:
+        for command in legacy_commands:
+            try:
+                entry_points[command].load()()
+            except SystemExit as exc:
+                if exc.code != 0:
+                    raise RuntimeError(f"legacy GUI command failed: {command}") from exc
+            else:
+                raise RuntimeError(f"legacy GUI command did not exit: {command}")
+    finally:
+        gui_bootstrap.run_gui = original_run_gui
+    if legacy_dispatched != list(legacy_commands.values()):
+        raise RuntimeError(f"legacy GUI dispatch changed: {legacy_dispatched!r}")
+
 
 def _smoke_subprocess_environment(staging: Path) -> dict[str, str]:
     environment = {
@@ -299,16 +277,6 @@ def _smoke_subprocess_environment(staging: Path) -> dict[str, str]:
         }
     )
     return environment
-
-
-def _expected_backend_hint(*, embree: bool) -> str:
-    if embree:
-        return "[INFO] Ray backend: Embree (ray_pyembree)."
-    return (
-        "[INFO] Ray backend: rtree (ray_triangle). Optional acceleration is "
-        "available: uv sync --extra rayaccel (or pip install "
-        '"panelsolver[rayaccel]").'
-    )
 
 
 def _command_path(name: str) -> Path:
@@ -374,243 +342,6 @@ def _validate_cli_help(product: str, help_text: str) -> None:
     if missing:
         raise RuntimeError(f"{product} help is missing Phase 8 contract: {missing}")
 
-
-def _smoke_direct_exporters(staging: Path) -> None:
-    vertices = np.array(
-        [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
-        dtype=np.float32,
-    )
-    faces = np.array([[0, 1, 2]], dtype=np.int32)
-    cell_data = {"Cp_n": np.array([1.25], dtype=np.float32)}
-    field_data = {"case_id": "installed-direct"}
-    for product in ("fmfsolver", "newtsolver"):
-        module_name = f"{product}.io.exporters"
-        module = importlib.import_module(module_name)
-        io_module = importlib.import_module(f"{product}.io")
-        if hasattr(module, "export_npz") or hasattr(io_module, "export_npz"):
-            raise RuntimeError(f"{product} still exports removed NPZ API")
-        for name, expected_signature in EXPECTED_EXPORTER_SIGNATURES.items():
-            function = getattr(module, name)
-            if str(inspect.signature(function)) != expected_signature:
-                raise RuntimeError(f"{module_name}.{name} signature changed")
-            if function.__name__ != name or function.__module__ != module_name:
-                raise RuntimeError(f"{module_name}.{name} identity changed")
-
-        output = staging / "direct-exporters" / product
-        vtp_path = output / "direct.vtp"
-        result = module.export_vtp(
-            out_path=vtp_path,
-            vertices=vertices,
-            faces=faces,
-            cell_data=cell_data,
-            field_data=field_data,
-        )
-        if result is not None:
-            raise RuntimeError(f"{module_name}.export_vtp must return None")
-        poly = pv.read(vtp_path)
-        if list(poly.cell_data) != list(cell_data):
-            raise RuntimeError(f"{module_name}.export_vtp cell names changed")
-        if list(poly.field_data) != list(field_data):
-            raise RuntimeError(f"{module_name}.export_vtp metadata names changed")
-        if not np.array_equal(poly.cell_data["Cp_n"], cell_data["Cp_n"]):
-            raise RuntimeError(f"{module_name}.export_vtp cell values changed")
-        if poly.cell_data["Cp_n"].dtype != cell_data["Cp_n"].dtype:
-            raise RuntimeError(f"{module_name}.export_vtp cell dtype changed")
-        expected_case_id = np.asarray([field_data["case_id"]])
-        if not np.array_equal(poly.field_data["case_id"], expected_case_id):
-            raise RuntimeError(f"{module_name}.export_vtp metadata changed")
-
-
-def _smoke_direct_solver_results(staging: Path, inputs: Path) -> None:
-    products = (
-        ("fmfsolver", "fmfsolver_cases.csv", 3),
-        ("newtsolver", "newtsolver_cases.csv", 6),
-    )
-    runtime = importlib.import_module("panelsolver.app.runtime")
-    for product, filename, multi_index in products:
-        runtime_product_id = {
-            "fmfsolver": "fmf",
-            "newtsolver": "hypersonic",
-        }[product]
-        reader = importlib.import_module(f"{product}.io.io_cases").read_cases
-        solver = importlib.import_module(f"{product}.core.solver")
-        source = reader(inputs / filename)
-        row = source.iloc[multi_index].to_dict()
-        output = staging / "direct-solvers" / product
-        row.update(out_dir=str(output), save_vtp_on=0)
-
-        runtime._RAY_ACCEL_HINTED_PRODUCTS.discard(runtime_product_id)
-        direct_logs: list[str] = []
-        result = solver.run_case(row, direct_logs.append)
-        if direct_logs not in ([], [MESH_WARNING]):
-            raise RuntimeError(
-                f"{product} direct-case logs contain unexpected output: {direct_logs!r}"
-            )
-        if runtime_product_id in runtime._RAY_ACCEL_HINTED_PRODUCTS:
-            raise RuntimeError(f"{product} direct case consumed backend hint")
-
-        owned = LookupError(f"{product} installed hint callback")
-
-        def fail_hint(_message: str, error: BaseException = owned) -> None:
-            raise error
-
-        try:
-            solver.run_cases(source.iloc[0:0], fail_hint)
-        except BaseException as exc:
-            if exc is not owned:
-                raise RuntimeError(
-                    f"{product} empty hint callback identity changed"
-                ) from exc
-        else:
-            raise RuntimeError(f"{product} empty hint callback error was ignored")
-        if runtime_product_id in runtime._RAY_ACCEL_HINTED_PRODUCTS:
-            raise RuntimeError(f"{product} failed hint callback consumed state")
-
-        empty_logs: list[str] = []
-        empty = solver.run_cases(source.iloc[0:0], empty_logs.append)
-        if not empty.empty or tuple(empty.shape) != (0, 0):
-            raise RuntimeError(f"{product} empty direct batch result changed")
-        expected_hint = _expected_backend_hint(
-            embree=bool(runtime.trimesh_ray.has_embree),
-        )
-        if empty_logs != [expected_hint]:
-            raise RuntimeError(f"{product} empty backend hint changed: {empty_logs!r}")
-        if runtime_product_id not in runtime._RAY_ACCEL_HINTED_PRODUCTS:
-            raise RuntimeError(f"{product} successful backend hint was not recorded")
-        hot_logs: list[str] = []
-        solver.run_cases(source.iloc[0:0], hot_logs.append)
-        if hot_logs:
-            raise RuntimeError(f"{product} repeated empty hint: {hot_logs!r}")
-
-        components = result["component_rows"]
-        expected_sources = row["stl_path"].split(";")
-        if any(list(item) != EXPECTED_DIRECT_COMPONENT_KEYS for item in components):
-            raise RuntimeError(f"{product} component row schema changed")
-        expected_types = (
-            str,
-            int,
-            str,
-            float,
-            float,
-            float,
-            float,
-            float,
-            float,
-            float,
-            float,
-            int,
-            int,
-            str,
-        )
-        if any(
-            tuple(type(value) for value in item.values()) != expected_types
-            for item in components
-        ):
-            raise RuntimeError(f"{product} component row value types changed")
-        if result["component_id"] != "" or type(result["component_id"]) is not str:
-            raise RuntimeError(f"{product} total component_id type/blank changed")
-        if (
-            result["component_stl_path"] != ""
-            or type(result["component_stl_path"]) is not str
-        ):
-            raise RuntimeError(f"{product} total component_stl_path changed")
-        if result["vtp_path"] != "" or "npz_path" in result:
-            raise RuntimeError(f"{product} disabled total artifact paths changed")
-        if [item["component_id"] for item in components] != [0, 1] or not all(
-            type(item["component_id"]) is int for item in components
-        ):
-            raise RuntimeError(f"{product} component IDs changed")
-        if [item["component_stl_path"] for item in components] != expected_sources:
-            raise RuntimeError(f"{product} component STL order changed")
-        if any(item["vtp_path"] != "" for item in components):
-            raise RuntimeError(f"{product} component artifact paths changed")
-
-
-def _smoke_direct_solver_errors(staging: Path, inputs: Path) -> None:
-    products = (
-        ("fmfsolver", "fmfsolver_cases.csv"),
-        ("newtsolver", "newtsolver_cases.csv"),
-    )
-    for product, filename in products:
-        reader = importlib.import_module(f"{product}.io.io_cases").read_cases
-        solver = importlib.import_module(f"{product}.core.solver")
-        source = reader(inputs / filename)
-        cancel_calls = 0
-
-        def cancel() -> bool:
-            nonlocal cancel_calls
-            cancel_calls += 1
-            return True
-
-        try:
-            solver.run_cases(
-                source.iloc[0:0],
-                lambda _message: None,
-                cancel_cb=cancel,
-            )
-        except BaseException as exc:
-            if (
-                type(exc) is not RuntimeError
-                or str(exc) != "Canceled by user."
-                or exc.__cause__ is not None
-                or exc.__context__ is not None
-            ):
-                raise RuntimeError(f"{product} empty cancellation changed") from exc
-        else:
-            raise RuntimeError(f"{product} empty cancellation was ignored")
-        if cancel_calls != 1:
-            raise RuntimeError(f"{product} empty cancellation callback count changed")
-
-        missing = staging / "direct-errors" / product / "missing.stl"
-        try:
-            missing.resolve().open("rb")
-        except FileNotFoundError as exc:
-            expected_missing_message = str(exc)
-        else:
-            raise RuntimeError("installed-wheel missing-STL fixture exists")
-        row = source.iloc[0].to_dict()
-        row.update(
-            stl_path=str(missing),
-            out_dir=str(staging / "direct-errors" / product / "serial"),
-            save_vtp_on=1,
-        )
-        try:
-            solver.run_case(row, lambda _message: None)
-        except BaseException as exc:
-            if (
-                type(exc) is not FileNotFoundError
-                or str(exc) != expected_missing_message
-                or exc.__cause__ is not None
-                or exc.__context__ is not None
-            ):
-                raise RuntimeError(f"{product} serial missing-STL error changed") from exc
-        else:
-            raise RuntimeError(f"{product} serial missing STL succeeded")
-
-        parallel = source.iloc[[0, 0]].copy().reset_index(drop=True)
-        parallel["case_id"] = [f"{product}-missing-0", f"{product}-missing-1"]
-        parallel["stl_path"] = str(missing)
-        parallel["out_dir"] = [
-            str(staging / "direct-errors" / product / "parallel-0"),
-            str(staging / "direct-errors" / product / "parallel-1"),
-        ]
-        parallel["save_vtp_on"] = 1
-        try:
-            solver.run_cases(parallel, lambda _message: None, workers=2)
-        except BaseException as exc:
-            expected_first_line = f"[WorkerError] {expected_missing_message}"
-            if (
-                type(exc) is not RuntimeError
-                or str(exc).splitlines()[0] != expected_first_line
-                or "FileNotFoundError:" not in str(exc)
-                or exc.__cause__ is not None
-                or exc.__context__ is not None
-            ):
-                raise RuntimeError(
-                    f"{product} parallel missing-STL error changed"
-                ) from exc
-        else:
-            raise RuntimeError(f"{product} parallel missing STL succeeded")
 
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -786,35 +517,43 @@ def main(argv: list[str] | None = None) -> int:
             encoding="utf-8"
         )
     )
-    for product, version in (("fmfsolver", "1.3.8"), ("newtsolver", "1.0.3")):
+    expected_frontend_modules = {
+        "fmfsolver": {
+            "fmfsolver._frontend",
+            "fmfsolver.app",
+            "fmfsolver.app.cli_app",
+            "fmfsolver.app.gui_app",
+        },
+        "newtsolver": {
+            "newtsolver._frontend",
+            "newtsolver.app",
+            "newtsolver.app.cli_app",
+            "newtsolver.app.gui_app",
+        },
+    }
+    for product in ("fmfsolver", "newtsolver"):
         package = importlib.import_module(product)
-        if package.__all__ != []:
-            raise RuntimeError(f"{product} root __all__ changed: {package.__all__!r}")
-        if package.__version__ != version:
-            raise RuntimeError(f"{product} compatibility version changed")
-        for module_name in contract_data[product]["module_paths"]:
-            importlib.import_module(module_name)
+        if hasattr(package, "__all__") or hasattr(package, "__version__"):
+            raise RuntimeError(f"{product} still advertises a direct-Python API")
+        modules = {
+            module.name
+            for module in pkgutil.walk_packages(
+                package.__path__,
+                prefix=f"{product}.",
+            )
+        }
+        if modules != expected_frontend_modules[product]:
+            raise RuntimeError(f"unexpected {product} module inventory: {modules!r}")
 
-    panel_core = importlib.import_module("newtsolver.core.panel_core")
-    pressure_models = importlib.import_module("newtsolver.core.pressure_models")
-    if panel_core.__all__ != EXPECTED_PANEL_CORE_ALL:
-        raise RuntimeError("newtsolver.core.panel_core.__all__ changed")
-    if pressure_models.__all__ != EXPECTED_PRESSURE_MODELS_ALL:
-        raise RuntimeError("newtsolver.core.pressure_models.__all__ changed")
     neutral_core = importlib.import_module("panelsolver.core")
     neutral_app = importlib.import_module("panelsolver.app")
-    for name in (
-        "legacy_adapter",
-        "legacy_mesh",
-        "legacy_results",
-        "legacy_scheduler",
-        "legacy_shielding",
-        "legacy_signatures",
-    ):
+    for name in ("legacy_adapter", "legacy_mesh", "legacy_results", "legacy_scheduler", "legacy_shielding"):
         if importlib.util.find_spec(f"panelsolver.app.{name}") is not None:
             raise RuntimeError(f"compatibility implementation remains in app: {name}")
-        if importlib.util.find_spec(f"panelsolver._compat.{name}") is None:
-            raise RuntimeError(f"installed wheel is missing private compat module: {name}")
+        if importlib.util.find_spec(f"panelsolver._compat.{name}") is not None:
+            raise RuntimeError(f"removed private compat module remains: {name}")
+    if importlib.util.find_spec("panelsolver._compat.legacy_signatures") is None:
+        raise RuntimeError("legacy artifact signature fallback is missing")
     for module, names in (
         (neutral_core, ("NpzProjection", "project_npz_artifact")),
         (neutral_app, ("write_npz_projection",)),
@@ -841,7 +580,6 @@ def main(argv: list[str] | None = None) -> int:
         subprocess_environment = _smoke_subprocess_environment(staging)
         os.environ.clear()
         os.environ.update(subprocess_environment)
-        _smoke_direct_exporters(staging)
         inputs = staging / "inputs"
         shutil.copytree(
             repository / "tests" / "fixtures" / "phase1" / "inputs",
@@ -853,8 +591,6 @@ def main(argv: list[str] | None = None) -> int:
         _smoke_packaged_documentation()
         _smoke_packaged_examples(staging)
         _smoke_canonical_gui_entrypoint()
-        _smoke_direct_solver_results(staging, inputs)
-        _smoke_direct_solver_errors(staging, inputs)
         if dist_dir is not None:
             release_examples = _extract_release_archives(repository, dist_dir, staging)
             _smoke_release_examples(release_examples, staging, subprocess_environment)

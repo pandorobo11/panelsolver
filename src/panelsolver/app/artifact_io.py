@@ -31,35 +31,6 @@ def write_vtp_projection(path: str | Path, projection: VtpProjection) -> Path:
     return output
 
 
-def write_legacy_vtp(
-    path: str | Path,
-    vertices: np.ndarray,
-    faces: np.ndarray,
-    cell_data: dict,
-    field_data: dict | None = None,
-) -> Path:
-    """Serialize the frozen direct-array VTP call through the shared writer."""
-    face_array = np.asarray(faces, dtype=np.int64)
-    vtk_faces = np.hstack(
-        (np.full((face_array.shape[0], 1), 3, dtype=np.int64), face_array)
-    ).ravel()
-    poly = pv.PolyData(np.asarray(vertices, dtype=float), vtk_faces)
-    for name, values in cell_data.items():
-        poly.cell_data[name] = _vtk_compatible_values(
-            values,
-            field=f"cell_data.{name}",
-        )
-    for name, value in (field_data or {}).items():
-        poly.field_data[name] = _vtk_compatible_values(
-            np.asarray([value]),
-            field=f"field_data.{name}",
-        )
-    output = Path(path)
-    output.parent.mkdir(parents=True, exist_ok=True)
-    poly.save(str(output), binary=True)
-    return output
-
-
 def _vtk_compatible_values(values: object, *, field: str) -> np.ndarray:
     """Prepare string values for PyVista's VTK bridge without changing them.
 
@@ -81,7 +52,4 @@ def _vtk_compatible_values(values: object, *, field: str) -> np.ndarray:
         ) from exc
 
 
-__all__ = (
-    "write_legacy_vtp",
-    "write_vtp_projection",
-)
+__all__ = ("write_vtp_projection",)

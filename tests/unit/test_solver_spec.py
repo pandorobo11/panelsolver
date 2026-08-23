@@ -1,16 +1,16 @@
 import unittest
 from pathlib import Path
 
-from fmfsolver.gui_spec import format_case as format_fmf_case
-from fmfsolver.gui_spec import solver_spec as fmf_solver_spec
-from newtsolver.gui_spec import format_case as format_newt_case
-from newtsolver.gui_spec import solver_spec as newt_solver_spec
+from fmfsolver._frontend import _legacy_gui_spec as fmf_solver_spec
+from newtsolver._frontend import _legacy_gui_spec as newt_solver_spec
 from panelsolver.app import (
     GuiRunRequest,
     GuiRunResult,
     SolverGuiAdapters,
     SolverSpec,
 )
+from panelsolver.domains.fmf import format_case as format_fmf_case
+from panelsolver.domains.hypersonic import format_case as format_newt_case
 
 
 def _format(row):

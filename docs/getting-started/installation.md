@@ -57,9 +57,9 @@ python -c 'import importlib.metadata as m; print(m.version("panelsolver"))'
 
 The distribution version is currently `0.1.0` and is the `solver_version`
 recorded by newly generated FMF and Hypersonic Summary CSV/VTP artifacts. The
-values exposed by best-effort legacy `fmfsolver.__version__` (`1.3.8`) and
-`newtsolver.__version__` (`1.0.3`) identify migration baselines for direct-Python
-compatibility; they are not current domain versions.
+historical `fmfsolver 1.3.8` and `newtsolver 1.0.3` values are private legacy
+artifact-signature inputs; they are not importable package versions or current
+domain versions.
 
 ## Legacy-distribution coexistence
 

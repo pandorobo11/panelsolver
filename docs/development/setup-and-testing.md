@@ -75,6 +75,6 @@ than file bytes. Per-quantity tolerances and provenance live in
 `pyproject.toml` owns the single distribution version, currently `0.1.0`.
 Summary CSV and VTP retrieve that installed `panelsolver` version from
 distribution metadata for both domains. FMF `1.3.8` and newtsolver `1.0.3` are
-historical migration baselines retained for legacy signature and best-effort
-direct-Python compatibility. Release and rollback procedures are in
+historical migration baselines retained only for legacy signature
+reconstruction. Release and rollback procedures are in
 [Release and rollback](release-and-rollback.md).

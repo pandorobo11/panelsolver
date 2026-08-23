@@ -1,8 +1,8 @@
 # Compatibility tests
 
-Tests for Python APIs, commands, CSV schemas, and VTP metadata belong
-here. They are added as each compatibility surface migrates. Phase 1 records the
-unimplemented source contracts in `tests/fixtures/phase1/golden/*/contracts.json`
-and `docs/history/migration/phase1/BEHAVIORAL_INVENTORY.md`; compatibility tests should consume
-those records as frontends are introduced rather than re-reading mutable legacy
-HEADs.
+Tests for the canonical Python API, commands, CSV schemas, VTP metadata, legacy
+GUI identities, and legacy artifact fallback belong here. Legacy direct-Python
+APIs are intentionally absent. Phase 1 records historical source behavior in
+`tests/fixtures/phase1/golden/*/contracts.json` and
+`docs/history/migration/phase1/BEHAVIORAL_INVENTORY.md`; those records remain
+read-only evidence rather than a current module-inventory contract.

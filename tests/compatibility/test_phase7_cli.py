@@ -8,22 +8,29 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from fmfsolver.app.cli_app import CLI_POLICY as FMF_CLI_POLICY
-from fmfsolver.app.cli_app import build_parser as build_fmf_parser
+from fmfsolver.app.cli_app import _CLI_POLICY as FMF_CLI_POLICY
 from fmfsolver.app.cli_app import main as fmf_main
-from fmfsolver.io.io_cases import read_cases as read_fmf_cases
-from newtsolver.app.cli_app import CLI_POLICY as NEWT_CLI_POLICY
-from newtsolver.app.cli_app import build_parser as build_newt_parser
+from newtsolver.app.cli_app import _CLI_POLICY as NEWT_CLI_POLICY
 from newtsolver.app.cli_app import main as newt_main
-from newtsolver.io.io_cases import read_cases as read_newt_cases
+from panelsolver.app.cli import build_parser as build_product_parser
 from panelsolver.app.cli import parse_case_ids
 from panelsolver.app.csv_writer import CSV_ENCODING
 from panelsolver.app.runtime import DEFAULT_CHECKPOINT_CASES
 from panelsolver.cli import build_parser as build_canonical_parser
 from panelsolver.cli import main as canonical_main
+from panelsolver.domains.fmf import read_cases as read_fmf_cases
+from panelsolver.domains.hypersonic import read_cases as read_newt_cases
 from tests.current_case_fixtures import read_current_cases
 
 INPUTS = Path(__file__).parents[1] / "fixtures" / "phase1" / "inputs"
+
+
+def build_fmf_parser():
+    return build_product_parser(FMF_CLI_POLICY)
+
+
+def build_newt_parser():
+    return build_product_parser(NEWT_CLI_POLICY)
 
 
 class Phase7CliTests(unittest.TestCase):

@@ -9,10 +9,6 @@ from pathlib import Path
 import numpy as np
 
 import panelsolver
-from fmfsolver.case_adapter import adapt_row as adapt_fmf_row
-from fmfsolver.io.io_cases import read_cases as read_fmf_cases
-from newtsolver.case_adapter import adapt_row as adapt_hypersonic_row
-from newtsolver.io.io_cases import read_cases as read_hypersonic_cases
 from panelsolver import (
     FMFCase,
     HypersonicCase,
@@ -22,6 +18,10 @@ from panelsolver import (
     solve_hypersonic,
 )
 from panelsolver.core import execute_case
+from panelsolver.domains.fmf import adapt_row as adapt_fmf_row
+from panelsolver.domains.fmf import read_cases as read_fmf_cases
+from panelsolver.domains.hypersonic import adapt_row as adapt_hypersonic_row
+from panelsolver.domains.hypersonic import read_cases as read_hypersonic_cases
 from tests.current_case_fixtures import read_current_cases
 
 INPUTS = Path(__file__).parents[1] / "fixtures" / "phase1" / "inputs"

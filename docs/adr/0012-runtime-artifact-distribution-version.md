@@ -8,6 +8,10 @@ The distribution-name spelling in this record is superseded by
 [ADR 0013](0013-canonical-project-identity.md). The `solver_version` provenance,
 schema, value, and case-signature decisions remain in force.
 
+The best-effort direct-Python version exposure is superseded by
+[ADR 0014](0014-remove-legacy-direct-python-api.md). The historical values remain
+private inputs to legacy signature reconstruction.
+
 ## Context
 
 During integration of the legacy products, the `fmfsolver` `1.3.8` and

@@ -57,5 +57,5 @@ angles before panel calculation. The exact signs and transform are in
 Accepted non-reserved unknown input columns are preserved after the canonical
 input columns in the Summary CSV. The retired `save_npz_on` field is an explicit
 exception: it is rejected in CSV, XLSX, and XLSM input and must be removed
-from old case files. A direct Python call may not insert reader defaults; the
-documented file reader is the supported case-file interface.
+from old case files. The documented case file plus CLI/GUI path is the supported
+file interface.

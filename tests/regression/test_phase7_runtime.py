@@ -12,14 +12,18 @@ from pathlib import Path
 
 import pyvista as pv
 
-from fmfsolver.case_adapter import build_signatures as build_fmf_signatures
-from fmfsolver.io.io_cases import read_cases as read_fmf_cases
-from fmfsolver.runtime import RUNTIME_POLICY as FMF_POLICY
-from newtsolver.case_adapter import build_signatures as build_newt_signatures
-from newtsolver.io.io_cases import read_cases as read_newt_cases
-from newtsolver.runtime import RUNTIME_POLICY as NEWT_POLICY
+from fmfsolver._frontend import (
+    _build_artifact_signatures as build_fmf_signatures,
+)
+from newtsolver._frontend import (
+    _build_artifact_signatures as build_newt_signatures,
+)
 from panelsolver.app import run_and_write_product_cases
 from panelsolver.app.csv_writer import CSV_ENCODING
+from panelsolver.domains.fmf import RUNTIME_POLICY as FMF_POLICY
+from panelsolver.domains.fmf import read_cases as read_fmf_cases
+from panelsolver.domains.hypersonic import RUNTIME_POLICY as NEWT_POLICY
+from panelsolver.domains.hypersonic import read_cases as read_newt_cases
 from tests.current_case_fixtures import read_current_cases
 
 REPOSITORY_ROOT = Path(__file__).parents[2]

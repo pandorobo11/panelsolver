@@ -62,6 +62,7 @@ nav:
           - ADR 0011: adr/0011-canonical-domain-naming.md
           - ADR 0012: adr/0012-runtime-artifact-distribution-version.md
           - ADR 0013: adr/0013-canonical-project-identity.md
+          - ADR 0014: adr/0014-remove-legacy-direct-python-api.md
       - Migration:
           - Plan: history/migration/MIGRATION_PLAN.md
           - Sources: history/migration/MIGRATION_SOURCES.md
