@@ -26,6 +26,14 @@ order. The scheduler groups reusable shielding work as an optimization, but
 geometry, backend, flow direction, algorithm, and model identities remain part
 of cache safety.
 
+Shielding locality remains the first scheduling priority so workers avoid
+repeating expensive ray tracing. Within that constraint, Hypersonic runs use
+secondary hints to keep reusable tangent-cone and tangent-wedge `(Mach, gamma)`
+work in the same worker process when practical; tangent-cone reuse is preferred
+because its table construction is more expensive. These hints can further
+change execution order, but checkpoint and final output order remains the input
+order.
+
 Both products forward worker logs and retain successful cases completed before a
 later case in the same chunk fails. `--checkpoint-every-cases N` controls
 complete Summary CSV checkpoint snapshots; the default is `2000` and `0`

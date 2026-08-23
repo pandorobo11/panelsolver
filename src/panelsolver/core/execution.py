@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Hashable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol, runtime_checkable
@@ -53,6 +53,46 @@ class ExecutablePanelLoadModel(PanelLoadModel, Protocol):
 
     def signature_payload(self, case: ModelCasePayload) -> Mapping[str, object]:
         """Return the normalized model-case portion of ADR 0005."""
+        ...
+
+
+@dataclass(frozen=True, slots=True)
+class SchedulingAffinityHint:
+    """Performance-only identity for likely process-local cache reuse.
+
+    This hint never participates in a numerical cache key, case signature, or
+    correctness decision.  ``priority`` only orders hits for the same class of
+    primary scheduler work; larger values represent more valuable reuse.
+    """
+
+    identity: Hashable
+    priority: int = 1
+
+    def __post_init__(self) -> None:
+        try:
+            hash(self.identity)
+        except TypeError as exc:
+            raise TypeError("scheduling affinity identity must be hashable") from exc
+        if isinstance(self.priority, (bool, np.bool_)) or not isinstance(
+            self.priority,
+            (int, np.integer),
+        ):
+            raise TypeError("scheduling affinity priority must be an integer")
+        priority = int(self.priority)
+        if priority < 1:
+            raise ValueError("scheduling affinity priority must be >= 1")
+        object.__setattr__(self, "priority", priority)
+
+
+@runtime_checkable
+class SchedulingAffinityProvider(Protocol):
+    """Optional model-owned source of scheduler performance hints."""
+
+    def scheduling_affinities(
+        self,
+        case: ModelCasePayload,
+    ) -> Sequence[SchedulingAffinityHint]:
+        """Return cache-reuse hints without changing numerical identity."""
         ...
 
 
@@ -135,6 +175,33 @@ class CaseExecutionRequest:
         object.__setattr__(self, "scale_m_per_unit", scale)
         object.__setattr__(self, "velocity_hat_stl", velocity)
         object.__setattr__(self, "mesh_validation_policy", validation_policy)
+
+
+def case_execution_affinity_hints(
+    requests: Sequence[CaseExecutionRequest],
+) -> tuple[tuple[SchedulingAffinityHint, ...], ...]:
+    """Collect optional model-owned hints for model-neutral scheduling."""
+    collected: list[tuple[SchedulingAffinityHint, ...]] = []
+    for request in requests:
+        if not isinstance(request, CaseExecutionRequest):
+            raise TypeError("requests must contain only CaseExecutionRequest instances")
+        if not isinstance(request.model, SchedulingAffinityProvider):
+            collected.append(())
+            continue
+        provided = request.model.scheduling_affinities(request.model_case)
+        try:
+            hints = tuple(provided)
+        except TypeError as exc:
+            raise ExecutionModelError(
+                "model scheduling_affinities() must return an iterable of hints"
+            ) from exc
+        if not all(isinstance(hint, SchedulingAffinityHint) for hint in hints):
+            raise ExecutionModelError(
+                "model scheduling_affinities() must return SchedulingAffinityHint "
+                "instances"
+            )
+        collected.append(hints)
+    return tuple(collected)
 
 
 @dataclass(frozen=True, slots=True, eq=False)
@@ -314,6 +381,9 @@ __all__ = (
     "ExecutablePanelLoadModel",
     "ExecutionError",
     "ExecutionModelError",
+    "SchedulingAffinityHint",
+    "SchedulingAffinityProvider",
+    "case_execution_affinity_hints",
     "execute_case",
     "prepare_case_signature",
 )

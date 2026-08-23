@@ -7,7 +7,7 @@ import sys
 import time
 import traceback
 from collections import OrderedDict, deque
-from collections.abc import Callable, Hashable, Iterator, Mapping, Sequence
+from collections.abc import Callable, Hashable, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from enum import Enum
 from multiprocessing.connection import wait as wait_connections
@@ -15,12 +15,19 @@ from multiprocessing.connection import wait as wait_connections
 import numpy as np
 
 from .errors import PanelSolverError
-from .execution import CaseExecutionRequest, CaseExecutionResult, execute_case
+from .execution import (
+    CaseExecutionRequest,
+    CaseExecutionResult,
+    SchedulingAffinityHint,
+    case_execution_affinity_hints,
+    execute_case,
+)
 
 _DEFAULT_CHUNK_CASES = 8
 _POLL_SECONDS = 0.1
 _CLEANUP_SECONDS = 2.0
 _STARTUP_SECONDS = 30.0
+_MAX_WORKER_AFFINITIES = 256
 
 
 class SchedulerError(PanelSolverError, RuntimeError):
@@ -208,6 +215,36 @@ def _validated_bucket_keys(
     return keys
 
 
+def _validated_affinity_hints(
+    total: int,
+    affinity_hints: Sequence[Sequence[SchedulingAffinityHint]] | None,
+) -> tuple[tuple[SchedulingAffinityHint, ...], ...]:
+    if affinity_hints is None:
+        return tuple(() for _ in range(total))
+    if len(affinity_hints) != total:
+        raise SchedulerError("affinity_hints must have one entry per case.")
+
+    normalized: list[tuple[SchedulingAffinityHint, ...]] = []
+    for case_hints in affinity_hints:
+        try:
+            raw = tuple(case_hints)
+        except TypeError as exc:
+            raise SchedulerError(
+                "each affinity_hints entry must be an iterable of hints."
+            ) from exc
+        if not all(isinstance(hint, SchedulingAffinityHint) for hint in raw):
+            raise SchedulerError(
+                "affinity_hints entries must contain SchedulingAffinityHint instances."
+            )
+        deduplicated: OrderedDict[Hashable, SchedulingAffinityHint] = OrderedDict()
+        for hint in raw:
+            previous = deduplicated.get(hint.identity)
+            if previous is None or hint.priority > previous.priority:
+                deduplicated[hint.identity] = hint
+        normalized.append(tuple(deduplicated.values()))
+    return tuple(normalized)
+
+
 def _build_bucket_chunks(
     execution_order: Sequence[int],
     bucket_keys: Sequence[Hashable],
@@ -231,15 +268,59 @@ def _build_bucket_chunks(
     return chunks, remaining
 
 
+def _affinity_score(
+    indices: Iterable[int],
+    affinity_hints: Sequence[Sequence[SchedulingAffinityHint]],
+    worker_affinities: Mapping[Hashable, None],
+) -> tuple[tuple[int, int], ...]:
+    """Return lexicographic hit counts, highest generic priority first."""
+    hits_by_priority: dict[int, int] = {}
+    for index in indices:
+        for hint in affinity_hints[index]:
+            if hint.identity in worker_affinities:
+                hits_by_priority[hint.priority] = (
+                    hits_by_priority.get(hint.priority, 0) + 1
+                )
+    return tuple(sorted(hits_by_priority.items(), reverse=True))
+
+
+def _bucket_affinity_score(
+    chunks: Sequence[Sequence[int]],
+    affinity_hints: Sequence[Sequence[SchedulingAffinityHint]],
+    worker_affinities: Mapping[Hashable, None],
+) -> tuple[tuple[int, int], ...]:
+    return _affinity_score(
+        (index for chunk in chunks for index in chunk),
+        affinity_hints,
+        worker_affinities,
+    )
+
+
+def _record_worker_affinities(
+    worker_affinities: OrderedDict[Hashable, None],
+    completed_case_hints: Sequence[SchedulingAffinityHint],
+) -> None:
+    """Update bounded parent-side LRU evidence after successful execution."""
+    for hint in completed_case_hints:
+        worker_affinities.pop(hint.identity, None)
+        worker_affinities[hint.identity] = None
+    while len(worker_affinities) > _MAX_WORKER_AFFINITIES:
+        worker_affinities.popitem(last=False)
+
+
 def _pick_next_chunk(
     worker_id: int,
     worker_last_bucket: list[Hashable | None],
+    worker_affinities: Sequence[OrderedDict[Hashable, None]],
     bucket_chunks: dict[Hashable, deque[tuple[int, ...]]],
     bucket_remaining: dict[Hashable, int],
     bucket_owner: dict[Hashable, int | None],
+    bucket_order: Mapping[Hashable, int],
+    affinity_hints: Sequence[Sequence[SchedulingAffinityHint]],
 ) -> tuple[Hashable, tuple[int, ...]] | None:
     last = worker_last_bucket[worker_id]
     if last is not None and bucket_chunks.get(last):
+        # Primary locality is absolute: finish this worker's ray bucket first.
         bucket = last
     else:
         unowned = [
@@ -248,14 +329,43 @@ def _pick_next_chunk(
             if chunks and bucket_owner.get(key) is None
         ]
         if unowned:
-            bucket = max(unowned, key=lambda key: bucket_remaining[key])
+            # Every unowned candidate is a new primary-cache miss for this
+            # worker, so secondary affinity can choose among them before load.
+            bucket = max(
+                unowned,
+                key=lambda key: (
+                    _bucket_affinity_score(
+                        bucket_chunks[key],
+                        affinity_hints,
+                        worker_affinities[worker_id],
+                    ),
+                    bucket_remaining[key],
+                    -bucket_order[key],
+                ),
+            )
             bucket_owner[bucket] = worker_id
         elif bucket_chunks:
-            bucket = max(bucket_chunks, key=lambda key: bucket_remaining[key])
+            # Stealing duplicates the primary ray work.  Remaining workload
+            # therefore dominates model-cache affinity for owned buckets.
+            bucket = max(
+                bucket_chunks,
+                key=lambda key: (
+                    bucket_remaining[key],
+                    _bucket_affinity_score(
+                        bucket_chunks[key],
+                        affinity_hints,
+                        worker_affinities[worker_id],
+                    ),
+                    -bucket_order[key],
+                ),
+            )
         else:
             return None
         worker_last_bucket[worker_id] = bucket
 
+    # Keep stable chunk order inside the selected primary bucket.  The same
+    # worker already retains its process-local caches, and a repeated full scan
+    # for a more affine chunk would make large buckets quadratic to dispatch.
     indices = bucket_chunks[bucket].popleft()
     bucket_remaining[bucket] -= len(indices)
     if bucket_remaining[bucket] == 0:
@@ -684,6 +794,7 @@ def iter_case_results_parallel[CaseT, ResultT](
     partial_result_policy: PartialResultPolicy | str,
     execution_order: Sequence[int] | None = None,
     bucket_keys: Sequence[Hashable] | None = None,
+    affinity_hints: Sequence[Sequence[SchedulingAffinityHint]] | None = None,
     chunk_cases: int | None = None,
     cancel_cb: Callable[[], bool] | None = None,
     logfn: Callable[[str], None] | None = None,
@@ -693,6 +804,8 @@ def iter_case_results_parallel[CaseT, ResultT](
     """Yield completion-order results from spawn workers.
 
     Final and checkpoint order is recovered with ``ordered_success_snapshot``.
+    Primary bucket continuity always precedes optional, performance-only worker
+    affinity hints.
     The two legacy log and failure-partial behaviors are required policy inputs,
     not silently normalized defaults.
     """
@@ -721,6 +834,7 @@ def iter_case_results_parallel[CaseT, ResultT](
 
     order = _validated_execution_order(total, execution_order)
     keys = _validated_bucket_keys(total, bucket_keys)
+    hints = _validated_affinity_hints(total, affinity_hints)
     resolved_chunk_cases = resolve_parallel_chunk_cases(chunk_cases)
     bucket_chunks, bucket_remaining = _build_bucket_chunks(
         order,
@@ -730,7 +844,13 @@ def iter_case_results_parallel[CaseT, ResultT](
     bucket_owner: dict[Hashable, int | None] = {
         bucket: None for bucket in bucket_chunks
     }
+    bucket_order = {
+        bucket: position for position, bucket in enumerate(bucket_chunks)
+    }
     worker_last_bucket: list[Hashable | None] = [None] * worker_count
+    worker_affinities: list[OrderedDict[Hashable, None]] = [
+        OrderedDict() for _ in range(worker_count)
+    ]
 
     # On Windows, multiprocessing creates the child before it pickles the
     # process object.  Preflight the user callable so serialization failure
@@ -770,9 +890,12 @@ def iter_case_results_parallel[CaseT, ResultT](
         picked = _pick_next_chunk(
             worker_id,
             worker_last_bucket,
+            worker_affinities,
             bucket_chunks,
             bucket_remaining,
             bucket_owner,
+            bucket_order,
+            hints,
         )
         if picked is None:
             return False
@@ -798,9 +921,14 @@ def iter_case_results_parallel[CaseT, ResultT](
         worker_busy[worker_id] = True
         return True
 
-    def accept_result(index: int, result: ResultT) -> tuple[int, ResultT]:
+    def accept_result(
+        worker_id: int,
+        index: int,
+        result: ResultT,
+    ) -> tuple[int, ResultT]:
         if index in completed:
             raise SchedulerError(f"worker returned duplicate case index {index}.")
+        _record_worker_affinities(worker_affinities[worker_id], hints[index])
         completed[index] = result
         if progress_cb is not None:
             progress_cb(SchedulerProgress(index, len(completed), total))
@@ -885,7 +1013,7 @@ def iter_case_results_parallel[CaseT, ResultT](
                 cancel_event.set()
                 if selected_partial_policy is PartialResultPolicy.YIELD_COMPLETED:
                     for index, result in message.get("results") or ():
-                        yield accept_result(int(index), result)
+                        yield accept_result(worker_id, int(index), result)
                 raise WorkerExecutionError(
                     worker_id,
                     str(message.get("error") or "Unknown worker error."),
@@ -904,7 +1032,7 @@ def iter_case_results_parallel[CaseT, ResultT](
                 cancellation_requested = True
                 cancel_event.set()
             for index, result in message.get("results") or ():
-                yield accept_result(int(index), result)
+                yield accept_result(worker_id, int(index), result)
 
             if not cancellation_requested and len(completed) < total:
                 assign_next(worker_id)
@@ -961,6 +1089,7 @@ def iter_execution_results_parallel(
         partial_result_policy=partial_result_policy,
         execution_order=execution_order,
         bucket_keys=case_execution_bucket_keys(normalized),
+        affinity_hints=case_execution_affinity_hints(normalized),
         chunk_cases=chunk_cases,
         cancel_cb=cancel_cb,
         logfn=logfn,

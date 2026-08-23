@@ -13,6 +13,7 @@ from panelsolver.core import (
     PanelLoadModel,
     integrate_panel_loads,
 )
+from panelsolver.core.execution import SchedulingAffinityProvider
 from panelsolver.models import (
     HypersonicCaseError,
     HypersonicModel,
@@ -62,6 +63,7 @@ class HypersonicModelTests(unittest.TestCase):
     def test_model_implements_protocol_and_returns_pressure_normal_load(self) -> None:
         model = HypersonicModel()
         self.assertIsInstance(model, PanelLoadModel)
+        self.assertIsInstance(model, SchedulingAffinityProvider)
         geometry = _geometry(np.array([[-1.0, 0.0, 0.0]]))
         loads = ModelRegistry((model,)).evaluate(
             geometry,
@@ -86,6 +88,38 @@ class HypersonicModelTests(unittest.TestCase):
             loads.traction_coeff_stl,
             -loads.cell_scalars["cp"][:, None] * geometry.normals_out_stl,
         )
+
+    def test_scheduling_affinities_match_selected_model_cache_inputs(self) -> None:
+        model = HypersonicModel()
+        mach = float(np.nextafter(5.0, 6.0))
+        mixed = model.scheduling_affinities(
+            _case(
+                Mach=mach,
+                gamma=1.4,
+                windward_eq="tangent_wedge;tangent_cone",
+            )
+        )
+        self.assertEqual(
+            [
+                ("tangent_cone", mach, 1.4),
+                ("tangent_wedge", mach, 1.4),
+            ],
+            [hint.identity for hint in mixed],
+        )
+        self.assertGreater(mixed[0].priority, mixed[1].priority)
+
+        for windward, leeward in (
+            ("newtonian", "shield"),
+            ("modified_newtonian", "shield"),
+            ("newtonian", "prandtl_meyer"),
+        ):
+            with self.subTest(windward=windward, leeward=leeward):
+                self.assertEqual(
+                    (),
+                    model.scheduling_affinities(
+                        _case(windward_eq=windward, leeward_eq=leeward)
+                    ),
+                )
 
     def test_newtonian_flat_plate_matches_independent_reference(self) -> None:
         model = HypersonicModel()
