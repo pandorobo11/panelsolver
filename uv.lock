@@ -795,7 +795,6 @@ rayaccel = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "pillow" },
     { name = "ruff" },
 ]
 docs = [
@@ -824,10 +823,7 @@ requires-dist = [
 provides-extras = ["rayaccel"]
 
 [package.metadata.requires-dev]
-dev = [
-    { name = "pillow" },
-    { name = "ruff" },
-]
+dev = [{ name = "ruff" }]
 docs = [
     { name = "latex2mathml", specifier = "==3.81.0" },
     { name = "matplotlib" },
