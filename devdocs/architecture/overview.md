@@ -66,10 +66,10 @@ are in [Numerical conventions](../../docs/reference/numerical-conventions.md).
 
 ## Public and lower-level Python boundaries
 
-The package-root objects `FMFCase`, `HypersonicCase`, `ResolvedAttitude`,
-`SolveResult`, `resolve_attitude`, `solve_fmf`, and `solve_hypersonic` form the
-stable in-memory Python API. They adapt domain cases into the shared numerical
-pipeline without serializing artifacts.
+The package root provides a small stable in-memory Python API that adapts domain
+cases into the shared numerical pipeline without serializing artifacts. The
+exact supported exports and their user-facing contract are defined in the
+[Python API reference](../../docs/reference/python-api.md).
 
 `panelsolver.core`, `panelsolver.models`, `panelsolver.app`, and
 `panelsolver.domains` are lower-level composition modules. They expose typed

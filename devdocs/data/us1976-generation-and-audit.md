@@ -71,6 +71,8 @@ legacy `fmfsolver` commit
 Every generated grid value was compared independently with the prior altitude,
 temperature, sound-speed, and mean-speed arrays. Each column produced 201/201
 exact matches, zero nonzero differences, and maximum absolute difference `0.0`.
+The expected numerical delta in Mode B speed ratio, temperature, panel loads,
+integrated coefficients, signatures, Summary CSV, and VTP is therefore zero.
 Unit tests retain per-column SHA-256 evidence in addition to known points and
 interpolation samples. No golden fixture or tolerance changed.
 

@@ -126,14 +126,24 @@ class ReleaseToolTests(unittest.TestCase):
             path = examples / relative
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(f"{relative}\n", encoding="utf-8")
-        for relative in (
-            "README.md",
-            "architecture/overview.md",
-            "data/us1976-generation-and-audit.md",
-        ):
-            path = repository / "devdocs" / relative
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(f"{relative}\n", encoding="utf-8")
+        documentation = {
+            "docs": (
+                "index.md",
+                "solvers/fmf.md",
+                "solvers/hypersonic.md",
+                "reference/python-api.md",
+            ),
+            "devdocs": (
+                "README.md",
+                "architecture/overview.md",
+                "data/us1976-generation-and-audit.md",
+            ),
+        }
+        for documentation_root, relatives in documentation.items():
+            for relative in relatives:
+                path = repository / documentation_root / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(f"{relative}\n", encoding="utf-8")
         return repository
 
     def write_wheel(
@@ -208,7 +218,7 @@ class ReleaseToolTests(unittest.TestCase):
         filename: str | None = None,
         complete: bool = False,
         include_pdas: bool = True,
-        omitted_devdoc: str | None = None,
+        omitted_documentation: str | None = None,
     ) -> Path:
         dist = repository / "dist"
         dist.mkdir(exist_ok=True)
@@ -226,9 +236,6 @@ class ReleaseToolTests(unittest.TestCase):
                     "mkdocs.yml",
                     "src/panelsolver_docs_math.py",
                     "hatch_build.py",
-                    "docs/index.md",
-                    "docs/solvers/fmf.md",
-                    "docs/solvers/hypersonic.md",
                     "src/panelsolver/docs_site.py",
                     "src/panelsolver/models/_sentman_atmosphere_data.py",
                     "scripts/generate_us1976_sentman_table.py",
@@ -240,13 +247,14 @@ class ReleaseToolTests(unittest.TestCase):
                     required_sources.add(
                         "tools/reference/pdas/bigtables_v1_5.py"
                     )
-                required_sources.update(
-                    path.relative_to(repository).as_posix()
-                    for path in (repository / "devdocs").rglob("*")
-                    if path.is_file()
-                )
-                if omitted_devdoc is not None:
-                    required_sources.remove(f"devdocs/{omitted_devdoc}")
+                for documentation_root in ("docs", "devdocs"):
+                    required_sources.update(
+                        path.relative_to(repository).as_posix()
+                        for path in (repository / documentation_root).rglob("*")
+                        if path.is_file() and not path.is_symlink()
+                    )
+                if omitted_documentation is not None:
+                    required_sources.remove(omitted_documentation)
                 for relative in sorted(required_sources):
                     source_info = tarfile.TarInfo(
                         f"panelsolver-{version}/{relative}"
@@ -581,7 +589,7 @@ class ReleaseToolTests(unittest.TestCase):
                     payloads.__getitem__,
                 )
 
-    def test_sdist_requires_regeneration_inputs_and_all_devdocs(self) -> None:
+    def test_sdist_requires_regeneration_inputs_and_all_documentation(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             repository = self.make_repository(Path(temp_dir))
             complete = self.write_sdist(repository, complete=True)
@@ -600,11 +608,25 @@ class ReleaseToolTests(unittest.TestCase):
             incomplete = self.write_sdist(
                 repository,
                 complete=True,
-                omitted_devdoc="data/us1976-generation-and-audit.md",
+                omitted_documentation=(
+                    "devdocs/data/us1976-generation-and-audit.md"
+                ),
             )
             with self.assertRaisesRegex(
                 RuntimeError,
                 "devdocs/data/us1976-generation-and-audit.md",
+            ):
+                verify_sdist_contents(repository, incomplete)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repository = self.make_repository(Path(temp_dir))
+            incomplete = self.write_sdist(
+                repository,
+                complete=True,
+                omitted_documentation="docs/reference/python-api.md",
+            )
+            with self.assertRaisesRegex(
+                RuntimeError,
+                "docs/reference/python-api.md",
             ):
                 verify_sdist_contents(repository, incomplete)
 

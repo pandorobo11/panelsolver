@@ -51,11 +51,7 @@ program:
 
 This rounding is part of the current numerical contract. Panel Solver does not
 replace the published table values with higher-precision intermediate binary
-results. The generated 201-row grid has been compared column by column with the
-pinned legacy FMF atmosphere arrays: all four columns match at every grid point,
-with maximum absolute difference `0.0`. The expected numerical delta in Mode B
-speed ratio, temperature, panel loads, integrated coefficients, signatures,
-Summary CSV, and VTP is therefore zero.
+results.
 
 The root `THIRD_PARTY_NOTICES.md` is the authoritative consolidated rights and
 source-identity notice. Maintainer regeneration steps, source-hash verification,

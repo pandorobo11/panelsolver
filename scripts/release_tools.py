@@ -933,9 +933,6 @@ def verify_sdist_contents(repository: Path, sdist: Path) -> None:
         f"{root}/mkdocs.yml",
         f"{root}/src/panelsolver_docs_math.py",
         f"{root}/hatch_build.py",
-        f"{root}/docs/index.md",
-        f"{root}/docs/solvers/fmf.md",
-        f"{root}/docs/solvers/hypersonic.md",
         f"{root}/src/panelsolver/docs_site.py",
         f"{root}/src/panelsolver/models/_sentman_atmosphere_data.py",
         f"{root}/scripts/generate_us1976_sentman_table.py",
@@ -944,11 +941,12 @@ def verify_sdist_contents(repository: Path, sdist: Path) -> None:
         f"{root}/examples/fmf/basic.csv",
         f"{root}/examples/hypersonic/basic.csv",
     }
-    required.update(
-        f"{root}/{path.relative_to(repository).as_posix()}"
-        for path in (repository / "devdocs").rglob("*")
-        if path.is_file() and not path.is_symlink()
-    )
+    for documentation_root in ("docs", "devdocs"):
+        required.update(
+            f"{root}/{path.relative_to(repository).as_posix()}"
+            for path in (repository / documentation_root).rglob("*")
+            if path.is_file() and not path.is_symlink()
+        )
     missing = required - set(names)
     if missing:
         raise RuntimeError(f"sdist is missing required source files: {sorted(missing)}")

@@ -36,11 +36,3 @@ Do not install `panelsolver` in the same environment as the separate legacy
 `fmfsolver` or `newtsolver` distributions. They provide overlapping package and
 command names. Uninstall the legacy distributions before installing
 `panelsolver`, as shown in [Installation](../getting-started/installation.md).
-
-## Current shared behavior
-
-Canonical and legacy commands use the same strict mesh and numeric validation,
-portable case IDs, case-table dispatch, output-collision checks, durable Summary
-CSV writes, and input-ordered result reconstruction. Physical model inputs and
-equations, domain-only output fields, and visible legacy command identities
-remain distinct where required by the documented product surface.
