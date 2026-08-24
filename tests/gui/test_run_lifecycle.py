@@ -63,6 +63,7 @@ class _FakeViewer(QtWidgets.QWidget):
         self.loaded = []
         self.cleared = 0
         self.rows = ()
+        self.selected_rows = ()
         self.input_path = None
         self.saved_rows = []
 
@@ -74,6 +75,9 @@ class _FakeViewer(QtWidgets.QWidget):
 
     def set_case_rows(self, rows) -> None:
         self.rows = tuple(rows)
+
+    def set_selected_case_rows(self, rows) -> None:
+        self.selected_rows = tuple(rows)
 
     def set_input_path(self, path) -> None:
         self.input_path = path
