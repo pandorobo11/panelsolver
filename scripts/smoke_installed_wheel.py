@@ -140,6 +140,9 @@ def _smoke_canonical_gui_entrypoint() -> None:
         def clear_view(self) -> None:
             pass
 
+        def invalidate_vtp_artifact(self, _path: str) -> None:
+            pass
+
         def set_case_rows(self, *_args) -> None:
             pass
 
