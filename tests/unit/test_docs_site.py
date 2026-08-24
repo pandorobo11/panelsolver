@@ -19,6 +19,20 @@ from panelsolver.docs_site import (
 ROOT = Path(__file__).resolve().parents[2]
 
 
+def _css_declarations(stylesheet: str, selector: str) -> dict[str, str]:
+    stylesheet = re.sub(r"/\*.*?\*/", "", stylesheet, flags=re.DOTALL)
+    for selectors, body in re.findall(r"([^{}]+)\{([^{}]*)\}", stylesheet):
+        if selector not in (value.strip() for value in selectors.split(",")):
+            continue
+        return {
+            name.strip(): value.strip()
+            for declaration in body.split(";")
+            if ":" in declaration
+            for name, value in (declaration.split(":", 1),)
+        }
+    raise AssertionError(f"CSS selector {selector!r} is missing")
+
+
 class _ResourceParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__()
@@ -150,6 +164,46 @@ class DocumentationSiteTests(unittest.TestCase):
                     self.assertEqual("", split.scheme)
                     self.assertEqual("", split.netloc)
                     self.assertTrue((css.parent / unquote(split.path)).is_file())
+
+    def test_generated_html_loads_project_owned_offline_assets(self) -> None:
+        parser = _ResourceParser()
+        parser.feed((self.site / "index.html").read_text(encoding="utf-8"))
+        paths = {urlsplit(resource).path for resource in parser.resources}
+        self.assertIn("assets/stylesheets/panelsolver-docs.css", paths)
+        self.assertIn("assets/javascripts/panelsolver-docs.js", paths)
+
+    def test_project_css_keeps_tables_and_block_math_responsive(self) -> None:
+        stylesheet = (
+            self.site / "assets/stylesheets/panelsolver-docs.css"
+        ).read_text(encoding="utf-8")
+        wrapper = _css_declarations(stylesheet, ".wy-table-responsive")
+        table = _css_declarations(
+            stylesheet,
+            ".wy-table-responsive > table.docutils",
+        )
+        block_math = _css_declarations(
+            stylesheet,
+            '.rst-content math[display="block"]',
+        )
+        self.assertEqual("100%", wrapper.get("width"))
+        self.assertEqual("100%", table.get("width"))
+        self.assertEqual("max-content", table.get("min-width"))
+        self.assertEqual("100%", block_math.get("max-width"))
+        self.assertEqual("auto", block_math.get("overflow-x"))
+
+    def test_project_javascript_releases_link_scroll_on_hash_change(self) -> None:
+        javascript = (
+            self.site / "assets/javascripts/panelsolver-docs.js"
+        ).read_text(encoding="utf-8")
+        self.assertRegex(javascript, r"SphinxRtdTheme\s*&&")
+        self.assertIn("SphinxRtdTheme.Navigation", javascript)
+        self.assertRegex(javascript, r"\.hashChange\s*=\s*function\s*\(")
+        self.assertRegex(javascript, r"\.linkScroll\s*=\s*true")
+        self.assertRegex(
+            javascript,
+            r'\.one\(["\']hashchange(?:\.[^"\']+)?["\']\s*,\s*function\s*\([^)]*\)'
+            r"\s*\{[^{}]*\.linkScroll\s*=\s*false",
+        )
 
     def test_internal_links_resolve_from_file_urls(self) -> None:
         parsed: dict[Path, _ResourceParser] = {}

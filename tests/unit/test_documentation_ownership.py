@@ -64,6 +64,18 @@ class DocumentationOwnershipTests(unittest.TestCase):
                 with self.subTest(page=page.relative_to(ROOT), target=target):
                     self.assertTrue(resolved.is_file(), resolved)
 
+    def test_migration_and_audit_records_are_marked_non_normative(self) -> None:
+        record_pages = sorted((DEVDOCS / "history" / "migration").rglob("*.md"))
+        record_pages.extend(sorted((DEVDOCS / "history" / "audits").glob("*.md")))
+        self.assertTrue(record_pages)
+        for page in record_pages:
+            introduction = "\n".join(
+                page.read_text(encoding="utf-8").splitlines()[:8]
+            ).casefold()
+            with self.subTest(page=page.relative_to(ROOT)):
+                self.assertIn("historical record", introduction)
+                self.assertIn("non-normative", introduction)
+
 
 if __name__ == "__main__":
     unittest.main()

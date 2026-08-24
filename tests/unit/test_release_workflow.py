@@ -21,15 +21,33 @@ class ReleaseWorkflowTests(unittest.TestCase):
         return match.group("body")
 
     def test_artifact_job_is_the_only_distribution_producer(self) -> None:
-        artifact_job = self.job("artifact")
         producers = [
             name
             for name in ("test", "artifact", "clean-install", "release")
             if "uv build" in self.job(name)
         ]
         self.assertEqual(["artifact"], producers)
+
+    def test_artifact_job_verifies_and_uploads_manifested_distributions(self) -> None:
+        artifact_job = self.job("artifact")
+        self.assertIn("verify-distributions", artifact_job)
         self.assertIn("create-manifest", artifact_job)
+        self.assertIn("verify-manifest", artifact_job)
         self.assertIn("actions/upload-artifact@v4", artifact_job)
+
+    def test_clean_install_uses_the_built_wheel_in_an_empty_environment(self) -> None:
+        clean_install = self.job("clean-install")
+        self.assertIn("verify-wheel", clean_install)
+        self.assertIn("uv venv", clean_install)
+        self.assertIn("uv pip install", clean_install)
+        self.assertIn('--python "${CLEAN_VENV}/bin/python"', clean_install)
+        self.assertIn('"${WHEEL}"', clean_install)
+        self.assertRegex(
+            clean_install,
+            r'"\$\{CLEAN_VENV\}/bin/python"\s*\\?\s*'
+            r'"\$\{GITHUB_WORKSPACE\}/scripts/smoke_installed_wheel\.py"',
+        )
+        self.assertNotIn("uv sync", clean_install)
 
     def test_all_consumers_verify_and_reuse_the_uploaded_exact_set(self) -> None:
         for job_name in ("test", "clean-install", "release"):
