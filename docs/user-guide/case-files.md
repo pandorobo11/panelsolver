@@ -32,15 +32,19 @@ components or exactly one semicolon-separated selector per STL. See
 Angles in case files are degrees. `attitude_input` controls the meaning of
 `alpha_deg` and `beta_or_bank_deg`:
 
-| Mode | `alpha_deg` | `beta_or_bank_deg` | Reader domain |
-|---|---|---|---|
-| `beta_tan` | tangent angle of attack | tangent sideslip | both strictly between -90° and 90° |
-| `beta_sin` | tangent angle of attack | sine-definition sideslip | `abs(alpha_deg) < 90°`; second angle finite |
-| `bank` | included angle | bank angle | both finite; bank is periodic |
+| Mode | `alpha_deg` | `beta_or_bank_deg` |
+|---|---|---|
+| `beta_tan` | tangent angle of attack | tangent sideslip |
+| `beta_sin` | tangent angle of attack | sine-definition sideslip |
+| `bank` | included angle | bank angle |
 
-All modes resolve to a unit STL-frame freestream vector and resolved tangent
-angles before panel calculation. The exact signs and transform are in
-[Numerical conventions](../reference/numerical-conventions.md).
+Use `beta_tan` for two tangent-angle inputs, `beta_sin` when the sideslip source
+uses the sine definition, and `bank` when attitude is expressed as an included
+angle plus a circumferential orientation. All modes use the same resolver for
+FMF and Hypersonic and become a unit STL-frame freestream vector and resolved
+tangent angles before panel calculation. The coordinate axes, signs, reference
+directions, input ranges, periodicity, and exact transformations are defined
+canonically in [Numerical conventions](../reference/numerical-conventions.md#attitude-conventions).
 
 ## Common validation
 
