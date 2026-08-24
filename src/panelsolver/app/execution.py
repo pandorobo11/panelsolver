@@ -22,7 +22,7 @@ from panelsolver.models import (
 
 
 def default_model_registry() -> ModelRegistry:
-    """Return the explicit Phase 5 assembly of both independent models."""
+    """Return the registry of built-in Sentman and Hypersonic models."""
     return ModelRegistry((SentmanModel(), HypersonicModel()))
 
 

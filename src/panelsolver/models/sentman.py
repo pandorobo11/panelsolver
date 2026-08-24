@@ -177,7 +177,7 @@ class SentmanModel:
         self,
         case: ModelCasePayload,
     ) -> dict[str, None | float | str]:
-        """Return model-only normalized fields for Phase 5 envelope assembly."""
+        """Return normalized model-case fields for the canonical signature envelope."""
         return dict(resolve_sentman_case(case).signature_payload)
 
     def evaluate(
@@ -261,11 +261,11 @@ def _sentman_traction_coefficients(
     wall_temperature_k: float,
     shielded: np.ndarray,
 ) -> np.ndarray:
-    """Return the legacy Sentman numerator at the Phase 2 model boundary.
+    """Return the legacy Sentman numerator at the panel-load model boundary.
 
-    The legacy routine divides this vector by ``Aref``.  The common Phase 3
-    integrator owns ``area/Aref``, so this adapter returns the unchanged
-    numerator and does not duplicate reference-area normalization.
+    The legacy routine divides this vector by ``Aref``.  The shared integrator
+    owns ``area/Aref``, so this adapter returns the unchanged numerator and does
+    not duplicate reference-area normalization.
     """
     out = np.zeros((normals_out_stl.shape[0], 3), dtype=np.float64)
     active = ~shielded

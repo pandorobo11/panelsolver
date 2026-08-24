@@ -49,7 +49,7 @@ class ExecutionModelError(ExecutionError):
 
 @runtime_checkable
 class ExecutablePanelLoadModel(PanelLoadModel, Protocol):
-    """Phase 2 model plus its model-owned normalized signature payload."""
+    """Panel-load model with its model-owned normalized signature payload."""
 
     def signature_payload(self, case: ModelCasePayload) -> Mapping[str, object]:
         """Return the normalized model-case portion of ADR 0005."""
