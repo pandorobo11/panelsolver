@@ -42,7 +42,7 @@ _COMMON_SIGNED_FIELDS = (
 type Reader = Callable[[str | Path], pd.DataFrame]
 
 
-class Phase8ReaderValidationMatrixTests(unittest.TestCase):
+class CaseValidationMatrixTests(unittest.TestCase):
     def _write_openpyxl_workbook(
         self,
         frame: pd.DataFrame,

@@ -71,7 +71,7 @@ def _assert_artifact_semantics_equal(
             test_case.assertEqual(expected_data[name].dtype, actual_data[name].dtype)
             np.testing.assert_array_equal(actual_data[name], expected_data[name])
 
-class Phase7RuntimeTests(unittest.TestCase):
+class RuntimeTests(unittest.TestCase):
     def _fmf_rows(self, root: Path, count: int) -> tuple[dict[str, object], ...]:
         base = read_current_cases(
             read_fmf_cases, INPUTS / "fmfsolver_cases.csv"
@@ -287,7 +287,6 @@ class Phase7RuntimeTests(unittest.TestCase):
                 ["case_0", "case_1"],
                 [row["case_id"] for row in saved if row["scope"] == "total"],
             )
-
     def test_checkpoint_default_is_shared_across_runtime_and_domains(self) -> None:
         for callback in (
             run_product_cases,

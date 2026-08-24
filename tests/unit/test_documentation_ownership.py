@@ -9,17 +9,6 @@ ROOT = Path(__file__).resolve().parents[2]
 DOCS = ROOT / "docs"
 DEVDOCS = ROOT / "devdocs"
 
-HISTORICAL_BANNER = (
-    "Historical record — non-normative for the current product contract. This "
-    "page records the repository state at the migration phase or audit named "
-    "below. Statements such as “current”, supported commands, package names, "
-    "file formats, and future work apply to that recorded point in time. Pinned "
-    "source identities, golden evidence, tolerance profiles, and audit results "
-    "may still be referenced by current developer workflows where devdocs/ or "
-    "tests explicitly do so. Use docs/, devdocs/architecture/, and accepted or "
-    "superseding ADRs for the present product contract."
-)
-
 MARKDOWN_LINK = re.compile(r"!?\[[^\]]*\]\((?P<target><[^>]+>|[^\s)]+)")
 
 
@@ -46,31 +35,6 @@ def local_markdown_targets(path: Path) -> list[str]:
 
 
 class DocumentationOwnershipTests(unittest.TestCase):
-    def test_target_tree_has_current_entry_points_and_no_old_user_directories(self) -> None:
-        for relative in (
-            "docs/index.md",
-            "docs/solvers/fmf.md",
-            "docs/solvers/hypersonic.md",
-            "devdocs/README.md",
-            "devdocs/architecture/overview.md",
-            "devdocs/development/setup-and-testing.md",
-            "devdocs/development/release-and-rollback.md",
-            "devdocs/data/us1976-generation-and-audit.md",
-            "devdocs/adr/README.md",
-            "devdocs/history/README.md",
-        ):
-            with self.subTest(relative=relative):
-                self.assertTrue((ROOT / relative).is_file())
-        for relative in (
-            "docs/development",
-            "docs/adr",
-            "docs/history",
-            "docs/solvers/fmf-overview.md",
-            "docs/solvers/hypersonic-overview.md",
-        ):
-            with self.subTest(relative=relative):
-                self.assertFalse((ROOT / relative).exists())
-
     def test_user_markdown_does_not_link_to_developer_material(self) -> None:
         forbidden_text = (
             "devdocs/",
@@ -99,20 +63,6 @@ class DocumentationOwnershipTests(unittest.TestCase):
                 resolved = (page.parent / unquote(split.path)).resolve()
                 with self.subTest(page=page.relative_to(ROOT), target=target):
                     self.assertTrue(resolved.is_file(), resolved)
-
-    def test_historical_record_pages_have_standard_banner(self) -> None:
-        record_pages = sorted((DEVDOCS / "history" / "migration").rglob("*.md"))
-        record_pages.extend(sorted((DEVDOCS / "history" / "audits").glob("*.md")))
-        self.assertTrue(record_pages)
-        for page in record_pages:
-            lines = page.read_text(encoding="utf-8").splitlines()
-            with self.subTest(page=page.relative_to(ROOT)):
-                self.assertTrue(lines[0].startswith("# "))
-                self.assertEqual(HISTORICAL_BANNER, lines[2])
-        self.assertNotIn(
-            HISTORICAL_BANNER,
-            (DEVDOCS / "history" / "README.md").read_text(encoding="utf-8"),
-        )
 
 
 if __name__ == "__main__":

@@ -65,7 +65,7 @@ def _request_for(path: Path):
     )
 
 
-class Phase5eSchedulerRegressionTests(unittest.TestCase):
+class ParallelExecutionRegressionTests(unittest.TestCase):
     def test_both_models_match_serial_engine_through_spawn_scheduler(self) -> None:
         paths = (
             GOLDEN_ROOT / "fmfsolver" / "fmf_zero_plate.json",

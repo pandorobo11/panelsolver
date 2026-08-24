@@ -93,6 +93,9 @@ class ExampleRegressionTests(unittest.TestCase):
             self.assertEqual(len(raw_rows), len(frame), msg=f"{domain}/{table}")
             for raw_row in raw_rows:
                 case_ids.append(raw_row["case_id"])
+                case_id = raw_row["case_id"].casefold()
+                self.assertFalse(case_id.startswith("fmfsolver"))
+                self.assertFalse(case_id.startswith("newtsolver"))
                 self.assertNotIn("save_npz_on", raw_row)
                 for raw_path in raw_row["stl_path"].split(";"):
                     self.assertFalse(Path(raw_path).is_absolute())

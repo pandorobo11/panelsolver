@@ -17,11 +17,19 @@ def _array(case: dict, name: str) -> np.ndarray:
     return np.asarray(record["values"]).reshape(record["shape"])
 
 
-class Phase5aMeshLoadingGoldenTests(unittest.TestCase):
-    def test_all_phase1_meshes_load_without_geometry_or_topology_change(self) -> None:
-        paths = sorted(GOLDEN_ROOT.glob("*/*.json"))
-        paths = [path for path in paths if path.name != "contracts.json"]
-        self.assertEqual(15, len(paths))
+class MeshLoadingGoldenTests(unittest.TestCase):
+    def test_unique_legacy_mesh_configurations_keep_geometry_and_topology(
+        self,
+    ) -> None:
+        # The 15 legacy cases collapse to these four unique combinations of
+        # ordered STL content and scale. Model and ray-backend choices do not
+        # participate in mesh loading.
+        paths = (
+            GOLDEN_ROOT / "fmfsolver" / "fmf_zero_plate.json",
+            GOLDEN_ROOT / "fmfsolver" / "fmf_shield_rtree.json",
+            GOLDEN_ROOT / "fmfsolver" / "fmf_bank_multicomponent.json",
+            GOLDEN_ROOT / "newtsolver" / "newt_prandtl_meyer.json",
+        )
 
         for path in paths:
             with self.subTest(solver=path.parent.name, case_id=path.stem):

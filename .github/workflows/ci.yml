@@ -173,38 +173,6 @@ jobs:
         run: >-
           uv run --no-sync python scripts/release_tools.py reinstall-wheel .
 
-      - name: Smoke test installed wheel
-        run: |
-          cd "${RUNNER_TEMP}"
-          "${GITHUB_WORKSPACE}/.venv/bin/python" - <<'PY'
-          import importlib.metadata
-
-          import fmfsolver
-          import newtsolver
-          import panelsolver
-          from fmfsolver.app.gui_app import main as fmf_gui_main
-          from newtsolver.app.gui_app import main as newt_gui_main
-
-          assert callable(fmf_gui_main)
-          assert callable(newt_gui_main)
-          expected = {
-              "panelsolver": "panelsolver.cli:main",
-              "panelsolver-gui": "panelsolver.gui:main",
-              "fmfsolver": "fmfsolver.app.gui_app:main",
-              "fmfsolver-gui": "fmfsolver.app.gui_app:main",
-              "fmfsolver-cli": "fmfsolver.app.cli_app:main",
-              "newtsolver": "newtsolver.app.gui_app:main",
-              "newtsolver-gui": "newtsolver.app.gui_app:main",
-              "newtsolver-cli": "newtsolver.app.cli_app:main",
-          }
-          scripts = {
-              entry.name: entry.value
-              for entry in importlib.metadata.distribution("panelsolver").entry_points
-              if entry.group == "console_scripts"
-          }
-          assert expected == scripts
-          PY
-
       - name: Smoke installed commands outside repository
         run: >-
           uv run --no-sync python scripts/smoke_installed_wheel.py .

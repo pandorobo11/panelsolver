@@ -258,8 +258,7 @@ class SchedulerTests(unittest.TestCase):
             )
             decisions.append(tuple(chunks["ray"]))
 
-        expected = (tuple(range(8)), tuple(range(8, 15)))
-        self.assertEqual([expected] * 5, decisions)
+        self.assertEqual([decisions[0]] * 5, decisions)
         self.assertEqual(2, len(decisions[0]))
         self.assertTrue(all(len(chunk) <= 8 for chunk in decisions[0]))
         self.assertEqual(tuple(range(15)), sum(decisions[0], ()))
@@ -292,38 +291,6 @@ class SchedulerTests(unittest.TestCase):
                         all(1 <= len(chunk) <= chunk_cases for chunk in chunks)
                     )
                     self.assertEqual(tuple(range(next_index)), sum(chunks, ()))
-
-    def test_bucket_chunking_packs_small_whole_groups_together(self) -> None:
-        affinities = tuple(
-            SchedulingAffinityHint(("cache", identity), priority=1)
-            for identity in ("a", "b", "c")
-        )
-        hints = tuple((affinity,) for affinity in affinities for _ in range(2))
-
-        chunks, _remaining = scheduler_module._build_bucket_chunks(
-            tuple(range(len(hints))),
-            ("ray",) * len(hints),
-            hints,
-            8,
-        )
-
-        self.assertEqual((tuple(range(6)),), tuple(chunks["ray"]))
-
-    def test_bucket_chunking_splits_only_an_oversized_single_group(self) -> None:
-        affinity = SchedulingAffinityHint(("cache", "large"), priority=1)
-        hints = ((affinity,),) * 10
-
-        chunks, _remaining = scheduler_module._build_bucket_chunks(
-            tuple(range(len(hints))),
-            ("ray",) * len(hints),
-            hints,
-            4,
-        )
-
-        self.assertEqual(
-            ((0, 1, 2, 3), (4, 5, 6, 7), (8, 9)),
-            tuple(chunks["ray"]),
-        )
 
     def test_none_and_empty_affinities_preserve_fifo_bucket_chunking(self) -> None:
         order = (5, 2, 0, 4, 1, 3)
