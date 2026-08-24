@@ -23,7 +23,11 @@ from panelsolver.app import (
 )
 from panelsolver.app.cases_panel import CasesPanel, ValidationIssuesDialog
 from panelsolver.core import CaseSignature, canonical_json
+from panelsolver.domains.fmf import read_cases as read_fmf_cases
+from tests.current_case_fixtures import read_current_cases
 from tests.path_assertions import assert_paths_equivalent
+
+_CASE_INPUTS = Path(__file__).parents[1] / "fixtures" / "phase1" / "inputs"
 
 
 def _signature(label: str) -> CaseSignature:
@@ -137,6 +141,54 @@ class CasesPanelTests(unittest.TestCase):
         self.assertTrue(newt.load_input_file("/tmp/newt.csv"))
         self.assertIn("gamma", newt._table_columns)
         self.assertNotIn("S", newt._table_columns)
+
+    def test_input_profiling_is_silent_when_disabled(self) -> None:
+        with patch.dict(os.environ, {"PANELSOLVER_GUI_PROFILE": "0"}):
+            panel, _ = self.make_panel()
+            self.assertTrue(panel.load_input_file("/tmp/input.csv"))
+        self.assertNotIn("[PROFILE]", panel.log.toPlainText())
+
+    def test_input_profiling_reports_gui_case_io_stl_table_and_signals(self) -> None:
+        source_path = _CASE_INPUTS / "fmfsolver_cases.csv"
+        source = read_current_cases(read_fmf_cases, source_path)
+        with tempfile.TemporaryDirectory() as directory:
+            input_path = Path(directory) / "cases.csv"
+            source.to_csv(input_path, index=False)
+            with patch.dict(os.environ, {"PANELSOLVER_GUI_PROFILE": "1"}):
+                panel = CasesPanel(fmf_solver_spec())
+                changed_paths: list[object] = []
+                changed_rows: list[object] = []
+                panel.input_path_changed.connect(changed_paths.append)
+                panel.cases_updated.connect(changed_rows.append)
+                self.assertTrue(panel.load_input_file(input_path))
+
+        log = panel.log.toPlainText()
+        for expected in (
+            "[PROFILE][GUI_INPUT] total=",
+            "[PROFILE][GUI_INPUT] read_cases=",
+            "[PROFILE][GUI_INPUT] materialize_raw_rows=",
+            "[PROFILE][GUI_INPUT] mapping_to_dict=",
+            "[PROFILE][GUI_INPUT] populate_table=",
+            "[PROFILE][GUI_INPUT] emit_input_path_changed=",
+            "[PROFILE][GUI_INPUT] emit_cases_updated=",
+            "[PROFILE][CASE_IO] pandas_read_csv=",
+            "[PROFILE][CASE_IO] defaults=",
+            "[PROFILE][CASE_IO] validate_total=",
+            "[PROFILE][CASE_IO] stl_path_validation=",
+            "[PROFILE][STL_PATH] entries=",
+            "[PROFILE][STL_PATH] exists_total=",
+            "[PROFILE][STL_PATH] resolve_total=",
+            "[PROFILE][TABLE] create_items_and_set=",
+            "[PROFILE][TABLE] resize_columns=",
+        ):
+            with self.subTest(expected=expected):
+                self.assertIn(expected, log)
+        self.assertIn("qt_gui_thread=true", log)
+        self.assertIn("rows=6", log)
+        self.assertEqual(6, len(panel.case_rows))
+        self.assertEqual(6, panel.case_table.rowCount())
+        self.assertEqual([panel.input_path], changed_paths)
+        self.assertEqual([panel.case_rows], changed_rows)
 
     def test_input_picker_offers_only_current_case_table_formats(self) -> None:
         panel, _ = self.make_panel()

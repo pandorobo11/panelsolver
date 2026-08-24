@@ -362,7 +362,28 @@ def run_cases(
 
 
 def _read_gui_cases(path: str | Path) -> tuple[dict[str, object], ...]:
-    return tuple(read_cases(path).to_dict(orient="records"))
+    from panelsolver.app.gui_input_profile import (
+        current_gui_input_profile,
+        timed_call,
+    )
+
+    profile = current_gui_input_profile()
+    frame = timed_call(
+        profile,
+        "GUI_ADAPTER",
+        "read_case_table",
+        read_cases,
+        path,
+    )
+    return tuple(
+        timed_call(
+            profile,
+            "GUI_ADAPTER",
+            "dataframe_to_records",
+            frame.to_dict,
+            orient="records",
+        )
+    )
 
 
 def _validate_gui_output(

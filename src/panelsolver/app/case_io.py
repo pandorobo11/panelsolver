@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import time
 import unicodedata
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
@@ -14,6 +15,7 @@ import pandas as pd
 from .attitude import ATTITUDE_INPUT_VALUES
 from .case_identity import validate_case_id
 from .csv_writer import CSV_ENCODING
+from .gui_input_profile import current_gui_input_profile, timed_call
 from .path_resolution import resolve_input_relative_path
 
 type AddIssue = Callable[[int | None, str | None, str], None]
@@ -195,6 +197,7 @@ def _validate_and_resolve_stl_paths(
     add_issue: AddIssue,
 ) -> None:
     base_dir = input_path.parent
+    profile = current_gui_input_profile()
     for index, raw in frame["stl_path"].items():
         if not is_filled(raw):
             add_issue(int(index), "stl_path", "is required.")
@@ -207,11 +210,34 @@ def _validate_and_resolve_stl_paths(
         for raw_path in paths:
             candidate = Path(raw_path).expanduser()
             resolved: Path | None = None
-            if candidate.is_absolute() and candidate.exists():
-                resolved = candidate.resolve()
-            elif not candidate.is_absolute() and (base_dir / candidate).exists():
-                resolved = (base_dir / candidate).resolve()
+            if profile is None:
+                if candidate.is_absolute() and candidate.exists():
+                    resolved = candidate.resolve()
+                elif not candidate.is_absolute() and (base_dir / candidate).exists():
+                    resolved = (base_dir / candidate).resolve()
             else:
+                access_path = (
+                    candidate if candidate.is_absolute() else base_dir / candidate
+                )
+                profile.note_stl_entry(access_path)
+                started_at = time.perf_counter()
+                try:
+                    exists = access_path.exists()
+                finally:
+                    profile.note_stl_exists(
+                        access_path,
+                        time.perf_counter() - started_at,
+                    )
+                if exists:
+                    started_at = time.perf_counter()
+                    try:
+                        resolved = access_path.resolve()
+                    finally:
+                        profile.note_stl_resolve(
+                            access_path,
+                            time.perf_counter() - started_at,
+                        )
+            if resolved is None:
                 add_issue(
                     int(index),
                     "stl_path",
@@ -368,6 +394,7 @@ def _validate_and_normalize(
     input_path: Path,
     policy: CaseReaderPolicy,
 ) -> pd.DataFrame:
+    profile = current_gui_input_profile()
     issues: list[ValidationIssue] = []
 
     def add_issue(index: int | None, field: str | None, message: str) -> None:
@@ -378,20 +405,94 @@ def _validate_and_normalize(
             case_id = text or None
         issues.append(ValidationIssue(row_number, case_id, field, message))
 
-    _validate_case_ids(frame, add_issue)
-    _validate_and_resolve_stl_paths(frame, input_path, add_issue)
-    _validate_required_numeric(frame, policy, add_issue)
-    _validate_optional_numeric(frame, policy, add_issue)
-    _validate_positive_columns(frame, policy, add_issue)
-    policy.validate_rows(frame, add_issue)
-    _validate_flags(frame, add_issue)
-    _validate_ray_backend(frame, add_issue)
-    _validate_attitude(frame, add_issue)
-    _validate_attitude_domain(frame, add_issue)
-    _validate_out_dir(frame, add_issue)
+    timed_call(profile, "CASE_IO", "validate_case_ids", _validate_case_ids, frame, add_issue)
+    timed_call(
+        profile,
+        "CASE_IO",
+        "stl_path_validation",
+        _validate_and_resolve_stl_paths,
+        frame,
+        input_path,
+        add_issue,
+    )
+    timed_call(
+        profile,
+        "CASE_IO",
+        "validate_required_numeric",
+        _validate_required_numeric,
+        frame,
+        policy,
+        add_issue,
+    )
+    timed_call(
+        profile,
+        "CASE_IO",
+        "validate_optional_numeric",
+        _validate_optional_numeric,
+        frame,
+        policy,
+        add_issue,
+    )
+    timed_call(
+        profile,
+        "CASE_IO",
+        "validate_positive_columns",
+        _validate_positive_columns,
+        frame,
+        policy,
+        add_issue,
+    )
+    timed_call(
+        profile,
+        "CASE_IO",
+        "product_validate_rows",
+        policy.validate_rows,
+        frame,
+        add_issue,
+    )
+    timed_call(profile, "CASE_IO", "validate_flags", _validate_flags, frame, add_issue)
+    timed_call(
+        profile,
+        "CASE_IO",
+        "validate_ray_backend",
+        _validate_ray_backend,
+        frame,
+        add_issue,
+    )
+    timed_call(
+        profile,
+        "CASE_IO",
+        "validate_attitude",
+        _validate_attitude,
+        frame,
+        add_issue,
+    )
+    timed_call(
+        profile,
+        "CASE_IO",
+        "validate_attitude_domain",
+        _validate_attitude_domain,
+        frame,
+        add_issue,
+    )
+    timed_call(
+        profile,
+        "CASE_IO",
+        "validate_out_dir",
+        _validate_out_dir,
+        frame,
+        add_issue,
+    )
     if issues:
         raise InputValidationError(issues)
-    _resolve_out_dirs(frame, input_path)
+    timed_call(
+        profile,
+        "CASE_IO",
+        "resolve_out_dirs",
+        _resolve_out_dirs,
+        frame,
+        input_path,
+    )
     return frame
 
 
@@ -401,66 +502,125 @@ def read_case_table(path: str | Path, policy: CaseReaderPolicy) -> pd.DataFrame:
         raise TypeError("policy must be a CaseReaderPolicy")
     input_path = Path(path).expanduser()
     suffix = input_path.suffix.lower()
-    if suffix == ".xls":
-        raise ValueError(_REMOVED_XLS_MESSAGE)
-    if suffix == ".csv":
-        frame = pd.read_csv(
-            input_path,
-            dtype={"case_id": "string"},
-            encoding=CSV_ENCODING,
-            keep_default_na=policy.keep_default_na,
-        )
-    elif suffix in {".xlsx", ".xlsm"}:
-        frame = pd.read_excel(
-            input_path,
-            engine="openpyxl",
-            dtype={"case_id": "string"},
-            keep_default_na=policy.keep_default_na,
-        )
-    else:
-        raise ValueError(f"Unsupported input format: {input_path.suffix}")
-
-    if "save_npz_on" in frame.columns:
-        raise InputValidationError(
-            [
-                ValidationIssue(
-                    row_number=1,
-                    case_id=None,
-                    field="save_npz_on",
-                    message=_REMOVED_NPZ_MESSAGE,
-                )
-            ]
-        )
-
-    missing = [
-        column for column in policy.required_columns if column not in frame.columns
-    ]
-    if missing:
-        raise InputValidationError(
-            [
-                ValidationIssue(
-                    row_number=1,
-                    case_id=None,
-                    field="header",
-                    message=f"Missing required columns: {missing}",
-                )
-            ]
-        )
-
-    for name, default in policy.defaults.items():
-        if name not in frame.columns:
-            frame[name] = default
-        elif policy.fill_defaults_by_presence:
-            frame[name] = frame[name].map(
-                lambda value, default=default: value if is_filled(value) else default
+    profile = current_gui_input_profile()
+    total_started_at = time.perf_counter() if profile is not None else None
+    try:
+        if suffix == ".xls":
+            raise ValueError(_REMOVED_XLS_MESSAGE)
+        if suffix == ".csv":
+            frame = timed_call(
+                profile,
+                "CASE_IO",
+                "pandas_read_csv",
+                pd.read_csv,
+                input_path,
+                dtype={"case_id": "string"},
+                encoding=CSV_ENCODING,
+                keep_default_na=policy.keep_default_na,
+            )
+        elif suffix in {".xlsx", ".xlsm"}:
+            frame = timed_call(
+                profile,
+                "CASE_IO",
+                "pandas_read_excel",
+                pd.read_excel,
+                input_path,
+                engine="openpyxl",
+                dtype={"case_id": "string"},
+                keep_default_na=policy.keep_default_na,
             )
         else:
-            frame[name] = frame[name].fillna(default)
+            raise ValueError(f"Unsupported input format: {input_path.suffix}")
 
-    normalized = _validate_and_normalize(frame, input_path, policy)
-    ordered = [name for name in policy.input_columns if name in normalized.columns]
-    extras = [name for name in normalized.columns if name not in ordered]
-    return normalized[ordered + extras]
+        schema_started_at = time.perf_counter() if profile is not None else None
+        try:
+            if "save_npz_on" in frame.columns:
+                raise InputValidationError(
+                    [
+                        ValidationIssue(
+                            row_number=1,
+                            case_id=None,
+                            field="save_npz_on",
+                            message=_REMOVED_NPZ_MESSAGE,
+                        )
+                    ]
+                )
+
+            missing = [
+                column
+                for column in policy.required_columns
+                if column not in frame.columns
+            ]
+            if missing:
+                raise InputValidationError(
+                    [
+                        ValidationIssue(
+                            row_number=1,
+                            case_id=None,
+                            field="header",
+                            message=f"Missing required columns: {missing}",
+                        )
+                    ]
+                )
+        finally:
+            if profile is not None and schema_started_at is not None:
+                profile.add_timing(
+                    "CASE_IO",
+                    "schema_checks",
+                    time.perf_counter() - schema_started_at,
+                )
+
+        defaults_started_at = time.perf_counter() if profile is not None else None
+        try:
+            for name, default in policy.defaults.items():
+                if name not in frame.columns:
+                    frame[name] = default
+                elif policy.fill_defaults_by_presence:
+                    frame[name] = frame[name].map(
+                        lambda value, default=default: (
+                            value if is_filled(value) else default
+                        )
+                    )
+                else:
+                    frame[name] = frame[name].fillna(default)
+        finally:
+            if profile is not None and defaults_started_at is not None:
+                profile.add_timing(
+                    "CASE_IO",
+                    "defaults",
+                    time.perf_counter() - defaults_started_at,
+                )
+
+        normalized = timed_call(
+            profile,
+            "CASE_IO",
+            "validate_total",
+            _validate_and_normalize,
+            frame,
+            input_path,
+            policy,
+        )
+        order_started_at = time.perf_counter() if profile is not None else None
+        try:
+            ordered = [
+                name for name in policy.input_columns if name in normalized.columns
+            ]
+            extras = [name for name in normalized.columns if name not in ordered]
+            return normalized[ordered + extras]
+        finally:
+            if profile is not None and order_started_at is not None:
+                profile.add_timing(
+                    "CASE_IO",
+                    "column_order",
+                    time.perf_counter() - order_started_at,
+                )
+    finally:
+        if profile is not None and total_started_at is not None:
+            profile.add_timing(
+                "CASE_IO",
+                "read_case_table_total",
+                time.perf_counter() - total_started_at,
+            )
 
 
 __all__ = (

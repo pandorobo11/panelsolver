@@ -13,3 +13,15 @@ product-neutral values into core.
 Invalid or blank-domain values are errors; blank/unset variables are ignored.
 The batch variable matters only when ray shielding is used. Chunk size is a
 scheduling/reuse hint and does not change the input-ordered final result schema.
+
+## GUI input-load profiling
+
+Set `PANELSOLVER_GUI_PROFILE=1` before launching a GUI to append detailed timing
+records to its log panel for each selected case file. Records cover pandas input,
+normalization and validation stages, repeated STL path filesystem calls, case
+table construction, and the synchronous input/viewer signal handlers. Unset the
+variable or set it to `0`, `false`, `no`, or `off` to disable these records.
+
+This diagnostic switch does not cache paths, skip validation, or change the
+synchronous GUI load flow. Leave it disabled for normal use because the
+per-filesystem-call timers add profiling overhead.

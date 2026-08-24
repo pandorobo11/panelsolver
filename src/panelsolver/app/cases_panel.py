@@ -3,12 +3,22 @@
 from __future__ import annotations
 
 import os
+import threading
+import time
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import pyvista as pv
 from PySide6 import QtCore, QtWidgets
 
+from .gui_input_profile import (
+    GuiInputProfile,
+    activate_gui_input_profile,
+    current_gui_input_profile,
+    deactivate_gui_input_profile,
+    gui_input_profiling_enabled,
+    timed_call,
+)
 from .path_resolution import (
     absolute_input_path,
     default_summary_output_path,
@@ -222,16 +232,62 @@ class CasesPanel(QtWidgets.QWidget):
         remember_directory: bool = True,
     ) -> bool:
         """Read cases through the selected product adapter and reset on failure."""
+        profile = (
+            GuiInputProfile(Path(path).expanduser())
+            if gui_input_profiling_enabled()
+            else None
+        )
+        profile_token = (
+            activate_gui_input_profile(profile) if profile is not None else None
+        )
+        if profile is not None:
+            app = QtWidgets.QApplication.instance()
+            profile.thread_name = threading.current_thread().name
+            profile.qt_gui_thread = bool(
+                app is not None and QtCore.QThread.currentThread() is app.thread()
+            )
+        status = "error"
         try:
-            raw_rows = self.spec.adapters.read_cases(path)
-            rows = tuple(raw_rows)
+            raw_rows = timed_call(
+                profile,
+                "GUI_INPUT",
+                "read_cases",
+                self.spec.adapters.read_cases,
+                path,
+            )
+            rows = timed_call(
+                profile,
+                "GUI_INPUT",
+                "materialize_raw_rows",
+                tuple,
+                raw_rows,
+            )
             if not rows:
                 raise ValueError("Input contains no cases.")
-            if any(not isinstance(row, Mapping) for row in rows):
+            invalid_mapping = timed_call(
+                profile,
+                "GUI_INPUT",
+                "validate_row_mappings",
+                any,
+                (not isinstance(row, Mapping) for row in rows),
+            )
+            if invalid_mapping:
                 raise TypeError("read_cases must return mappings")
-            normalized = tuple(dict(row) for row in rows)
+            normalized = timed_call(
+                profile,
+                "GUI_INPUT",
+                "mapping_to_dict",
+                tuple,
+                (dict(row) for row in rows),
+            )
         except Exception as exc:
             self.clear_loaded_cases()
+            if profile is not None:
+                profile.finish("error")
+                if profile_token is not None:
+                    deactivate_gui_input_profile(profile_token)
+                for line in profile.format_lines():
+                    self.logln(line)
             issues = getattr(exc, "issues", None)
             if issues is not None:
                 issue_list = tuple(issues)
@@ -246,17 +302,57 @@ class CasesPanel(QtWidgets.QWidget):
                 )
             return False
 
-        self.input_path = absolute_input_path(path)
-        self.input_value.setText(str(self.input_path))
-        self.case_rows = normalized
-        self._populate_case_table()
-        self.btn_run.setEnabled(True)
-        if remember_directory:
-            self._last_input_directory = self.input_path.parent
-        self.logln(f"[OK] Loaded {len(self.case_rows)} case(s). Select and run.")
-        self.input_path_changed.emit(self.input_path)
-        self.cases_updated.emit(self.case_rows)
-        return True
+        try:
+            state_started_at = time.perf_counter() if profile is not None else None
+            self.input_path = absolute_input_path(path)
+            self.input_value.setText(str(self.input_path))
+            self.case_rows = normalized
+            if profile is not None and state_started_at is not None:
+                profile.add_timing(
+                    "GUI_INPUT",
+                    "update_loaded_state",
+                    time.perf_counter() - state_started_at,
+                )
+            timed_call(
+                profile,
+                "GUI_INPUT",
+                "populate_table",
+                self._populate_case_table,
+            )
+            post_started_at = time.perf_counter() if profile is not None else None
+            self.btn_run.setEnabled(True)
+            if remember_directory:
+                self._last_input_directory = self.input_path.parent
+            self.logln(f"[OK] Loaded {len(self.case_rows)} case(s). Select and run.")
+            if profile is not None and post_started_at is not None:
+                profile.add_timing(
+                    "GUI_INPUT",
+                    "update_post_table_state",
+                    time.perf_counter() - post_started_at,
+                )
+            timed_call(
+                profile,
+                "GUI_INPUT",
+                "emit_input_path_changed",
+                self.input_path_changed.emit,
+                self.input_path,
+            )
+            timed_call(
+                profile,
+                "GUI_INPUT",
+                "emit_cases_updated",
+                self.cases_updated.emit,
+                self.case_rows,
+            )
+            status = "ok"
+            return True
+        finally:
+            if profile is not None:
+                profile.finish(status)
+                if profile_token is not None:
+                    deactivate_gui_input_profile(profile_token)
+                for line in profile.format_lines():
+                    self.logln(line)
 
     def _ordered_columns(self) -> tuple[str, ...]:
         extras: list[str] = []
@@ -268,7 +364,18 @@ class CasesPanel(QtWidgets.QWidget):
         return (*self.spec.case_columns, *extras)
 
     def _populate_case_table(self) -> None:
+        profile = current_gui_input_profile()
+        started_at = time.perf_counter() if profile is not None else None
         self._table_columns = self._ordered_columns()
+        if profile is not None and started_at is not None:
+            profile.add_timing(
+                "TABLE",
+                "column_determination",
+                time.perf_counter() - started_at,
+            )
+            profile.rows = len(self.case_rows)
+            profile.columns = len(self._table_columns)
+            started_at = time.perf_counter()
         self.case_table.clear()
         self.case_table.setColumnCount(len(self._table_columns))
         self.case_table.setRowCount(len(self.case_rows))
@@ -277,6 +384,13 @@ class CasesPanel(QtWidgets.QWidget):
             for name in self._table_columns
         ]
         self.case_table.setHorizontalHeaderLabels(headers)
+        if profile is not None and started_at is not None:
+            profile.add_timing(
+                "TABLE",
+                "reset_and_headers",
+                time.perf_counter() - started_at,
+            )
+            started_at = time.perf_counter()
         for row_index, row in enumerate(self.case_rows):
             for column, name in enumerate(self._table_columns):
                 value = row.get(name)
@@ -288,10 +402,37 @@ class CasesPanel(QtWidgets.QWidget):
                 if column == 0:
                     item.setData(QtCore.Qt.ItemDataRole.UserRole, row_index)
                 self.case_table.setItem(row_index, column, item)
+        if profile is not None and started_at is not None:
+            profile.add_timing(
+                "TABLE",
+                "create_items_and_set",
+                time.perf_counter() - started_at,
+            )
+            started_at = time.perf_counter()
         self.case_table.resizeColumnsToContents()
+        if profile is not None and started_at is not None:
+            profile.add_timing(
+                "TABLE",
+                "resize_columns",
+                time.perf_counter() - started_at,
+            )
+            started_at = time.perf_counter()
         if "stl_path" in self._table_columns:
             self.case_table.setColumnWidth(self._table_columns.index("stl_path"), 220)
+        if profile is not None and started_at is not None:
+            profile.add_timing(
+                "TABLE",
+                "stl_column_width",
+                time.perf_counter() - started_at,
+            )
+            started_at = time.perf_counter()
         self._refresh_summary()
+        if profile is not None and started_at is not None:
+            profile.add_timing(
+                "TABLE",
+                "summary_update",
+                time.perf_counter() - started_at,
+            )
 
     @staticmethod
     def format_stl_name(value: str) -> str:
