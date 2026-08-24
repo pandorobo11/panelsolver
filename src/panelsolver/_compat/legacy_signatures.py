@@ -118,7 +118,7 @@ def build_legacy_signature_candidates(
     defaults: Mapping[str, object],
     policy: LegacySignaturePolicy,
 ) -> tuple[str, ...]:
-    """Return ordered direct-row then default-normalized D018 candidates."""
+    """Return direct-row then default-normalized legacy signature candidates."""
     direct = build_legacy_case_signature(row, policy)
     normalized = dict(row)
     for name, default in defaults.items():
@@ -135,7 +135,7 @@ def build_artifact_signature_candidates(
     defaults: Mapping[str, object],
     policy: LegacySignaturePolicy,
 ) -> ArtifactSignatureCandidates:
-    """Combine canonical identity with ordered opaque D017/D018 candidates."""
+    """Combine the canonical signature with ordered opaque legacy candidates."""
     legacy = build_legacy_signature_candidates(
         row,
         defaults=defaults,

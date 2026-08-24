@@ -99,7 +99,7 @@ type RunCasesCallback = Callable[[GuiRunRequest], GuiRunResult]
 
 @dataclass(frozen=True, slots=True)
 class ArtifactSignatureCandidates:
-    """Primary Phase 5 signature plus opaque product legacy fallbacks."""
+    """Canonical primary signature plus opaque product-specific legacy fallbacks."""
 
     primary: CaseSignature
     legacy_signatures: tuple[str, ...] = ()
@@ -126,11 +126,11 @@ type BuildCaseSignaturesCallback = Callable[[CaseRow], ArtifactSignatureCandidat
 
 @dataclass(frozen=True, slots=True)
 class SolverGuiAdapters:
-    """Phase-owned adapters injected at the shared GUI boundary.
+    """Adapters supplying domain-specific behavior at the shared GUI boundary.
 
-    Phase 6 defines the complete injection point so widgets never import a
-    compatibility frontend. Product-compatible implementations of case reading,
-    execution, and output validation remain Phase 7 work.
+    The complete adapter set supplies case reading, signature construction,
+    execution, output validation, and velocity-direction resolution while keeping
+    shared widgets independent of compatibility frontends.
     """
 
     read_cases: ReadCasesCallback

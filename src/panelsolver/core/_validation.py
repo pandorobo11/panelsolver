@@ -183,7 +183,7 @@ def require_nonempty_faces(n_faces: int, *, field: str) -> None:
 
 
 def validate_unit_vectors(array: np.ndarray, *, field: str) -> None:
-    """Require unit vectors to the Phase 1 geometry tolerance."""
+    """Require unit vectors within the shared unit-vector absolute tolerance."""
     norms = np.linalg.norm(array, axis=-1)
     if not np.allclose(norms, 1.0, rtol=0.0, atol=_UNIT_VECTOR_ATOL):
         raise ContractValueError(

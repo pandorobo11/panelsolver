@@ -77,7 +77,7 @@ class _WorkerConnectionClosed(Exception):
 
 
 class WorkerLogPolicy(str, Enum):
-    """Explicit preservation of the D015 dual logging contracts."""
+    """Policy for forwarding or dropping worker log messages."""
 
     FORWARD = "forward"
     DROP = "drop"
@@ -1178,7 +1178,7 @@ def iter_execution_results_parallel(
     ]
     | None = None,
 ) -> Iterator[tuple[int, CaseExecutionResult]]:
-    """Run Phase 5 requests through the same one-case engine in spawn workers."""
+    """Run case-execution requests through the one-case engine in spawn workers."""
     normalized = tuple(requests)
     yield from iter_case_results_parallel(
         normalized,

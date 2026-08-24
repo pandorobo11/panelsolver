@@ -179,9 +179,8 @@ class LocalLoads:
 class CommonCasePayload:
     """Validated model-independent numerical inputs after attitude resolution.
 
-    This deliberately imposes no legacy product-specific case-ID character set
-    or angle-domain policy. Those unresolved compatibility rules remain in the
-    product adapters that will be introduced in later phases.
+    Public case-ID and attitude-input policies are validated and resolved by
+    higher-level adapters before constructing this payload.
     """
 
     case_id: str

@@ -112,7 +112,7 @@ def build_case_signature(
     model_case_payload: Mapping[str, object],
     shielding_config: ResolvedShieldingConfig,
 ) -> CaseSignature:
-    """Build the exact ADR 0005 Phase 5 canonical signature envelope."""
+    """Build the exact canonical signature envelope defined by ADR 0005."""
     geometry_digest = _validate_digest(
         geometry_fingerprint,
         field="geometry_fingerprint",
@@ -177,10 +177,10 @@ def match_case_signature(
     *,
     legacy_signatures: Sequence[str] = (),
 ) -> SignatureMatch:
-    """Match a stored signature, preferring the Phase 5 primary identity.
+    """Match a stored signature, preferring the canonical primary identity.
 
     Legacy signatures are opaque caller-supplied values. Core neither rebuilds
-    nor normalizes product-specific D017/D018 payloads.
+    nor normalizes product-specific legacy signature payloads.
     """
     if not isinstance(primary, CaseSignature):
         raise TypeError("primary must be a CaseSignature instance")
