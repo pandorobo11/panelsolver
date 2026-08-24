@@ -490,7 +490,8 @@ def run_and_write_product_cases(
     logger = (lambda _message: None) if logfn is None else logfn
     output = Path(output_path)
     summary_issues: list[OutputIssue] = []
-    final_saved = False
+    complete_summary_saved = False
+    last_successful_snapshot_done = 0
 
     def write_snapshot(
         projection: CsvProjection,
@@ -498,7 +499,15 @@ def run_and_write_product_cases(
         total: int,
         is_final: bool,
     ) -> None:
-        nonlocal final_saved
+        nonlocal complete_summary_saved, last_successful_snapshot_done
+        if is_final and done == total == last_successful_snapshot_done:
+            complete_summary_saved = True
+            if log_snapshots:
+                logger(
+                    f"[SAVE] final {done}/{total} -> {output} "
+                    "(complete checkpoint reused)"
+                )
+            return
         phase = OutputPhase.FINAL if is_final else OutputPhase.CHECKPOINT
         try:
             write_csv_atomic(output, projection, policy.csv_write_policy)
@@ -516,8 +525,9 @@ def run_and_write_product_cases(
                 f"path={output} reason={issue.message}"
             )
             return
-        if is_final:
-            final_saved = True
+        last_successful_snapshot_done = done
+        if done == total:
+            complete_summary_saved = True
         if log_snapshots:
             label = "final" if is_final else "checkpoint"
             logger(f"[SAVE] {label} {done}/{total} -> {output}")
@@ -539,7 +549,7 @@ def run_and_write_product_cases(
         result.cases,
         result.csv,
         issues,
-        final_saved,
+        complete_summary_saved,
     )
 
 

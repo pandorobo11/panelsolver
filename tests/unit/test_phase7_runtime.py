@@ -219,6 +219,75 @@ class Phase7RuntimeTests(unittest.TestCase):
                 [row["case_id"] for row in saved if row["scope"] == "total"],
             )
 
+    def test_complete_checkpoint_is_reused_as_final_summary(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            rows = self._fmf_rows(root, 3)
+            summary = root / "summary.csv"
+            logs: list[str] = []
+
+            with mock.patch(
+                "panelsolver.app.runtime.write_csv_atomic",
+                wraps=write_csv_atomic,
+            ) as write:
+                result = run_and_write_product_cases(
+                    rows,
+                    FMF_POLICY,
+                    summary,
+                    checkpoint_every_cases=len(rows),
+                    log_snapshots=True,
+                    logfn=logs.append,
+                )
+
+            self.assertEqual(1, write.call_count)
+            self.assertTrue(result.summary_csv_saved)
+            self.assertEqual((), result.output_issues)
+            self.assertTrue(
+                any("complete checkpoint reused" in message for message in logs)
+            )
+            with summary.open(encoding=CSV_ENCODING, newline="") as stream:
+                saved = tuple(csv.DictReader(stream))
+            self.assertEqual(
+                ["case_0", "case_1", "case_2"],
+                [row["case_id"] for row in saved if row["scope"] == "total"],
+            )
+
+    def test_partial_checkpoint_does_not_mask_final_summary_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            rows = self._fmf_rows(root, 3)
+            summary = root / "summary.csv"
+            calls = 0
+
+            def fail_final(output, projection, policy):
+                nonlocal calls
+                calls += 1
+                if calls == 2:
+                    raise OSError("final denied")
+                return write_csv_atomic(output, projection, policy)
+
+            with mock.patch(
+                "panelsolver.app.runtime.write_csv_atomic",
+                side_effect=fail_final,
+            ):
+                result = run_and_write_product_cases(
+                    rows,
+                    FMF_POLICY,
+                    summary,
+                    checkpoint_every_cases=2,
+                )
+
+            self.assertEqual(2, calls)
+            self.assertFalse(result.summary_csv_saved)
+            self.assertEqual(1, len(result.output_issues))
+            self.assertIs(OutputPhase.FINAL, result.output_issues[0].phase)
+            with summary.open(encoding=CSV_ENCODING, newline="") as stream:
+                saved = tuple(csv.DictReader(stream))
+            self.assertEqual(
+                ["case_0", "case_1"],
+                [row["case_id"] for row in saved if row["scope"] == "total"],
+            )
+
     def test_checkpoint_default_is_shared_across_runtime_and_domains(self) -> None:
         for callback in (
             run_product_cases,

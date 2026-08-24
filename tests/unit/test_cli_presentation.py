@@ -104,7 +104,13 @@ class CliPresentationTests(unittest.TestCase):
         args = parser.parse_args(
             ["--input", "cases.csv", "--workers", "3", "--plain"]
         )
-        with patch("panelsolver.app.cli.run_and_write_product_cases") as run:
+        with patch(
+            "panelsolver.app.cli.run_and_write_product_cases",
+            return_value=SimpleNamespace(
+                output_issues=(),
+                summary_csv_saved=True,
+            ),
+        ) as run:
             self.assertEqual(0, _run_parsed_cli(policy, args))
         self.assertEqual(3, run.call_args.kwargs["workers"])
         self.assertTrue(callable(run.call_args.kwargs["progress_cb"]))

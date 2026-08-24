@@ -50,6 +50,9 @@ write failures finishes as **Completed with output errors**, not **Failed**. The
 run continues after per-case VTP failures and shows one bounded summary at the
 end; complete details remain in the log. **Failed** is reserved for case
 computation failures such as geometry loading or model execution errors.
+After a VTP failure, an older file at that case's planned path is not auto-loaded
+as the current result. It remains available for explicit **Open VTP...**
+inspection.
 
 Input validation issues are shown with spreadsheet row, case ID, field, and
 message. The GUI uses the same reader, execution engine, checkpoint behavior,

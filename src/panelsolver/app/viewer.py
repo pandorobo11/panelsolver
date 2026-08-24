@@ -279,6 +279,16 @@ class ViewerPanel(QtWidgets.QWidget):
             pass
         self._update_export_controls()
 
+    @QtCore.Slot(str)
+    def invalidate_vtp_artifact(self, path: str) -> None:
+        """Clear a displayed artifact only when its exact output was invalidated."""
+        if self._loaded_vtp_path is None:
+            return
+        invalidated = Path(path).expanduser().resolve(strict=False)
+        loaded = self._loaded_vtp_path.expanduser().resolve(strict=False)
+        if loaded == invalidated:
+            self.clear_view()
+
     def clear_range(self) -> None:
         self.edit_vmin.clear()
         self.edit_vmax.clear()

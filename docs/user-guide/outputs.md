@@ -39,6 +39,10 @@ write or replacement does not overwrite an existing artifact, and temporary
 files are removed after both success and failure. VTP files already written
 remain after a later failure or cancellation.
 
+When a successful checkpoint already contains every case, it is the complete
+final aggregate Summary CSV. The runtime reuses it instead of rewriting the
+same projection a second time.
+
 A VTP output failure does not discard that case's computed coefficients or stop
 later cases. The Summary CSV keeps the completed case and leaves `vtp_path`
 blank, even if an older VTP still exists at the planned path. Output failures
