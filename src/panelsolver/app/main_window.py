@@ -56,6 +56,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.cases_panel.vtp_loaded.connect(self.viewer_panel.load_vtp)
         self.cases_panel.viewer_clear_requested.connect(self.viewer_panel.clear_view)
         self.cases_panel.cases_updated.connect(self.viewer_panel.set_case_rows)
+        self.cases_panel.selected_cases_changed.connect(
+            self.viewer_panel.set_selected_case_rows
+        )
         self.cases_panel.input_path_changed.connect(self.viewer_panel.set_input_path)
         self.cases_panel.run_finished.connect(self._on_case_run_finished)
         self.viewer_panel.save_selected_images_requested.connect(

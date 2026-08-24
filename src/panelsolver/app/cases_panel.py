@@ -92,6 +92,7 @@ class CasesPanel(QtWidgets.QWidget):
     vtp_loaded = QtCore.Signal(str, object, object)
     viewer_clear_requested = QtCore.Signal()
     cases_updated = QtCore.Signal(object)
+    selected_cases_changed = QtCore.Signal(object)
     input_path_changed = QtCore.Signal(object)
     run_requested = QtCore.Signal(object, int, int, object)
     run_finished = QtCore.Signal()
@@ -256,6 +257,7 @@ class CasesPanel(QtWidgets.QWidget):
         self.logln(f"[OK] Loaded {len(self.case_rows)} case(s). Select and run.")
         self.input_path_changed.emit(self.input_path)
         self.cases_updated.emit(self.case_rows)
+        self.selected_cases_changed.emit(())
         return True
 
     def _ordered_columns(self) -> tuple[str, ...]:
@@ -317,6 +319,7 @@ class CasesPanel(QtWidgets.QWidget):
     def on_case_selection_changed(self) -> None:
         self._refresh_summary()
         selected = self.selected_case_rows()
+        self.selected_cases_changed.emit(tuple(selected))
         if not selected:
             self.viewer_clear_requested.emit()
             return
@@ -531,6 +534,7 @@ class CasesPanel(QtWidgets.QWidget):
         self.viewer_clear_requested.emit()
         self.input_path_changed.emit(None)
         self.cases_updated.emit(self.case_rows)
+        self.selected_cases_changed.emit(())
         self._refresh_summary()
 
     def _refresh_summary(self) -> None:

@@ -80,8 +80,48 @@ explicit machine-oriented field names.
 | `center_y_stl_m` | Center Y [m] |
 | `center_z_stl_m` | Center Z [m] |
 | `stl_index` | STL index |
-Relative `out_dir` values, automatic VTP loading, and default image directories
-are all resolved from the loaded input table's directory.
+
+For a case-associated VTP, **Save Image...** starts at
+`<resolved_out_dir>/images/<case_id>__<scalar_name>.png`. The scalar portion is
+the machine-oriented VTP field name from the first column above, not its GUI
+label. For example, the default may be
+`outputs/images/case_001__normal_traction_coeff.png`.
+Characters that are unsafe in portable filenames (`/`, `\`, `:`, `*`, `?`,
+`"`, `<`, `>`, `|`, and control characters) are replaced with `_` in both the
+case or VTP identifier and scalar portions. Leading and trailing whitespace and
+trailing dots are removed; an empty result uses a safe fallback name.
+
+For a VTP opened with **Open VTP...** that does not match a current case and
+signature, the default is
+`<vtp_parent>/images/<vtp_stem>__<scalar_name>.png`. A stale or
+signature-mismatched VTP can still be inspected and exported manually.
+
+**Save Selected...** starts at `<resolved_out_dir>/images` when every selected
+case resolves to the same output directory. If selected cases use different
+resolved output directories, it starts at `<input_dir>/outputs/images`,
+independent of row order. Batch filenames use the same
+`<case_id>__<scalar_name>.png` form. Existing files are never overwritten by a
+batch export: Panel Solver adds `_2`, `_3`, and so on before `.png`, including
+when names would collide within the current batch.
+
+For **Save Image...**, the required image directory and missing parents are
+created after the save dialog is confirmed. For **Save Selected...**, the
+standard or remembered directory is created before the folder chooser opens so
+it can be selected on the first export; canceling that chooser may therefore
+leave an empty `images` directory. A creation failure is logged, the chooser is
+not opened, and no screenshot is attempted. Calculations themselves do not
+create image directories.
+
+If another image directory is selected, it is reused as the starting directory
+for later case-associated image saves while the same input file remains loaded.
+This session-only choice is reset after a different input file loads
+successfully; if the remembered directory is deleted, the standard directory is
+created if needed and used again. An unmatched manually opened VTP always uses
+its own parent-based standard location. Export buttons remain disabled until a
+viewport or explicitly selected loaded cases, respectively, are available.
+
+Relative `out_dir` values, automatic VTP loading, and case-associated default
+image directories are all resolved from the loaded input table's directory.
 
 Closing the window during a run requests cooperative cancellation and waits for
 worker cleanup. An active ray query or model solve may finish before cancellation

@@ -22,6 +22,7 @@ class _Cases(QtWidgets.QWidget):
     vtp_loaded = QtCore.Signal(object)
     viewer_clear_requested = QtCore.Signal()
     cases_updated = QtCore.Signal(object)
+    selected_cases_changed = QtCore.Signal(object)
     input_path_changed = QtCore.Signal(object)
     run_finished = QtCore.Signal()
 
@@ -52,6 +53,9 @@ class _Viewer(QtWidgets.QWidget):
         pass
 
     def set_case_rows(self, _rows) -> None:
+        pass
+
+    def set_selected_case_rows(self, _rows) -> None:
         pass
 
     def set_input_path(self, _path) -> None:

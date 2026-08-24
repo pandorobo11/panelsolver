@@ -143,6 +143,9 @@ def _smoke_canonical_gui_entrypoint() -> None:
         def set_case_rows(self, *_args) -> None:
             pass
 
+        def set_selected_case_rows(self, *_args) -> None:
+            pass
+
         def set_input_path(self, *_args) -> None:
             pass
 
