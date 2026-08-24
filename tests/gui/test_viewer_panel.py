@@ -324,8 +324,15 @@ class ViewerPanelTests(unittest.TestCase):
             return_value=("/tmp/view.tiff", "TIFF"),
         ):
             viewer.save_view_image()
-        self.assertEqual(["/tmp/view.tiff"], plotter.screenshot_calls)
-        self.assertIn("[OK] Saved image: /tmp/view.tiff", messages)
+        self.assertEqual(1, len(plotter.screenshot_calls))
+        assert_paths_equivalent(self, "/tmp/view.tiff", plotter.screenshot_calls[0])
+        success_messages = [
+            message.removeprefix("[OK] Saved image: ")
+            for message in messages
+            if message.startswith("[OK] Saved image: ")
+        ]
+        self.assertEqual(1, len(success_messages))
+        assert_paths_equivalent(self, "/tmp/view.tiff", success_messages[0])
 
         plotter.screenshot_error = RuntimeError("capture failed")
         with patch.object(
