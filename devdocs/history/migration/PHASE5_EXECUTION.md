@@ -1,5 +1,7 @@
 # Phase 5 shared execution infrastructure
 
+Historical record — non-normative. This page records the repository state at the migration phase or audit named below. Statements such as “current”, supported commands, package names, file formats, and future work apply to that recorded point in time. Use docs/, devdocs/architecture/, and accepted or superseding ADRs for the present contract.
+
 Phase 5 composes the already-accepted contracts and physical models into a
 single model-neutral execution path. It does not add a CLI, GUI, artifact
 serializer, or compatibility import surface.

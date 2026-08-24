@@ -1,5 +1,7 @@
 # Phase 1 numerical tolerances
 
+Historical record — non-normative. This page records the repository state at the migration phase or audit named below. Statements such as “current”, supported commands, package names, file formats, and future work apply to that recorded point in time. Use docs/, devdocs/architecture/, and accepted or superseding ADRs for the present contract.
+
 These tolerances define when a future implementation reproduces a pinned legacy
 result. They are compatibility limits, not estimates of physical-model error and
 not permission to change a formula. Each fixture selects one profile in

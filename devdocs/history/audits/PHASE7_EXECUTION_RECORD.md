@@ -1,5 +1,7 @@
 # Phase 7 execution record
 
+Historical record — non-normative. This page records the repository state at the migration phase or audit named below. Statements such as “current”, supported commands, package names, file formats, and future work apply to that recorded point in time. Use docs/, devdocs/architecture/, and accepted or superseding ADRs for the present contract.
+
 ## Starting point and scope
 
 Phase 7 started from Phase 6-complete `origin/main` commit

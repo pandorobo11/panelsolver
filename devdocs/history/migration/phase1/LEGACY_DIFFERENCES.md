@@ -1,5 +1,7 @@
 # Phase 1 legacy-difference ledger
 
+Historical record — non-normative. This page records the repository state at the migration phase or audit named below. Statements such as “current”, supported commands, package names, file formats, and future work apply to that recorded point in time. Use docs/, devdocs/architecture/, and accepted or superseding ADRs for the present contract.
+
 This ledger records differences at the pinned commits. ADR 0008 now governs
 which observations remain supported product contracts; the behavior columns
 stay immutable evidence, while historical “preserve” guidance in the final

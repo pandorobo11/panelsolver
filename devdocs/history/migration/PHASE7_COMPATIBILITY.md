@@ -1,5 +1,7 @@
 # Phase 7 packaging and public compatibility
 
+Historical record — non-normative. This page records the repository state at the migration phase or audit named below. Statements such as “current”, supported commands, package names, file formats, and future work apply to that recorded point in time. Use docs/, devdocs/architecture/, and accepted or superseding ADRs for the present contract.
+
 Phase 7 turns the accepted shared engine and GUI into the two runnable legacy
 product surfaces. It preserves numerical behavior and each product's public
 contract while removing duplicated common implementation from the compatibility

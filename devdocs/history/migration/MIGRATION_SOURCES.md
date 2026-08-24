@@ -1,5 +1,7 @@
 # Migration sources
 
+Historical record — non-normative. This page records the repository state at the migration phase or audit named below. Statements such as “current”, supported commands, package names, file formats, and future work apply to that recorded point in time. Use docs/, devdocs/architecture/, and accepted or superseding ADRs for the present contract.
+
 These commits are the immutable baselines for the first migration pass.
 
 | Legacy implementation | Repository | Baseline commit | Recorded local branch |

@@ -145,10 +145,8 @@ class DocumentationSiteTests(unittest.TestCase):
             ("getting-started/installation.html", "Installation"),
             ("getting-started/quickstart.html", "Quickstart"),
             ("user-guide/troubleshooting.html", "Troubleshooting"),
-            ("solvers/fmf-overview.html", "Overview"),
             ("reference/fmf-input.html", "Input"),
             ("solvers/fmf.html", "Sentman model"),
-            ("solvers/hypersonic-overview.html", "Overview"),
             ("reference/hypersonic-input.html", "Input"),
             ("solvers/hypersonic.html", "Pressure models"),
             ("user-guide/gui.html", "GUI"),
@@ -158,13 +156,28 @@ class DocumentationSiteTests(unittest.TestCase):
             ("reference/environment-variables.html", "Environment variables"),
             ("reference/compatibility.html", "Compatibility"),
             ("reference/output-formats.html", "Output formats"),
-            ("reference/us1976-data-provenance.html", "US1976 provenance"),
+            (
+                "reference/us1976-data-provenance.html",
+                "US1976 atmosphere provenance",
+            ),
             (
                 "reference/license-and-third-party-notices.html",
                 "License / third-party notices",
             ),
         }
         self.assertLessEqual(expected_links, sidebar_links)
+
+    def test_site_excludes_developer_and_removed_pages(self) -> None:
+        forbidden_directories = ("development", "adr", "history", "devdocs")
+        for directory in forbidden_directories:
+            with self.subTest(directory=directory):
+                self.assertFalse((self.site / directory).exists())
+        for relative in (
+            "solvers/fmf-overview.html",
+            "solvers/hypersonic-overview.html",
+        ):
+            with self.subTest(relative=relative):
+                self.assertFalse((self.site / relative).exists())
 
     def test_tables_have_rtd_runtime_hooks_and_responsive_local_styles(self) -> None:
         representative_pages = (

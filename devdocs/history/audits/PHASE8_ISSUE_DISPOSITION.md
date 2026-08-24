@@ -1,5 +1,7 @@
 # Phase 8 open-Issue disposition
 
+Historical record — non-normative. This page records the repository state at the migration phase or audit named below. Statements such as “current”, supported commands, package names, file formats, and future work apply to that recorded point in time. Use docs/, devdocs/architecture/, and accepted or superseding ADRs for the present contract.
+
 > Completion note: this document is the historical planning disposition. The
 > plan is complete; results and final acceptance are recorded in
 > `PHASE8_EXECUTION_RECORD.md` and `PHASE8_FINAL_AUDIT.md`.

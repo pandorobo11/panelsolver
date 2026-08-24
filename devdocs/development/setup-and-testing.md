@@ -5,7 +5,7 @@
 Python 3.12 or newer and `uv` are required for the repository workflow.
 
 ```bash
-uv sync --locked --extra rayaccel
+uv sync --locked --extra rayaccel --group docs
 ```
 
 `uv.lock` is authoritative for local development and CI. The `rayaccel` extra
@@ -19,9 +19,9 @@ SVG plots, or verify that they are synchronized with the current models:
 
 ```bash
 uv sync --locked --extra rayaccel --group docs
-uv run mkdocs build --strict
-uv run --group docs python scripts/generate_docs_angle_response_plots.py
-uv run --group docs python scripts/generate_docs_angle_response_plots.py --check
+uv run --no-sync mkdocs build --strict
+uv run --no-sync python scripts/generate_docs_angle_response_plots.py
+uv run --no-sync python scripts/generate_docs_angle_response_plots.py --check
 ```
 
 When ray-acceleration development dependencies are also needed, combine the
@@ -45,8 +45,8 @@ or change expected values merely to make tests pass.
 ## Standard quality gates
 
 ```bash
-uv run python -m unittest discover -s tests -p "test_*.py" -v
-uv run ruff check src tests scripts hatch_build.py
+uv run --no-sync python -m unittest discover -s tests -p "test_*.py" -v
+uv run --no-sync ruff check src tests scripts hatch_build.py
 uv build
 ```
 
@@ -70,9 +70,15 @@ Artifact regression checks compare named semantic arrays and metadata rather
 than file bytes. Per-quantity tolerances and provenance live in
 [Phase 1 history](../history/migration/phase1/TOLERANCES.md).
 
+Phase 1 fixtures and goldens and the Phase 3 adapter regressions are historical,
+read-only inputs to compatibility decisions. A changed implementation must be
+compared using the recorded quantity-specific tolerance profile. Do not update a
+golden or tolerance merely to make a test pass; document the intended numerical
+change, evidence, effect, and accepted compatibility decision first.
+
 ## Versions
 
-`pyproject.toml` owns the single distribution version, currently `0.1.0`.
+`pyproject.toml` owns the single distribution version.
 Summary CSV and VTP retrieve that installed `panelsolver` version from
 distribution metadata for both domains. FMF `1.3.8` and newtsolver `1.0.3` are
 historical migration baselines retained only for legacy signature

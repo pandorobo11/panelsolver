@@ -1,5 +1,7 @@
 # Phase 6 shared GUI and viewer
 
+Historical record — non-normative. This page records the repository state at the migration phase or audit named below. Statements such as “current”, supported commands, package names, file formats, and future work apply to that recorded point in time. Use docs/, devdocs/architecture/, and accepted or superseding ADRs for the present contract.
+
 Phase 6 migrates the duplicated Qt/PyVista shell behind one model-neutral
 `SolverSpec`. It does not complete case-file compatibility, artifact
 serialization, command registration, distribution mechanics, or public import

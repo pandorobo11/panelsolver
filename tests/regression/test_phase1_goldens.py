@@ -110,7 +110,7 @@ class Phase1ManifestTests(unittest.TestCase):
     def test_pinned_sources_match_migration_sources(self) -> None:
         migration_sources = (
             REPOSITORY_ROOT
-            / "docs"
+            / "devdocs"
             / "history"
             / "migration"
             / "MIGRATION_SOURCES.md"

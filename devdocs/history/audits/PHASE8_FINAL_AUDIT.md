@@ -1,5 +1,7 @@
 # Phase 8 final audit and acceptance report
 
+Historical record — non-normative. This page records the repository state at the migration phase or audit named below. Statements such as “current”, supported commands, package names, file formats, and future work apply to that recorded point in time. Use docs/, devdocs/architecture/, and accepted or superseding ADRs for the present contract.
+
 ## Verdict
 
 **Accepted.** Phase 8 found no unexplained supported-domain numerical delta,

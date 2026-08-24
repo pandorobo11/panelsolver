@@ -50,12 +50,12 @@ panelsolver-gui hypersonic
 Run the same examples without the GUI:
 
 ```bash
-panelsolver fmf --input examples/fmf/basic.csv --workers 1 --flush-every-cases 0
-panelsolver hypersonic --input examples/hypersonic/basic.csv --workers 1 --flush-every-cases 0
+panelsolver fmf --input examples/fmf/basic.csv --workers 1 --checkpoint-every-cases 0
+panelsolver hypersonic --input examples/hypersonic/basic.csv --workers 1 --checkpoint-every-cases 0
 
 # Legacy compatibility commands remain available:
-fmfsolver-cli --input examples/fmf/basic.csv --workers 1 --flush-every-cases 0
-newtsolver-cli --input examples/hypersonic/basic.csv --workers 1 --flush-every-cases 0
+fmfsolver-cli --input examples/fmf/basic.csv --workers 1 --checkpoint-every-cases 0
+newtsolver-cli --input examples/hypersonic/basic.csv --workers 1 --checkpoint-every-cases 0
 ```
 
 `fmf` is the free-molecular-flow domain selector; it is not the legacy
@@ -65,8 +65,9 @@ Case tables may be CSV, XLSX, or XLSM files. CSV input and Summary CSV output
 use UTF-8 with BOM (`utf-8-sig`); BOM-less UTF-8 CSV files remain accepted on
 input for compatibility.
 
-The six `fmfsolver` / `newtsolver` commands remain legacy compatibility entry
-points with unchanged command behavior and GUI titles.
+The six `fmfsolver` / `newtsolver` commands remain supported legacy
+compatibility entry points. The exact supported surface is defined in the
+[compatibility policy](docs/reference/compatibility.md).
 Results are written below each example's `outputs/` directory. The
 [quickstart](docs/getting-started/quickstart.md) explains the files and the main
 CLI options.
@@ -74,8 +75,7 @@ CLI options.
 ## Documentation
 
 Every wheel includes a self-contained offline HTML site. In either canonical or
-legacy GUI, use **Help → Documentation** or **Help → Current Domain
-Documentation**. Release attachments also include
+legacy GUI, use **Help → Documentation**. Release attachments also include
 `panelsolver-docs-v<version>.zip`; open its root `index.html` directly with no
 server or network access.
 
@@ -87,25 +87,16 @@ server or network access.
 - [FMF input](docs/reference/fmf-input.md),
   [Hypersonic input](docs/reference/hypersonic-input.md), and
   [output reference](docs/reference/output-formats.md)
-- [Development guide](docs/development/setup-and-testing.md)
-- [Migration and audit history](docs/history/README.md)
+- [Developer documentation](devdocs/README.md)
 
-## Status and compatibility
+## Compatibility
 
-The FMF/Hypersonic integration and Phase 8 audit are complete. One
-`panelsolver` distribution (currently `0.1.0`) provides the canonical
-`panelsolver` and `panelsolver-gui` command namespaces plus all six legacy
-compatibility command names. Summary CSV and VTP artifacts record the installed
-`panelsolver` distribution version for both domains. FMF `fmfsolver 1.3.8`
-and Hypersonic `newtsolver 1.0.3` remain documented migration baselines and
-private legacy-compatibility inputs, not current domain versions. Supported
-commands, normal GUI use, documented case files,
-and documented Summary CSV/VTP semantics are compatibility surfaces. The small
-`panelsolver` package-root Python API is stable. Direct-Python APIs under
-`fmfsolver.*` and `newtsolver.*` are unsupported and have been removed; those
-package names remain only as private command frontends. See the
+One `panelsolver` distribution provides the canonical commands and all six
+legacy compatibility command names. Summary CSV and VTP artifacts record the
+installed distribution version. The package-root Python API is stable; direct
+Python modules under the legacy package names are not public APIs. See the
 [compatibility policy](docs/reference/compatibility.md) and
-[CHANGELOG.md](CHANGELOG.md).
+[CHANGELOG.md](CHANGELOG.md) for the supported surface and release changes.
 
 ## License
 

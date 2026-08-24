@@ -33,14 +33,6 @@ The equivalent checkout install with Embree is:
 python -m pip install '.[rayaccel]'
 ```
 
-For a reproducible development environment, use the locked setup instead:
-
-```bash
-uv sync --locked --extra rayaccel
-```
-
-Commands in that environment can be prefixed with `uv run`.
-
 ## Verify the installation
 
 ```bash
@@ -55,11 +47,9 @@ newtsolver-cli --help
 python -c 'import importlib.metadata as m; print(m.version("panelsolver"))'
 ```
 
-The distribution version is currently `0.1.0` and is the `solver_version`
-recorded by newly generated FMF and Hypersonic Summary CSV/VTP artifacts. The
-historical `fmfsolver 1.3.8` and `newtsolver 1.0.3` values are private legacy
-artifact-signature inputs; they are not importable package versions or current
-domain versions.
+The version printed by the final command is the installed `panelsolver`
+distribution version. Newly generated FMF and Hypersonic Summary CSV/VTP
+artifacts record that value as `solver_version`.
 
 ## Legacy-distribution coexistence
 
@@ -69,8 +59,5 @@ top-level packages and console commands. Remove the legacy packages first:
 
 ```bash
 python -m pip uninstall fmfsolver newtsolver
-python -m pip install .
+python -m pip install panelsolver
 ```
-
-Operational rollback is documented separately in
-[Release and rollback](../development/release-and-rollback.md).

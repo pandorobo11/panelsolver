@@ -66,6 +66,4 @@ pressure coefficient as `cp`. FMF derives `normal_traction_coeff` and
 direction is the normalized in-plane projection of `velocity_hat_stl`.
 Ray-shielded panels have exact-zero traction.
 
-Quantity-specific golden tolerances remain historical regression policy in
-[Phase 1 tolerances](../history/migration/phase1/TOLERANCES.md); there is no
-repository-wide default tolerance.
+Panel Solver does not define one repository-wide numerical comparison tolerance.

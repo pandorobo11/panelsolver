@@ -1,8 +1,8 @@
 # Python API support policy
 
-## 1. Stable canonical high-level API
+## Stable package-root API
 
-The `panelsolver` package root exports only the first-release in-memory API:
+The supported in-memory API is exported from the `panelsolver` package root:
 
 ```python
 from panelsolver import (
@@ -16,73 +16,41 @@ from panelsolver import (
 )
 ```
 
-`FMFCase` and `HypersonicCase` are separate domain types with separate required
-physical inputs. Both state their ordered STL paths, STL scale, reference area,
-moment reference in STL axes, three reference lengths, and a
-`ResolvedAttitude`. `FMFCase` uses resolved Sentman Mode A inputs (`speed_ratio`,
-translational temperature, and wall temperature); atmosphere-based Mode B
-resolution remains available through the lower-level model API.
+`FMFCase` and `HypersonicCase` are separate domain types with separate physical
+inputs. Both specify ordered STL paths, STL scale, reference area, the moment
+reference in STL axes, three reference lengths, and a `ResolvedAttitude`.
+`FMFCase` accepts resolved Sentman inputs: speed ratio, incident translational
+temperature, and wall temperature. Atmosphere-derived FMF Mode B is available
+through the documented case-table interface used by the CLI and GUI; it is not
+an alternative constructor mode of the package-root `FMFCase`.
 
-`solve_fmf()` and `solve_hypersonic()` call the existing shared numerical
-pipeline. They do not create Summary CSV, VTP, PNG, temporary output directories,
-or any other filesystem artifact. `SolveResult.coefficients` exposes integrated
-coefficients; components, geometry, shielding state, per-face traction and model
-scalars remain available on the same in-memory result. Filesystem-producing
-batch work is an explicit CLI operation, not a side effect of these functions.
+`resolve_attitude()` converts the documented `beta_tan`, `beta_sin`, or `bank`
+input into a `ResolvedAttitude`. `None` and blank text select `beta_tan`, and
+valid text is case-insensitive. The angle domains are the same as those in
+[Case files](../user-guide/case-files.md).
 
-Both case types apply the same portable `case_id` contract as the case-table
-reader: Unicode NFC normalization; non-empty text after normalization; rejection
-of `.`, `..`, path separators, control characters, Windows-invalid characters,
-Windows reserved names, and trailing dots or spaces. NFC-equivalent IDs therefore
-produce the same canonical signature identity when all other inputs match.
+`solve_fmf()` accepts an `FMFCase`, and `solve_hypersonic()` accepts a
+`HypersonicCase`. Both return a `SolveResult`. Its coefficients, component
+results, geometry, shielding state, per-face traction, and model visualization
+scalars remain in memory.
 
-`resolve_attitude()` accepts `None` or text for `attitude_input`; `None` and blank
-text select `beta_tan`, and valid text is case-insensitive. Non-text selectors are
-rejected. The supported angle domains are `abs(alpha_deg) < 90` and
-`abs(beta_or_bank_deg) < 90` for `beta_tan`; `abs(alpha_deg) < 90` with any finite
-second angle for `beta_sin`; and finite included angle plus finite periodic bank
-angle for `bank`.
+## Filesystem boundary
 
-## 2. Lower-level architecture API
+The package-root solve functions do not create Summary CSV, VTP, PNG, temporary
+output directories, or other filesystem artifacts. Use the documented CLI or
+GUI case-table workflow when file outputs or atmosphere-derived FMF Mode B
+resolution are required.
 
-`panelsolver.core`, `panelsolver.models`, and `panelsolver.app` expose typed
-contracts and composition functions used by the applications. They are useful
-for development and advanced integrations, and the central load-vector contract
-is recorded in [ADR 0002](../adr/0002-panel-load-vector-contract.md). They remain
-lower-level architecture surfaces: callers must construct validated geometry,
-flow, model, signature, and execution policy objects explicitly.
+Both case types apply the portable `case_id` rules documented in
+[Case files](../user-guide/case-files.md). Equivalent Unicode NFC identifiers
+therefore produce the same canonical signature identity when all other inputs
+match.
 
-These modules are not re-exported wholesale from the package root.
+## Unsupported legacy Python imports
 
-## 3. Legacy package imports are unsupported
-
-`fmfsolver.*` and `newtsolver.*` direct-Python APIs have been removed. Those
-package names remain in the distribution only because the six legacy console
-commands use small internal frontends. Their modules, attributes, functions,
-classes, and version names are not public APIs and may change without
-deprecation.
-
-Migrate integrations to the stable package-root API above. Use the canonical or
-legacy commands for case-table execution and artifact generation. The supported
-case-file and output contracts are documented in [Compatibility](compatibility.md).
-This transition is recorded in
-[ADR 0014](../adr/0014-remove-legacy-direct-python-api.md).
-
-## 4. Private compatibility implementation
-
-`panelsolver._compat` retains only internal legacy artifact-signature
-reconstruction and its historical version inputs. This package and the private
-legacy command frontends are not public APIs.
-
-The package-root API above is the stable canonical high-level API;
-`panelsolver.core`, `panelsolver.models`, and `panelsolver.app` are lower-level
-architecture APIs; and the legacy command plumbing is private implementation.
-
-## Test-policy classification
-
-- Release contracts are covered by command, normal GUI, case-table,
-  Summary CSV/VTP, installed-wheel, and supported numerical regression tests.
-- Installed-wheel tests reject removed legacy direct-Python modules and verify
-  that the legacy packages contain only command and GUI compatibility plumbing.
-- Phase 1 fixtures/goldens and Phase 3 adapter regressions are historical
-  evidence and remain read-only inputs to compatibility decisions.
+Modules, functions, classes, attributes, and version names under `fmfsolver.*`
+and `newtsolver.*` are not supported public Python APIs. Those package names are
+present only to implement the supported legacy console commands. Migrate Python
+integrations to the package-root API above, or use a documented command for
+case-table execution and artifact generation. The supported product surface is
+summarized in [Compatibility](compatibility.md).

@@ -62,7 +62,20 @@ and reference normalization and integrates forces and moments.
 
 The exact contract and immutability rules are in
 [ADR 0002](../adr/0002-panel-load-vector-contract.md). Units, frames, and signs
-are in [Numerical conventions](../reference/numerical-conventions.md).
+are in [Numerical conventions](../../docs/reference/numerical-conventions.md).
+
+## Public and lower-level Python boundaries
+
+The package-root objects `FMFCase`, `HypersonicCase`, `ResolvedAttitude`,
+`SolveResult`, `resolve_attitude`, `solve_fmf`, and `solve_hypersonic` form the
+stable in-memory Python API. They adapt domain cases into the shared numerical
+pipeline without serializing artifacts.
+
+`panelsolver.core`, `panelsolver.models`, `panelsolver.app`, and
+`panelsolver.domains` are lower-level composition modules. They expose typed
+implementation contracts for geometry, flow, models, execution policy, case
+tables, and product assembly, but are not re-exported wholesale from the package
+root. Direct Python modules under the legacy package names are not public API.
 
 ## Execution and artifacts
 
@@ -87,6 +100,16 @@ Canonical selectors and high-level case names use the FMF and Hypersonic flow
 domains. Sentman and Newtonian-family names identify physical models or methods;
 `fmfsolver` and `newtsolver` identify only legacy compatibility frontends. See
 [ADR 0011](../adr/0011-canonical-domain-naming.md).
+
+## Shared convergence
+
+Canonical and legacy command frontends converge on the same application-owned
+case-table dispatch, strict geometry and numeric validation, output collision
+checks, durable CSV writing, scheduler behavior, and input-ordered result
+reconstruction. Domain schemas, physical equations, domain-only artifact fields,
+visible legacy identities, and legacy signature fallback inputs remain owned by
+their domain or compatibility boundary. Core does not select behavior from a
+concrete product name.
 
 ## Stable decisions
 

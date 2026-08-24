@@ -2,8 +2,8 @@
 
 This page is the canonical FMF case-table schema. Columns appear in the order
 shown; accepted non-reserved unknown columns are retained after them in Summary
-CSV output. The retired `save_npz_on` field is an explicit exception: CSV,
-XLSX, and XLSM readers reject it, and old case files must remove it.
+CSV output. Common formats, paths, case IDs, and reserved-field rejection are
+defined in [Case files](../user-guide/case-files.md).
 
 | Column | Required | Default | Unit / values | Meaning |
 |---|---:|---|---|---|

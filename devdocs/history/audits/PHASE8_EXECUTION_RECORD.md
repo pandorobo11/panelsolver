@@ -1,5 +1,7 @@
 # Phase 8 execution record
 
+Historical record — non-normative. This page records the repository state at the migration phase or audit named below. Statements such as “current”, supported commands, package names, file formats, and future work apply to that recorded point in time. Use docs/, devdocs/architecture/, and accepted or superseding ADRs for the present contract.
+
 ## Scope, baselines, and working discipline
 
 Phase 8 was the independent final audit of the Phase 7 migration. It started

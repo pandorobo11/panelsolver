@@ -2,8 +2,9 @@
 
 ## Purpose and priorities
 
-This repository is the neutral platform that will integrate `fmfsolver` and
-`newtsolver`. Apply these priorities in order:
+This repository contains the current Panel Solver product: one neutral platform
+for the FMF and Hypersonic domains plus thin `fmfsolver` and `newtsolver`
+compatibility frontends. Apply these priorities in order:
 
 1. numerical correctness;
 2. existing user compatibility;
@@ -17,20 +18,19 @@ code.
 
 ## Read before editing
 
-Before changing code, read:
+Before changing code, read in this order:
 
-- `docs/development/setup-and-testing.md`;
-- `docs/development/architecture.md`;
-- `docs/reference/numerical-conventions.md`;
-- `docs/reference/compatibility.md`;
-- `docs/history/migration/MIGRATION_PLAN.md`;
-- ADRs related to the target area;
-- the current issue or task.
+1. `devdocs/README.md`;
+2. the relevant current architecture in `devdocs/architecture/`;
+3. the relevant current user contract in `docs/`;
+4. relevant ADRs in `devdocs/adr/`;
+5. only the historical evidence in `devdocs/history/` needed for the task;
+6. the current issue or task.
 
 ## Legacy references
 
 The legacy implementations are read-only references. Their authoritative URLs
-and commits are in `docs/history/migration/MIGRATION_SOURCES.md`. Local checkouts may live at
+and commits are in `devdocs/history/migration/MIGRATION_SOURCES.md`. Local checkouts may live at
 `.reference/fmfsolver`, `.reference/newtsolver`, or the workspace sibling paths.
 Do not edit them during migration work. If the implementations differ, report
 both behaviors and their effects. Apply ADR 0008 when deciding whether the
@@ -106,9 +106,9 @@ contracts unless another ADR explicitly promotes a neutral API.
 Run the standard checks:
 
 ```bash
-uv sync --locked --extra rayaccel
-uv run python -m unittest discover -s tests -p "test_*.py" -v
-uv run ruff check src tests scripts
+uv sync --locked --extra rayaccel --group docs
+uv run --no-sync python -m unittest discover -s tests -p "test_*.py" -v
+uv run --no-sync ruff check src tests scripts hatch_build.py
 uv build
 ```
 
@@ -118,8 +118,7 @@ Embree and rtree backends, and model-specific golden regressions.
 ## Completion report
 
 Report changed files, implemented behavior, design choices, checks and results,
-numeric differences, compatibility impact, remaining risks, and cautions for the
-next migration phase.
+numeric differences, compatibility impact, remaining risks, and follow-up work.
 
 ## Review priorities
 

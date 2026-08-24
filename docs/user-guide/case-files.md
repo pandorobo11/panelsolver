@@ -1,7 +1,7 @@
 # Case files
 
 Both domains accept CSV, XLSX, and XLSM. Excel input uses the first worksheet.
-Legacy Excel 97–2003 BIFF `.xls` input is not supported; resave the workbook as
+Excel 97–2003 BIFF `.xls` is not a supported input format; resave the workbook as
 `.xlsx` or export it as CSV. Exact columns and defaults are defined in the
 [FMF input reference](../reference/fmf-input.md) and
 [Hypersonic input reference](../reference/hypersonic-input.md).
@@ -55,7 +55,7 @@ angles before panel calculation. The exact signs and transform are in
   rejected by the shared strict geometry boundary.
 
 Accepted non-reserved unknown input columns are preserved after the canonical
-input columns in the Summary CSV. The retired `save_npz_on` field is an explicit
-exception: it is rejected in CSV, XLSX, and XLSM input and must be removed
-from old case files. The documented case file plus CLI/GUI path is the supported
-file interface.
+input columns in the Summary CSV. `save_npz_on` is a reserved field that the
+CSV, XLSX, and XLSM readers explicitly reject; remove it when updating an older
+case file. The documented case file plus CLI/GUI path is the supported file
+interface.

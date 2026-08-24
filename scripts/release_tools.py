@@ -437,7 +437,14 @@ def _verify_release_zip(kind: str, archive_path: Path) -> None:
             if info.compress_type != zipfile.ZIP_STORED:
                 raise RuntimeError(f"{kind} ZIP has non-normalized compression")
         if kind == "docs":
-            required = {"index.html", "LICENSE", "THIRD_PARTY_NOTICES.md"}
+            required = {
+                "index.html",
+                "solvers/fmf.html",
+                "solvers/hypersonic.html",
+                "LICENSE",
+                "THIRD_PARTY_NOTICES.md",
+            }
+            _verify_documentation_exclusions(set(names), artifact="docs ZIP")
         elif kind == "examples":
             required = {
                 "LICENSE",
@@ -856,6 +863,9 @@ def verify_wheel_contents(repository: Path, wheel: Path) -> None:
             for name in names
             if name.startswith(docs_prefix) and not name.endswith("/")
         }
+        _verify_documentation_exclusions(docs_names, artifact="wheel documentation")
+        if any("devdocs" in PurePosixPath(name).parts for name in names):
+            raise RuntimeError("wheel contains developer documentation")
         verify_offline_documentation_licenses(
             docs_names,
             lambda name: archive.read(f"{docs_prefix}{name}"),
@@ -934,9 +944,36 @@ def verify_sdist_contents(repository: Path, sdist: Path) -> None:
         f"{root}/examples/fmf/basic.csv",
         f"{root}/examples/hypersonic/basic.csv",
     }
+    required.update(
+        f"{root}/{path.relative_to(repository).as_posix()}"
+        for path in (repository / "devdocs").rglob("*")
+        if path.is_file() and not path.is_symlink()
+    )
     missing = required - set(names)
     if missing:
         raise RuntimeError(f"sdist is missing required source files: {sorted(missing)}")
+
+
+def _verify_documentation_exclusions(
+    names: set[str],
+    *,
+    artifact: str,
+) -> None:
+    forbidden_directories = ("development/", "adr/", "history/", "devdocs/")
+    forbidden_pages = {
+        "solvers/fmf-overview.html",
+        "solvers/hypersonic-overview.html",
+    }
+    forbidden = {
+        name
+        for name in names
+        if name in forbidden_pages or name.startswith(forbidden_directories)
+    }
+    if forbidden:
+        raise RuntimeError(
+            f"{artifact} contains developer or removed documentation: "
+            f"{sorted(forbidden)}"
+        )
 
 
 def _script_path(venv: Path, name: str) -> Path:

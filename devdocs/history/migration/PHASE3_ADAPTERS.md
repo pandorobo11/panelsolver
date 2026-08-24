@@ -1,5 +1,7 @@
 # Phase 3 computed-data adapters
 
+Historical record — non-normative. This page records the repository state at the migration phase or audit named below. Statements such as “current”, supported commands, package names, file formats, and future work apply to that recorded point in time. Use docs/, devdocs/architecture/, and accepted or superseding ADRs for the present contract.
+
 Phase 3 ends at an intentionally narrow boundary around the pinned legacy
 pipelines. A product still resolves and validates its public input, loads and
 repairs the mesh, selects shielding, and evaluates its own physical equations.

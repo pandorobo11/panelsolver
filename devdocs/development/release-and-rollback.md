@@ -88,24 +88,23 @@ Before publishing, CI verifies:
 
 Only after those gates does the release job publish the downloaded verified set.
 The matching CHANGELOG section supplies release notes. A version containing an
-alpha, beta, or RC marker such as `0.1.0rc1` creates a GitHub prerelease; a stable
-version such as `0.1.0` creates a normal release.
+alpha, beta, or RC marker such as `<version>rc1` creates a GitHub prerelease; a
+stable `<version>` creates a normal release.
 
-## Next step: prepare `0.1.0rc1`
+## Preparing a release candidate
 
-After this foundation is merged and the exact-main CI is green:
+After the intended release changes are merged and the exact protected-main CI
+is green:
 
 1. create an RC preparation branch from latest protected main;
-2. set `project.version = 0.1.0rc1`;
+2. set `project.version = <version>` using an RC version identifier;
 3. run `uv lock` and verify the `uv.lock` `panelsolver` version;
-4. move current Unreleased notes into a dated `[0.1.0rc1]` section;
+4. move current Unreleased notes into a dated `[<version>]` section;
 5. create a fresh `[Unreleased]` section;
 6. run the full CI and merge the independent RC preparation PR;
 7. confirm the merged exact-main CI is completely successful;
-8. create annotated tag `v0.1.0rc1` on that exact main commit;
+8. create annotated tag `v<version>` on that exact main commit;
 9. verify the resulting GitHub prerelease and its exact five attachments.
-
-This foundation does not change `0.1.0`, create a tag, or publish a release.
 
 ## Distribution licensing boundary
 
