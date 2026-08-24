@@ -84,6 +84,31 @@ def _pid_worker(case: tuple[str, float], _logfn) -> tuple[int, str]:
     return os.getpid(), label
 
 
+def _synchronized_affinity_worker(
+    case: tuple[str, str, str, str],
+    _logfn,
+) -> tuple[int, str]:
+    label, behavior, release_text, accepted_text = case
+    release = Path(release_text)
+    accepted = Path(accepted_text)
+    deadline = time.monotonic() + 5.0
+
+    if behavior == "wait_for_release":
+        while not release.exists():
+            if time.monotonic() >= deadline:
+                raise RuntimeError("affinity probe release was not signaled")
+            time.sleep(0.005)
+    elif behavior == "release_then_wait_for_accept":
+        release.touch()
+        while not accepted.exists():
+            if time.monotonic() >= deadline:
+                raise RuntimeError("affinity probe result was not accepted")
+            time.sleep(0.005)
+    elif behavior != "immediate":
+        raise RuntimeError(f"unknown affinity probe behavior: {behavior}")
+    return os.getpid(), label
+
+
 def _touch_after_delay(path_text: str) -> None:
     time.sleep(0.02)
     Path(path_text).touch()
@@ -503,27 +528,49 @@ class SchedulerTests(unittest.TestCase):
         before = _worker_resource_state()
         affinity_a = SchedulingAffinityHint(("cone", 5.0, 1.4), priority=2)
         affinity_b = SchedulingAffinityHint(("cone", 10.0, 1.4), priority=2)
-        cases = (
-            ("a-first", 0.02),
-            ("b-first", 0.12),
-            ("b-next", 0.20),
-            ("a-next", 0.20),
-        )
 
         def run_probe(affinity_hints=None, snapshot_cb=None):
-            return dict(
-                iter_case_results_parallel(
-                    cases,
-                    2,
-                    _pid_worker,
-                    log_policy=WorkerLogPolicy.DROP,
-                    partial_result_policy=PartialResultPolicy.YIELD_COMPLETED,
-                    bucket_keys=("ray-a1", "ray-b1", "ray-b2", "ray-a2"),
-                    affinity_hints=affinity_hints,
-                    chunk_cases=1,
-                    snapshot_cb=snapshot_cb,
+            with tempfile.TemporaryDirectory() as temporary:
+                release = Path(temporary) / "release"
+                accepted = Path(temporary) / "accepted"
+                # Keep the initial B worker busy until A receives its next case,
+                # then keep that A worker busy until the parent accepts B-first.
+                # This fixes both dispatch decisions without timing assumptions.
+                cases = (
+                    ("a-first", "immediate", str(release), str(accepted)),
+                    ("b-first", "wait_for_release", str(release), str(accepted)),
+                    (
+                        "b-next",
+                        "release_then_wait_for_accept",
+                        str(release),
+                        str(accepted),
+                    ),
+                    (
+                        "a-next",
+                        "release_then_wait_for_accept",
+                        str(release),
+                        str(accepted),
+                    ),
                 )
-            )
+
+                def record_progress(event):
+                    if event.case_index == 1:
+                        accepted.touch()
+
+                return dict(
+                    iter_case_results_parallel(
+                        cases,
+                        2,
+                        _synchronized_affinity_worker,
+                        log_policy=WorkerLogPolicy.DROP,
+                        partial_result_policy=PartialResultPolicy.YIELD_COMPLETED,
+                        bucket_keys=("ray-a1", "ray-b1", "ray-b2", "ray-a2"),
+                        affinity_hints=affinity_hints,
+                        chunk_cases=1,
+                        progress_cb=record_progress,
+                        snapshot_cb=snapshot_cb,
+                    )
+                )
 
         snapshots = []
         baseline = run_probe()
