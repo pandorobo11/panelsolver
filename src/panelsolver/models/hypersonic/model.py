@@ -180,7 +180,7 @@ class HypersonicModel:
         resolve_hypersonic_case(case)
 
     def signature_payload(self, case: ModelCasePayload) -> dict[str, float | str]:
-        """Return model-only normalized fields for Phase 5 envelope assembly."""
+        """Return normalized model-case fields for the canonical signature envelope."""
         return dict(resolve_hypersonic_case(case).signature_payload)
 
     def scheduling_affinities(

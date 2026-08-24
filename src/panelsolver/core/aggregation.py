@@ -100,7 +100,7 @@ def assemble_common_results(
     metadata: Mapping[str, PayloadValue] | None = None,
     metadata_by_component: Mapping[int, Mapping[str, PayloadValue]] | None = None,
 ) -> CommonResults:
-    """Integrate and assemble the complete Phase 2 common result envelope."""
+    """Integrate panel loads and assemble the complete common result envelope."""
     integration = integrate_panel_loads(geometry, local_loads, case)
     components = aggregate_component_results(
         geometry,

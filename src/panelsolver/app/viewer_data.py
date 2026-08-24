@@ -113,7 +113,7 @@ def artifact_display_allowed(
     match: ArtifactCaseMatch | None,
     mode: ArtifactLoadMode,
 ) -> bool:
-    """Apply D024: manual inspection bypasses automatic signature eligibility."""
+    """Allow manual inspection without requiring automatic signature eligibility."""
     if not isinstance(mode, ArtifactLoadMode):
         raise TypeError("mode must be an ArtifactLoadMode")
     if mode is ArtifactLoadMode.MANUAL:

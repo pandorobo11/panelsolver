@@ -45,7 +45,7 @@ class MeshSourceFingerprint:
 
 @dataclass(frozen=True, slots=True)
 class LoadedPanelMesh:
-    """A validated panel mesh plus provenance needed by later Phase 5 layers."""
+    """A validated panel mesh with source and geometry provenance."""
 
     mesh: PanelMesh
     geometry_fingerprint: str
@@ -291,7 +291,7 @@ def load_panel_mesh(
     """Load ordered STL sources into the immutable shared mesh contract.
 
     The cache key reads and hashes source bytes on every call. This intentionally
-    avoids both pinned metadata-only identities (D012), which can reuse stale
+    avoids the legacy metadata-only cache identities, which can reuse stale
     geometry after metadata-preserving file replacement.
     """
     global _CACHE_HITS, _CACHE_MISSES

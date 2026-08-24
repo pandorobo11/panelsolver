@@ -64,8 +64,8 @@ def body_to_stability(
     """Rotate body-axis vectors into stability axes at resolved ``alpha_t``.
 
     The trailing dimension must have length three; any number of leading
-    dimensions is preserved. Positive ``alpha_t`` uses the Phase 1 verified
-    right-handed rotation about ``+Y_body``.
+    dimensions is preserved. Positive ``alpha_t`` uses a right-handed rotation
+    about ``+Y_body``.
     """
     vectors = _vector_array(vectors_body, field="vectors_body")
     alpha = math.radians(real_scalar(alpha_t_deg, field="alpha_t_deg"))
