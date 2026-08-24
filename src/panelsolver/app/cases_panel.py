@@ -9,6 +9,7 @@ from pathlib import Path
 import pyvista as pv
 from PySide6 import QtCore, QtWidgets
 
+from .output_status import OutputKind
 from .path_resolution import (
     absolute_input_path,
     default_summary_output_path,
@@ -464,10 +465,61 @@ class CasesPanel(QtWidgets.QWidget):
         total = len(self._run_rows)
         self.progress.setRange(0, max(total, 1))
         self.progress.setValue(total)
-        self.progress.setFormat(f"{total}/{total}")
-        if self._run_output_path is not None:
+        if result.output_issues:
+            self.progress.setFormat("Completed with output errors")
+        else:
+            self.progress.setFormat("Completed")
+        if (
+            self._run_output_path is not None
+            and result.summary_csv_saved is not False
+        ):
             self.logln(f"[OK] Wrote results: {self._run_output_path}")
+        if result.output_issues:
+            QtWidgets.QMessageBox.warning(
+                self,
+                "Output Errors",
+                self._output_error_summary(result),
+            )
         self._refresh_first_result(result)
+
+    def _output_error_summary(self, result: GuiRunResult) -> str:
+        """Build one bounded end-of-run notification from structured issues."""
+        total = result.calculation_total_cases or len(self._run_rows)
+        completed = result.calculation_completed_cases or total
+        if result.summary_csv_saved is True:
+            summary_status = "saved"
+        elif result.summary_csv_saved is False:
+            summary_status = "failed"
+        else:
+            summary_status = "not reported"
+        vtp_failed = max(result.vtp_requested - result.vtp_saved, 0)
+        lines = [
+            "Run completed with output errors.",
+            "",
+            "Calculation:",
+            f"  {completed}/{total} cases completed",
+            "",
+            "Output:",
+            f"  Summary CSV: {summary_status}",
+            f"  VTP: {result.vtp_saved} saved, {vtp_failed} failed",
+            "",
+            "Failed outputs:",
+        ]
+        shown = result.output_issues[:5]
+        for issue in shown:
+            if issue.kind is OutputKind.SUMMARY_CSV:
+                label = "Summary CSV"
+            elif issue.kind is OutputKind.OUTPUT_DIRECTORY:
+                label = "Output directory"
+            else:
+                label = "VTP"
+            case = f"{issue.case_id}: " if issue.case_id else f"{label}: "
+            lines.append(f"  {case}{issue.message}")
+        remaining = len(result.output_issues) - len(shown)
+        if remaining:
+            lines.append(f"  ... and {remaining} more")
+        lines.extend(("", "See the log for full details."))
+        return "\n".join(lines)
 
     def _refresh_first_result(self, result: GuiRunResult) -> None:
         if result.first_vtp_path is None:

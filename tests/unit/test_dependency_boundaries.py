@@ -119,7 +119,7 @@ class DependencyBoundaryTests(unittest.TestCase):
 
     def test_complete_internal_graph_has_no_cycles_or_self_loops(self) -> None:
         graph = internal_dependency_graph()
-        self.assertEqual(71, len(graph), "Update the recorded production module count")
+        self.assertEqual(72, len(graph), "Update the recorded production module count")
         self.assertEqual(
             [],
             sorted(node for node, edges in graph.items() if node in edges),

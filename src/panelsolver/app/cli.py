@@ -14,6 +14,7 @@ from rich.markup import escape
 from rich_argparse import RichHelpFormatter
 
 from .cli_presentation import CliPresentation, use_rich_ui
+from .output_status import OutputFailuresError
 from .runtime import (
     DEFAULT_CHECKPOINT_CASES,
     ProductRuntimePolicy,
@@ -187,7 +188,7 @@ def _run_parsed_cli(policy: ProductCliPolicy, args: argparse.Namespace) -> int:
             cases=len(rows),
             workers=args.workers,
         )
-        run_and_write_product_cases(
+        result = run_and_write_product_cases(
             rows,
             policy.runtime_policy,
             output,
@@ -197,6 +198,9 @@ def _run_parsed_cli(policy: ProductCliPolicy, args: argparse.Namespace) -> int:
             checkpoint_every_cases=args.checkpoint_every_cases,
             log_snapshots=args.checkpoint_every_cases > 0,
         )
+        issues = tuple(result.output_issues)
+        if issues:
+            raise OutputFailuresError(issues)
         presentation.finish(output)
     return 0
 

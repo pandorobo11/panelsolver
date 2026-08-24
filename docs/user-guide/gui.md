@@ -45,6 +45,12 @@ alive for the lifetime of the window.
 5. Choose **Run Selected Cases** and select the summary CSV destination.
 6. Follow progress and diagnostics in the log panel.
 
+A successful calculation with one or more VTP, checkpoint, or final Summary CSV
+write failures finishes as **Completed with output errors**, not **Failed**. The
+run continues after per-case VTP failures and shows one bounded summary at the
+end; complete details remain in the log. **Failed** is reserved for case
+computation failures such as geometry loading or model execution errors.
+
 Input validation issues are shown with spreadsheet row, case ID, field, and
 message. The GUI uses the same reader, execution engine, checkpoint behavior,
 and output serializers as the CLI.

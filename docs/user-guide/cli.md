@@ -64,6 +64,11 @@ uses a Rich summary and live progress while suppressing case-level `[RUN]` and
 run output. Redirected or piped stdout and CI environments automatically use
 plain output. Validation and execution failures normally show a concise error
 and return a nonzero exit status; `--debug` shows the Python traceback.
+Per-case VTP output failures do not stop later calculations. The command writes
+the Summary CSV with blank `vtp_path` values for those cases, reports the
+aggregated output errors, and returns a nonzero exit status after calculation
+finishes. Final Summary CSV output failure is likewise reported as an output
+failure rather than a calculation failure.
 
 Output-path validation rejects collisions with the input table, any STL, and
 any planned VTP before execution. See [Outputs](outputs.md) and

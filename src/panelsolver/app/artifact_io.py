@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+import tempfile
 from pathlib import Path
 
 import numpy as np
@@ -11,7 +13,7 @@ from panelsolver.core import VtpProjection
 
 
 def write_vtp_projection(path: str | Path, projection: VtpProjection) -> Path:
-    """Write one VTP projection with the pinned binary PolyData semantics."""
+    """Atomically write one VTP projection with pinned binary semantics."""
     if not isinstance(projection, VtpProjection):
         raise TypeError("projection must be a VtpProjection")
     output = Path(path)
@@ -27,7 +29,24 @@ def write_vtp_projection(path: str | Path, projection: VtpProjection) -> Path:
             values,
             field=f"field_data.{name}",
         )
-    poly.save(str(output), binary=True)
+    temp_path: Path | None = None
+    try:
+        descriptor, temp_name = tempfile.mkstemp(
+            dir=output.parent,
+            prefix=f".{output.stem}.",
+            suffix=".tmp.vtp",
+        )
+        temp_path = Path(temp_name)
+        os.close(descriptor)
+        poly.save(str(temp_path), binary=True)
+        # PyVista/VTK has returned and closed its writer by this point. Reopen
+        # the completed file so its bytes are synchronized before replacement.
+        with temp_path.open("r+b") as handle:
+            os.fsync(handle.fileno())
+        os.replace(temp_path, output)
+    finally:
+        if temp_path is not None:
+            temp_path.unlink(missing_ok=True)
     return output
 
 

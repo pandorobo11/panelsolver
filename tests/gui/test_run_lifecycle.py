@@ -21,6 +21,9 @@ from panelsolver.app import (
     ArtifactSignatureCandidates,
     GuiRunRequest,
     GuiRunResult,
+    OutputIssue,
+    OutputKind,
+    OutputPhase,
     SolverGuiAdapters,
 )
 from panelsolver.app.cases_panel import CasesPanel
@@ -159,7 +162,7 @@ class RunLifecycleTests(unittest.TestCase):
             self.assertIsInstance(captured["request"], GuiRunRequest)
             self.assertEqual(2, captured["request"].workers)
             self.assertEqual(17, captured["request"].checkpoint_every_cases)
-            self.assertEqual("2/2", panel.progress.text())
+            self.assertEqual("Completed", panel.progress.text())
             self.assertIn("[SAVE] checkpoint 1/2", panel.log.toPlainText())
             self.assertIn("[SAVE] final 2/2", panel.log.toPlainText())
             self.assertEqual(1, len(loaded))
@@ -168,6 +171,81 @@ class RunLifecycleTests(unittest.TestCase):
             self.assertIsNone(panel._run_worker)
             self.assertTrue(panel.btn_pick_input.isEnabled())
             self.assertFalse(panel.btn_cancel.isEnabled())
+
+    def test_vtp_output_failures_complete_once_with_bounded_summary_and_recover_ui(
+        self,
+    ) -> None:
+        issues = tuple(
+            OutputIssue(
+                OutputKind.VTP,
+                OutputPhase.WRITE,
+                f"outputs/case_{index}.vtp",
+                f"save failure {index}",
+                f"case_{index}",
+            )
+            for index in range(7)
+        )
+        rows = tuple(
+            {"case_id": f"case_{index}", "out_dir": "outputs"}
+            for index in range(7)
+        )
+
+        def runner(request):
+            request.progress(7, 7)
+            return GuiRunResult(
+                calculation_completed_cases=7,
+                calculation_total_cases=7,
+                summary_csv_saved=True,
+                vtp_requested=7,
+                vtp_saved=0,
+                output_issues=issues,
+            )
+
+        panel, rows, _ = self.make_panel(runner, rows=rows)
+        with patch.object(QtWidgets.QMessageBox, "warning") as warning:
+            self.assertTrue(
+                panel.start_run(rows, 1, DEFAULT_CHECKPOINT_CASES, "results.csv")
+            )
+            self.wait_until(lambda: not panel.is_running())
+
+        self.assertEqual("Completed with output errors", panel.progress.text())
+        warning.assert_called_once()
+        message = warning.call_args.args[2]
+        self.assertIn("7/7 cases completed", message)
+        self.assertIn("VTP: 0 saved, 7 failed", message)
+        self.assertIn("case_0: save failure 0", message)
+        self.assertIn("... and 2 more", message)
+        self.assertNotIn("case_6: save failure 6", message)
+        self.assertTrue(panel.btn_run.isEnabled())
+        self.assertTrue(panel.btn_pick_input.isEnabled())
+        self.assertFalse(panel.btn_cancel.isEnabled())
+
+    def test_summary_csv_failure_is_completed_output_failure(self) -> None:
+        issue = OutputIssue(
+            OutputKind.SUMMARY_CSV,
+            OutputPhase.FINAL,
+            "results.csv",
+            "permission denied",
+        )
+
+        def runner(_request):
+            return GuiRunResult(
+                calculation_completed_cases=2,
+                calculation_total_cases=2,
+                summary_csv_saved=False,
+                output_issues=(issue,),
+            )
+
+        panel, rows, _ = self.make_panel(runner)
+        with patch.object(QtWidgets.QMessageBox, "warning") as warning:
+            self.assertTrue(
+                panel.start_run(rows, 1, DEFAULT_CHECKPOINT_CASES, "results.csv")
+            )
+            self.wait_until(lambda: not panel.is_running())
+
+        self.assertEqual("Completed with output errors", panel.progress.text())
+        self.assertIn("Summary CSV: failed", warning.call_args.args[2])
+        self.assertNotIn("[OK] Wrote results", panel.log.toPlainText())
 
     def test_cancellation_before_and_after_progress(self) -> None:
         for emit_progress in (False, True):

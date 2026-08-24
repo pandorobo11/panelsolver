@@ -23,6 +23,12 @@ from .csv_writer import (
 )
 from .examples import ExampleDefinition, ExampleLibrary, ExampleResourceError
 from .execution import default_model_registry, request_from_registry
+from .output_status import (
+    OutputFailuresError,
+    OutputIssue,
+    OutputKind,
+    OutputPhase,
+)
 from .path_resolution import (
     DEFAULT_IMAGE_DIRECTORY,
     DEFAULT_OUTPUT_DIRECTORY,
@@ -57,6 +63,7 @@ from .solver_spec import (
     GuiRunResult,
     SolverGuiAdapters,
     SolverSpec,
+    gui_run_result_from_batch,
 )
 from .viewer_data import (
     ArtifactCaseMatch,
@@ -89,6 +96,10 @@ __all__ = (
     "GuiRunRequest",
     "GuiRunResult",
     "InputValidationError",
+    "OutputFailuresError",
+    "OutputIssue",
+    "OutputKind",
+    "OutputPhase",
     "PreparedProductCase",
     "ProductBatchRunResult",
     "ProductCasePolicy",
@@ -111,6 +122,7 @@ __all__ = (
     "default_summary_output_path",
     "discover_scalar_fields",
     "field_data_scalar",
+    "gui_run_result_from_batch",
     "match_artifact_case",
     "prepare_product_cases",
     "read_case_table",

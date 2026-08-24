@@ -36,6 +36,7 @@ from .artifact_io import write_vtp_projection
 from .case_adapter import AdaptedCase, ProductCasePolicy, adapt_case_row
 from .csv_writer import AtomicCsvWritePolicy, write_csv_atomic
 from .environment import resolve_parallel_chunk_environment
+from .output_status import OutputIssue, OutputKind, OutputPhase
 from .versioning import panelsolver_distribution_version
 
 type CaseRow = Mapping[str, object]
@@ -116,23 +117,30 @@ class PreparedProductCase:
 
 @dataclass(frozen=True, slots=True)
 class ProductCaseRunResult:
-    """Serialized one-case result plus its exact summary projection."""
+    """One computed case plus its exact projection and output status."""
 
     csv: CsvProjection
     vtp_path: str
+    output_issues: tuple[OutputIssue, ...] = ()
 
     def __post_init__(self) -> None:
         if not isinstance(self.csv, CsvProjection):
             raise TypeError("csv must be a CsvProjection")
+        issues = tuple(self.output_issues)
+        if any(not isinstance(issue, OutputIssue) for issue in issues):
+            raise TypeError("output_issues must contain OutputIssue values")
         object.__setattr__(self, "vtp_path", str(self.vtp_path))
+        object.__setattr__(self, "output_issues", issues)
 
 
 @dataclass(frozen=True, slots=True)
 class ProductBatchRunResult:
-    """Input-ordered successful cases and their combined summary projection."""
+    """Input-ordered computed cases, projection, and independent output status."""
 
     cases: tuple[ProductCaseRunResult, ...]
     csv: CsvProjection
+    output_issues: tuple[OutputIssue, ...] = ()
+    summary_csv_saved: bool | None = None
 
     def __post_init__(self) -> None:
         cases = tuple(self.cases)
@@ -142,7 +150,15 @@ class ProductBatchRunResult:
             raise TypeError("cases must contain ProductCaseRunResult values")
         if not isinstance(self.csv, CsvProjection):
             raise TypeError("csv must be a CsvProjection")
+        issues = tuple(self.output_issues)
+        if any(not isinstance(issue, OutputIssue) for issue in issues):
+            raise TypeError("output_issues must contain OutputIssue values")
+        if self.summary_csv_saved is not None and not isinstance(
+            self.summary_csv_saved, bool
+        ):
+            raise TypeError("summary_csv_saved must be a boolean or None")
         object.__setattr__(self, "cases", cases)
+        object.__setattr__(self, "output_issues", issues)
 
 
 def prepare_product_cases(
@@ -219,13 +235,12 @@ def _run_prepared_product_case(
     prepared: PreparedProductCase,
     logfn: LogCallback,
 ) -> ProductCaseRunResult:
-    """Execute, project, and serialize one complete case inside one worker."""
+    """Compute one case and retain output failures without failing the worker."""
     started_at = _utc_now()
     started_clock = time.perf_counter()
     row = prepared.row
     case_id = str(row["case_id"])
     out_dir = Path(str(row.get("out_dir", "outputs"))).expanduser()
-    out_dir.mkdir(parents=True, exist_ok=True)
     vtp_file = out_dir / f"{case_id}.vtp"
     save_vtp = bool(int(row.get("save_vtp_on", 1)))
 
@@ -239,18 +254,57 @@ def _run_prepared_product_case(
             "build_projection_additions must return ProductProjectionAdditions"
         )
     solver_version = panelsolver_distribution_version()
-    artifact_policy = ArtifactProjectionPolicy(
-        attitude_input_used=prepared.adapted.attitude.input_mode,
-        case_signature=execution.signature.digest,
-        ray_backend_used=execution.shielding.config.effective_backend,
-        solver_version=solver_version,
-        vtp_field_data=additions.vtp_field_data,
-    )
-    if save_vtp:
-        write_vtp_projection(
-            vtp_file,
-            project_vtp_artifact(execution.mesh, execution.results, artifact_policy),
+    output_issues: list[OutputIssue] = []
+    directory_ready = True
+    try:
+        out_dir.mkdir(parents=True, exist_ok=True)
+    except Exception as exc:
+        directory_ready = False
+        issue = OutputIssue(
+            OutputKind.OUTPUT_DIRECTORY,
+            OutputPhase.PREPARE,
+            str(out_dir),
+            str(exc) or type(exc).__name__,
+            case_id,
         )
+        output_issues.append(issue)
+        logfn(
+            "[ERROR] Output directory preparation failed: "
+            f"case_id={case_id} path={out_dir} reason={issue.message}"
+        )
+
+    saved_vtp_path = ""
+    if save_vtp and directory_ready:
+        try:
+            artifact_policy = ArtifactProjectionPolicy(
+                attitude_input_used=prepared.adapted.attitude.input_mode,
+                case_signature=execution.signature.digest,
+                ray_backend_used=execution.shielding.config.effective_backend,
+                solver_version=solver_version,
+                vtp_field_data=additions.vtp_field_data,
+            )
+            write_vtp_projection(
+                vtp_file,
+                project_vtp_artifact(
+                    execution.mesh,
+                    execution.results,
+                    artifact_policy,
+                ),
+            )
+            saved_vtp_path = str(vtp_file)
+        except Exception as exc:
+            issue = OutputIssue(
+                OutputKind.VTP,
+                OutputPhase.WRITE,
+                str(vtp_file),
+                str(exc) or type(exc).__name__,
+                case_id,
+            )
+            output_issues.append(issue)
+            logfn(
+                "[ERROR] VTP output failed: "
+                f"case_id={case_id} path={vtp_file} reason={issue.message}"
+            )
     finished_at = _utc_now()
     run_values: dict[str, CsvCell] = {
         "solver_version": solver_version,
@@ -260,7 +314,7 @@ def _run_prepared_product_case(
         "run_elapsed_s": float(time.perf_counter() - started_clock),
         "out_attitude_input": prepared.adapted.attitude.input_mode,
         "ray_backend_used": execution.shielding.config.effective_backend,
-        "vtp_path": str(vtp_file) if save_vtp else "",
+        "vtp_path": saved_vtp_path,
         **additions.csv_values,
     }
     component_sources = {
@@ -276,7 +330,8 @@ def _run_prepared_product_case(
     )
     return ProductCaseRunResult(
         csv_projection,
-        str(vtp_file) if save_vtp else "",
+        saved_vtp_path,
+        tuple(output_issues),
     )
 
 
@@ -413,7 +468,10 @@ def run_product_cases(
         raise RuntimeError("case execution completed without every result")
     snapshot(True)
     projection = combine_csv_projections(tuple(case.csv for case in ordered))
-    return ProductBatchRunResult(ordered, projection)
+    output_issues = tuple(
+        issue for case in ordered for issue in case.output_issues
+    )
+    return ProductBatchRunResult(ordered, projection, output_issues)
 
 
 def run_and_write_product_cases(
@@ -431,6 +489,8 @@ def run_and_write_product_cases(
     """Run cases and atomically rewrite checkpoint/final summary snapshots."""
     logger = (lambda _message: None) if logfn is None else logfn
     output = Path(output_path)
+    summary_issues: list[OutputIssue] = []
+    final_saved = False
 
     def write_snapshot(
         projection: CsvProjection,
@@ -438,12 +498,31 @@ def run_and_write_product_cases(
         total: int,
         is_final: bool,
     ) -> None:
-        write_csv_atomic(output, projection, policy.csv_write_policy)
+        nonlocal final_saved
+        phase = OutputPhase.FINAL if is_final else OutputPhase.CHECKPOINT
+        try:
+            write_csv_atomic(output, projection, policy.csv_write_policy)
+        except Exception as exc:
+            issue = OutputIssue(
+                OutputKind.SUMMARY_CSV,
+                phase,
+                str(output),
+                str(exc) or type(exc).__name__,
+            )
+            summary_issues.append(issue)
+            label = "final" if is_final else "checkpoint"
+            logger(
+                f"[ERROR] Summary CSV {label} output failed: "
+                f"path={output} reason={issue.message}"
+            )
+            return
+        if is_final:
+            final_saved = True
         if log_snapshots:
-            phase = "final" if is_final else "checkpoint"
-            logger(f"[SAVE] {phase} {done}/{total} -> {output}")
+            label = "final" if is_final else "checkpoint"
+            logger(f"[SAVE] {label} {done}/{total} -> {output}")
 
-    return run_product_cases(
+    result = run_product_cases(
         rows,
         policy,
         workers=workers,
@@ -452,6 +531,15 @@ def run_and_write_product_cases(
         cancel_cb=cancel_cb,
         checkpoint_every_cases=checkpoint_every_cases,
         snapshot_cb=write_snapshot,
+    )
+    issues = (*result.output_issues, *summary_issues)
+    if issues:
+        logger(f"[WARN] Run completed with {len(issues)} output error(s).")
+    return ProductBatchRunResult(
+        result.cases,
+        result.csv,
+        issues,
+        final_saved,
     )
 
 

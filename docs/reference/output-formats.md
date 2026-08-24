@@ -75,5 +75,7 @@ VTP `solver_version` has exactly the same meaning and source as Summary CSV
 
 `CA`, `CY`, `CN`, `Cl`, `Cm`, `Cn`, `CD`, and `CL` follow
 [Numerical conventions](numerical-conventions.md). Disabled artifact paths and
-component artifact paths are empty strings in the summary. See
+component artifact paths are empty strings in the summary. A requested VTP that
+was not saved during the current run also has an empty `vtp_path`; an older file
+at the planned path is not reported as a current artifact. See
 [Outputs](../user-guide/outputs.md) for lifecycle and durability behavior.
