@@ -318,22 +318,43 @@ def _chunks_preserving_affinity_groups(
     affinity_groups: Sequence[Sequence[int]],
     chunk_cases: int,
 ) -> tuple[tuple[int, ...], ...]:
-    """Pack whole affinity groups when possible under the chunk size limit."""
+    """Prefer group boundaries without exceeding baseline chunk count.
+
+    ``chunk_cases`` fixes the minimum possible number of chunks for a primary
+    bucket.  Closing early at an affinity boundary is allowed only when all
+    remaining cases still fit in that many remaining chunks.  This keeps
+    secondary locality from creating another opportunity to duplicate the
+    primary ray cache on an additional worker.
+    """
+    total_cases = sum(len(group) for group in affinity_groups)
+    target_chunk_count = (total_cases + chunk_cases - 1) // chunk_cases
     chunks: list[tuple[int, ...]] = []
     current: list[int] = []
-    for group in affinity_groups:
-        if current and len(group) > chunk_cases - len(current):
-            chunks.append(tuple(current))
-            current = []
+    remaining_cases = total_cases
 
+    for group in affinity_groups:
         offset = 0
-        while len(group) - offset > chunk_cases:
-            chunks.append(tuple(group[offset : offset + chunk_cases]))
-            offset += chunk_cases
-        current.extend(group[offset:])
-        if len(current) == chunk_cases:
-            chunks.append(tuple(current))
-            current = []
+        while offset < len(group):
+            available = chunk_cases - len(current)
+            group_remaining = len(group) - offset
+
+            if current and offset == 0 and group_remaining > available:
+                chunks_after_close = len(chunks) + 1
+                remaining_chunk_count = target_chunk_count - chunks_after_close
+                if remaining_cases <= remaining_chunk_count * chunk_cases:
+                    chunks.append(tuple(current))
+                    current = []
+                    continue
+                # Closing here would require an extra chunk.  Fill the current
+                # chunk from the next group in stable order instead.
+
+            taken = min(available, group_remaining)
+            current.extend(group[offset : offset + taken])
+            offset += taken
+            remaining_cases -= taken
+            if len(current) == chunk_cases:
+                chunks.append(tuple(current))
+                current = []
 
     if current:
         chunks.append(tuple(current))

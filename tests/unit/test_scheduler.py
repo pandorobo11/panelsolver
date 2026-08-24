@@ -8,6 +8,7 @@ import threading
 import time
 import unittest
 from collections import OrderedDict, deque
+from itertools import product
 from pathlib import Path
 from unittest import mock
 
@@ -212,6 +213,60 @@ class SchedulerTests(unittest.TestCase):
         )
 
         self.assertEqual(((0, 1, 2), (3, 4, 5)), tuple(chunks["ray"]))
+
+    def test_bucket_chunking_splits_deterministically_to_keep_baseline_count(
+        self,
+    ) -> None:
+        affinities = tuple(
+            SchedulingAffinityHint(("cache", identity), priority=1)
+            for identity in ("a", "b", "c")
+        )
+        hints = tuple((affinity,) for affinity in affinities for _ in range(5))
+        decisions = []
+
+        for _ in range(5):
+            chunks, _remaining = scheduler_module._build_bucket_chunks(
+                tuple(range(len(hints))),
+                ("ray",) * len(hints),
+                hints,
+                8,
+            )
+            decisions.append(tuple(chunks["ray"]))
+
+        expected = (tuple(range(8)), tuple(range(8, 15)))
+        self.assertEqual([expected] * 5, decisions)
+        self.assertEqual(2, len(decisions[0]))
+        self.assertTrue(all(len(chunk) <= 8 for chunk in decisions[0]))
+        self.assertEqual(tuple(range(15)), sum(decisions[0], ()))
+        for group in (range(5), range(5, 10), range(10, 15)):
+            self.assertEqual(
+                tuple(group),
+                tuple(index for chunk in decisions[0] for index in chunk if index in group),
+            )
+
+    def test_affinity_chunk_count_matches_fixed_width_baseline(self) -> None:
+        for chunk_cases in range(1, 7):
+            for group_sizes in product(range(1, 7), repeat=3):
+                next_index = 0
+                groups = []
+                for size in group_sizes:
+                    groups.append(tuple(range(next_index, next_index + size)))
+                    next_index += size
+
+                chunks = scheduler_module._chunks_preserving_affinity_groups(
+                    groups,
+                    chunk_cases,
+                )
+                baseline_count = (next_index + chunk_cases - 1) // chunk_cases
+                with self.subTest(
+                    chunk_cases=chunk_cases,
+                    group_sizes=group_sizes,
+                ):
+                    self.assertEqual(baseline_count, len(chunks))
+                    self.assertTrue(
+                        all(1 <= len(chunk) <= chunk_cases for chunk in chunks)
+                    )
+                    self.assertEqual(tuple(range(next_index)), sum(chunks, ()))
 
     def test_bucket_chunking_packs_small_whole_groups_together(self) -> None:
         affinities = tuple(
@@ -554,6 +609,47 @@ class SchedulerTests(unittest.TestCase):
         # Both modes use one owner plus one steal for the sole primary bucket.
         self.assertEqual(2, len({result[0] for result in baseline.values()}))
         self.assertEqual(2, len({result[0] for result in grouped.values()}))
+        self.assertEqual(order, tuple(index for index, _ in snapshots[-1]))
+        self.assert_no_new_worker_resources(before)
+
+    def test_bucket_local_grouping_does_not_add_ray_workers_when_groups_conflict(
+        self,
+    ) -> None:
+        before = _worker_resource_state()
+        labels = ("a", "b", "c")
+        affinities = {
+            label: SchedulingAffinityHint(("cache", label), priority=1)
+            for label in labels
+        }
+        cases = tuple((label, 0.02) for _ in range(5) for label in labels)
+        hints = tuple((affinities[label],) for label, _delay in cases)
+        order = tuple(reversed(range(len(cases))))
+
+        def run_probe(affinity_hints=None, snapshot_cb=None):
+            return dict(
+                iter_case_results_parallel(
+                    cases,
+                    3,
+                    _pid_worker,
+                    log_policy=WorkerLogPolicy.DROP,
+                    partial_result_policy=PartialResultPolicy.YIELD_COMPLETED,
+                    execution_order=order,
+                    bucket_keys=("one-ray-bucket",) * len(cases),
+                    affinity_hints=affinity_hints,
+                    chunk_cases=8,
+                    snapshot_cb=snapshot_cb,
+                )
+            )
+
+        baseline = run_probe()
+        snapshots = []
+        grouped = run_probe(hints, snapshots.append)
+        baseline_pids = {result[0] for result in baseline.values()}
+        grouped_pids = {result[0] for result in grouped.values()}
+
+        self.assertEqual(2, len(baseline_pids))
+        self.assertEqual(2, len(grouped_pids))
+        self.assertLessEqual(len(grouped_pids), len(baseline_pids))
         self.assertEqual(order, tuple(index for index, _ in snapshots[-1]))
         self.assert_no_new_worker_resources(before)
 

@@ -33,9 +33,11 @@ work in the same worker process when practical; tangent-cone reuse is preferred
 because its table construction is more expensive. The scheduler also groups
 these secondary hints when constructing chunks inside a reusable shielding
 bucket and preserves an affinity-group boundary when practical; chunks may be
-smaller than the configured maximum, but the primary shielding bucket is never
-split or changed. These hints can further change execution order, but checkpoint
-and final output order remains the input order.
+smaller than the configured maximum, but only when that does not increase the
+bucket's baseline chunk count. The primary shielding bucket is never split or
+changed, and secondary locality does not increase the chunk-count bound on
+workers that may need to rebuild its ray cache. These hints can further change
+execution order, but checkpoint and final output order remains the input order.
 
 Both products forward worker logs and retain successful cases completed before a
 later case in the same chunk fails. `--checkpoint-every-cases N` controls
