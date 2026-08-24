@@ -247,6 +247,17 @@ class CasesPanelTests(unittest.TestCase):
         )
         self.assertEqual(["case_b", "case_a"], [r["case_id"] for r in panel.selected_case_rows()])
 
+    def test_selected_case_signal_tracks_batch_export_availability(self) -> None:
+        panel, _ = self.make_panel()
+        emitted = []
+        panel.selected_cases_changed.connect(emitted.append)
+        panel.load_input_file("/tmp/input.csv")
+        self.assertEqual((), emitted[-1])
+        panel.case_table.selectRow(0)
+        self.assertEqual(("case_b",), tuple(row["case_id"] for row in emitted[-1]))
+        panel.case_table.clearSelection()
+        self.assertEqual((), emitted[-1])
+
     def test_automatic_artifact_requires_current_signature_and_clears_otherwise(self) -> None:
         with tempfile.TemporaryDirectory(prefix="phase6_cases_") as directory:
             rows = _rows(directory)

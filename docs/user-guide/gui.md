@@ -80,8 +80,38 @@ explicit machine-oriented field names.
 | `center_y_stl_m` | Center Y [m] |
 | `center_z_stl_m` | Center Z [m] |
 | `stl_index` | STL index |
-Relative `out_dir` values, automatic VTP loading, and default image directories
-are all resolved from the loaded input table's directory.
+
+For a case-associated VTP, **Save Image...** starts at
+`<resolved_out_dir>/images/<case_id>__<scalar_name>.png`. The scalar portion is
+the machine-oriented VTP field name from the first column above, not its GUI
+label. For example, the default may be
+`outputs/images/case_001__normal_traction_coeff.png`.
+
+For a VTP opened with **Open VTP...** that does not match a current case and
+signature, the default is
+`<vtp_parent>/images/<vtp_stem>__<scalar_name>.png`. A stale or
+signature-mismatched VTP can still be inspected and exported manually.
+
+**Save Selected...** starts at `<resolved_out_dir>/images` when every selected
+case resolves to the same output directory. If selected cases use different
+resolved output directories, it starts at `<input_dir>/outputs/images`,
+independent of row order. Batch filenames use the same
+`<case_id>__<scalar_name>.png` form. Existing files are never overwritten by a
+batch export: Panel Solver adds `_2`, `_3`, and so on before `.png`, including
+when names would collide within the current batch.
+
+The required image directory and missing parents are created when an image save
+is confirmed, not during calculation. A creation failure is logged and no
+screenshot is attempted. If another image directory is selected, it is reused
+as the starting directory for later case-associated image saves while the same
+input file remains loaded. This session-only choice is reset after a different
+input file loads successfully; if the remembered directory is deleted, the
+standard directory is used again. An unmatched manually opened VTP always uses
+its own parent-based standard location. Export buttons remain disabled until a
+viewport or selected loaded cases, respectively, are available.
+
+Relative `out_dir` values, automatic VTP loading, and case-associated default
+image directories are all resolved from the loaded input table's directory.
 
 Closing the window during a run requests cooperative cancellation and waits for
 worker cleanup. An active ray query or model solve may finish before cancellation

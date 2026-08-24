@@ -12,8 +12,13 @@ from pyvistaqt import QtInteractor
 
 from .path_resolution import (
     absolute_input_path,
+    auto_rename_path,
+    default_image_filename,
+    resolve_batch_image_dir,
+    resolve_case_image_path,
     resolve_case_output_dir,
     resolve_case_vtp_path,
+    resolve_manual_vtp_image_path,
 )
 from .solver_spec import CaseRow, SolverSpec
 from .viewer_data import (
@@ -93,7 +98,10 @@ class ViewerPanel(QtWidgets.QWidget):
         self._connect_controls()
 
         self._case_rows: tuple[CaseRow, ...] = ()
+        self._selected_case_rows: tuple[CaseRow, ...] = ()
         self._input_path: Path | None = None
+        self._image_directory_input_path: Path | None = None
+        self._last_image_directory: Path | None = None
         self._poly: object | None = None
         self._loaded_vtp_path: Path | None = None
         self._display_case_row: CaseRow | None = None
@@ -101,6 +109,7 @@ class ViewerPanel(QtWidgets.QWidget):
         self._overlay_actor = None
         self._default_view_vec = (-1, -1, 1)
         self._camera_initialized = False
+        self._update_export_controls()
 
     def _enable_parallel_projection(self) -> None:
         try:
@@ -143,6 +152,8 @@ class ViewerPanel(QtWidgets.QWidget):
         self.btn_view_wind_rev = QtWidgets.QPushButton("Wind -")
         self.btn_save_image = QtWidgets.QPushButton("Save Image...")
         self.btn_save_selected_images = QtWidgets.QPushButton("Save Selected...")
+        self.btn_save_image.setEnabled(False)
+        self.btn_save_selected_images.setEnabled(False)
 
     def _build_controls_layout(self) -> None:
         controls = QtWidgets.QVBoxLayout()
@@ -232,14 +243,22 @@ class ViewerPanel(QtWidgets.QWidget):
 
     def set_case_rows(self, rows: Sequence[CaseRow] | None) -> None:
         self._case_rows = () if rows is None else tuple(rows)
+        self._selected_case_rows = ()
+        self._update_export_controls()
+
+    def set_selected_case_rows(self, rows: Sequence[CaseRow] | None) -> None:
+        self._selected_case_rows = () if rows is None else tuple(rows)
+        self._update_export_controls()
 
     def set_input_path(self, path: str | Path | None) -> None:
         """Set the input table whose directory anchors relative artifact paths."""
-        self._input_path = (
-            None
-            if path is None
-            else absolute_input_path(path)
-        )
+        resolved = None if path is None else absolute_input_path(path)
+        if resolved is not None:
+            if self._image_directory_input_path != resolved:
+                self._last_image_directory = None
+            self._image_directory_input_path = resolved
+        self._input_path = resolved
+        self._update_export_controls()
 
     def _input_path_context(self) -> Path:
         return self._input_path or (Path.cwd() / "input.csv")
@@ -258,6 +277,7 @@ class ViewerPanel(QtWidgets.QWidget):
             self.plotter.render()
         except Exception:
             pass
+        self._update_export_controls()
 
     def clear_range(self) -> None:
         self.edit_vmin.clear()
@@ -316,6 +336,7 @@ class ViewerPanel(QtWidgets.QWidget):
         self._set_scalar_fields(fields)
         self.logln(f"[VIEW] Loaded VTP: {path}")
         self.update_view()
+        self._update_export_controls()
         return True
 
     def _set_scalar_fields(self, fields: Sequence[ScalarField]) -> None:
@@ -343,22 +364,87 @@ class ViewerPanel(QtWidgets.QWidget):
             )
         return Path.cwd()
 
+    def _update_export_controls(self) -> None:
+        self.btn_save_image.setEnabled(
+            self._poly is not None and self._selected_scalar_name() is not None
+        )
+        self.btn_save_selected_images.setEnabled(
+            self._input_path is not None
+            and bool(self._case_rows)
+            and bool(self._selected_case_rows)
+        )
+
+    def _standard_view_image_path(self) -> Path | None:
+        scalar_name = self._selected_scalar_name()
+        if self._poly is None or scalar_name is None:
+            return None
+        if self._display_case_row is not None:
+            return resolve_case_image_path(
+                self._display_case_row,
+                self._input_path_context(),
+                scalar_name,
+            )
+        if self._loaded_vtp_path is not None:
+            return resolve_manual_vtp_image_path(
+                self._loaded_vtp_path,
+                scalar_name,
+            )
+        return None
+
+    def _remembered_image_directory(self) -> Path | None:
+        candidate = self._last_image_directory
+        if candidate is not None and candidate.is_dir():
+            return candidate
+        return None
+
+    def _view_image_dialog_path(self) -> Path | None:
+        standard_path = self._standard_view_image_path()
+        if standard_path is None:
+            return None
+        if self._display_case_row is None:
+            return standard_path
+        remembered = self._remembered_image_directory()
+        if remembered is not None:
+            return remembered / standard_path.name
+        return standard_path
+
+    def _batch_image_dialog_dir(self, rows: Sequence[CaseRow]) -> Path:
+        standard_dir = resolve_batch_image_dir(rows, self._input_path_context())
+        remembered = self._remembered_image_directory()
+        return remembered if remembered is not None else standard_dir
+
+    def _remember_image_directory(self, directory: Path) -> None:
+        if self._input_path is not None:
+            self._last_image_directory = directory
+
     def save_view_image(self) -> None:
         """Capture the displayed viewport without enforcing artifact freshness."""
+        default_path = self._view_image_dialog_path()
+        if default_path is None:
+            self.logln("[WARN] No viewport is available to save.")
+            return
         path, _ = QtWidgets.QFileDialog.getSaveFileName(
             self,
             "Save View Image",
-            str(self.default_artifact_dir()),
+            str(default_path),
             "PNG (*.png);;JPEG (*.jpg *.jpeg);;TIFF (*.tif *.tiff)",
         )
         if not path:
             return
+        image_path = Path(path).expanduser()
         try:
-            self.plotter.screenshot(path)
+            self._make_directory(image_path.parent)
+        except Exception as exc:
+            self.logln(f"[ERROR] Failed to create image directory: {exc}")
+            return
+        if self._display_case_row is not None:
+            self._remember_image_directory(image_path.parent)
+        try:
+            self.plotter.screenshot(str(image_path))
         except Exception as exc:
             self.logln(f"[ERROR] Failed to save image: {exc}")
             return
-        self.logln(f"[OK] Saved image: {path}")
+        self.logln(f"[OK] Saved image: {image_path}")
 
     def save_images_for_case_rows(self, rows: Sequence[CaseRow]) -> None:
         """Save current, exact-matching selected artifacts as ordered PNGs."""
@@ -366,10 +452,7 @@ class ViewerPanel(QtWidgets.QWidget):
         if not selected:
             self.logln("[WARN] No selected cases.")
             return
-        default_dir = resolve_case_output_dir(
-            selected[0],
-            self._input_path_context(),
-        ) / "images"
+        default_dir = self._batch_image_dialog_dir(selected)
         selected_dir = QtWidgets.QFileDialog.getExistingDirectory(
             self,
             "Select Folder to Save Selected Images",
@@ -383,12 +466,14 @@ class ViewerPanel(QtWidgets.QWidget):
         except Exception as exc:
             self.logln(f"[ERROR] Failed to create image directory: {exc}")
             return
+        self._remember_image_directory(output_dir)
 
         saved = 0
         skipped = 0
+        reserved_paths: set[Path] = set()
         self.logln(f"[SAVE] Batch image export start: {len(selected)} case(s)")
         for row in selected:
-            if self._save_case_image(row, output_dir):
+            if self._save_case_image(row, output_dir, reserved_paths):
                 saved += 1
             else:
                 skipped += 1
@@ -398,7 +483,12 @@ class ViewerPanel(QtWidgets.QWidget):
                 self.logln(f"[ERROR] Failed to process GUI events: {exc}")
         self.logln(f"[SAVE] Batch image export done: saved={saved}, skipped={skipped}")
 
-    def _save_case_image(self, row: CaseRow, output_dir: Path) -> bool:
+    def _save_case_image(
+        self,
+        row: CaseRow,
+        output_dir: Path,
+        reserved_paths: set[Path] | None = None,
+    ) -> bool:
         case_id = str(row.get("case_id", "")).strip()
         if not case_id:
             self.logln("[SKIP] Missing case_id in selected row.")
@@ -426,7 +516,17 @@ class ViewerPanel(QtWidgets.QWidget):
             return False
         if not self.load_vtp(str(vtp_path), poly=artifact, case_row=row):
             return False
-        image_path = output_dir / f"{case_id}.png"
+        scalar_name = self._selected_scalar_name()
+        if scalar_name is None:
+            self.logln(f"[SKIP] No scalar is available for '{case_id}'.")
+            return False
+        reserved = set() if reserved_paths is None else reserved_paths
+        image_path = auto_rename_path(
+            output_dir / default_image_filename(case_id, scalar_name),
+            path_exists=self._path_exists,
+            reserved_paths=reserved,
+        )
+        reserved.add(image_path)
         try:
             self.plotter.screenshot(str(image_path))
         except Exception as exc:
