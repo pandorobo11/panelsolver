@@ -29,6 +29,7 @@ from panelsolver.core import (
     project_vtp_artifact,
     reuse_oriented_execution_order,
 )
+from panelsolver.core.execution import case_execution_affinity_hints
 from panelsolver.models import ModelRegistry
 
 from .artifact_io import write_vtp_projection
@@ -390,6 +391,7 @@ def run_product_cases(
             partial_result_policy=policy.partial_result_policy,
             execution_order=order,
             bucket_keys=case_execution_bucket_keys(requests),
+            affinity_hints=case_execution_affinity_hints(requests),
             chunk_cases=resolve_parallel_chunk_environment(
                 legacy_env_prefix=policy.case_policy.legacy_env_prefix,
             ),

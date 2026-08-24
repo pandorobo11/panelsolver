@@ -14,6 +14,7 @@ from panelsolver.core import (
     ModelCasePayload,
     PanelFlowState,
     PanelGeometry,
+    SchedulingAffinityHint,
 )
 
 from .modified_newtonian import modified_newtonian_cp_max
@@ -28,6 +29,8 @@ from .tangent_wedge import tangent_wedge_pressure_coefficient
 
 HYPERSONIC_MODEL_ID = "hypersonic"
 HYPERSONIC_ALGORITHM_VERSION = "hypersonic-dc1357d0"
+_TANGENT_CONE_AFFINITY_PRIORITY = 2
+_TANGENT_WEDGE_AFFINITY_PRIORITY = 1
 
 
 class HypersonicCaseError(ContractValueError):
@@ -179,6 +182,30 @@ class HypersonicModel:
     def signature_payload(self, case: ModelCasePayload) -> dict[str, float | str]:
         """Return model-only normalized fields for Phase 5 envelope assembly."""
         return dict(resolve_hypersonic_case(case).signature_payload)
+
+    def scheduling_affinities(
+        self,
+        case: ModelCasePayload,
+    ) -> tuple[SchedulingAffinityHint, ...]:
+        """Describe likely process-local cache reuse as performance-only hints."""
+        resolved = resolve_hypersonic_case(case)
+        selected = set(resolved.windward_equations)
+        hints: list[SchedulingAffinityHint] = []
+        if "tangent_cone" in selected:
+            hints.append(
+                SchedulingAffinityHint(
+                    ("tangent_cone", resolved.mach, resolved.gamma),
+                    _TANGENT_CONE_AFFINITY_PRIORITY,
+                )
+            )
+        if "tangent_wedge" in selected:
+            hints.append(
+                SchedulingAffinityHint(
+                    ("tangent_wedge", resolved.mach, resolved.gamma),
+                    _TANGENT_WEDGE_AFFINITY_PRIORITY,
+                )
+            )
+        return tuple(hints)
 
     def evaluate(
         self,

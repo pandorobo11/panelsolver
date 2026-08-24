@@ -38,6 +38,7 @@ from .execution import (
     ExecutablePanelLoadModel,
     ExecutionError,
     ExecutionModelError,
+    SchedulingAffinityHint,
     execute_case,
     prepare_case_signature,
 )
@@ -146,6 +147,7 @@ __all__ = (
     "SchedulerCancelled",
     "SchedulerError",
     "SchedulerProgress",
+    "SchedulingAffinityHint",
     "ShapeError",
     "ShieldingCacheStats",
     "ShieldingConfig",

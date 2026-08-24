@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import unittest
+from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
@@ -17,6 +18,7 @@ from panelsolver.core import (
     execute_case,
     iter_execution_results_parallel,
 )
+from panelsolver.core.execution import case_execution_affinity_hints
 
 REPOSITORY_ROOT = Path(__file__).parents[2]
 FIXTURE_ROOT = REPOSITORY_ROOT / "tests" / "fixtures" / "phase1"
@@ -125,6 +127,30 @@ class Phase5eSchedulerRegressionTests(unittest.TestCase):
             execute_case(sentman).signature,
             execute_case(hypersonic).signature,
         )
+
+    def test_model_affinity_hints_do_not_change_primary_bucket_identity(self) -> None:
+        sentman = _request_for(
+            GOLDEN_ROOT / "fmfsolver" / "fmf_zero_plate.json"
+        )
+        cone = _request_for(
+            GOLDEN_ROOT / "newtsolver" / "newt_tangent_cone.json"
+        )
+        wedge = _request_for(
+            GOLDEN_ROOT / "newtsolver" / "newt_tangent_wedge.json"
+        )
+        hints = case_execution_affinity_hints((sentman, cone, wedge))
+        self.assertEqual((), hints[0])
+        self.assertEqual(("tangent_cone", 6.0, 1.4), hints[1][0].identity)
+        self.assertEqual(("tangent_wedge", 6.0, 1.4), hints[2][0].identity)
+
+        shielding = ShieldingConfig(enabled=True, ray_backend="rtree")
+        cone_key, wedge_key = case_execution_bucket_keys(
+            (
+                replace(cone, shielding=shielding),
+                replace(wedge, shielding=shielding),
+            )
+        )
+        self.assertEqual(cone_key, wedge_key)
 
 
 if __name__ == "__main__":

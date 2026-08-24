@@ -7,6 +7,8 @@ import tempfile
 import threading
 import time
 import unittest
+from collections import OrderedDict, deque
+from itertools import product
 from pathlib import Path
 from unittest import mock
 
@@ -15,6 +17,7 @@ from panelsolver.core import (
     PartialResultPolicy,
     SchedulerCancelled,
     SchedulerError,
+    SchedulingAffinityHint,
     WorkerExecutionError,
     WorkerLogPolicy,
     WorkerStartupError,
@@ -73,6 +76,12 @@ def _unpickleable_worker(case: str, logfn):
 
 def _identity_worker(case, _logfn):
     return case
+
+
+def _pid_worker(case: tuple[str, float], _logfn) -> tuple[int, str]:
+    label, delay_seconds = case
+    time.sleep(delay_seconds)
+    return os.getpid(), label
 
 
 def _touch_after_delay(path_text: str) -> None:
@@ -163,6 +172,300 @@ class SchedulerTests(unittest.TestCase):
             with self.subTest(value=value), self.assertRaises(SchedulerError):
                 resolve_parallel_chunk_cases(value)
 
+    def test_bucket_chunking_stably_groups_higher_priority_affinities(self) -> None:
+        high_a = SchedulingAffinityHint(("high", "a"), priority=2)
+        high_b = SchedulingAffinityHint(("high", "b"), priority=2)
+        low = SchedulingAffinityHint(("low", "c"), priority=1)
+        hints = (
+            (low,),
+            (high_a,),
+            (high_b,),
+            (high_a, low),
+            (high_b,),
+            (low,),
+            (),
+            (),
+        )
+
+        chunks, remaining = scheduler_module._build_bucket_chunks(
+            tuple(range(len(hints))),
+            ("ray",) * len(hints),
+            hints,
+            2,
+        )
+
+        self.assertEqual(
+            ((1, 3), (2, 4), (0, 5), (6, 7)),
+            tuple(chunks["ray"]),
+        )
+        self.assertEqual({"ray": len(hints)}, remaining)
+
+    def test_bucket_chunking_closes_before_splitting_the_next_group(self) -> None:
+        affinity_a = SchedulingAffinityHint(("cache", "a"), priority=1)
+        affinity_b = SchedulingAffinityHint(("cache", "b"), priority=1)
+        hints = ((affinity_a,),) * 3 + ((affinity_b,),) * 3
+
+        chunks, _remaining = scheduler_module._build_bucket_chunks(
+            tuple(range(len(hints))),
+            ("ray",) * len(hints),
+            hints,
+            4,
+        )
+
+        self.assertEqual(((0, 1, 2), (3, 4, 5)), tuple(chunks["ray"]))
+
+    def test_bucket_chunking_splits_deterministically_to_keep_baseline_count(
+        self,
+    ) -> None:
+        affinities = tuple(
+            SchedulingAffinityHint(("cache", identity), priority=1)
+            for identity in ("a", "b", "c")
+        )
+        hints = tuple((affinity,) for affinity in affinities for _ in range(5))
+        decisions = []
+
+        for _ in range(5):
+            chunks, _remaining = scheduler_module._build_bucket_chunks(
+                tuple(range(len(hints))),
+                ("ray",) * len(hints),
+                hints,
+                8,
+            )
+            decisions.append(tuple(chunks["ray"]))
+
+        expected = (tuple(range(8)), tuple(range(8, 15)))
+        self.assertEqual([expected] * 5, decisions)
+        self.assertEqual(2, len(decisions[0]))
+        self.assertTrue(all(len(chunk) <= 8 for chunk in decisions[0]))
+        self.assertEqual(tuple(range(15)), sum(decisions[0], ()))
+        for group in (range(5), range(5, 10), range(10, 15)):
+            self.assertEqual(
+                tuple(group),
+                tuple(index for chunk in decisions[0] for index in chunk if index in group),
+            )
+
+    def test_affinity_chunk_count_matches_fixed_width_baseline(self) -> None:
+        for chunk_cases in range(1, 7):
+            for group_sizes in product(range(1, 7), repeat=3):
+                next_index = 0
+                groups = []
+                for size in group_sizes:
+                    groups.append(tuple(range(next_index, next_index + size)))
+                    next_index += size
+
+                chunks = scheduler_module._chunks_preserving_affinity_groups(
+                    groups,
+                    chunk_cases,
+                )
+                baseline_count = (next_index + chunk_cases - 1) // chunk_cases
+                with self.subTest(
+                    chunk_cases=chunk_cases,
+                    group_sizes=group_sizes,
+                ):
+                    self.assertEqual(baseline_count, len(chunks))
+                    self.assertTrue(
+                        all(1 <= len(chunk) <= chunk_cases for chunk in chunks)
+                    )
+                    self.assertEqual(tuple(range(next_index)), sum(chunks, ()))
+
+    def test_bucket_chunking_packs_small_whole_groups_together(self) -> None:
+        affinities = tuple(
+            SchedulingAffinityHint(("cache", identity), priority=1)
+            for identity in ("a", "b", "c")
+        )
+        hints = tuple((affinity,) for affinity in affinities for _ in range(2))
+
+        chunks, _remaining = scheduler_module._build_bucket_chunks(
+            tuple(range(len(hints))),
+            ("ray",) * len(hints),
+            hints,
+            8,
+        )
+
+        self.assertEqual((tuple(range(6)),), tuple(chunks["ray"]))
+
+    def test_bucket_chunking_splits_only_an_oversized_single_group(self) -> None:
+        affinity = SchedulingAffinityHint(("cache", "large"), priority=1)
+        hints = ((affinity,),) * 10
+
+        chunks, _remaining = scheduler_module._build_bucket_chunks(
+            tuple(range(len(hints))),
+            ("ray",) * len(hints),
+            hints,
+            4,
+        )
+
+        self.assertEqual(
+            ((0, 1, 2, 3), (4, 5, 6, 7), (8, 9)),
+            tuple(chunks["ray"]),
+        )
+
+    def test_none_and_empty_affinities_preserve_fifo_bucket_chunking(self) -> None:
+        order = (5, 2, 0, 4, 1, 3)
+        bucket_keys = ("a", "a", "b", "a", "b", "a")
+        raw_hints = (None, tuple(() for _ in bucket_keys))
+
+        for provided in raw_hints:
+            with self.subTest(provided="none" if provided is None else "empty"):
+                hints = scheduler_module._validated_affinity_hints(
+                    len(bucket_keys),
+                    provided,
+                )
+                chunks, remaining = scheduler_module._build_bucket_chunks(
+                    order,
+                    bucket_keys,
+                    hints,
+                    2,
+                )
+                self.assertEqual(("a", "b"), tuple(chunks))
+                self.assertEqual(((5, 0), (1, 3)), tuple(chunks["a"]))
+                self.assertEqual(((2, 4),), tuple(chunks["b"]))
+                self.assertEqual({"a": 4, "b": 2}, remaining)
+
+    def test_primary_bucket_continuity_precedes_secondary_affinity(self) -> None:
+        cone = SchedulingAffinityHint(("cone", 5.0, 1.4), priority=2)
+        bucket_chunks = {
+            "ray-a": deque(((1,), (2,))),
+            "ray-b": deque(((3,), (4,), (5,))),
+        }
+        picked = scheduler_module._pick_next_chunk(
+            0,
+            ["ray-a"],
+            [OrderedDict(((cone.identity, None),))],
+            bucket_chunks,
+            {"ray-a": 2, "ray-b": 3},
+            {"ray-a": 0, "ray-b": None},
+            {"ray-a": 0, "ray-b": 1},
+            ((), (), (cone,), (cone,), (cone,), (cone,)),
+        )
+        # Primary locality wins across buckets and consumes the next chunk that
+        # was prebuilt for that bucket.
+        self.assertEqual(("ray-a", (1,)), picked)
+
+    def test_unowned_bucket_precedes_affine_owned_bucket(self) -> None:
+        cone = SchedulingAffinityHint(("cone", 5.0, 1.4), priority=2)
+        picked = scheduler_module._pick_next_chunk(
+            1,
+            [None, None],
+            [OrderedDict(), OrderedDict(((cone.identity, None),))],
+            {
+                "owned": deque(((0,), (1,), (2,), (3,))),
+                "unowned": deque(((4,),)),
+            },
+            {"owned": 4, "unowned": 1},
+            {"owned": 0, "unowned": None},
+            {"owned": 0, "unowned": 1},
+            ((cone,), (cone,), (cone,), (cone,), ()),
+        )
+        self.assertEqual(("unowned", (4,)), picked)
+
+    def test_unowned_bucket_prefers_cone_then_wedge_affinity(self) -> None:
+        cone = SchedulingAffinityHint(("cone", 5.0, 1.4), priority=2)
+        wedge = SchedulingAffinityHint(("wedge", 5.0, 1.4), priority=1)
+        picked = scheduler_module._pick_next_chunk(
+            0,
+            [None],
+            [OrderedDict(((cone.identity, None), (wedge.identity, None)))],
+            {
+                "wedge-ray": deque(((0,),)),
+                "cone-ray": deque(((1,),)),
+            },
+            {"wedge-ray": 1, "cone-ray": 1},
+            {"wedge-ray": None, "cone-ray": None},
+            {"wedge-ray": 0, "cone-ray": 1},
+            ((wedge,), (cone,)),
+        )
+        self.assertEqual(("cone-ray", (1,)), picked)
+
+    def test_unowned_bucket_reuses_wedge_affinity(self) -> None:
+        wedge = SchedulingAffinityHint(("wedge", 10.0, 1.4), priority=1)
+        picked = scheduler_module._pick_next_chunk(
+            0,
+            [None],
+            [OrderedDict(((wedge.identity, None),))],
+            {"miss": deque(((0,),)), "hit": deque(((1,),))},
+            {"miss": 1, "hit": 1},
+            {"miss": None, "hit": None},
+            {"miss": 0, "hit": 1},
+            ((), (wedge,)),
+        )
+        self.assertEqual(("hit", (1,)), picked)
+
+    def test_empty_affinity_preserves_largest_unowned_bucket_policy(self) -> None:
+        picked = scheduler_module._pick_next_chunk(
+            0,
+            [None],
+            [OrderedDict()],
+            {"small": deque(((0,),)), "large": deque(((1,), (2,)))},
+            {"small": 1, "large": 2},
+            {"small": None, "large": None},
+            {"small": 0, "large": 1},
+            ((), (), ()),
+        )
+        self.assertEqual(("large", (1,)), picked)
+
+    def test_owned_bucket_steal_values_remaining_work_before_affinity(self) -> None:
+        cone = SchedulingAffinityHint(("cone", 5.0, 1.4), priority=2)
+        picked = scheduler_module._pick_next_chunk(
+            2,
+            [None, None, None],
+            [OrderedDict(), OrderedDict(), OrderedDict(((cone.identity, None),))],
+            {
+                "large-miss": deque(((0,), (1,), (2,))),
+                "small-hit": deque(((3,),)),
+            },
+            {"large-miss": 3, "small-hit": 1},
+            {"large-miss": 0, "small-hit": 1},
+            {"large-miss": 0, "small-hit": 1},
+            ((), (), (), (cone,)),
+        )
+        self.assertEqual(("large-miss", (0,)), picked)
+
+    def test_owned_bucket_steal_uses_affinity_after_remaining_work(self) -> None:
+        cone = SchedulingAffinityHint(("cone", 5.0, 1.4), priority=2)
+        picked = scheduler_module._pick_next_chunk(
+            2,
+            [None, None, None],
+            [OrderedDict(), OrderedDict(), OrderedDict(((cone.identity, None),))],
+            {"miss": deque(((0,),)), "hit": deque(((1,),))},
+            {"miss": 1, "hit": 1},
+            {"miss": 0, "hit": 1},
+            {"miss": 0, "hit": 1},
+            ((), (cone,)),
+        )
+        self.assertEqual(("hit", (1,)), picked)
+
+    def test_affinity_ties_are_deterministic(self) -> None:
+        decisions = []
+        for _ in range(5):
+            decisions.append(
+                scheduler_module._pick_next_chunk(
+                    0,
+                    [None],
+                    [OrderedDict()],
+                    {"first": deque(((0,),)), "second": deque(((1,),))},
+                    {"first": 1, "second": 1},
+                    {"first": None, "second": None},
+                    {"first": 0, "second": 1},
+                    ((), ()),
+                )
+            )
+        self.assertEqual([("first", (0,))] * 5, decisions)
+
+    def test_worker_affinity_history_is_bounded_lru(self) -> None:
+        history: OrderedDict[object, None] = OrderedDict()
+        for index in range(scheduler_module._MAX_WORKER_AFFINITIES + 3):
+            scheduler_module._record_worker_affinities(
+                history,
+                (SchedulingAffinityHint(("cache", index)),),
+            )
+        self.assertEqual(scheduler_module._MAX_WORKER_AFFINITIES, len(history))
+        self.assertNotIn(("cache", 0), history)
+        self.assertIn(
+            ("cache", scheduler_module._MAX_WORKER_AFFINITIES + 2),
+            history,
+        )
+
     def test_completion_progress_logs_and_ordered_snapshots(self) -> None:
         before = _worker_resource_state()
         logs: list[str] = []
@@ -192,6 +495,162 @@ class SchedulerTests(unittest.TestCase):
             ((2, 20), (0, 0), (1, 10)),
             ordered_success_snapshot(dict(results), (2, 0, 1)),
         )
+        self.assert_no_new_worker_resources(before)
+
+    def test_successful_results_guide_later_worker_affinity_without_ray_steal(
+        self,
+    ) -> None:
+        before = _worker_resource_state()
+        affinity_a = SchedulingAffinityHint(("cone", 5.0, 1.4), priority=2)
+        affinity_b = SchedulingAffinityHint(("cone", 10.0, 1.4), priority=2)
+        cases = (
+            ("a-first", 0.02),
+            ("b-first", 0.12),
+            ("b-next", 0.20),
+            ("a-next", 0.20),
+        )
+
+        def run_probe(affinity_hints=None, snapshot_cb=None):
+            return dict(
+                iter_case_results_parallel(
+                    cases,
+                    2,
+                    _pid_worker,
+                    log_policy=WorkerLogPolicy.DROP,
+                    partial_result_policy=PartialResultPolicy.YIELD_COMPLETED,
+                    bucket_keys=("ray-a1", "ray-b1", "ray-b2", "ray-a2"),
+                    affinity_hints=affinity_hints,
+                    chunk_cases=1,
+                    snapshot_cb=snapshot_cb,
+                )
+            )
+
+        snapshots = []
+        baseline = run_probe()
+        results = run_probe(
+            (
+                (affinity_a,),
+                (affinity_b,),
+                (affinity_b,),
+                (affinity_a,),
+            ),
+            snapshots.append,
+        )
+        baseline_hits = int(baseline[0][0] == baseline[3][0]) + int(
+            baseline[1][0] == baseline[2][0]
+        )
+        affinity_hits = int(results[0][0] == results[3][0]) + int(
+            results[1][0] == results[2][0]
+        )
+        self.assertEqual(0, baseline_hits)
+        self.assertEqual(2, affinity_hits)
+        self.assertEqual((0, 1, 2, 3), tuple(index for index, _ in snapshots[-1]))
+        self.assert_no_new_worker_resources(before)
+
+    def test_bucket_local_grouping_reduces_worker_affinity_spread_without_more_steal(
+        self,
+    ) -> None:
+        before = _worker_resource_state()
+        affinity_a = SchedulingAffinityHint(("expensive", "a"), priority=2)
+        affinity_b = SchedulingAffinityHint(("expensive", "b"), priority=2)
+        cases = (
+            ("a", 0.03),
+            ("b", 0.03),
+            ("a", 0.03),
+            ("b", 0.03),
+            ("a", 0.03),
+            ("b", 0.03),
+        )
+        order = (1, 0, 3, 2, 5, 4)
+
+        def run_probe(affinity_hints=None, snapshot_cb=None):
+            return dict(
+                iter_case_results_parallel(
+                    cases,
+                    2,
+                    _pid_worker,
+                    log_policy=WorkerLogPolicy.DROP,
+                    partial_result_policy=PartialResultPolicy.YIELD_COMPLETED,
+                    execution_order=order,
+                    bucket_keys=("one-ray-bucket",) * len(cases),
+                    affinity_hints=affinity_hints,
+                    chunk_cases=4,
+                    snapshot_cb=snapshot_cb,
+                )
+            )
+
+        baseline = run_probe()
+        snapshots = []
+        grouped = run_probe(
+            (
+                (affinity_a,),
+                (affinity_b,),
+                (affinity_a,),
+                (affinity_b,),
+                (affinity_a,),
+                (affinity_b,),
+            ),
+            snapshots.append,
+        )
+
+        def affinity_worker_spread(results, label):
+            return len(
+                {
+                    result[0]
+                    for result in results.values()
+                    if result[1] == label
+                }
+            )
+
+        self.assertEqual(2, affinity_worker_spread(baseline, "a"))
+        self.assertEqual(2, affinity_worker_spread(baseline, "b"))
+        self.assertEqual(1, affinity_worker_spread(grouped, "a"))
+        self.assertEqual(1, affinity_worker_spread(grouped, "b"))
+        # Both modes use one owner plus one steal for the sole primary bucket.
+        self.assertEqual(2, len({result[0] for result in baseline.values()}))
+        self.assertEqual(2, len({result[0] for result in grouped.values()}))
+        self.assertEqual(order, tuple(index for index, _ in snapshots[-1]))
+        self.assert_no_new_worker_resources(before)
+
+    def test_bucket_local_grouping_does_not_add_ray_workers_when_groups_conflict(
+        self,
+    ) -> None:
+        before = _worker_resource_state()
+        labels = ("a", "b", "c")
+        affinities = {
+            label: SchedulingAffinityHint(("cache", label), priority=1)
+            for label in labels
+        }
+        cases = tuple((label, 0.02) for _ in range(5) for label in labels)
+        hints = tuple((affinities[label],) for label, _delay in cases)
+        order = tuple(reversed(range(len(cases))))
+
+        def run_probe(affinity_hints=None, snapshot_cb=None):
+            return dict(
+                iter_case_results_parallel(
+                    cases,
+                    3,
+                    _pid_worker,
+                    log_policy=WorkerLogPolicy.DROP,
+                    partial_result_policy=PartialResultPolicy.YIELD_COMPLETED,
+                    execution_order=order,
+                    bucket_keys=("one-ray-bucket",) * len(cases),
+                    affinity_hints=affinity_hints,
+                    chunk_cases=8,
+                    snapshot_cb=snapshot_cb,
+                )
+            )
+
+        baseline = run_probe()
+        snapshots = []
+        grouped = run_probe(hints, snapshots.append)
+        baseline_pids = {result[0] for result in baseline.values()}
+        grouped_pids = {result[0] for result in grouped.values()}
+
+        self.assertEqual(2, len(baseline_pids))
+        self.assertEqual(2, len(grouped_pids))
+        self.assertLessEqual(len(grouped_pids), len(baseline_pids))
+        self.assertEqual(order, tuple(index for index, _ in snapshots[-1]))
         self.assert_no_new_worker_resources(before)
 
     def test_forward_logs_and_discard_failed_chunk_results(self) -> None:
