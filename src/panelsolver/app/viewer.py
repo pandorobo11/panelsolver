@@ -453,6 +453,11 @@ class ViewerPanel(QtWidgets.QWidget):
             self.logln("[WARN] No selected cases.")
             return
         default_dir = self._batch_image_dialog_dir(selected)
+        try:
+            self._make_directory(default_dir)
+        except Exception as exc:
+            self.logln(f"[ERROR] Failed to create image directory: {exc}")
+            return
         selected_dir = QtWidgets.QFileDialog.getExistingDirectory(
             self,
             "Select Folder to Save Selected Images",

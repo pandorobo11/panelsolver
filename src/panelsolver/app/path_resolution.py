@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable, Collection, Mapping, Sequence
 from pathlib import Path
 
 DEFAULT_OUTPUT_DIRECTORY = "outputs"
 DEFAULT_IMAGE_DIRECTORY = "images"
+_UNSAFE_FILENAME_CHARACTERS = re.compile(r'[\\/:*?"<>|\x00-\x1f\x7f]')
 
 
 def absolute_input_path(input_path: str | Path) -> Path:
@@ -70,12 +72,17 @@ def resolve_batch_image_dir(
 
 
 def default_image_filename(identifier: str, scalar_name: str) -> str:
-    """Return the common machine-field-oriented PNG filename."""
-    if not identifier:
-        raise ValueError("image identifier must not be empty")
-    if not scalar_name:
-        raise ValueError("scalar_name must not be empty")
-    return f"{identifier}__{scalar_name}.png"
+    """Return the common portable machine-field-oriented PNG filename."""
+    safe_identifier = _safe_image_filename_component(identifier, fallback="image")
+    safe_scalar = _safe_image_filename_component(scalar_name, fallback="scalar")
+    return f"{safe_identifier}__{safe_scalar}.png"
+
+
+def _safe_image_filename_component(value: str, *, fallback: str) -> str:
+    """Replace cross-platform unsafe filename characters in one component."""
+    sanitized = _UNSAFE_FILENAME_CHARACTERS.sub("_", value)
+    sanitized = sanitized.strip().rstrip(". ")
+    return sanitized or fallback
 
 
 def resolve_case_image_path(

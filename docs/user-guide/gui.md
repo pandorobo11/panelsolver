@@ -86,6 +86,10 @@ For a case-associated VTP, **Save Image...** starts at
 the machine-oriented VTP field name from the first column above, not its GUI
 label. For example, the default may be
 `outputs/images/case_001__normal_traction_coeff.png`.
+Characters that are unsafe in portable filenames (`/`, `\`, `:`, `*`, `?`,
+`"`, `<`, `>`, `|`, and control characters) are replaced with `_` in both the
+case or VTP identifier and scalar portions. Leading and trailing whitespace and
+trailing dots are removed; an empty result uses a safe fallback name.
 
 For a VTP opened with **Open VTP...** that does not match a current case and
 signature, the default is
@@ -100,15 +104,21 @@ independent of row order. Batch filenames use the same
 batch export: Panel Solver adds `_2`, `_3`, and so on before `.png`, including
 when names would collide within the current batch.
 
-The required image directory and missing parents are created when an image save
-is confirmed, not during calculation. A creation failure is logged and no
-screenshot is attempted. If another image directory is selected, it is reused
-as the starting directory for later case-associated image saves while the same
-input file remains loaded. This session-only choice is reset after a different
-input file loads successfully; if the remembered directory is deleted, the
-standard directory is used again. An unmatched manually opened VTP always uses
+For **Save Image...**, the required image directory and missing parents are
+created after the save dialog is confirmed. For **Save Selected...**, the
+standard or remembered directory is created before the folder chooser opens so
+it can be selected on the first export; canceling that chooser may therefore
+leave an empty `images` directory. A creation failure is logged, the chooser is
+not opened, and no screenshot is attempted. Calculations themselves do not
+create image directories.
+
+If another image directory is selected, it is reused as the starting directory
+for later case-associated image saves while the same input file remains loaded.
+This session-only choice is reset after a different input file loads
+successfully; if the remembered directory is deleted, the standard directory is
+created if needed and used again. An unmatched manually opened VTP always uses
 its own parent-based standard location. Export buttons remain disabled until a
-viewport or selected loaded cases, respectively, are available.
+viewport or explicitly selected loaded cases, respectively, are available.
 
 Relative `out_dir` values, automatic VTP loading, and case-associated default
 image directories are all resolved from the loaded input table's directory.

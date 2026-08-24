@@ -110,6 +110,29 @@ class PathResolutionTests(unittest.TestCase):
             ),
         )
 
+    def test_image_filename_components_are_portable_and_have_fallbacks(self) -> None:
+        for unsafe in '/\\:*?"<>|':
+            with self.subTest(unsafe=unsafe):
+                self.assertEqual(
+                    "case__cp_raw.png",
+                    default_image_filename("case", f"cp{unsafe}raw"),
+                )
+        self.assertEqual(
+            "case_001__normal_traction_coeff.png",
+            default_image_filename(" case/001. ", "normal_traction_coeff"),
+        )
+        self.assertEqual(
+            "image__scalar.png",
+            default_image_filename(" . ", "  "),
+        )
+        self.assertEqual(
+            Path("manual/images/sample_raw__cp_raw.png"),
+            resolve_manual_vtp_image_path(
+                Path("manual") / "sample?raw.vtp",
+                "cp:raw",
+            ),
+        )
+
     def test_batch_image_directory_is_common_or_input_default(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -140,18 +163,21 @@ class PathResolutionTests(unittest.TestCase):
             )
 
     def test_auto_rename_avoids_existing_and_reserved_batch_paths(self) -> None:
-        planned = Path("/captures/case_001__cp.png")
+        planned = Path("/captures") / default_image_filename(
+            "case/001",
+            "cp:raw",
+        )
         existing = {
             planned,
-            Path("/captures/case_001__cp_2.png"),
+            Path("/captures/case_001__cp_raw_2.png"),
         }
         renamed = auto_rename_path(
             planned,
             path_exists=existing.__contains__,
         )
-        self.assertEqual(Path("/captures/case_001__cp_3.png"), renamed)
+        self.assertEqual(Path("/captures/case_001__cp_raw_3.png"), renamed)
         self.assertEqual(
-            Path("/captures/case_001__cp_4.png"),
+            Path("/captures/case_001__cp_raw_4.png"),
             auto_rename_path(
                 planned,
                 path_exists=existing.__contains__,
