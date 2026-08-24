@@ -1,9 +1,10 @@
 # Contributing
 
 This project prioritizes numerical correctness and compatibility over code
-deduplication. Read `AGENTS.md`,
-`docs/development/setup-and-testing.md`, the relevant ADRs, and the current issue
-before starting.
+deduplication. Before starting, read `AGENTS.md`,
+[Developer documentation](devdocs/README.md),
+[Development setup and testing](devdocs/development/setup-and-testing.md), the
+relevant [ADRs](devdocs/adr/README.md), and the current issue or task.
 
 ## Change scope
 
@@ -16,9 +17,9 @@ before starting.
 ## Required checks
 
 ```bash
-uv sync --locked --extra rayaccel
-uv run python -m unittest discover -s tests -p "test_*.py" -v
-uv run ruff check src tests scripts
+uv sync --locked --extra rayaccel --group docs
+uv run --no-sync python -m unittest discover -s tests -p "test_*.py" -v
+uv run --no-sync ruff check src tests scripts hatch_build.py
 uv build
 ```
 
@@ -42,7 +43,7 @@ Include:
 Golden data must identify the pinned legacy repository and commit that generated
 it. Updating expected values merely to make tests pass is prohibited. The
 current workflow is in
-[Development setup and testing](docs/development/setup-and-testing.md).
+[Development setup and testing](devdocs/development/setup-and-testing.md).
 
 ## Contribution license
 

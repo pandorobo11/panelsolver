@@ -1,6 +1,6 @@
 # Architecture decision records
 
-Accepted ADRs are retained as decision records:
+Accepted ADRs are retained as the rationale for architectural decisions:
 
 1. [Use one development repository](0001-single-repository.md)
 2. [Put a local load vector at the model boundary](0002-panel-load-vector-contract.md)
@@ -25,3 +25,10 @@ ADRs describe why the current contracts exist. Migration execution records and
 phase evidence are indexed separately in [History](../history/README.md).
 ADR 0013 defines the current project identity; older ADRs retain the
 `panel-solvers` spelling where it is part of the decision record they supersede.
+
+A later ADR takes priority only for the portions it explicitly supersedes. An
+earlier ADR may therefore remain effective in part even when another part has
+been replaced. Determine status and supersession only from the statements in the
+ADR texts; do not classify every record as either wholly current or wholly
+superseded. Historical project names preserved inside a decision record do not
+define the current project identity.

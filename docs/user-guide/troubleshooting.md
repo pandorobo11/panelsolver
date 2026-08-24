@@ -12,7 +12,7 @@ header, a non-finite value, a non-positive reference quantity, an incomplete FMF
 Mode A/B pair, an invalid equation selector, or an attitude outside the reader
 domain. See the solver-specific input reference.
 
-Legacy Excel 97–2003 `.xls` files are no longer supported. Resave the workbook
+Excel 97–2003 `.xls` files are not a supported input format. Resave the workbook
 as `.xlsx` in Excel or another spreadsheet application, or export it as CSV.
 
 ## Embree is unavailable
@@ -43,6 +43,6 @@ canceled runs as partial state.
 
 The installed distribution is `panelsolver`; its version appears in newly
 generated FMF and Hypersonic Summary CSV/VTP artifacts. Direct-Python APIs under
-`fmfsolver.*` and `newtsolver.*`, including legacy `__version__` attributes, have
-been removed. Use the documented `panelsolver` package-root API or a supported
-command. Do not install the shared and legacy distributions together.
+`fmfsolver.*` and `newtsolver.*`, including `__version__` attributes, are not
+supported public APIs. Use the documented `panelsolver` package-root API or a
+supported command. Do not install the shared and legacy distributions together.

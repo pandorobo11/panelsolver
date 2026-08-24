@@ -36,5 +36,5 @@ output with component summary rows.
 Compare VTP artifacts semantically by field name, shape, dtype, metadata, and
 appropriate numeric tolerance—not by file bytes.
 
-NPZ output was removed in ADR 0009. Existing NPZ files from older versions are
-not automatically deleted.
+Current Panel Solver releases do not generate NPZ output. Existing NPZ files
+are not automatically deleted.

@@ -65,7 +65,3 @@ pressure coefficient as `cp`. FMF derives `normal_traction_coeff` and
 `tangential_traction_coeff` from `traction_coeff_stl`; the tangential positive
 direction is the normalized in-plane projection of `velocity_hat_stl`.
 Ray-shielded panels have exact-zero traction.
-
-Quantity-specific golden tolerances remain historical regression policy in
-[Phase 1 tolerances](../history/migration/phase1/TOLERANCES.md); there is no
-repository-wide default tolerance.

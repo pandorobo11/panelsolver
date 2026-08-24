@@ -74,6 +74,7 @@ include = [
   "/README.md",
   "/THIRD_PARTY_NOTICES.md",
   "/THIRD_PARTY_LICENSES",
+  "/devdocs",
   "/docs",
   "/examples",
   "/hatch_build.py",

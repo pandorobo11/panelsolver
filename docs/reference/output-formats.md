@@ -11,10 +11,9 @@ correctly in Windows Excel and preserves non-ASCII text. CSV case-table input
 uses the same encoding; BOM-less UTF-8 input remains accepted for compatibility.
 
 The writer emits canonical input columns, then accepted non-reserved unknown
-input columns in their source order, then the product's result columns. The
-retired `save_npz_on` field is not an accepted unknown column: case readers
-reject it and old case files must remove it. Summary CSV also no longer contains
-the retired `npz_path` result column.
+input columns in their source order, then the product's result columns. Reserved
+input-field rejection is defined in [Case files](../user-guide/case-files.md).
+The current Summary CSV schema has no `npz_path` result column.
 
 FMF result columns, in order:
 

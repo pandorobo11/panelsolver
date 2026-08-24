@@ -51,7 +51,7 @@ class LegacyRollbackProbeTests(unittest.TestCase):
 
     def test_pins_match_migration_sources(self) -> None:
         migration_sources = (
-            ROOT / "docs" / "history" / "migration" / "MIGRATION_SOURCES.md"
+            ROOT / "devdocs" / "history" / "migration" / "MIGRATION_SOURCES.md"
         ).read_text(encoding="utf-8")
         self.assertEqual(
             {"fmfsolver", "newtsolver"},
