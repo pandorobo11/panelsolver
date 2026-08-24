@@ -27,7 +27,8 @@ The artifact job builds and uploads exactly this set once:
 The wheel and sdist filenames are taken from the build backend output. The
 documentation ZIP is created from the already-built wheel's bundled
 `panelsolver/_docs_site/` tree, so it is byte-equivalent to GUI Help. The
-examples ZIP contains only current `examples/fmf/`, `examples/hypersonic/`,
+documentation ZIP does not contain `devdocs/`. The examples ZIP contains only
+current `examples/fmf/`, `examples/hypersonic/`,
 `examples/geometry/`, `examples/README.md`, `LICENSE`, and
 `THIRD_PARTY_NOTICES.md`; generated outputs, caches, NPZ, legacy `.xls`, test
 fixtures, and historical migration inputs are excluded.
@@ -54,16 +55,23 @@ duplicate or unexpected filenames, hash or commit changes, wheel Name/Version or
 `project.version` mismatch, and any difference between the documentation ZIP and
 the wheel-bundled site.
 
-The wheel and sdist checks also require Apache-2.0 metadata, author or maintainer,
-the canonical `pandorobo11/panelsolver` project URL, license/notice files, docs
-sources, MkDocs configuration, build helpers, examples, and the deterministic
-US1976 generator, generated source, and pinned PDAS reference snapshot. The
-wheel and documentation ZIP must contain the audited license mapping and full
-license texts for every built-in MkDocs theme asset. MkDocs and
-LaTeX-to-MathML tooling are build/development dependencies, not runtime
-dependencies. Their versions are exact-pinned because the generated static
-assets, MathML, and third-party license inventory are part of the audited
-release artifact contract.
+Wheel verification checks the packaged offline documentation and its canonical
+solver pages, required packaged examples, project name/version and publication
+metadata, license and third-party notice files, and the audited theme-asset
+license mapping. It also rejects developer or removed documentation and rejects
+MkDocs or LaTeX-to-MathML tooling in runtime requirements. Those tools are
+exact-pinned build/development dependencies because the generated static assets,
+MathML, and third-party license inventory are part of the audited release
+artifact contract.
+
+Sdist verification instead checks the source inputs needed for an isolated wheel
+rebuild. The sdist build configuration includes the project source and examples;
+verification requires the complete regular-file trees under `docs/` and
+`devdocs/`, `mkdocs.yml`, documentation build support, `hatch_build.py`, key
+project source and example inputs, the deterministic US1976 generator and
+generated source, the pinned PDAS reference snapshot, and the root legal files.
+The isolated rebuild then verifies the resulting wheel through the wheel checks
+above.
 
 ## Release gates
 
@@ -88,8 +96,8 @@ Before publishing, CI verifies:
 
 Only after those gates does the release job publish the downloaded verified set.
 The matching CHANGELOG section supplies release notes. A version containing an
-alpha, beta, or RC marker such as `<version>rc1` creates a GitHub prerelease; a
-stable `<version>` creates a normal release.
+alpha, beta, or RC marker such as `0.2.0rc1` creates a GitHub prerelease; a stable
+`<version>` creates a normal release.
 
 ## Preparing a release candidate
 
@@ -97,13 +105,13 @@ After the intended release changes are merged and the exact protected-main CI
 is green:
 
 1. create an RC preparation branch from latest protected main;
-2. set `project.version = <version>` using an RC version identifier;
+2. set `project.version = <rc-version>` using an identifier such as `0.2.0rc1`;
 3. run `uv lock` and verify the `uv.lock` `panelsolver` version;
-4. move current Unreleased notes into a dated `[<version>]` section;
+4. move current Unreleased notes into a dated `[<rc-version>]` section;
 5. create a fresh `[Unreleased]` section;
 6. run the full CI and merge the independent RC preparation PR;
 7. confirm the merged exact-main CI is completely successful;
-8. create annotated tag `v<version>` on that exact main commit;
+8. create annotated tag `v<rc-version>` on that exact main commit;
 9. verify the resulting GitHub prerelease and its exact five attachments.
 
 ## Distribution licensing boundary
