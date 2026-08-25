@@ -14,7 +14,7 @@ import pandas as pd
 from .attitude import ATTITUDE_INPUT_VALUES
 from .case_identity import validate_case_id
 from .csv_writer import CSV_ENCODING
-from .path_resolution import resolve_input_relative_path
+from .path_resolution import absolute_input_path, resolve_input_relative_path
 
 type AddIssue = Callable[[int | None, str | None, str], None]
 type DataFrameValidator = Callable[[pd.DataFrame, AddIssue], None]
@@ -195,6 +195,8 @@ def _validate_and_resolve_stl_paths(
     add_issue: AddIssue,
 ) -> None:
     base_dir = input_path.parent
+    # One table read gets one cache; missing results still produce an issue per row.
+    resolved_cache: dict[str, Path | None] = {}
     for index, raw in frame["stl_path"].items():
         if not is_filled(raw):
             add_issue(int(index), "stl_path", "is required.")
@@ -206,12 +208,14 @@ def _validate_and_resolve_stl_paths(
         resolved_paths: list[str] = []
         for raw_path in paths:
             candidate = Path(raw_path).expanduser()
-            resolved: Path | None = None
-            if candidate.is_absolute() and candidate.exists():
-                resolved = candidate.resolve()
-            elif not candidate.is_absolute() and (base_dir / candidate).exists():
-                resolved = (base_dir / candidate).resolve()
-            else:
+            access_path = candidate if candidate.is_absolute() else base_dir / candidate
+            cache_key = _filesystem_path_cache_key(access_path)
+            if cache_key not in resolved_cache:
+                resolved_cache[cache_key] = (
+                    access_path.resolve() if access_path.exists() else None
+                )
+            resolved = resolved_cache[cache_key]
+            if resolved is None:
                 add_issue(
                     int(index),
                     "stl_path",
@@ -356,11 +360,27 @@ def _validate_out_dir(frame: pd.DataFrame, add_issue: AddIssue) -> None:
         add_issue(int(index), "out_dir", "must not be blank.")
 
 
+def _filesystem_path_cache_key(path: Path) -> str:
+    """Return an absolute lexical key without probing or resolving the path."""
+    anchored = path if path.is_absolute() else Path.cwd() / path
+    return str(anchored)
+
+
 def _resolve_out_dirs(frame: pd.DataFrame, input_path: Path) -> None:
+    # Keep resolution reuse local so every case-table read observes fresh state.
+    resolved_cache: dict[str, Path] = {}
+    base_dir = absolute_input_path(input_path).parent
     for index, raw in frame["out_dir"].items():
-        frame.at[index, "out_dir"] = str(
-            resolve_input_relative_path(str(raw), input_path)
-        )
+        raw_path = str(raw)
+        candidate = Path(raw_path).expanduser()
+        access_path = candidate if candidate.is_absolute() else base_dir / candidate
+        cache_key = _filesystem_path_cache_key(access_path)
+        if cache_key not in resolved_cache:
+            resolved_cache[cache_key] = resolve_input_relative_path(
+                raw_path,
+                input_path,
+            )
+        frame.at[index, "out_dir"] = str(resolved_cache[cache_key])
 
 
 def _validate_and_normalize(

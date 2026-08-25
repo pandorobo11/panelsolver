@@ -6,6 +6,8 @@ migration baselines and runtime artifact version semantics are recorded in ADR
 
 ## [Unreleased]
 
+- Reduce case-table input latency by deduplicating repeated STL and output path
+  resolution within each read, without changing validation or normalized paths.
 - **Breaking:** Replace the Hypersonic VTP cell scalar `Cp_n` with `cp`, and
   replace the FMF `Cp_n` scalar with `normal_traction_coeff` and
   `tangential_traction_coeff`, without a compatibility alias. The FMF
