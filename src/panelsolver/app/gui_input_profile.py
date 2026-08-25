@@ -12,6 +12,8 @@ from pathlib import Path
 from typing import Any
 
 GUI_INPUT_PROFILE_ENV = "PANELSOLVER_GUI_PROFILE"
+GUI_INPUT_PATH_MODE_ENV = "PANELSOLVER_GUI_PATH_MODE"
+GUI_INPUT_PATH_MODES = frozenset({"baseline", "stl_cache", "all_path_cache"})
 _FALSE_ENV_VALUES = frozenset({"", "0", "false", "no", "off"})
 
 
@@ -22,11 +24,31 @@ def gui_input_profiling_enabled() -> bool:
     )
 
 
+def gui_input_path_mode() -> str:
+    """Return the selected one-load path-cache experiment mode."""
+    mode = os.environ.get(GUI_INPUT_PATH_MODE_ENV, "baseline").strip().lower()
+    mode = mode or "baseline"
+    if mode not in GUI_INPUT_PATH_MODES:
+        choices = ", ".join(sorted(GUI_INPUT_PATH_MODES))
+        raise ValueError(
+            f"{GUI_INPUT_PATH_MODE_ENV} must be one of: {choices}; got {mode!r}."
+        )
+    return mode
+
+
 @dataclass(slots=True)
 class _StlPathAccess:
     entries: int = 0
     exists_calls: int = 0
     resolve_calls: int = 0
+    cache_hits: int = 0
+
+
+@dataclass(slots=True)
+class _OutDirAccess:
+    entries: int = 0
+    resolve_calls: int = 0
+    cache_hits: int = 0
 
 
 @dataclass(slots=True)
@@ -39,6 +61,8 @@ class GuiInputProfile:
     stl_paths: dict[str, _StlPathAccess] = field(default_factory=dict)
     stl_exists_total: float = 0.0
     stl_resolve_total: float = 0.0
+    out_dirs: dict[str, _OutDirAccess] = field(default_factory=dict)
+    path_mode: str = "baseline"
     rows: int | None = None
     columns: int | None = None
     thread_name: str | None = None
@@ -63,6 +87,18 @@ class GuiInputProfile:
         stats.resolve_calls += 1
         self.stl_resolve_total += elapsed
 
+    def note_stl_cache_hit(self, path: Path) -> None:
+        self.stl_paths.setdefault(str(path), _StlPathAccess()).cache_hits += 1
+
+    def note_out_dir_entry(self, key: str) -> None:
+        self.out_dirs.setdefault(key, _OutDirAccess()).entries += 1
+
+    def note_out_dir_resolve(self, key: str) -> None:
+        self.out_dirs.setdefault(key, _OutDirAccess()).resolve_calls += 1
+
+    def note_out_dir_cache_hit(self, key: str) -> None:
+        self.out_dirs.setdefault(key, _OutDirAccess()).cache_hits += 1
+
     def finish(self, status: str) -> None:
         if self._finished_at is None:
             self._finished_at = time.perf_counter()
@@ -77,6 +113,7 @@ class GuiInputProfile:
             else None
         )
         lines = [f"[PROFILE][GUI_INPUT] file={str(self.input_path)!r}"]
+        lines.append(f"[PROFILE][GUI_INPUT] path_mode={self.path_mode}")
         if self.thread_name is not None:
             gui_thread = str(bool(self.qt_gui_thread)).lower()
             lines.append(
@@ -150,11 +187,12 @@ class GuiInputProfile:
             resolve_calls = sum(
                 stats.resolve_calls for stats in self.stl_paths.values()
             )
+            cache_hits = sum(stats.cache_hits for stats in self.stl_paths.values())
             lines.extend(
                 (
                     (
                         f"[PROFILE][STL_PATH] entries={entries} "
-                        f"unique={len(self.stl_paths)}"
+                        f"unique={len(self.stl_paths)} cache_hits={cache_hits}"
                     ),
                     (
                         f"[PROFILE][STL_PATH] exists_total="
@@ -186,13 +224,25 @@ class GuiInputProfile:
                 lines.append(
                     f"[PROFILE][STL_PATH] repeated_path={path!r} "
                     f"entries={stats.entries} exists_calls={stats.exists_calls} "
-                    f"resolve_calls={stats.resolve_calls}"
+                    f"resolve_calls={stats.resolve_calls} "
+                    f"cache_hits={stats.cache_hits}"
                 )
             if len(repeated) > 20:
                 lines.append(
                     f"[PROFILE][STL_PATH] repeated_paths_omitted="
                     f"{len(repeated) - 20}"
                 )
+        if self.out_dirs:
+            entries = sum(stats.entries for stats in self.out_dirs.values())
+            resolve_calls = sum(
+                stats.resolve_calls for stats in self.out_dirs.values()
+            )
+            cache_hits = sum(stats.cache_hits for stats in self.out_dirs.values())
+            lines.append(
+                f"[PROFILE][OUT_DIR] entries={entries} "
+                f"unique={len(self.out_dirs)} resolve_calls={resolve_calls} "
+                f"cache_hits={cache_hits}"
+            )
         return tuple(lines)
 
 
@@ -233,11 +283,14 @@ def timed_call[T](
 
 
 __all__ = (
+    "GUI_INPUT_PATH_MODES",
+    "GUI_INPUT_PATH_MODE_ENV",
     "GUI_INPUT_PROFILE_ENV",
     "GuiInputProfile",
     "activate_gui_input_profile",
     "current_gui_input_profile",
     "deactivate_gui_input_profile",
+    "gui_input_path_mode",
     "gui_input_profiling_enabled",
     "timed_call",
 )

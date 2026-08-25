@@ -154,7 +154,13 @@ class CasesPanelTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             input_path = Path(directory) / "cases.csv"
             source.to_csv(input_path, index=False)
-            with patch.dict(os.environ, {"PANELSOLVER_GUI_PROFILE": "1"}):
+            with patch.dict(
+                os.environ,
+                {
+                    "PANELSOLVER_GUI_PROFILE": "1",
+                    "PANELSOLVER_GUI_PATH_MODE": "baseline",
+                },
+            ):
                 panel = CasesPanel(fmf_solver_spec())
                 changed_paths: list[object] = []
                 changed_rows: list[object] = []
@@ -165,6 +171,7 @@ class CasesPanelTests(unittest.TestCase):
         log = panel.log.toPlainText()
         for expected in (
             "[PROFILE][GUI_INPUT] total=",
+            "[PROFILE][GUI_INPUT] path_mode=baseline",
             "[PROFILE][GUI_INPUT] read_cases=",
             "[PROFILE][GUI_INPUT] materialize_raw_rows=",
             "[PROFILE][GUI_INPUT] mapping_to_dict=",
@@ -175,20 +182,64 @@ class CasesPanelTests(unittest.TestCase):
             "[PROFILE][CASE_IO] defaults=",
             "[PROFILE][CASE_IO] validate_total=",
             "[PROFILE][CASE_IO] stl_path_validation=",
-            "[PROFILE][STL_PATH] entries=",
+            "[PROFILE][STL_PATH] entries=7 unique=3 cache_hits=0",
             "[PROFILE][STL_PATH] exists_total=",
             "[PROFILE][STL_PATH] resolve_total=",
+            "[PROFILE][OUT_DIR] entries=6 unique=1 resolve_calls=6 cache_hits=0",
             "[PROFILE][TABLE] create_items_and_set=",
             "[PROFILE][TABLE] resize_columns=",
         ):
             with self.subTest(expected=expected):
                 self.assertIn(expected, log)
+        self.assertRegex(
+            log,
+            r"\[PROFILE\]\[STL_PATH\] exists_total=.* calls=7",
+        )
+        self.assertRegex(
+            log,
+            r"\[PROFILE\]\[STL_PATH\] resolve_total=.* calls=7",
+        )
         self.assertIn("qt_gui_thread=true", log)
         self.assertIn("rows=6", log)
         self.assertEqual(6, len(panel.case_rows))
         self.assertEqual(6, panel.case_table.rowCount())
         self.assertEqual([panel.input_path], changed_paths)
         self.assertEqual([panel.case_rows], changed_rows)
+
+    def test_all_path_cache_profile_reports_actual_calls_and_hits(self) -> None:
+        source_path = _CASE_INPUTS / "fmfsolver_cases.csv"
+        source = read_current_cases(read_fmf_cases, source_path)
+        with tempfile.TemporaryDirectory() as directory:
+            input_path = Path(directory) / "cases.csv"
+            source.to_csv(input_path, index=False)
+            with patch.dict(
+                os.environ,
+                {
+                    "PANELSOLVER_GUI_PROFILE": "1",
+                    "PANELSOLVER_GUI_PATH_MODE": "all_path_cache",
+                },
+            ):
+                panel = CasesPanel(fmf_solver_spec())
+                self.assertTrue(panel.load_input_file(input_path))
+
+        log = panel.log.toPlainText()
+        self.assertIn("[PROFILE][GUI_INPUT] path_mode=all_path_cache", log)
+        self.assertIn(
+            "[PROFILE][STL_PATH] entries=7 unique=3 cache_hits=4",
+            log,
+        )
+        self.assertRegex(
+            log,
+            r"\[PROFILE\]\[STL_PATH\] exists_total=.* calls=3",
+        )
+        self.assertRegex(
+            log,
+            r"\[PROFILE\]\[STL_PATH\] resolve_total=.* calls=3",
+        )
+        self.assertIn(
+            "[PROFILE][OUT_DIR] entries=6 unique=1 resolve_calls=1 cache_hits=5",
+            log,
+        )
 
     def test_input_picker_offers_only_current_case_table_formats(self) -> None:
         panel, _ = self.make_panel()

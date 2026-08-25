@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import os
 import time
 import unicodedata
 from collections.abc import Callable, Mapping
@@ -15,8 +16,12 @@ import pandas as pd
 from .attitude import ATTITUDE_INPUT_VALUES
 from .case_identity import validate_case_id
 from .csv_writer import CSV_ENCODING
-from .gui_input_profile import current_gui_input_profile, timed_call
-from .path_resolution import resolve_input_relative_path
+from .gui_input_profile import (
+    current_gui_input_profile,
+    gui_input_path_mode,
+    timed_call,
+)
+from .path_resolution import absolute_input_path, resolve_input_relative_path
 
 type AddIssue = Callable[[int | None, str | None, str], None]
 type DataFrameValidator = Callable[[pd.DataFrame, AddIssue], None]
@@ -195,9 +200,14 @@ def _validate_and_resolve_stl_paths(
     frame: pd.DataFrame,
     input_path: Path,
     add_issue: AddIssue,
+    path_mode: str = "baseline",
 ) -> None:
     base_dir = input_path.parent
     profile = current_gui_input_profile()
+    cache_enabled = path_mode in {"stl_cache", "all_path_cache"}
+    path_cache: dict[str, tuple[bool, Path | None]] | None = (
+        {} if cache_enabled else None
+    )
     for index, raw in frame["stl_path"].items():
         if not is_filled(raw):
             add_issue(int(index), "stl_path", "is required.")
@@ -210,12 +220,12 @@ def _validate_and_resolve_stl_paths(
         for raw_path in paths:
             candidate = Path(raw_path).expanduser()
             resolved: Path | None = None
-            if profile is None:
+            if not cache_enabled and profile is None:
                 if candidate.is_absolute() and candidate.exists():
                     resolved = candidate.resolve()
                 elif not candidate.is_absolute() and (base_dir / candidate).exists():
                     resolved = (base_dir / candidate).resolve()
-            else:
+            elif not cache_enabled:
                 access_path = (
                     candidate if candidate.is_absolute() else base_dir / candidate
                 )
@@ -237,6 +247,44 @@ def _validate_and_resolve_stl_paths(
                             access_path,
                             time.perf_counter() - started_at,
                         )
+            else:
+                access_path = (
+                    candidate if candidate.is_absolute() else base_dir / candidate
+                )
+                cache_key = _lexical_path_cache_key(access_path)
+                if profile is not None:
+                    profile.note_stl_entry(Path(cache_key))
+                assert path_cache is not None
+                cached = path_cache.get(cache_key)
+                if cached is not None:
+                    _exists, resolved = cached
+                    if profile is not None:
+                        profile.note_stl_cache_hit(Path(cache_key))
+                else:
+                    if profile is None:
+                        exists = access_path.exists()
+                    else:
+                        started_at = time.perf_counter()
+                        try:
+                            exists = access_path.exists()
+                        finally:
+                            profile.note_stl_exists(
+                                access_path,
+                                time.perf_counter() - started_at,
+                            )
+                    if exists:
+                        if profile is None:
+                            resolved = access_path.resolve()
+                        else:
+                            started_at = time.perf_counter()
+                            try:
+                                resolved = access_path.resolve()
+                            finally:
+                                profile.note_stl_resolve(
+                                    access_path,
+                                    time.perf_counter() - started_at,
+                                )
+                    path_cache[cache_key] = (exists, resolved)
             if resolved is None:
                 add_issue(
                     int(index),
@@ -382,17 +430,52 @@ def _validate_out_dir(frame: pd.DataFrame, add_issue: AddIssue) -> None:
         add_issue(int(index), "out_dir", "must not be blank.")
 
 
-def _resolve_out_dirs(frame: pd.DataFrame, input_path: Path) -> None:
+def _lexical_path_cache_key(path: Path) -> str:
+    """Normalize one candidate lexically without filesystem resolution."""
+    return os.path.normcase(os.path.abspath(os.fspath(path)))
+
+
+def _resolve_out_dirs(
+    frame: pd.DataFrame,
+    input_path: Path,
+    path_mode: str = "baseline",
+) -> None:
+    profile = current_gui_input_profile()
+    cache_enabled = path_mode == "all_path_cache"
+    if not cache_enabled:
+        for index, raw in frame["out_dir"].items():
+            resolved = resolve_input_relative_path(str(raw), input_path)
+            if profile is not None:
+                profile.note_out_dir_entry(str(resolved))
+                profile.note_out_dir_resolve(str(resolved))
+            frame.at[index, "out_dir"] = str(resolved)
+        return
+
+    path_cache: dict[str, Path] = {}
+    base_dir = absolute_input_path(input_path).parent
     for index, raw in frame["out_dir"].items():
-        frame.at[index, "out_dir"] = str(
-            resolve_input_relative_path(str(raw), input_path)
-        )
+        raw_path = str(raw)
+        candidate = Path(raw_path).expanduser()
+        access_path = candidate if candidate.is_absolute() else base_dir / candidate
+        cache_key = _lexical_path_cache_key(access_path)
+        resolved = path_cache.get(cache_key)
+        if resolved is None:
+            resolved = resolve_input_relative_path(raw_path, input_path)
+            if profile is not None:
+                profile.note_out_dir_resolve(str(resolved))
+            path_cache[cache_key] = resolved
+        elif profile is not None:
+            profile.note_out_dir_cache_hit(str(resolved))
+        if profile is not None:
+            profile.note_out_dir_entry(str(resolved))
+        frame.at[index, "out_dir"] = str(resolved)
 
 
 def _validate_and_normalize(
     frame: pd.DataFrame,
     input_path: Path,
     policy: CaseReaderPolicy,
+    path_mode: str = "baseline",
 ) -> pd.DataFrame:
     profile = current_gui_input_profile()
     issues: list[ValidationIssue] = []
@@ -414,6 +497,7 @@ def _validate_and_normalize(
         frame,
         input_path,
         add_issue,
+        path_mode,
     )
     timed_call(
         profile,
@@ -492,6 +576,7 @@ def _validate_and_normalize(
         _resolve_out_dirs,
         frame,
         input_path,
+        path_mode,
     )
     return frame
 
@@ -503,6 +588,9 @@ def read_case_table(path: str | Path, policy: CaseReaderPolicy) -> pd.DataFrame:
     input_path = Path(path).expanduser()
     suffix = input_path.suffix.lower()
     profile = current_gui_input_profile()
+    path_mode = gui_input_path_mode()
+    if profile is not None:
+        profile.path_mode = path_mode
     total_started_at = time.perf_counter() if profile is not None else None
     try:
         if suffix == ".xls":
@@ -599,6 +687,7 @@ def read_case_table(path: str | Path, policy: CaseReaderPolicy) -> pd.DataFrame:
             frame,
             input_path,
             policy,
+            path_mode,
         )
         order_started_at = time.perf_counter() if profile is not None else None
         try:
