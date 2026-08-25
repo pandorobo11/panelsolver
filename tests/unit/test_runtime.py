@@ -156,6 +156,39 @@ class RuntimeTests(unittest.TestCase):
             )
             self.assertTrue(result.summary_csv_saved)
 
+    def test_output_directory_failure_is_retained_without_stopping_cases(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            rows = list(self._fmf_rows(root, 2))
+            blocked_output = root / "blocked-output"
+            blocked_output.write_text("not a directory\n", encoding="utf-8")
+            rows[0]["out_dir"] = str(blocked_output)
+            rows[1]["out_dir"] = str(root / "valid-output")
+
+            result = run_and_write_product_cases(
+                rows,
+                FMF_POLICY,
+                root / "summary.csv",
+                workers=1,
+            )
+
+            self.assertEqual(
+                ["case_0", "case_1"],
+                [
+                    str(row["case_id"])
+                    for row in result.csv.rows
+                    if row["scope"] == "total"
+                ],
+            )
+            self.assertEqual("", result.cases[0].vtp_path)
+            self.assertTrue(result.cases[1].vtp_path)
+            self.assertTrue(result.summary_csv_saved)
+            self.assertEqual(1, len(result.output_issues))
+            issue = result.output_issues[0]
+            self.assertIs(OutputKind.OUTPUT_DIRECTORY, issue.kind)
+            self.assertIs(OutputPhase.PREPARE, issue.phase)
+            self.assertEqual("case_0", issue.case_id)
+
     def test_final_summary_failure_is_output_issue_and_preserves_existing_csv(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
