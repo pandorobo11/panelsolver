@@ -61,7 +61,7 @@ def _load_comparator_module():
     return module
 
 
-class Phase7RuntimeGoldenTests(unittest.TestCase):
+class LegacyRuntimeGoldenTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.comparator = _load_comparator_module()

@@ -10,9 +10,8 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6 import QtCore, QtWidgets
 
-from fmfsolver._frontend import _legacy_gui_spec as legacy_fmf_spec
-from newtsolver._frontend import _legacy_gui_spec as legacy_hypersonic_spec
 from panelsolver.app.main_window import MainWindow
+from panelsolver.docs_site import DocumentationSiteError
 from panelsolver.domains.fmf import gui_spec as canonical_fmf_spec
 from panelsolver.domains.hypersonic import gui_spec as canonical_hypersonic_spec
 
@@ -76,8 +75,22 @@ class _Viewer(QtWidgets.QWidget):
 
 
 class _Site:
+    def __init__(self, root: Path | None = None) -> None:
+        self.root = root or Path("site")
+        self.pages: list[str] = []
+        self.closed = False
+
+    def resolve(self, page: str = "index.html") -> Path:
+        self.pages.append(page)
+        return self.root / page
+
     def close(self) -> None:
-        pass
+        self.closed = True
+
+
+class _MissingSite(_Site):
+    def resolve(self, page: str = "index.html") -> Path:
+        raise DocumentationSiteError(f"missing documentation: {page}")
 
 
 class _Library:
@@ -90,18 +103,18 @@ class _Library:
         return self.path
 
 
-class FileMenuTests(unittest.TestCase):
+class MainWindowMenuTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
-    def make_window(self, spec, library=None):
+    def make_window(self, spec, library=None, site=None):
         cases = _Cases()
         window = MainWindow(
             spec,
             cases_panel=cases,
             viewer_panel=_Viewer(),
-            documentation_site=_Site(),
+            documentation_site=site or _Site(),
             example_library=library,
         )
         return window, cases
@@ -116,7 +129,7 @@ class FileMenuTests(unittest.TestCase):
         self.assertEqual(1, cases.pick_count)
         window.close()
 
-    def test_each_domain_and_legacy_identity_lists_only_its_examples(self) -> None:
+    def test_each_domain_lists_only_its_examples(self) -> None:
         expected = {
             "FMF": ["Basic", "Attitude Modes", "Components", "Flow Modes", "Shielding"],
             "Hypersonic": [
@@ -127,12 +140,7 @@ class FileMenuTests(unittest.TestCase):
                 "Shielding",
             ],
         }
-        for spec in (
-            canonical_fmf_spec(),
-            legacy_fmf_spec(),
-            canonical_hypersonic_spec(),
-            legacy_hypersonic_spec(),
-        ):
+        for spec in (canonical_fmf_spec(), canonical_hypersonic_spec()):
             with self.subTest(product=spec.product_id):
                 window, _cases = self.make_window(spec)
                 self.assertEqual(
@@ -163,6 +171,72 @@ class FileMenuTests(unittest.TestCase):
             self.assertEqual(root, library.calls[0][1])
             self.assertEqual([(copied_input, False)], cases.loaded)
             window.close()
+
+    def test_documentation_action_uses_the_bundled_local_page(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="panel docs ünicode ") as directory:
+            root = Path(directory) / "site with spaces"
+            root.mkdir(parents=True)
+            (root / "index.html").touch()
+            site = _Site(root)
+            window, _cases = self.make_window(canonical_fmf_spec(), site=site)
+            self.assertEqual(
+                ["Documentation", "", "About"],
+                [action.text() for action in window.help_menu.actions()],
+            )
+            opened = []
+            with patch(
+                "panelsolver.app.main_window.QtGui.QDesktopServices.openUrl",
+                side_effect=lambda url: opened.append(url) or True,
+            ):
+                window.documentation_action.trigger()
+            self.assertEqual(["index.html"], site.pages)
+            self.assertEqual(
+                [root / "index.html"],
+                [Path(url.toLocalFile()) for url in opened],
+            )
+            window.close()
+            self.assertTrue(site.closed)
+
+    def test_about_uses_panelsolver_version_domain_and_license(self) -> None:
+        for spec in (canonical_fmf_spec(), canonical_hypersonic_spec()):
+            with self.subTest(domain=spec.domain_name):
+                window, _cases = self.make_window(spec)
+                with (
+                    patch(
+                        "panelsolver.app.main_window.panelsolver_distribution_version",
+                        return_value="9.8.7rc1",
+                    ),
+                    patch(
+                        "panelsolver.app.main_window.QtWidgets.QMessageBox.about"
+                    ) as about,
+                ):
+                    window.about_action.trigger()
+                message = about.call_args.args[2]
+                self.assertIn("Panel Solver", message)
+                self.assertIn("version 9.8.7rc1", message)
+                self.assertIn(f"Domain: {spec.domain_name}", message)
+                self.assertIn("License: Apache-2.0", message)
+                window.close()
+
+    def test_missing_or_unopenable_documentation_reports_clear_error(self) -> None:
+        for site, message in (
+            (_MissingSite(), "missing documentation"),
+            (_Site(), "default browser did not accept"),
+        ):
+            with self.subTest(message=message):
+                window, _cases = self.make_window(canonical_fmf_spec(), site=site)
+                with (
+                    patch(
+                        "panelsolver.app.main_window.QtGui.QDesktopServices.openUrl",
+                        return_value=False,
+                    ),
+                    patch(
+                        "panelsolver.app.main_window.QtWidgets.QMessageBox.critical"
+                    ) as critical,
+                ):
+                    window.documentation_action.trigger()
+                self.assertIn(message, critical.call_args.args[2])
+                window.close()
 
 
 if __name__ == "__main__":

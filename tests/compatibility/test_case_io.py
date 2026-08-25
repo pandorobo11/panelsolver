@@ -47,7 +47,7 @@ def _write_case_table(frame: pd.DataFrame, path: Path) -> None:
     raise AssertionError(f"Unsupported test case-table suffix: {path.suffix}")
 
 
-class ProductCaseReaderTests(unittest.TestCase):
+class CaseReaderCompatibilityTests(unittest.TestCase):
     def test_removed_npz_field_is_absent_from_current_schemas_and_defaults(self) -> None:
         for module in (fmf_case_module, newt_case_module):
             with self.subTest(product=module.__name__):

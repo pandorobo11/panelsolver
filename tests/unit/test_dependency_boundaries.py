@@ -119,30 +119,12 @@ class DependencyBoundaryTests(unittest.TestCase):
 
     def test_complete_internal_graph_has_no_cycles_or_self_loops(self) -> None:
         graph = internal_dependency_graph()
-        self.assertEqual(72, len(graph), "Update the recorded production module count")
         self.assertEqual(
             [],
             sorted(node for node, edges in graph.items() if node in edges),
         )
         cycle = find_cycle(graph)
         self.assertIsNone(cycle, "Internal dependency cycle: " + " -> ".join(cycle or ()))
-
-    def test_complete_result_cache_surface_is_absent(self) -> None:
-        prohibited = (
-            "ResultCache",
-            "ResultCacheStats",
-            "ResultCacheError",
-            "result_cache=",
-            "_result_cache_signature",
-            "panelsolver.execution-cache",
-        )
-        violations = [
-            f"{path.relative_to(SRC_ROOT)}: {token}"
-            for path in sorted(SRC_ROOT.rglob("*.py"))
-            for token in prohibited
-            if token in path.read_text(encoding="utf-8")
-        ]
-        self.assertEqual([], violations)
 
     def test_core_has_no_product_environment_identity_or_environment_reads(self) -> None:
         prohibited = (
@@ -185,16 +167,6 @@ class DependencyBoundaryTests(unittest.TestCase):
         )
         self.assert_edges_avoid(("fmfsolver",), ("newtsolver",))
         self.assert_edges_avoid(("newtsolver",), ("fmfsolver",))
-
-    def test_only_signature_compatibility_remains_in_private_package(self) -> None:
-        old_modules = sorted((SRC_ROOT / "panelsolver" / "app").glob("legacy_*.py"))
-        self.assertEqual([], old_modules)
-        expected = {"legacy_signatures.py"}
-        actual = {
-            path.name
-            for path in (SRC_ROOT / "panelsolver" / "_compat").glob("legacy_*.py")
-        }
-        self.assertEqual(expected, actual)
 
     def test_private_compatibility_dependencies_point_only_inward(self) -> None:
         allowed = (

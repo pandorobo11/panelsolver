@@ -33,7 +33,7 @@ def build_newt_parser():
     return build_product_parser(NEWT_CLI_POLICY)
 
 
-class Phase7CliTests(unittest.TestCase):
+class CliCompatibilityTests(unittest.TestCase):
     def test_canonical_help_names_flow_domains_and_delegated_program(self) -> None:
         with patch.dict(os.environ, {"COLUMNS": "80"}):
             help_text = build_canonical_parser().format_help()

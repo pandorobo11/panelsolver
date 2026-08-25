@@ -106,7 +106,7 @@ def _numeric_leaf_paths(value: object, path: tuple[str, ...] = ()) -> list[str]:
     return []
 
 
-class Phase1ManifestTests(unittest.TestCase):
+class LegacyFixtureManifestTests(unittest.TestCase):
     def test_pinned_sources_match_migration_sources(self) -> None:
         migration_sources = (
             REPOSITORY_ROOT
@@ -181,7 +181,7 @@ class Phase1ManifestTests(unittest.TestCase):
             )
 
 
-class Phase1ContractTests(unittest.TestCase):
+class LegacyFixtureComparatorTests(unittest.TestCase):
     def test_public_command_and_environment_contracts_are_captured(self) -> None:
         expected_scripts = {
             "fmfsolver": {"fmfsolver", "fmfsolver-gui", "fmfsolver-cli"},
@@ -375,7 +375,7 @@ class Phase1ContractTests(unittest.TestCase):
         return module
 
 
-class Phase1SemanticGoldenTests(unittest.TestCase):
+class LegacyFixtureSemanticIntegrityTests(unittest.TestCase):
     def test_artifact_schemas_and_cross_format_relations(self) -> None:
         for solver in MANIFEST["sources"]:
             for case_id, metadata in _case_metadata(solver).items():

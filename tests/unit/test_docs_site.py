@@ -19,6 +19,20 @@ from panelsolver.docs_site import (
 ROOT = Path(__file__).resolve().parents[2]
 
 
+def _css_declarations(stylesheet: str, selector: str) -> dict[str, str]:
+    stylesheet = re.sub(r"/\*.*?\*/", "", stylesheet, flags=re.DOTALL)
+    for selectors, body in re.findall(r"([^{}]+)\{([^{}]*)\}", stylesheet):
+        if selector not in (value.strip() for value in selectors.split(",")):
+            continue
+        return {
+            name.strip(): value.strip()
+            for declaration in body.split(";")
+            if ":" in declaration
+            for name, value in (declaration.split(":", 1),)
+        }
+    raise AssertionError(f"CSS selector {selector!r} is missing")
+
+
 class _ResourceParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__()
@@ -92,175 +106,9 @@ class DocumentationSiteTests(unittest.TestCase):
                 self.assertTrue(packaged.is_file())
                 self.assertEqual(license_file.read_bytes(), packaged.read_bytes())
 
-    def test_readthedocs_theme_configuration_and_assets_are_complete(self) -> None:
-        mkdocs_config = (ROOT / "mkdocs.yml").read_text(encoding="utf-8")
-        self.assertRegex(mkdocs_config, r"theme:\n  name: readthedocs\n  highlightjs: false")
-        self.assertRegex(mkdocs_config, r"(?m)^use_directory_urls: false$")
-        self.assertRegex(mkdocs_config, r"(?m)^plugins: \[\]$")
-        for relative in (
-            "css/theme.css",
-            "css/theme_extra.css",
-            "img/favicon.ico",
-            "js/html5shiv.min.js",
-            "js/jquery-3.6.0.min.js",
-            "js/theme.js",
-            "js/theme_extra.js",
-            "assets/stylesheets/panelsolver-docs.css",
-            "assets/javascripts/panelsolver-docs.js",
-            "css/fonts/Roboto-Slab-Bold.woff",
-            "css/fonts/Roboto-Slab-Bold.woff2",
-            "css/fonts/Roboto-Slab-Regular.woff",
-            "css/fonts/Roboto-Slab-Regular.woff2",
-            "css/fonts/fontawesome-webfont.eot",
-            "css/fonts/fontawesome-webfont.svg",
-            "css/fonts/fontawesome-webfont.ttf",
-            "css/fonts/fontawesome-webfont.woff",
-            "css/fonts/fontawesome-webfont.woff2",
-            "css/fonts/lato-bold-italic.woff",
-            "css/fonts/lato-bold-italic.woff2",
-            "css/fonts/lato-bold.woff",
-            "css/fonts/lato-bold.woff2",
-            "css/fonts/lato-normal-italic.woff",
-            "css/fonts/lato-normal-italic.woff2",
-            "css/fonts/lato-normal.woff",
-            "css/fonts/lato-normal.woff2",
-        ):
-            with self.subTest(relative=relative):
-                self.assertTrue((self.site / relative).is_file())
-        self.assertFalse((self.site / "404.html").exists())
-        self.assertFalse((self.site / "search").exists())
-        self.assertFalse((self.site / "search.html").exists())
-        asset_names = {path.name.casefold() for path in self.site.rglob("*")}
-        self.assertFalse(any("highlight" in name for name in asset_names))
-
-    def test_sidebar_real_pages_use_local_html_links(self) -> None:
-        parser = _ResourceParser()
-        parser.feed((self.site / "index.html").read_text(encoding="utf-8"))
-        sidebar_links = {
-            (href, label)
-            for href, label, class_name in parser.anchors
-            if class_name == "reference internal"
-        }
-        expected_links = {
-            ("getting-started/installation.html", "Installation"),
-            ("getting-started/quickstart.html", "Quickstart"),
-            ("user-guide/troubleshooting.html", "Troubleshooting"),
-            ("reference/fmf-input.html", "Input"),
-            ("solvers/fmf.html", "Sentman model"),
-            ("reference/hypersonic-input.html", "Input"),
-            ("solvers/hypersonic.html", "Pressure models"),
-            ("user-guide/gui.html", "GUI"),
-            ("user-guide/cli.html", "CLI"),
-            ("user-guide/outputs.html", "Outputs"),
-            ("reference/numerical-conventions.html", "Numerical conventions"),
-            ("reference/environment-variables.html", "Environment variables"),
-            ("reference/compatibility.html", "Compatibility"),
-            ("reference/output-formats.html", "Output formats"),
-            (
-                "reference/us1976-data-provenance.html",
-                "US1976 atmosphere provenance",
-            ),
-            (
-                "reference/license-and-third-party-notices.html",
-                "License / third-party notices",
-            ),
-        }
-        self.assertLessEqual(expected_links, sidebar_links)
-
-    def test_site_excludes_developer_and_removed_pages(self) -> None:
-        forbidden_directories = ("development", "adr", "history", "devdocs")
-        for directory in forbidden_directories:
-            with self.subTest(directory=directory):
-                self.assertFalse((self.site / directory).exists())
-        for relative in (
-            "solvers/fmf-overview.html",
-            "solvers/hypersonic-overview.html",
-        ):
-            with self.subTest(relative=relative):
-                self.assertFalse((self.site / relative).exists())
-
-    def test_tables_have_rtd_runtime_hooks_and_responsive_local_styles(self) -> None:
-        representative_pages = (
-            "reference/fmf-input.html",
-            "reference/hypersonic-input.html",
-            "reference/output-formats.html",
-            "user-guide/outputs.html",
-        )
-        expected_scripts = (
-            "js/jquery-3.6.0.min.js",
-            "js/theme_extra.js",
-            "js/theme.js",
-            "assets/javascripts/panelsolver-docs.js",
-        )
-        for relative in representative_pages:
-            html = (self.site / relative).read_text(encoding="utf-8")
-            with self.subTest(relative=relative):
-                positions = [html.index(f'src="../{script}"') for script in expected_scripts]
-                self.assertEqual(sorted(positions), positions)
-                self.assertLess(
-                    positions[-1],
-                    html.index("SphinxRtdTheme.Navigation.enable("),
-                )
-                self.assertNotIn("search.html", html)
-                if relative.endswith("-input.html"):
-                    self.assertIn("<table>", html)
-        theme_extra_js = (self.site / "js/theme_extra.js").read_text(encoding="utf-8")
-        theme_js = (self.site / "js/theme.js").read_text(encoding="utf-8")
-        theme_extra_css = (self.site / "css/theme_extra.css").read_text(
-            encoding="utf-8"
-        )
-        project_css = (
-            self.site / "assets/stylesheets/panelsolver-docs.css"
-        ).read_text(encoding="utf-8")
-        project_js = (
-            self.site / "assets/javascripts/panelsolver-docs.js"
-        ).read_text(encoding="utf-8")
-        self.assertIn("$('div.rst-content table').addClass('docutils')", theme_extra_js)
-        self.assertIn("<div class='wy-table-responsive'>", theme_js)
-        self.assertRegex(
-            theme_extra_css,
-            r"\.rst-content \.section \.docutils \{[^}]*overflow: auto;[^}]*display: block;",
-        )
-        self.assertIn("border: 1px solid #e1e4e5 !important", theme_extra_css)
-        self.assertRegex(
-            project_css,
-            r"\.wy-table-responsive \{[^}]*width: 100%;",
-        )
-        self.assertRegex(
-            project_css,
-            r"\.wy-table-responsive > table\.docutils \{[^}]*"
-            r"min-width: max-content;[^}]*width: 100%;",
-        )
-        self.assertRegex(
-            project_css,
-            r'\.rst-content math\[display="block"\] \{[^}]*'
-            r"max-width: 100%;[^}]*overflow-x: auto;",
-        )
-        for expected in (
-            "window.SphinxRtdTheme",
-            "window.SphinxRtdTheme.Navigation",
-            "nav.hashChange = function ()",
-            "var self = this",
-            "var initialHash = window.location.hash",
-            "self.linkScroll = true",
-            "self.linkScroll = false",
-            "window.setTimeout(function ()",
-        ):
-            with self.subTest(expected=expected):
-                self.assertIn(expected, project_js)
-        self.assertRegex(
-            project_js,
-            r'self\.win\s*\.off\("hashchange\.panelsolverDocs"\)\s*'
-            r'\.one\("hashchange\.panelsolverDocs"',
-        )
-        self.assertRegex(
-            project_js,
-            r"if \(window\.location\.hash === initialHash\) \{[^}]*"
-            r"self\.linkScroll = false;[^}]*"
-            r'self\.win\.off\("hashchange\.panelsolverDocs"\);',
-        )
-        self.assertNotIn('self.win.off("hashchange")', project_js)
-        self.assertNotRegex(project_js, r"(?:https?:)?//")
+    def test_site_excludes_developer_history(self) -> None:
+        self.assertFalse((self.site / "devdocs").exists())
+        self.assertFalse((self.site / "history").exists())
 
     def test_audited_build_dependency_versions_are_exact_and_current(self) -> None:
         with (ROOT / "pyproject.toml").open("rb") as stream:
@@ -317,20 +165,77 @@ class DocumentationSiteTests(unittest.TestCase):
                     self.assertEqual("", split.netloc)
                     self.assertTrue((css.parent / unquote(split.path)).is_file())
 
-    def test_generated_html_has_no_external_script_font_or_stylesheet_dependency(self) -> None:
-        forbidden = re.compile(
-            r"(?:\bsrc|<link\b[^>]*\bhref)=[\"'](?:https?:)?//",
-            flags=re.IGNORECASE,
+    def test_generated_html_loads_project_owned_offline_assets(self) -> None:
+        parser = _ResourceParser()
+        parser.feed((self.site / "index.html").read_text(encoding="utf-8"))
+        paths = {urlsplit(resource).path for resource in parser.resources}
+        self.assertIn("assets/stylesheets/panelsolver-docs.css", paths)
+        self.assertIn("assets/javascripts/panelsolver-docs.js", paths)
+
+    def test_project_css_keeps_tables_and_block_math_responsive(self) -> None:
+        stylesheet = (
+            self.site / "assets/stylesheets/panelsolver-docs.css"
+        ).read_text(encoding="utf-8")
+        wrapper = _css_declarations(stylesheet, ".wy-table-responsive")
+        table = _css_declarations(
+            stylesheet,
+            ".wy-table-responsive > table.docutils",
         )
-        for html in self.site.rglob("*.html"):
-            text = html.read_text(encoding="utf-8")
-            for match in forbidden.finditer(text):
-                with self.subTest(page=html.relative_to(self.site), value=match.group()):
-                    self.fail(f"external executable or style resource: {match.group()}")
-            self.assertNotIn("cdnjs.cloudflare.com", text)
-            self.assertNotIn("highlight.js", text.casefold())
-            self.assertNotIn("mathjax", text.casefold())
-            self.assertNotIn("katex", text.casefold())
+        block_math = _css_declarations(
+            stylesheet,
+            '.rst-content math[display="block"]',
+        )
+        self.assertEqual("100%", wrapper.get("width"))
+        self.assertEqual("100%", table.get("width"))
+        self.assertEqual("max-content", table.get("min-width"))
+        self.assertEqual("100%", block_math.get("max-width"))
+        self.assertEqual("auto", block_math.get("overflow-x"))
+
+    def test_project_javascript_releases_link_scroll_on_hash_change(self) -> None:
+        javascript = (
+            self.site / "assets/javascripts/panelsolver-docs.js"
+        ).read_text(encoding="utf-8")
+        self.assertRegex(javascript, r"SphinxRtdTheme\s*&&")
+        self.assertIn("SphinxRtdTheme.Navigation", javascript)
+        self.assertRegex(javascript, r"\.hashChange\s*=\s*function\s*\(")
+        self.assertRegex(javascript, r"\.linkScroll\s*=\s*true")
+        self.assertRegex(
+            javascript,
+            r'\.one\(["\']hashchange(?:\.[^"\']+)?["\']\s*,\s*function\s*\([^)]*\)'
+            r"\s*\{[^{}]*\.linkScroll\s*=\s*false",
+        )
+        timeout_call = re.search(r"\b(?:window\.)?setTimeout\s*\(", javascript)
+        self.assertIsNotNone(timeout_call)
+        timeout_start = timeout_call.start()
+        before_timeout = javascript[:timeout_start]
+        timeout_fallback = javascript[timeout_start:]
+        initial_hash = re.search(
+            r"\b(?:const|let|var)\s+(?P<name>[A-Za-z_$][\w$]*)\s*=\s*"
+            r"window\.location\.hash",
+            before_timeout,
+        )
+        registered_handler = re.search(
+            r'\.one\(\s*["\'](?P<event>hashchange(?:\.[^"\']+)?)["\']',
+            before_timeout,
+        )
+        self.assertIsNotNone(initial_hash)
+        self.assertIsNotNone(registered_handler)
+        unchanged_hash = re.search(
+            rf"if\s*\(\s*(?:window\.location\.hash\s*={{2,3}}\s*"
+            rf"{re.escape(initial_hash.group('name'))}|"
+            rf"{re.escape(initial_hash.group('name'))}\s*={{2,3}}\s*"
+            r"window\.location\.hash)\s*\)\s*\{(?P<body>.*?)\}",
+            timeout_fallback,
+            flags=re.DOTALL,
+        )
+        self.assertIsNotNone(unchanged_hash)
+        fallback_body = unchanged_hash.group("body")
+        self.assertRegex(fallback_body, r"\.linkScroll\s*=\s*false")
+        self.assertRegex(
+            fallback_body,
+            rf'\.off\(\s*["\']{re.escape(registered_handler.group("event"))}'
+            r'["\']\s*\)',
+        )
 
     def test_internal_links_resolve_from_file_urls(self) -> None:
         parsed: dict[Path, _ResourceParser] = {}

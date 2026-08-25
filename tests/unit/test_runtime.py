@@ -71,7 +71,7 @@ def _assert_artifact_semantics_equal(
             test_case.assertEqual(expected_data[name].dtype, actual_data[name].dtype)
             np.testing.assert_array_equal(actual_data[name], expected_data[name])
 
-class Phase7RuntimeTests(unittest.TestCase):
+class RuntimeTests(unittest.TestCase):
     def _fmf_rows(self, root: Path, count: int) -> tuple[dict[str, object], ...]:
         base = read_current_cases(
             read_fmf_cases, INPUTS / "fmfsolver_cases.csv"
@@ -155,6 +155,39 @@ class Phase7RuntimeTests(unittest.TestCase):
                 [bool(case.vtp_path) for case in result.cases],
             )
             self.assertTrue(result.summary_csv_saved)
+
+    def test_output_directory_failure_is_retained_without_stopping_cases(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            rows = list(self._fmf_rows(root, 2))
+            blocked_output = root / "blocked-output"
+            blocked_output.write_text("not a directory\n", encoding="utf-8")
+            rows[0]["out_dir"] = str(blocked_output)
+            rows[1]["out_dir"] = str(root / "valid-output")
+
+            result = run_and_write_product_cases(
+                rows,
+                FMF_POLICY,
+                root / "summary.csv",
+                workers=1,
+            )
+
+            self.assertEqual(
+                ["case_0", "case_1"],
+                [
+                    str(row["case_id"])
+                    for row in result.csv.rows
+                    if row["scope"] == "total"
+                ],
+            )
+            self.assertEqual("", result.cases[0].vtp_path)
+            self.assertTrue(result.cases[1].vtp_path)
+            self.assertTrue(result.summary_csv_saved)
+            self.assertEqual(1, len(result.output_issues))
+            issue = result.output_issues[0]
+            self.assertIs(OutputKind.OUTPUT_DIRECTORY, issue.kind)
+            self.assertIs(OutputPhase.PREPARE, issue.phase)
+            self.assertEqual("case_0", issue.case_id)
 
     def test_final_summary_failure_is_output_issue_and_preserves_existing_csv(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -287,7 +320,6 @@ class Phase7RuntimeTests(unittest.TestCase):
                 ["case_0", "case_1"],
                 [row["case_id"] for row in saved if row["scope"] == "total"],
             )
-
     def test_checkpoint_default_is_shared_across_runtime_and_domains(self) -> None:
         for callback in (
             run_product_cases,
