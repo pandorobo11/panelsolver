@@ -204,6 +204,38 @@ class DocumentationSiteTests(unittest.TestCase):
             r'\.one\(["\']hashchange(?:\.[^"\']+)?["\']\s*,\s*function\s*\([^)]*\)'
             r"\s*\{[^{}]*\.linkScroll\s*=\s*false",
         )
+        timeout_call = re.search(r"\b(?:window\.)?setTimeout\s*\(", javascript)
+        self.assertIsNotNone(timeout_call)
+        timeout_start = timeout_call.start()
+        before_timeout = javascript[:timeout_start]
+        timeout_fallback = javascript[timeout_start:]
+        initial_hash = re.search(
+            r"\b(?:const|let|var)\s+(?P<name>[A-Za-z_$][\w$]*)\s*=\s*"
+            r"window\.location\.hash",
+            before_timeout,
+        )
+        registered_handler = re.search(
+            r'\.one\(\s*["\'](?P<event>hashchange(?:\.[^"\']+)?)["\']',
+            before_timeout,
+        )
+        self.assertIsNotNone(initial_hash)
+        self.assertIsNotNone(registered_handler)
+        unchanged_hash = re.search(
+            rf"if\s*\(\s*(?:window\.location\.hash\s*={{2,3}}\s*"
+            rf"{re.escape(initial_hash.group('name'))}|"
+            rf"{re.escape(initial_hash.group('name'))}\s*={{2,3}}\s*"
+            r"window\.location\.hash)\s*\)\s*\{(?P<body>.*?)\}",
+            timeout_fallback,
+            flags=re.DOTALL,
+        )
+        self.assertIsNotNone(unchanged_hash)
+        fallback_body = unchanged_hash.group("body")
+        self.assertRegex(fallback_body, r"\.linkScroll\s*=\s*false")
+        self.assertRegex(
+            fallback_body,
+            rf'\.off\(\s*["\']{re.escape(registered_handler.group("event"))}'
+            r'["\']\s*\)',
+        )
 
     def test_internal_links_resolve_from_file_urls(self) -> None:
         parsed: dict[Path, _ResourceParser] = {}
