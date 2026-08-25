@@ -19,6 +19,9 @@ from panelsolver.app import (
     DEFAULT_CHECKPOINT_CASES,
     ArtifactSignatureCandidates,
     GuiRunResult,
+    OutputIssue,
+    OutputKind,
+    OutputPhase,
     SolverGuiAdapters,
 )
 from panelsolver.app.cases_panel import CasesPanel, ValidationIssuesDialog
@@ -322,6 +325,61 @@ class CasesPanelTests(unittest.TestCase):
             panel._artifact_reader = lambda _path: (_ for _ in ()).throw(ValueError("broken"))
             panel.on_case_selection_changed()
             self.assertIn("Failed to read VTP", panel.log.toPlainText())
+
+    def test_vtp_suppression_uses_case_and_path_and_resets_with_input_state(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="gui_vtp_validity_") as directory:
+            root = Path(directory)
+            first_dir = root / "first"
+            second_dir = root / "second"
+            first_dir.mkdir()
+            second_dir.mkdir()
+            first_path = first_dir / "same.vtp"
+            second_path = second_dir / "same.vtp"
+            first_path.write_text("old first", encoding="utf-8")
+            second_path.write_text("old second", encoding="utf-8")
+            first_row = {"case_id": "same", "out_dir": str(first_dir)}
+            second_row = {"case_id": "same", "out_dir": str(second_dir)}
+            panel, signatures = self.make_panel((first_row,))
+            panel.load_input_file(root / "input.csv")
+            artifact = SimpleNamespace(
+                field_data={
+                    "case_id": ["same"],
+                    "case_signature": [signatures["same"].primary.digest],
+                }
+            )
+            reads: list[Path] = []
+            panel._artifact_reader = lambda path: reads.append(Path(path)) or artifact
+            issue = OutputIssue(
+                OutputKind.VTP,
+                OutputPhase.WRITE,
+                str(first_path),
+                "save failed",
+                "same",
+            )
+            panel._run_rows = (first_row,)
+            with patch.object(QtWidgets.QMessageBox, "warning"):
+                panel._on_run_completed(GuiRunResult(output_issues=(issue,)))
+
+            panel._auto_load_case_artifact(first_row)
+            self.assertEqual([], reads)
+            panel._auto_load_case_artifact(second_row)
+            self.assertEqual([second_path.resolve()], reads)
+
+            panel._run_rows = ({**first_row, "save_vtp_on": 0},)
+            panel._on_run_completed(GuiRunResult())
+            panel._auto_load_case_artifact(first_row)
+            self.assertEqual([second_path.resolve()], reads)
+
+            panel.load_input_file(root / "changed.csv")
+            panel._auto_load_case_artifact(first_row)
+            self.assertEqual([second_path.resolve(), first_path.resolve()], reads)
+
+            panel._run_rows = (first_row,)
+            with patch.object(QtWidgets.QMessageBox, "warning"):
+                panel._on_run_completed(GuiRunResult(output_issues=(issue,)))
+            self.assertTrue(panel._invalid_current_vtp_artifacts)
+            panel.clear_loaded_cases()
+            self.assertEqual(set(), panel._invalid_current_vtp_artifacts)
 
     def test_validation_failure_clears_prior_state_and_shows_structured_issues(self) -> None:
         panel, _ = self.make_panel()

@@ -9,6 +9,7 @@ from pathlib import Path
 import pyvista as pv
 from PySide6 import QtCore, QtWidgets
 
+from .output_status import OutputKind, OutputPhase
 from .path_resolution import (
     absolute_input_path,
     default_summary_output_path,
@@ -90,6 +91,7 @@ class CasesPanel(QtWidgets.QWidget):
     """Load product-adapted rows and coordinate selection with the viewer."""
 
     vtp_loaded = QtCore.Signal(str, object, object)
+    vtp_artifact_invalidated = QtCore.Signal(str)
     viewer_clear_requested = QtCore.Signal()
     cases_updated = QtCore.Signal(object)
     selected_cases_changed = QtCore.Signal(object)
@@ -160,6 +162,7 @@ class CasesPanel(QtWidgets.QWidget):
         self._run_worker: CaseRunWorker | None = None
         self._run_rows: tuple[CaseRow, ...] = ()
         self._run_output_path: Path | None = None
+        self._invalid_current_vtp_artifacts: set[tuple[str, Path]] = set()
         self._build_layout()
 
         self.btn_pick_input.clicked.connect(self.pick_input_file)
@@ -248,6 +251,7 @@ class CasesPanel(QtWidgets.QWidget):
             return False
 
         self.input_path = absolute_input_path(path)
+        self._invalid_current_vtp_artifacts.clear()
         self.input_value.setText(str(self.input_path))
         self.case_rows = normalized
         self._populate_case_table()
@@ -334,6 +338,9 @@ class CasesPanel(QtWidgets.QWidget):
             self.viewer_clear_requested.emit()
             return
         path = resolve_case_vtp_path(row, self.input_path)
+        if self._vtp_artifact_key(case_id, path) in self._invalid_current_vtp_artifacts:
+            self.viewer_clear_requested.emit()
+            return
         if not path.exists():
             self.viewer_clear_requested.emit()
             return
@@ -461,13 +468,99 @@ class CasesPanel(QtWidgets.QWidget):
 
     @QtCore.Slot(object)
     def _on_run_completed(self, result: GuiRunResult) -> None:
+        self._update_current_vtp_artifact_validity(result)
         total = len(self._run_rows)
         self.progress.setRange(0, max(total, 1))
         self.progress.setValue(total)
-        self.progress.setFormat(f"{total}/{total}")
-        if self._run_output_path is not None:
+        if result.output_issues:
+            self.progress.setFormat("Completed with output errors")
+        else:
+            self.progress.setFormat("Completed")
+        if (
+            self._run_output_path is not None
+            and result.summary_csv_saved is not False
+        ):
             self.logln(f"[OK] Wrote results: {self._run_output_path}")
+        if result.output_issues:
+            QtWidgets.QMessageBox.warning(
+                self,
+                "Output Errors",
+                self._output_error_summary(result),
+            )
         self._refresh_first_result(result)
+
+    @staticmethod
+    def _vtp_artifact_key(case_id: object, path: str | Path) -> tuple[str, Path]:
+        return (
+            str(case_id).strip(),
+            Path(path).expanduser().resolve(strict=False),
+        )
+
+    def _update_current_vtp_artifact_validity(self, result: GuiRunResult) -> None:
+        """Replace current-run validity for the exact case/path identities run."""
+        if self.input_path is None:
+            return
+        run_keys = {
+            self._vtp_artifact_key(
+                row.get("case_id", ""),
+                resolve_case_vtp_path(row, self.input_path),
+            )
+            for row in self._run_rows
+            if bool(int(row.get("save_vtp_on", 1)))
+        }
+        self._invalid_current_vtp_artifacts.difference_update(run_keys)
+        invalidated_paths: set[Path] = set()
+        for issue in result.output_issues:
+            if (
+                issue.kind is not OutputKind.VTP
+                or issue.phase is not OutputPhase.WRITE
+                or issue.case_id is None
+            ):
+                continue
+            key = self._vtp_artifact_key(issue.case_id, issue.path)
+            self._invalid_current_vtp_artifacts.add(key)
+            invalidated_paths.add(key[1])
+        for path in invalidated_paths:
+            self.vtp_artifact_invalidated.emit(str(path))
+
+    def _output_error_summary(self, result: GuiRunResult) -> str:
+        """Build one bounded end-of-run notification from structured issues."""
+        total = result.calculation_total_cases or len(self._run_rows)
+        completed = result.calculation_completed_cases or total
+        if result.summary_csv_saved is True:
+            summary_status = "saved"
+        elif result.summary_csv_saved is False:
+            summary_status = "failed"
+        else:
+            summary_status = "not reported"
+        vtp_failed = max(result.vtp_requested - result.vtp_saved, 0)
+        lines = [
+            "Run completed with output errors.",
+            "",
+            "Calculation:",
+            f"  {completed}/{total} cases completed",
+            "",
+            "Output:",
+            f"  Summary CSV: {summary_status}",
+            f"  VTP: {result.vtp_saved} saved, {vtp_failed} failed",
+            "",
+            "Failed outputs:",
+        ]
+        shown = result.output_issues[:5]
+        for issue in shown:
+            if issue.kind is OutputKind.SUMMARY_CSV:
+                label = "Summary CSV"
+            elif issue.kind is OutputKind.OUTPUT_DIRECTORY:
+                label = "Output directory"
+            else:
+                label = "VTP"
+            case = f"{issue.case_id}: " if issue.case_id else f"{label}: "
+            lines.append(f"  {case}{issue.message}")
+        remaining = len(result.output_issues) - len(shown)
+        if remaining:
+            lines.append(f"  ... and {remaining} more")
+        lines.extend(("", "See the log for full details."))
+        return "\n".join(lines)
 
     def _refresh_first_result(self, result: GuiRunResult) -> None:
         if result.first_vtp_path is None:
@@ -520,6 +613,7 @@ class CasesPanel(QtWidgets.QWidget):
         self.btn_run.setEnabled((not running) and bool(self.case_rows))
 
     def clear_loaded_cases(self) -> None:
+        self._invalid_current_vtp_artifacts.clear()
         self.case_rows = ()
         self.input_path = None
         self._table_columns = ()

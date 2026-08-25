@@ -5,12 +5,19 @@ import os
 import unittest
 from dataclasses import replace
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pandas as pd
 
 from panelsolver.app.cli import _run_parsed_cli, build_parser
 from panelsolver.app.cli_presentation import CliPresentation, use_rich_ui
+from panelsolver.app.output_status import (
+    OutputFailuresError,
+    OutputIssue,
+    OutputKind,
+    OutputPhase,
+)
 from panelsolver.domains.fmf import CANONICAL_CLI_POLICY
 
 
@@ -97,11 +104,41 @@ class CliPresentationTests(unittest.TestCase):
         args = parser.parse_args(
             ["--input", "cases.csv", "--workers", "3", "--plain"]
         )
-        with patch("panelsolver.app.cli.run_and_write_product_cases") as run:
+        with patch(
+            "panelsolver.app.cli.run_and_write_product_cases",
+            return_value=SimpleNamespace(
+                output_issues=(),
+                summary_csv_saved=True,
+            ),
+        ) as run:
             self.assertEqual(0, _run_parsed_cli(policy, args))
         self.assertEqual(3, run.call_args.kwargs["workers"])
         self.assertTrue(callable(run.call_args.kwargs["progress_cb"]))
         self.assertTrue(callable(run.call_args.kwargs["logfn"]))
+
+    def test_cli_keeps_nonzero_semantics_for_structured_output_failures(self) -> None:
+        policy = replace(
+            CANONICAL_CLI_POLICY,
+            read_cases=lambda _path: pd.DataFrame([{"case_id": "one"}]),
+            validate_output_path=lambda *_args: Path("result.csv"),
+        )
+        args = build_parser(policy).parse_args(["--input", "cases.csv", "--plain"])
+        issue = OutputIssue(
+            OutputKind.VTP,
+            OutputPhase.WRITE,
+            "one.vtp",
+            "permission denied",
+            "one",
+        )
+        with (
+            patch(
+                "panelsolver.app.cli.run_and_write_product_cases",
+                return_value=SimpleNamespace(output_issues=(issue,)),
+            ),
+            self.assertRaises(OutputFailuresError) as caught,
+        ):
+            _run_parsed_cli(policy, args)
+        self.assertEqual((issue,), caught.exception.issues)
 
 
 if __name__ == "__main__":

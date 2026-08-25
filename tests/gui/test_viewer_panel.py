@@ -289,6 +289,25 @@ class ViewerPanelTests(unittest.TestCase):
         self.assertEqual("", viewer.edit_vmin.text())
         self.assertEqual("", viewer.edit_vmax.text())
 
+    def test_invalidation_clears_only_matching_vtp_and_manual_reopen_still_works(
+        self,
+    ) -> None:
+        poly = FakePoly({"normal_traction_coeff": [1.0]})
+        viewer, _plotter = self.make_viewer(reader=lambda _path: poly)
+        self.assertTrue(viewer.load_vtp("/tmp/stale.vtp", poly))
+        viewer.invalidate_vtp_artifact("/tmp/other.vtp")
+        self.assertEqual(Path("/tmp/stale.vtp"), viewer._loaded_vtp_path)
+        viewer.invalidate_vtp_artifact("/tmp/stale.vtp")
+        self.assertIsNone(viewer._loaded_vtp_path)
+
+        with patch.object(
+            QtWidgets.QFileDialog,
+            "getOpenFileName",
+            return_value=("/tmp/stale.vtp", "VTK"),
+        ):
+            viewer.open_vtp()
+        self.assertEqual(Path("/tmp/stale.vtp"), viewer._loaded_vtp_path)
+
     def test_single_image_export_cancel_filters_default_and_failure(self) -> None:
         viewer, plotter = self.make_viewer()
         self.assertTrue(

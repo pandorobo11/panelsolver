@@ -33,9 +33,22 @@ suffix before the extension, starting with `_2` (for example,
 `case_001__cp_2.png`, then `case_001__cp_3.png`). The same collision rule also
 prevents two outputs in one batch from receiving the same path.
 
-Both the final summary and checkpoint snapshots are written through a
-same-directory temporary file, flushed, synchronized, and atomically replaced.
-VTP files already written remain after a later failure or cancellation.
+The final summary, checkpoint snapshots, and each VTP are written through a
+same-directory temporary file, synchronized, and atomically replaced. A failed
+write or replacement does not overwrite an existing artifact, and temporary
+files are removed after both success and failure. VTP files already written
+remain after a later failure or cancellation.
+
+When a successful checkpoint already contains every case, it is the complete
+final aggregate Summary CSV. The runtime reuses it instead of rewriting the
+same projection a second time.
+
+A VTP output failure does not discard that case's computed coefficients or stop
+later cases. The Summary CSV keeps the completed case and leaves `vtp_path`
+blank, even if an older VTP still exists at the planned path. Output failures
+are reported separately from calculation failures. A final Summary CSV failure
+therefore means that calculations completed but their final aggregate output
+could not be saved; it does not reclassify the calculations as failed.
 
 ## Summary rows
 

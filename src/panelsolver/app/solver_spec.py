@@ -10,6 +10,8 @@ from types import MappingProxyType
 from panelsolver.core import CaseSignature, match_case_signature
 
 from .examples import ExampleDefinition
+from .output_status import OutputIssue
+from .runtime import ProductBatchRunResult
 
 type CaseRow = Mapping[str, object]
 type ReadCasesCallback = Callable[[str | Path], Sequence[CaseRow]]
@@ -79,10 +81,16 @@ class GuiRunRequest:
 
 @dataclass(frozen=True, slots=True)
 class GuiRunResult:
-    """Minimal completion data needed by the shared GUI."""
+    """Structured completion data separating calculation and output status."""
 
     first_vtp_path: Path | None = None
     first_case_row: CaseRow | None = None
+    calculation_completed_cases: int = 0
+    calculation_total_cases: int = 0
+    summary_csv_saved: bool | None = None
+    vtp_requested: int = 0
+    vtp_saved: int = 0
+    output_issues: tuple[OutputIssue, ...] = ()
 
     def __post_init__(self) -> None:
         if self.first_vtp_path is not None:
@@ -92,9 +100,56 @@ class GuiRunResult:
             Mapping,
         ):
             raise TypeError("GuiRunResult.first_case_row must be a mapping or None")
+        for name in (
+            "calculation_completed_cases",
+            "calculation_total_cases",
+            "vtp_requested",
+            "vtp_saved",
+        ):
+            value = getattr(self, name)
+            if isinstance(value, bool) or not isinstance(value, int):
+                raise TypeError(f"GuiRunResult.{name} must be an integer")
+            if value < 0:
+                raise ValueError(f"GuiRunResult.{name} must be nonnegative")
+        if self.calculation_completed_cases > self.calculation_total_cases:
+            raise ValueError("completed calculation count must not exceed total")
+        if self.vtp_saved > self.vtp_requested:
+            raise ValueError("saved VTP count must not exceed requested count")
+        if self.summary_csv_saved is not None and not isinstance(
+            self.summary_csv_saved, bool
+        ):
+            raise TypeError("GuiRunResult.summary_csv_saved must be a boolean or None")
+        issues = tuple(self.output_issues)
+        if any(not isinstance(issue, OutputIssue) for issue in issues):
+            raise TypeError("GuiRunResult.output_issues must contain OutputIssue values")
+        object.__setattr__(self, "output_issues", issues)
 
 
 type RunCasesCallback = Callable[[GuiRunRequest], GuiRunResult]
+
+
+def gui_run_result_from_batch(
+    request: GuiRunRequest,
+    result: ProductBatchRunResult,
+) -> GuiRunResult:
+    """Project common runtime output status onto the shared GUI contract."""
+    if not isinstance(request, GuiRunRequest):
+        raise TypeError("request must be a GuiRunRequest")
+    if not isinstance(result, ProductBatchRunResult):
+        raise TypeError("result must be a ProductBatchRunResult")
+    first = result.cases[0]
+    return GuiRunResult(
+        first_vtp_path=first.vtp_path or None,
+        first_case_row=request.rows[0] if first.vtp_path else None,
+        calculation_completed_cases=len(result.cases),
+        calculation_total_cases=len(request.rows),
+        summary_csv_saved=result.summary_csv_saved,
+        vtp_requested=sum(
+            bool(int(row.get("save_vtp_on", 1))) for row in request.rows
+        ),
+        vtp_saved=sum(bool(case.vtp_path) for case in result.cases),
+        output_issues=result.output_issues,
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -297,4 +352,5 @@ __all__ = (
     "SolverGuiAdapters",
     "SolverSpec",
     "ValidateOutputPathCallback",
+    "gui_run_result_from_batch",
 )

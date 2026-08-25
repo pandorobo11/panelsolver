@@ -1,8 +1,10 @@
 import json
+import os
 import shutil
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import numpy as np
 import pyvista as pv
@@ -105,6 +107,81 @@ def results_for_mesh(mesh: PanelMesh, *, case_id: str = "artifact") -> object:
 
 
 class ArtifactProjectionTests(unittest.TestCase):
+    def _projection(self):
+        mesh, results = fixture()
+        return project_vtp_artifact(
+            mesh,
+            results,
+            ArtifactProjectionPolicy("beta_tan", "signature", "not_used", "1.0"),
+        )
+
+    def test_vtp_write_is_fsynced_replaced_and_leaves_no_temp_file(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output = Path(temp_dir) / "case001.vtp"
+            with (
+                patch("panelsolver.app.artifact_io.os.fsync") as fsync,
+                patch(
+                    "panelsolver.app.artifact_io.os.replace",
+                    wraps=os.replace,
+                ) as replace,
+            ):
+                write_vtp_projection(output, self._projection())
+
+            temp_path = Path(replace.call_args.args[0])
+            self.assertEqual(".vtp", temp_path.suffix)
+            self.assertTrue(temp_path.name.startswith(".case001."))
+            self.assertTrue(temp_path.name.endswith(".tmp.vtp"))
+            fsync.assert_called_once()
+            replace.assert_called_once()
+            self.assertTrue(output.is_file())
+            self.assertEqual([output], list(Path(temp_dir).iterdir()))
+            self.assertEqual("artifact", str(pv.read(output).field_data["case_id"][0]))
+
+    def test_vtp_temp_write_failure_preserves_existing_file_and_cleans_temp(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output = Path(temp_dir) / "case001.vtp"
+            output.write_bytes(b"existing-vtp")
+            with (
+                patch.object(pv.PolyData, "save", side_effect=OSError("disk full")),
+                self.assertRaisesRegex(OSError, "disk full"),
+            ):
+                write_vtp_projection(output, self._projection())
+
+            self.assertEqual(b"existing-vtp", output.read_bytes())
+            self.assertEqual([output], list(Path(temp_dir).iterdir()))
+
+    def test_vtp_replace_failure_preserves_existing_file_and_cleans_temp(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output = Path(temp_dir) / "case001.vtp"
+            output.write_bytes(b"existing-vtp")
+            with (
+                patch(
+                    "panelsolver.app.artifact_io.os.replace",
+                    side_effect=OSError("replace denied"),
+                ),
+                self.assertRaisesRegex(OSError, "replace denied"),
+            ):
+                write_vtp_projection(output, self._projection())
+
+            self.assertEqual(b"existing-vtp", output.read_bytes())
+            self.assertEqual([output], list(Path(temp_dir).iterdir()))
+
+    def test_vtp_fsync_failure_preserves_existing_file_and_cleans_temp(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output = Path(temp_dir) / "case001.vtp"
+            output.write_bytes(b"existing-vtp")
+            with (
+                patch(
+                    "panelsolver.app.artifact_io.os.fsync",
+                    side_effect=OSError("fsync failed"),
+                ),
+                self.assertRaisesRegex(OSError, "fsync failed"),
+            ):
+                write_vtp_projection(output, self._projection())
+
+            self.assertEqual(b"existing-vtp", output.read_bytes())
+            self.assertEqual([output], list(Path(temp_dir).iterdir()))
+
     def test_projects_common_and_explicit_product_fields(self) -> None:
         mesh, results = fixture()
         policy = ArtifactProjectionPolicy(

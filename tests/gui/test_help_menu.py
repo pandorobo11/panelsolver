@@ -20,6 +20,7 @@ from panelsolver.domains.hypersonic import gui_spec as canonical_hypersonic_spec
 
 class _Cases(QtWidgets.QWidget):
     vtp_loaded = QtCore.Signal(object)
+    vtp_artifact_invalidated = QtCore.Signal(str)
     viewer_clear_requested = QtCore.Signal()
     cases_updated = QtCore.Signal(object)
     selected_cases_changed = QtCore.Signal(object)
@@ -50,6 +51,9 @@ class _Viewer(QtWidgets.QWidget):
         pass
 
     def clear_view(self) -> None:
+        pass
+
+    def invalidate_vtp_artifact(self, _path: str) -> None:
         pass
 
     def set_case_rows(self, _rows) -> None:

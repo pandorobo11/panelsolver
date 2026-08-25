@@ -14,11 +14,17 @@ import pyvista as pv
 from panelsolver.app import (
     DEFAULT_CHECKPOINT_CASES,
     GuiRunRequest,
+    GuiRunResult,
+    OutputKind,
+    OutputPhase,
     prepare_product_cases,
     run_and_write_product_cases,
     run_product_cases,
 )
-from panelsolver.app.csv_writer import CSV_ENCODING
+from panelsolver.app.csv_writer import CSV_ENCODING, write_csv_atomic
+from panelsolver.app.runtime import (
+    _run_prepared_product_case as _real_run_prepared_product_case,
+)
 from panelsolver.core import (
     PartialResultPolicy,
     SchedulerCancelled,
@@ -38,6 +44,12 @@ from panelsolver.domains.hypersonic import run_cases as run_newt_cases
 from tests.current_case_fixtures import read_current_cases
 
 INPUTS = Path(__file__).parents[1] / "fixtures" / "phase1" / "inputs"
+
+
+def _fail_selected_prepared_case(prepared, logfn):
+    if str(prepared.row["case_id"]).endswith("_bad"):
+        raise RuntimeError("synthetic computation failure")
+    return _real_run_prepared_product_case(prepared, logfn)
 
 
 def _assert_artifact_semantics_equal(
@@ -60,6 +72,222 @@ def _assert_artifact_semantics_equal(
             np.testing.assert_array_equal(actual_data[name], expected_data[name])
 
 class Phase7RuntimeTests(unittest.TestCase):
+    def _fmf_rows(self, root: Path, count: int) -> tuple[dict[str, object], ...]:
+        base = read_current_cases(
+            read_fmf_cases, INPUTS / "fmfsolver_cases.csv"
+        ).iloc[0].to_dict()
+        return tuple(
+            {
+                **base,
+                "case_id": f"case_{index}",
+                "out_dir": str(root / "vtp"),
+                "save_vtp_on": 1,
+            }
+            for index in range(count)
+        )
+
+    def test_vtp_failure_keeps_case_projection_and_later_single_worker_cases(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            rows = self._fmf_rows(root, 3)
+            vtp_dir = root / "vtp"
+            vtp_dir.mkdir()
+            (vtp_dir / "case_1.vtp").mkdir()
+            logs: list[str] = []
+
+            result = run_and_write_product_cases(
+                rows,
+                FMF_POLICY,
+                root / "summary.csv",
+                workers=1,
+                logfn=logs.append,
+            )
+
+            self.assertEqual(3, len(result.cases))
+            self.assertEqual("", result.cases[1].vtp_path)
+            self.assertTrue(result.cases[0].vtp_path)
+            self.assertTrue(result.cases[2].vtp_path)
+            self.assertEqual(
+                ["case_0", "case_1", "case_2"],
+                [
+                    str(row["case_id"])
+                    for row in result.csv.rows
+                    if row["scope"] == "total"
+                ],
+            )
+            self.assertEqual("", result.cases[1].csv.rows[0]["vtp_path"])
+            self.assertEqual(1, len(result.output_issues))
+            issue = result.output_issues[0]
+            self.assertIs(OutputKind.VTP, issue.kind)
+            self.assertIs(OutputPhase.WRITE, issue.phase)
+            self.assertEqual("case_1", issue.case_id)
+            self.assertTrue(result.summary_csv_saved)
+            self.assertTrue(any("VTP output failed" in message for message in logs))
+
+    def test_parallel_vtp_failures_are_aggregated_without_stopping_cases(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            rows = self._fmf_rows(root, 4)
+            vtp_dir = root / "vtp"
+            vtp_dir.mkdir()
+            for case_id in ("case_1", "case_3"):
+                (vtp_dir / f"{case_id}.vtp").mkdir()
+
+            result = run_and_write_product_cases(
+                rows,
+                FMF_POLICY,
+                root / "summary.csv",
+                workers=2,
+                checkpoint_every_cases=1,
+            )
+
+            self.assertEqual(4, len(result.cases))
+            self.assertEqual(
+                {"case_1", "case_3"},
+                {
+                    issue.case_id
+                    for issue in result.output_issues
+                    if issue.kind is OutputKind.VTP
+                },
+            )
+            self.assertEqual(
+                [True, False, True, False],
+                [bool(case.vtp_path) for case in result.cases],
+            )
+            self.assertTrue(result.summary_csv_saved)
+
+    def test_final_summary_failure_is_output_issue_and_preserves_existing_csv(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            rows = self._fmf_rows(root, 1)
+            summary = root / "summary.csv"
+            summary.write_bytes(b"existing-summary\n")
+            with mock.patch(
+                "panelsolver.app.runtime.write_csv_atomic",
+                side_effect=OSError("summary denied"),
+            ):
+                result = run_and_write_product_cases(
+                    rows,
+                    FMF_POLICY,
+                    summary,
+                    checkpoint_every_cases=0,
+                )
+
+            self.assertEqual(1, len(result.cases))
+            self.assertFalse(result.summary_csv_saved)
+            self.assertEqual(b"existing-summary\n", summary.read_bytes())
+            self.assertEqual(1, len(result.output_issues))
+            issue = result.output_issues[0]
+            self.assertIs(OutputKind.SUMMARY_CSV, issue.kind)
+            self.assertIs(OutputPhase.FINAL, issue.phase)
+
+    def test_checkpoint_summary_failure_is_retained_and_calculation_continues(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            rows = self._fmf_rows(root, 3)
+            summary = root / "summary.csv"
+            calls = 0
+
+            def fail_first_checkpoint(output, projection, policy):
+                nonlocal calls
+                calls += 1
+                if calls == 1:
+                    raise OSError("checkpoint denied")
+                return write_csv_atomic(output, projection, policy)
+
+            with mock.patch(
+                "panelsolver.app.runtime.write_csv_atomic",
+                side_effect=fail_first_checkpoint,
+            ):
+                result = run_and_write_product_cases(
+                    rows,
+                    FMF_POLICY,
+                    summary,
+                    checkpoint_every_cases=1,
+                )
+
+            self.assertEqual(3, len(result.cases))
+            self.assertTrue(result.summary_csv_saved)
+            self.assertEqual(1, len(result.output_issues))
+            self.assertIs(OutputPhase.CHECKPOINT, result.output_issues[0].phase)
+            with summary.open(encoding=CSV_ENCODING, newline="") as stream:
+                saved = tuple(csv.DictReader(stream))
+            self.assertEqual(
+                ["case_0", "case_1", "case_2"],
+                [row["case_id"] for row in saved if row["scope"] == "total"],
+            )
+
+    def test_complete_checkpoint_is_reused_as_final_summary(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            rows = self._fmf_rows(root, 3)
+            summary = root / "summary.csv"
+            logs: list[str] = []
+
+            with mock.patch(
+                "panelsolver.app.runtime.write_csv_atomic",
+                wraps=write_csv_atomic,
+            ) as write:
+                result = run_and_write_product_cases(
+                    rows,
+                    FMF_POLICY,
+                    summary,
+                    checkpoint_every_cases=len(rows),
+                    log_snapshots=True,
+                    logfn=logs.append,
+                )
+
+            self.assertEqual(1, write.call_count)
+            self.assertTrue(result.summary_csv_saved)
+            self.assertEqual((), result.output_issues)
+            self.assertTrue(
+                any("complete checkpoint reused" in message for message in logs)
+            )
+            with summary.open(encoding=CSV_ENCODING, newline="") as stream:
+                saved = tuple(csv.DictReader(stream))
+            self.assertEqual(
+                ["case_0", "case_1", "case_2"],
+                [row["case_id"] for row in saved if row["scope"] == "total"],
+            )
+
+    def test_partial_checkpoint_does_not_mask_final_summary_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            rows = self._fmf_rows(root, 3)
+            summary = root / "summary.csv"
+            calls = 0
+
+            def fail_final(output, projection, policy):
+                nonlocal calls
+                calls += 1
+                if calls == 2:
+                    raise OSError("final denied")
+                return write_csv_atomic(output, projection, policy)
+
+            with mock.patch(
+                "panelsolver.app.runtime.write_csv_atomic",
+                side_effect=fail_final,
+            ):
+                result = run_and_write_product_cases(
+                    rows,
+                    FMF_POLICY,
+                    summary,
+                    checkpoint_every_cases=2,
+                )
+
+            self.assertEqual(2, calls)
+            self.assertFalse(result.summary_csv_saved)
+            self.assertEqual(1, len(result.output_issues))
+            self.assertIs(OutputPhase.FINAL, result.output_issues[0].phase)
+            with summary.open(encoding=CSV_ENCODING, newline="") as stream:
+                saved = tuple(csv.DictReader(stream))
+            self.assertEqual(
+                ["case_0", "case_1"],
+                [row["case_id"] for row in saved if row["scope"] == "total"],
+            )
+
     def test_checkpoint_default_is_shared_across_runtime_and_domains(self) -> None:
         for callback in (
             run_product_cases,
@@ -247,8 +475,6 @@ class Phase7RuntimeTests(unittest.TestCase):
                 with self.subTest(product=product_id):
                     product_root = root / product_id
                     product_root.mkdir()
-                    blocker = product_root / "not-a-directory"
-                    blocker.write_text("worker failure fixture\n", encoding="utf-8")
                     case_output = product_root / "case-output"
                     summary = product_root / "summary.csv"
                     summary.write_bytes(b"pre-existing summary is replaced\n")
@@ -276,15 +502,21 @@ class Phase7RuntimeTests(unittest.TestCase):
                         case_id=bad_id,
                         shielding_on=1,
                         ray_backend="rtree",
-                        out_dir=str(blocker),
+                        out_dir=str(case_output),
                         save_vtp_on=1,
                     )
                     logs: list[str] = []
                     progress: list[tuple[int, int]] = []
 
-                    with mock.patch.dict(
-                        os.environ,
-                        {"PANELSOLVER_PARALLEL_CHUNK_CASES": "3"},
+                    with (
+                        mock.patch.dict(
+                            os.environ,
+                            {"PANELSOLVER_PARALLEL_CHUNK_CASES": "3"},
+                        ),
+                        mock.patch(
+                            "panelsolver.app.runtime._run_prepared_product_case",
+                            new=_fail_selected_prepared_case,
+                        ),
                     ):
                         with self.assertRaises(WorkerExecutionError) as caught:
                             run_and_write_product_cases(
@@ -300,12 +532,14 @@ class Phase7RuntimeTests(unittest.TestCase):
                                 log_snapshots=True,
                             )
 
-                    self.assertIn("FileExistsError", caught.exception.remote_traceback)
+                    self.assertIn(
+                        "synthetic computation failure",
+                        caught.exception.remote_traceback,
+                    )
                     for good_id in good_ids:
                         self.assertTrue((case_output / f"{good_id}.vtp").is_file())
                     self.assertEqual([], list(case_output.glob("*.npz")))
-                    self.assertTrue(blocker.is_file())
-                    self.assertFalse((blocker / f"{bad_id}.vtp").exists())
+                    self.assertFalse((case_output / f"{bad_id}.vtp").exists())
                     self.assertFalse(any("[SAVE] final" in message for message in logs))
 
                     reference_output = product_root / "reference-output"
@@ -412,12 +646,17 @@ class Phase7RuntimeTests(unittest.TestCase):
         row = read_current_cases(
             read_fmf_cases, INPUTS / "fmfsolver_cases.csv"
         ).iloc[0].to_dict()
-        batch = mock.Mock()
-        batch.cases = (mock.Mock(vtp_path=""),)
-        with mock.patch(
-            "panelsolver.domains.fmf.run_and_write_product_cases",
-            return_value=batch,
-        ) as run:
+        batch = object()
+        with (
+            mock.patch(
+                "panelsolver.domains.fmf.run_and_write_product_cases",
+                return_value=batch,
+            ) as run,
+            mock.patch(
+                "panelsolver.domains.fmf.gui_run_result_from_batch",
+                return_value=GuiRunResult(),
+            ),
+        ):
             FMF_GUI_ADAPTERS.run_cases(
                 GuiRunRequest(
                     rows=(row,),

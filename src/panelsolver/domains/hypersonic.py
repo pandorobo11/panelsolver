@@ -18,6 +18,7 @@ from panelsolver.app import (
     ProductRuntimePolicy,
     SolverGuiAdapters,
     SolverSpec,
+    gui_run_result_from_batch,
     run_and_write_product_cases,
     run_product_cases,
 )
@@ -389,11 +390,7 @@ def _run_gui_cases(request: GuiRunRequest) -> GuiRunResult:
         checkpoint_every_cases=request.checkpoint_every_cases,
         log_snapshots=True,
     )
-    first = result.cases[0]
-    return GuiRunResult(
-        first_vtp_path=first.vtp_path or None,
-        first_case_row=request.rows[0] if first.vtp_path else None,
-    )
+    return gui_run_result_from_batch(request, result)
 
 
 GUI_ADAPTERS = SolverGuiAdapters(

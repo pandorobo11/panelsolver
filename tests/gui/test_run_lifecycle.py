@@ -21,6 +21,9 @@ from panelsolver.app import (
     ArtifactSignatureCandidates,
     GuiRunRequest,
     GuiRunResult,
+    OutputIssue,
+    OutputKind,
+    OutputPhase,
     SolverGuiAdapters,
 )
 from panelsolver.app.cases_panel import CasesPanel
@@ -66,12 +69,20 @@ class _FakeViewer(QtWidgets.QWidget):
         self.selected_rows = ()
         self.input_path = None
         self.saved_rows = []
+        self.loaded_path = None
 
     def load_vtp(self, *args) -> None:
         self.loaded.append(args)
+        self.loaded_path = Path(args[0]).expanduser().resolve(strict=False)
+
+    def invalidate_vtp_artifact(self, path: str) -> None:
+        invalidated = Path(path).expanduser().resolve(strict=False)
+        if self.loaded_path == invalidated:
+            self.clear_view()
 
     def clear_view(self) -> None:
         self.cleared += 1
+        self.loaded_path = None
 
     def set_case_rows(self, rows) -> None:
         self.rows = tuple(rows)
@@ -159,7 +170,7 @@ class RunLifecycleTests(unittest.TestCase):
             self.assertIsInstance(captured["request"], GuiRunRequest)
             self.assertEqual(2, captured["request"].workers)
             self.assertEqual(17, captured["request"].checkpoint_every_cases)
-            self.assertEqual("2/2", panel.progress.text())
+            self.assertEqual("Completed", panel.progress.text())
             self.assertIn("[SAVE] checkpoint 1/2", panel.log.toPlainText())
             self.assertIn("[SAVE] final 2/2", panel.log.toPlainText())
             self.assertEqual(1, len(loaded))
@@ -168,6 +179,180 @@ class RunLifecycleTests(unittest.TestCase):
             self.assertIsNone(panel._run_worker)
             self.assertTrue(panel.btn_pick_input.isEnabled())
             self.assertFalse(panel.btn_cancel.isEnabled())
+
+    def test_vtp_output_failures_complete_once_with_bounded_summary_and_recover_ui(
+        self,
+    ) -> None:
+        issues = tuple(
+            OutputIssue(
+                OutputKind.VTP,
+                OutputPhase.WRITE,
+                f"outputs/case_{index}.vtp",
+                f"save failure {index}",
+                f"case_{index}",
+            )
+            for index in range(7)
+        )
+        rows = tuple(
+            {"case_id": f"case_{index}", "out_dir": "outputs"}
+            for index in range(7)
+        )
+
+        def runner(request):
+            request.progress(7, 7)
+            return GuiRunResult(
+                calculation_completed_cases=7,
+                calculation_total_cases=7,
+                summary_csv_saved=True,
+                vtp_requested=7,
+                vtp_saved=0,
+                output_issues=issues,
+            )
+
+        panel, rows, _ = self.make_panel(runner, rows=rows)
+        with patch.object(QtWidgets.QMessageBox, "warning") as warning:
+            self.assertTrue(
+                panel.start_run(rows, 1, DEFAULT_CHECKPOINT_CASES, "results.csv")
+            )
+            self.wait_until(lambda: not panel.is_running())
+
+        self.assertEqual("Completed with output errors", panel.progress.text())
+        warning.assert_called_once()
+        message = warning.call_args.args[2]
+        self.assertIn("7/7 cases completed", message)
+        self.assertIn("VTP: 0 saved, 7 failed", message)
+        self.assertIn("case_0: save failure 0", message)
+        self.assertIn("... and 2 more", message)
+        self.assertNotIn("case_6: save failure 6", message)
+        self.assertTrue(panel.btn_run.isEnabled())
+        self.assertTrue(panel.btn_pick_input.isEnabled())
+        self.assertFalse(panel.btn_cancel.isEnabled())
+
+    def test_failed_vtp_is_invalidated_until_same_case_path_succeeds(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="stale_vtp_gui_") as directory:
+            root = Path(directory)
+            vtp_path = root / "outputs" / "one.vtp"
+            vtp_path.parent.mkdir()
+            vtp_path.write_text("previous run", encoding="utf-8")
+            rows = ({"case_id": "one", "out_dir": str(vtp_path.parent)},)
+            calls = 0
+
+            def runner(request):
+                nonlocal calls
+                calls += 1
+                if calls == 1:
+                    issue = OutputIssue(
+                        OutputKind.VTP,
+                        OutputPhase.WRITE,
+                        str(vtp_path),
+                        "permission denied",
+                        "one",
+                    )
+                    return GuiRunResult(
+                        calculation_completed_cases=1,
+                        calculation_total_cases=1,
+                        summary_csv_saved=True,
+                        vtp_requested=1,
+                        vtp_saved=0,
+                        output_issues=(issue,),
+                    )
+                return GuiRunResult(
+                    first_vtp_path=vtp_path,
+                    first_case_row=request.rows[0],
+                    calculation_completed_cases=1,
+                    calculation_total_cases=1,
+                    summary_csv_saved=True,
+                    vtp_requested=1,
+                    vtp_saved=1,
+                )
+
+            adapters, signatures = _adapters(rows, runner)
+            artifact = SimpleNamespace(
+                field_data={
+                    "case_id": ["one"],
+                    "case_signature": [signatures["one"].primary.digest],
+                }
+            )
+            panel = CasesPanel(
+                fmf_solver_spec(adapters=adapters),
+                artifact_reader=lambda _path: artifact,
+            )
+            panel.case_rows = rows
+            panel.input_path = root / "cases.csv"
+            panel._populate_case_table()
+            viewer = _FakeViewer()
+            window = MainWindow(panel.spec, cases_panel=panel, viewer_panel=viewer)
+
+            panel.case_table.selectRow(0)
+            self.assertEqual(vtp_path.resolve(), viewer.loaded_path)
+            initial_loads = len(viewer.loaded)
+
+            with patch.object(QtWidgets.QMessageBox, "warning"):
+                self.assertTrue(panel.start_run(rows, 1, 1, root / "results.csv"))
+                self.wait_until(lambda: not panel.is_running())
+
+            self.assertIsNone(viewer.loaded_path)
+            panel.case_table.clearSelection()
+            panel.case_table.selectRow(0)
+            self.assertEqual(initial_loads, len(viewer.loaded))
+            self.assertIsNone(viewer.loaded_path)
+
+            # Manual inspection bypasses CasesPanel auto-load suppression.
+            viewer.load_vtp(str(vtp_path))
+            self.assertEqual(vtp_path.resolve(), viewer.loaded_path)
+
+            self.assertTrue(panel.start_run(rows, 1, 1, root / "results.csv"))
+            self.wait_until(lambda: not panel.is_running())
+            self.assertEqual(vtp_path.resolve(), viewer.loaded_path)
+            loads_after_success = len(viewer.loaded)
+            panel.case_table.clearSelection()
+            panel.case_table.selectRow(0)
+            self.assertEqual(loads_after_success + 1, len(viewer.loaded))
+            window.close()
+
+    def test_summary_csv_failure_is_completed_output_failure(self) -> None:
+        issue = OutputIssue(
+            OutputKind.SUMMARY_CSV,
+            OutputPhase.FINAL,
+            "results.csv",
+            "permission denied",
+        )
+
+        def runner(_request):
+            return GuiRunResult(
+                calculation_completed_cases=2,
+                calculation_total_cases=2,
+                summary_csv_saved=False,
+                output_issues=(issue,),
+            )
+
+        panel, rows, _ = self.make_panel(runner)
+        with patch.object(QtWidgets.QMessageBox, "warning") as warning:
+            self.assertTrue(
+                panel.start_run(rows, 1, DEFAULT_CHECKPOINT_CASES, "results.csv")
+            )
+            self.wait_until(lambda: not panel.is_running())
+
+        self.assertEqual("Completed with output errors", panel.progress.text())
+        self.assertIn("Summary CSV: failed", warning.call_args.args[2])
+        self.assertNotIn("[OK] Wrote results", panel.log.toPlainText())
+
+    def test_complete_checkpoint_summary_is_not_displayed_as_failed(self) -> None:
+        def runner(_request):
+            return GuiRunResult(
+                calculation_completed_cases=2,
+                calculation_total_cases=2,
+                summary_csv_saved=True,
+            )
+
+        panel, rows, _ = self.make_panel(runner)
+        with patch.object(QtWidgets.QMessageBox, "warning") as warning:
+            self.assertTrue(panel.start_run(rows, 1, 2, "results.csv"))
+            self.wait_until(lambda: not panel.is_running())
+
+        self.assertEqual("Completed", panel.progress.text())
+        self.assertIn("[OK] Wrote results: results.csv", panel.log.toPlainText())
+        warning.assert_not_called()
 
     def test_cancellation_before_and_after_progress(self) -> None:
         for emit_progress in (False, True):
