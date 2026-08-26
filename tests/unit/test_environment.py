@@ -10,7 +10,9 @@ from panelsolver.core import SchedulerError, ShieldingConfig, ShieldingError
 
 
 class EnvironmentResolutionTests(unittest.TestCase):
-    def test_shielding_batch_precedence_is_explicit_neutral_legacy_default(self) -> None:
+    def test_shielding_batch_precedence_is_explicit_neutral_legacy_default(
+        self,
+    ) -> None:
         environment = {
             "PANELSOLVER_SHIELD_BATCH_SIZE": "5",
             "FMFSOLVER_SHIELD_BATCH_SIZE": "3",
@@ -47,8 +49,9 @@ class EnvironmentResolutionTests(unittest.TestCase):
 
     def test_invalid_shielding_environment_names_the_boundary_variable(self) -> None:
         for name, value in (("PANELSOLVER_SHIELD_BATCH_SIZE", "0"),):
-            with self.subTest(name=name, value=value), self.assertRaisesRegex(
-                ShieldingError, name
+            with (
+                self.subTest(name=name, value=value),
+                self.assertRaisesRegex(ShieldingError, name),
             ):
                 resolve_shielding_environment(
                     ShieldingConfig(),

@@ -63,9 +63,7 @@ class CliPresentationTests(unittest.TestCase):
         for verbose, expected in ((False, False), (True, True)):
             with self.subTest(verbose=verbose):
                 stream = _Stream(tty=True)
-                display = CliPresentation(
-                    rich_ui=True, verbose=verbose, stream=stream
-                )
+                display = CliPresentation(rich_ui=True, verbose=verbose, stream=stream)
                 display.log("[RUN] (1/1) case_id=one")
                 display.log("[WARN] mesh warning")
                 output = stream.getvalue()
@@ -101,9 +99,7 @@ class CliPresentationTests(unittest.TestCase):
             validate_output_path=lambda *_args: Path("result.csv"),
         )
         parser = build_parser(policy)
-        args = parser.parse_args(
-            ["--input", "cases.csv", "--workers", "3", "--plain"]
-        )
+        args = parser.parse_args(["--input", "cases.csv", "--workers", "3", "--plain"])
         with patch(
             "panelsolver.app.cli.run_and_write_product_cases",
             return_value=SimpleNamespace(

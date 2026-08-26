@@ -53,7 +53,9 @@ class CaseValidationMatrixTests(unittest.TestCase):
         sheet = workbook.active
         sheet.append(list(frame.columns))
         for row_index, row in enumerate(frame.itertuples(index=False, name=None)):
-            values = [value.item() if hasattr(value, "item") else value for value in row]
+            values = [
+                value.item() if hasattr(value, "item") else value for value in row
+            ]
             if row_index == 0:
                 for field, value in overrides.items():
                     values[frame.columns.get_loc(field)] = value
@@ -112,8 +114,9 @@ class CaseValidationMatrixTests(unittest.TestCase):
             ),
         )
         for value in (False, True, np.bool_(False), 0, 1, 1.5, [], ["beta_tan"]):
-            with self.subTest(value=repr(value)), self.assertRaisesRegex(
-                TypeError, "selector"
+            with (
+                self.subTest(value=repr(value)),
+                self.assertRaisesRegex(TypeError, "selector"),
             ):
                 normalize_optional_text(
                     value,
@@ -168,9 +171,7 @@ class CaseValidationMatrixTests(unittest.TestCase):
                             )
 
     def test_fmf_model_fields_keep_mode_semantics_and_field_attribution(self) -> None:
-        fmf_cases = read_current_cases(
-            read_fmf_cases, _INPUTS / "fmfsolver_cases.csv"
-        )
+        fmf_cases = read_current_cases(read_fmf_cases, _INPUTS / "fmfsolver_cases.csv")
         mode_a = fmf_cases.iloc[[0]].copy()
         mode_b = fmf_cases.iloc[[1]].copy()
         matrices = (
@@ -211,9 +212,11 @@ class CaseValidationMatrixTests(unittest.TestCase):
                         )
 
     def test_newtsolver_model_fields_reject_unsafe_boundaries(self) -> None:
-        base = read_current_cases(
-            read_newt_cases, _INPUTS / "newtsolver_cases.csv"
-        ).iloc[[0]].copy()
+        base = (
+            read_current_cases(read_newt_cases, _INPUTS / "newtsolver_cases.csv")
+            .iloc[[0]]
+            .copy()
+        )
         with tempfile.TemporaryDirectory() as temp_dir:
             path = Path(temp_dir) / "newtsolver-boundary.csv"
             for field in ("Mach", "gamma"):
@@ -412,9 +415,7 @@ class CaseValidationMatrixTests(unittest.TestCase):
             with patch("panelsolver.app.case_io.pd.read_excel", return_value=frame):
                 with self.assertRaises(InputValidationError) as caught:
                     reader("cases.xlsx")
-            self.assertIn(
-                "Aref_m2", {issue.field for issue in caught.exception.issues}
-            )
+            self.assertIn("Aref_m2", {issue.field for issue in caught.exception.issues})
 
 
 if __name__ == "__main__":

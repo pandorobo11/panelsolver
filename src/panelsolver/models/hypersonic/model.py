@@ -241,8 +241,7 @@ class HypersonicModel:
         cp_max = (
             modified_newtonian_cp_max(resolved.mach, resolved.gamma)
             if any(
-                equation
-                in {"modified_newtonian", "tangent_wedge", "tangent_cone"}
+                equation in {"modified_newtonian", "tangent_wedge", "tangent_cone"}
                 for equation in resolved.windward_equations
             )
             else 2.0
@@ -263,9 +262,7 @@ class HypersonicModel:
             geometry.normals_out_stl,
             flow_state.velocity_hat_stl,
         )
-        theta_deg = np.degrees(
-            np.arccos(np.clip(normal_dot_velocity, -1.0, 1.0))
-        )
+        theta_deg = np.degrees(np.arccos(np.clip(normal_dot_velocity, -1.0, 1.0)))
         return LocalLoads(
             traction_coeff_stl=traction,
             cell_scalars={"cp": cp, "theta_deg": theta_deg},
@@ -393,7 +390,9 @@ def panel_force_density(
             raise ValueError(
                 "windward_eq_by_component length must match component count."
             )
-        windward = [normalize_windward_equation(value) for value in windward_eq_by_component]
+        windward = [
+            normalize_windward_equation(value) for value in windward_eq_by_component
+        ]
     if leeward_eq_by_component is None:
         leeward = [single_leeward] * component_count
     else:
@@ -401,12 +400,16 @@ def panel_force_density(
             raise ValueError(
                 "leeward_eq_by_component length must match component count."
             )
-        leeward = [normalize_leeward_equation(value) for value in leeward_eq_by_component]
+        leeward = [
+            normalize_leeward_equation(value) for value in leeward_eq_by_component
+        ]
     needs_flow = any(
         value in {"tangent_wedge", "tangent_cone"} for value in windward
     ) or any(value == "prandtl_meyer" for value in leeward)
     if needs_flow and (Mach is None or gamma is None):
-        raise ValueError("Mach and gamma are required for the selected surface equation.")
+        raise ValueError(
+            "Mach and gamma are required for the selected surface equation."
+        )
     traction, _cp = _pressure_traction_coefficients(
         velocity_hat_stl=velocity,
         normals_out_stl=normals,

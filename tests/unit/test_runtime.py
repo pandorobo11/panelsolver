@@ -71,11 +71,14 @@ def _assert_artifact_semantics_equal(
             test_case.assertEqual(expected_data[name].dtype, actual_data[name].dtype)
             np.testing.assert_array_equal(actual_data[name], expected_data[name])
 
+
 class RuntimeTests(unittest.TestCase):
     def _fmf_rows(self, root: Path, count: int) -> tuple[dict[str, object], ...]:
-        base = read_current_cases(
-            read_fmf_cases, INPUTS / "fmfsolver_cases.csv"
-        ).iloc[0].to_dict()
+        base = (
+            read_current_cases(read_fmf_cases, INPUTS / "fmfsolver_cases.csv")
+            .iloc[0]
+            .to_dict()
+        )
         return tuple(
             {
                 **base,
@@ -86,7 +89,9 @@ class RuntimeTests(unittest.TestCase):
             for index in range(count)
         )
 
-    def test_vtp_failure_keeps_case_projection_and_later_single_worker_cases(self) -> None:
+    def test_vtp_failure_keeps_case_projection_and_later_single_worker_cases(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             rows = self._fmf_rows(root, 3)
@@ -189,7 +194,9 @@ class RuntimeTests(unittest.TestCase):
             self.assertIs(OutputPhase.PREPARE, issue.phase)
             self.assertEqual("case_0", issue.case_id)
 
-    def test_final_summary_failure_is_output_issue_and_preserves_existing_csv(self) -> None:
+    def test_final_summary_failure_is_output_issue_and_preserves_existing_csv(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             rows = self._fmf_rows(root, 1)
@@ -320,6 +327,7 @@ class RuntimeTests(unittest.TestCase):
                 ["case_0", "case_1"],
                 [row["case_id"] for row in saved if row["scope"] == "total"],
             )
+
     def test_checkpoint_default_is_shared_across_runtime_and_domains(self) -> None:
         for callback in (
             run_product_cases,
@@ -345,9 +353,11 @@ class RuntimeTests(unittest.TestCase):
     def test_single_worker_groups_exact_reuse_buckets_without_output_reordering(
         self,
     ) -> None:
-        base = read_current_cases(
-            read_fmf_cases, INPUTS / "fmfsolver_cases.csv"
-        ).iloc[0].to_dict()
+        base = (
+            read_current_cases(read_fmf_cases, INPUTS / "fmfsolver_cases.csv")
+            .iloc[0]
+            .to_dict()
+        )
         with tempfile.TemporaryDirectory() as temp_dir:
             common = {
                 **base,
@@ -448,9 +458,9 @@ class RuntimeTests(unittest.TestCase):
                     self.assertNotIn("npz_path", total)
 
     def test_checkpoints_are_completed_snapshots_in_input_order(self) -> None:
-        frame = read_current_cases(
-            read_fmf_cases, INPUTS / "fmfsolver_cases.csv"
-        ).iloc[[0, 1, 4]]
+        frame = read_current_cases(read_fmf_cases, INPUTS / "fmfsolver_cases.csv").iloc[
+            [0, 1, 4]
+        ]
         snapshots: list[tuple[list[str], int, bool]] = []
 
         def capture(projection, done: int, _total: int, final: bool) -> None:
@@ -472,7 +482,9 @@ class RuntimeTests(unittest.TestCase):
             )
         input_order = {str(row["case_id"]): index for index, row in enumerate(rows)}
         self.assertEqual([1, 2, 3, 3], [done for _, done, _ in snapshots])
-        self.assertEqual([False, False, False, True], [final for _, _, final in snapshots])
+        self.assertEqual(
+            [False, False, False, True], [final for _, _, final in snapshots]
+        )
         for case_ids, _, _ in snapshots:
             self.assertEqual(
                 sorted(case_ids, key=input_order.__getitem__),
@@ -484,9 +496,11 @@ class RuntimeTests(unittest.TestCase):
         )
 
     def test_initial_cancellation_has_no_case_side_effect(self) -> None:
-        row = read_current_cases(
-            read_fmf_cases, INPUTS / "fmfsolver_cases.csv"
-        ).iloc[0].to_dict()
+        row = (
+            read_current_cases(read_fmf_cases, INPUTS / "fmfsolver_cases.csv")
+            .iloc[0]
+            .to_dict()
+        )
         with tempfile.TemporaryDirectory() as temp_dir:
             out_dir = Path(temp_dir) / "not-created"
             row["out_dir"] = str(out_dir)
@@ -511,7 +525,9 @@ class RuntimeTests(unittest.TestCase):
                     summary = product_root / "summary.csv"
                     summary.write_bytes(b"pre-existing summary is replaced\n")
 
-                    base = read_current_cases(reader, INPUTS / filename).iloc[0].to_dict()
+                    base = (
+                        read_current_cases(reader, INPUTS / filename).iloc[0].to_dict()
+                    )
                     good_a = dict(base)
                     good_b = dict(base)
                     bad = dict(base)
@@ -520,9 +536,7 @@ class RuntimeTests(unittest.TestCase):
                         f"{product_id}_good_b",
                     )
                     bad_id = f"{product_id}_bad"
-                    for good, good_id in zip(
-                        (good_a, good_b), good_ids, strict=True
-                    ):
+                    for good, good_id in zip((good_a, good_b), good_ids, strict=True):
                         good.update(
                             case_id=good_id,
                             shielding_on=1,
@@ -557,8 +571,8 @@ class RuntimeTests(unittest.TestCase):
                                 summary,
                                 workers=2,
                                 logfn=logs.append,
-                                progress_cb=lambda done, total, sink=progress: sink.append(
-                                    (done, total)
+                                progress_cb=lambda done, total, sink=progress: (
+                                    sink.append((done, total))
                                 ),
                                 checkpoint_every_cases=1,
                                 log_snapshots=True,
@@ -606,9 +620,9 @@ class RuntimeTests(unittest.TestCase):
     def test_parallel_success_is_input_ordered_and_forwards_worker_logs(self) -> None:
         products = (
             (
-                read_current_cases(
-                    read_fmf_cases, INPUTS / "fmfsolver_cases.csv"
-                ).iloc[[0, 1]],
+                read_current_cases(read_fmf_cases, INPUTS / "fmfsolver_cases.csv").iloc[
+                    [0, 1]
+                ],
                 run_fmf_cases,
                 True,
             ),
@@ -642,9 +656,9 @@ class RuntimeTests(unittest.TestCase):
 
     def test_real_gui_adapters_read_run_write_and_return_first_artifact(self) -> None:
         rows = tuple(
-            read_current_cases(
-                read_fmf_cases, INPUTS / "fmfsolver_cases.csv"
-            ).to_dict(orient="records")
+            read_current_cases(read_fmf_cases, INPUTS / "fmfsolver_cases.csv").to_dict(
+                orient="records"
+            )
         )
         self.assertEqual(6, len(rows))
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -665,19 +679,25 @@ class RuntimeTests(unittest.TestCase):
                 )
             )
             self.assertTrue(output.exists())
-            self.assertEqual(Path(temp_dir) / "fmf_zero_plate.vtp", result.first_vtp_path)
+            self.assertEqual(
+                Path(temp_dir) / "fmf_zero_plate.vtp", result.first_vtp_path
+            )
             self.assertEqual("fmf_zero_plate", result.first_case_row["case_id"])
             self.assertEqual([(1, 1)], progress)
             self.assertTrue(any("[SAVE] final" in message for message in logs))
             self.assertEqual(
                 FMF_GUI_ADAPTERS.build_case_signatures(row).primary.digest,
-                FMF_GUI_ADAPTERS.build_case_signatures(result.first_case_row).primary.digest,
+                FMF_GUI_ADAPTERS.build_case_signatures(
+                    result.first_case_row
+                ).primary.digest,
             )
 
     def test_gui_checkpoint_value_reaches_domain_runtime(self) -> None:
-        row = read_current_cases(
-            read_fmf_cases, INPUTS / "fmfsolver_cases.csv"
-        ).iloc[0].to_dict()
+        row = (
+            read_current_cases(read_fmf_cases, INPUTS / "fmfsolver_cases.csv")
+            .iloc[0]
+            .to_dict()
+        )
         batch = object()
         with (
             mock.patch(

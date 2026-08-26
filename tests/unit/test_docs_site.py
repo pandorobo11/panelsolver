@@ -95,7 +95,9 @@ class DocumentationSiteTests(unittest.TestCase):
         ):
             with self.subTest(relative=relative):
                 self.assertTrue((self.site / relative).is_file())
-        self.assertEqual((ROOT / "LICENSE").read_bytes(), (self.site / "LICENSE").read_bytes())
+        self.assertEqual(
+            (ROOT / "LICENSE").read_bytes(), (self.site / "LICENSE").read_bytes()
+        )
         self.assertEqual(
             (ROOT / "THIRD_PARTY_NOTICES.md").read_bytes(),
             (self.site / "THIRD_PARTY_NOTICES.md").read_bytes(),
@@ -122,24 +124,32 @@ class DocumentationSiteTests(unittest.TestCase):
 
     def test_wrong_mkdocs_version_fails_before_documentation_build(self) -> None:
         versions = {"mkdocs": "1.7.0", "latex2mathml": "3.81.0"}
-        with tempfile.TemporaryDirectory() as temporary, patch(
-            "panelsolver.docs_site.distribution_version",
-            side_effect=versions.__getitem__,
-        ), self.assertRaisesRegex(
-            RuntimeError,
-            r"Offline documentation requires audited MkDocs 1\.6\.1; found 1\.7\.0\.",
+        with (
+            tempfile.TemporaryDirectory() as temporary,
+            patch(
+                "panelsolver.docs_site.distribution_version",
+                side_effect=versions.__getitem__,
+            ),
+            self.assertRaisesRegex(
+                RuntimeError,
+                r"Offline documentation requires audited MkDocs 1\.6\.1; found 1\.7\.0\.",
+            ),
         ):
             build_documentation_site(ROOT, Path(temporary) / "site")
 
     def test_wrong_latex2mathml_version_fails_before_documentation_build(self) -> None:
         versions = {"mkdocs": "1.6.1", "latex2mathml": "3.82.0"}
-        with tempfile.TemporaryDirectory() as temporary, patch(
-            "panelsolver.docs_site.distribution_version",
-            side_effect=versions.__getitem__,
-        ), self.assertRaisesRegex(
-            RuntimeError,
-            r"Offline documentation requires audited latex2mathml 3\.81\.0; "
-            r"found 3\.82\.0\.",
+        with (
+            tempfile.TemporaryDirectory() as temporary,
+            patch(
+                "panelsolver.docs_site.distribution_version",
+                side_effect=versions.__getitem__,
+            ),
+            self.assertRaisesRegex(
+                RuntimeError,
+                r"Offline documentation requires audited latex2mathml 3\.81\.0; "
+                r"found 3\.82\.0\.",
+            ),
         ):
             build_documentation_site(ROOT, Path(temporary) / "site")
 
@@ -159,7 +169,9 @@ class DocumentationSiteTests(unittest.TestCase):
                 value = value.strip(" \t\"'")
                 if not value or value.startswith(("data:", "#")):
                     continue
-                with self.subTest(stylesheet=css.relative_to(self.site), resource=value):
+                with self.subTest(
+                    stylesheet=css.relative_to(self.site), resource=value
+                ):
                     split = urlsplit(value)
                     self.assertEqual("", split.scheme)
                     self.assertEqual("", split.netloc)
@@ -173,9 +185,9 @@ class DocumentationSiteTests(unittest.TestCase):
         self.assertIn("assets/javascripts/panelsolver-docs.js", paths)
 
     def test_project_css_keeps_tables_and_block_math_responsive(self) -> None:
-        stylesheet = (
-            self.site / "assets/stylesheets/panelsolver-docs.css"
-        ).read_text(encoding="utf-8")
+        stylesheet = (self.site / "assets/stylesheets/panelsolver-docs.css").read_text(
+            encoding="utf-8"
+        )
         wrapper = _css_declarations(stylesheet, ".wy-table-responsive")
         table = _css_declarations(
             stylesheet,
@@ -192,9 +204,9 @@ class DocumentationSiteTests(unittest.TestCase):
         self.assertEqual("auto", block_math.get("overflow-x"))
 
     def test_project_javascript_releases_link_scroll_on_hash_change(self) -> None:
-        javascript = (
-            self.site / "assets/javascripts/panelsolver-docs.js"
-        ).read_text(encoding="utf-8")
+        javascript = (self.site / "assets/javascripts/panelsolver-docs.js").read_text(
+            encoding="utf-8"
+        )
         self.assertRegex(javascript, r"SphinxRtdTheme\s*&&")
         self.assertIn("SphinxRtdTheme.Navigation", javascript)
         self.assertRegex(javascript, r"\.hashChange\s*=\s*function\s*\(")

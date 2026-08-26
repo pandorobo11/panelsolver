@@ -114,9 +114,7 @@ class ModelRegistry:
         model.validate_case(case)
         loads = model.evaluate(geometry, flow_state, case)
         if not isinstance(loads, LocalLoads):
-            raise ModelOutputError(
-                f"model {model.model_id!r} must return LocalLoads"
-            )
+            raise ModelOutputError(f"model {model.model_id!r} must return LocalLoads")
         if loads.n_faces != geometry.n_faces:
             raise ModelOutputError(
                 f"model {model.model_id!r} returned {loads.n_faces} panels; "

@@ -51,9 +51,7 @@ class CliCompatibilityTests(unittest.TestCase):
                             canonical_main([domain, "--help"])
                     self.assertEqual(0, caught.exception.code)
                     delegated = stdout.getvalue()
-                    self.assertIn(
-                        f"usage: panelsolver {domain}", delegated.casefold()
-                    )
+                    self.assertIn(f"usage: panelsolver {domain}", delegated.casefold())
                     self.assertIn(description, delegated)
                     self.assertIn("Input cases file (.csv/.xlsx/.xlsm)", delegated)
                     self.assertNotIn(".xls)", delegated)
@@ -91,9 +89,7 @@ class CliCompatibilityTests(unittest.TestCase):
                     )
                     with contextlib.redirect_stderr(io.StringIO()):
                         with self.assertRaises(SystemExit) as caught:
-                            builder().parse_args(
-                                ["--input", "cases.csv", "--cases"]
-                            )
+                            builder().parse_args(["--input", "cases.csv", "--cases"])
                     self.assertEqual(2, caught.exception.code)
 
     def test_case_selector_keeps_comma_space_and_empty_contract(self) -> None:
@@ -119,36 +115,44 @@ class CliCompatibilityTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as temp_dir:
             input_path = Path(temp_dir) / "cases.csv"
-            frame = read_current_cases(
-                read_fmf_cases, INPUTS / "fmfsolver_cases.csv"
-            ).iloc[[0]].copy()
+            frame = (
+                read_current_cases(read_fmf_cases, INPUTS / "fmfsolver_cases.csv")
+                .iloc[[0]]
+                .copy()
+            )
             frame.to_csv(input_path, index=False)
             stderr = io.StringIO()
             with contextlib.redirect_stderr(stderr):
-                self.assertEqual(1, fmf_main(
-                    [
-                        "--input",
-                        str(input_path),
-                        "--output",
-                        str(input_path),
-                        "--checkpoint-every-cases",
-                        "0",
-                    ]
-                ))
+                self.assertEqual(
+                    1,
+                    fmf_main(
+                        [
+                            "--input",
+                            str(input_path),
+                            "--output",
+                            str(input_path),
+                            "--checkpoint-every-cases",
+                            "0",
+                        ]
+                    ),
+                )
             self.assertIn("Error:", stderr.getvalue())
             self.assertIn("protected path", stderr.getvalue())
             stderr = io.StringIO()
             with contextlib.redirect_stderr(stderr):
-                self.assertEqual(1, fmf_main(
-                    [
-                        "--input",
-                        str(input_path),
-                        "--cases",
-                        "missing",
-                        "--checkpoint-every-cases",
-                        "0",
-                    ]
-                ))
+                self.assertEqual(
+                    1,
+                    fmf_main(
+                        [
+                            "--input",
+                            str(input_path),
+                            "--cases",
+                            "missing",
+                            "--checkpoint-every-cases",
+                            "0",
+                        ]
+                    ),
+                )
             self.assertIn("Unknown case_id", stderr.getvalue())
 
             with self.assertRaisesRegex(ValueError, "Unknown case_id"):
@@ -179,7 +183,10 @@ class CliCompatibilityTests(unittest.TestCase):
         )
         for main, reader, filename, case_ids in products:
             frame = read_current_cases(reader, INPUTS / filename).iloc[[0, 1]].copy()
-            with self.subTest(filename=filename), tempfile.TemporaryDirectory() as temp_dir:
+            with (
+                self.subTest(filename=filename),
+                tempfile.TemporaryDirectory() as temp_dir,
+            ):
                 root = Path(temp_dir)
                 frame["out_dir"] = str(root / "artifacts")
                 frame["save_vtp_on"] = 0
@@ -214,25 +221,26 @@ class CliCompatibilityTests(unittest.TestCase):
         parser = build_fmf_parser()
         with contextlib.redirect_stderr(io.StringIO()):
             with self.assertRaises(SystemExit) as caught:
-                parser.parse_args(
-                    ["--input", "cases.csv", "--flush-every-cases", "1"]
-                )
+                parser.parse_args(["--input", "cases.csv", "--flush-every-cases", "1"])
         self.assertEqual(2, caught.exception.code)
 
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             input_path = root / "cases.csv"
             output_path = root / "results.csv"
-            frame = read_current_cases(
-                read_fmf_cases, INPUTS / "fmfsolver_cases.csv"
-            ).iloc[[0]].copy()
+            frame = (
+                read_current_cases(read_fmf_cases, INPUTS / "fmfsolver_cases.csv")
+                .iloc[[0]]
+                .copy()
+            )
             frame["out_dir"] = str(root / "artifacts")
             frame["save_vtp_on"] = 0
             frame.to_csv(input_path, index=False)
             for value in (0, 37):
-                with self.subTest(value=value), patch(
-                    "panelsolver.app.cli.run_and_write_product_cases"
-                ) as run:
+                with (
+                    self.subTest(value=value),
+                    patch("panelsolver.app.cli.run_and_write_product_cases") as run,
+                ):
                     self.assertEqual(
                         0,
                         fmf_main(

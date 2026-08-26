@@ -111,11 +111,17 @@ class RunLifecycleTests(unittest.TestCase):
             time.sleep(0.002)
         self.app.processEvents()
 
-    def make_panel(self, runner, *, rows=None, artifact_reader=None, spec_factory=fmf_solver_spec):
+    def make_panel(
+        self, runner, *, rows=None, artifact_reader=None, spec_factory=fmf_solver_spec
+    ):
         rows = (
-            {"case_id": "one", "out_dir": "outputs"},
-            {"case_id": "two", "out_dir": "outputs"},
-        ) if rows is None else tuple(rows)
+            (
+                {"case_id": "one", "out_dir": "outputs"},
+                {"case_id": "two", "out_dir": "outputs"},
+            )
+            if rows is None
+            else tuple(rows)
+        )
         adapters, signatures = _adapters(rows, runner)
         panel = CasesPanel(
             spec_factory(adapters=adapters),
@@ -194,8 +200,7 @@ class RunLifecycleTests(unittest.TestCase):
             for index in range(7)
         )
         rows = tuple(
-            {"case_id": f"case_{index}", "out_dir": "outputs"}
-            for index in range(7)
+            {"case_id": f"case_{index}", "out_dir": "outputs"} for index in range(7)
         )
 
         def runner(request):
@@ -374,19 +379,21 @@ class RunLifecycleTests(unittest.TestCase):
 
                 panel, rows, _ = self.make_panel(runner)
                 self.assertTrue(
-                    panel.start_run(
-                        rows, 1, DEFAULT_CHECKPOINT_CASES, "results.csv"
-                    )
+                    panel.start_run(rows, 1, DEFAULT_CHECKPOINT_CASES, "results.csv")
                 )
                 self.wait_until(entered.is_set)
                 panel.cancel_run()
-                self.wait_until(lambda active_panel=panel: not active_panel.is_running())
+                self.wait_until(
+                    lambda active_panel=panel: not active_panel.is_running()
+                )
                 self.assertEqual("Canceled", panel.progress.text())
                 self.assertIn("[CANCEL] Run canceled.", panel.log.toPlainText())
                 if emit_progress:
                     self.assertGreaterEqual(panel.progress.value(), 1)
 
-    def test_primary_failure_is_not_hidden_by_cancel_and_double_run_is_rejected(self) -> None:
+    def test_primary_failure_is_not_hidden_by_cancel_and_double_run_is_rejected(
+        self,
+    ) -> None:
         entered = threading.Event()
         calls = []
 
@@ -438,9 +445,7 @@ class RunLifecycleTests(unittest.TestCase):
                 window.show()
                 self.assertEqual((1480, 900), (window.width(), window.height()))
                 self.assertTrue(
-                    panel.start_run(
-                        rows, 1, DEFAULT_CHECKPOINT_CASES, "results.csv"
-                    )
+                    panel.start_run(rows, 1, DEFAULT_CHECKPOINT_CASES, "results.csv")
                 )
                 self.wait_until(entered.is_set)
 

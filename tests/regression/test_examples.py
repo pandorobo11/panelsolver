@@ -173,17 +173,20 @@ class ExampleRegressionTests(unittest.TestCase):
             with self.subTest(domain=domain):
                 rows = self.results[(domain, "components")].csv.rows
                 total = next(row for row in rows if row["scope"] == "total")
-                components = tuple(
-                    row for row in rows if row["scope"] == "component"
-                )
+                components = tuple(row for row in rows if row["scope"] == "component")
                 self.assertEqual(2, len(components))
                 self.assertEqual(
                     expected_names,
-                    tuple(Path(str(row["component_stl_path"])).name for row in components),
+                    tuple(
+                        Path(str(row["component_stl_path"])).name for row in components
+                    ),
                 )
                 np.testing.assert_allclose(
                     [total[name] for name in COEFFICIENTS],
-                    [sum(float(row[name]) for row in components) for name in COEFFICIENTS],
+                    [
+                        sum(float(row[name]) for row in components)
+                        for name in COEFFICIENTS
+                    ],
                     rtol=0.0,
                     atol=tolerance,
                 )

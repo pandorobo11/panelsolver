@@ -154,10 +154,14 @@ class PublicApiTests(unittest.TestCase):
         self.assertEqual(compatibility.warnings, result.warnings)
 
     def test_fmf_solve_is_in_memory_and_matches_sentman_pipeline(self) -> None:
-        row = read_current_cases(
-            read_fmf_cases,
-            INPUTS / "fmfsolver_cases.csv",
-        ).iloc[0].to_dict()
+        row = (
+            read_current_cases(
+                read_fmf_cases,
+                INPUTS / "fmfsolver_cases.csv",
+            )
+            .iloc[0]
+            .to_dict()
+        )
         case = FMFCase(
             **_common(row),
             speed_ratio=row["S"],
@@ -176,10 +180,14 @@ class PublicApiTests(unittest.TestCase):
         self.assert_matches_execution(result, compatibility)
 
     def test_hypersonic_solve_is_in_memory_and_matches_compatibility_path(self) -> None:
-        row = read_current_cases(
-            read_hypersonic_cases,
-            INPUTS / "newtsolver_cases.csv",
-        ).iloc[0].to_dict()
+        row = (
+            read_current_cases(
+                read_hypersonic_cases,
+                INPUTS / "newtsolver_cases.csv",
+            )
+            .iloc[0]
+            .to_dict()
+        )
         case = HypersonicCase(
             **_common(row),
             mach=row["Mach"],
@@ -199,14 +207,22 @@ class PublicApiTests(unittest.TestCase):
         self.assert_matches_execution(result, compatibility)
 
     def test_both_case_types_share_portable_case_id_validation(self) -> None:
-        fmf_row = read_current_cases(
-            read_fmf_cases,
-            INPUTS / "fmfsolver_cases.csv",
-        ).iloc[0].to_dict()
-        hypersonic_row = read_current_cases(
-            read_hypersonic_cases,
-            INPUTS / "newtsolver_cases.csv",
-        ).iloc[0].to_dict()
+        fmf_row = (
+            read_current_cases(
+                read_fmf_cases,
+                INPUTS / "fmfsolver_cases.csv",
+            )
+            .iloc[0]
+            .to_dict()
+        )
+        hypersonic_row = (
+            read_current_cases(
+                read_hypersonic_cases,
+                INPUTS / "newtsolver_cases.csv",
+            )
+            .iloc[0]
+            .to_dict()
+        )
 
         def fmf(case_id: str) -> FMFCase:
             common = _common(fmf_row)
@@ -236,8 +252,9 @@ class PublicApiTests(unittest.TestCase):
                 self.assertEqual("normal-id", factory("normal-id").case_id)
                 self.assertEqual(nfc, factory(nfd).case_id)
                 for invalid in ("", ".", "..", "a/b", "CON", "name.", "bad\x00id"):
-                    with self.subTest(invalid=repr(invalid)), self.assertRaises(
-                        ValueError
+                    with (
+                        self.subTest(invalid=repr(invalid)),
+                        self.assertRaises(ValueError),
                     ):
                         factory(invalid)
 

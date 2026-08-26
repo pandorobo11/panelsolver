@@ -153,21 +153,27 @@ class MeshLoadingTests(unittest.TestCase):
         path = FIXTURE_STL / "cube.stl"
         for policy in MeshValidationPolicy:
             clear_mesh_cache()
-            with self.subTest(policy=policy), patch(
-                "trimesh.repair.fix_normals", side_effect=RuntimeError("repair")
-            ), self.assertRaisesRegex(MeshLoadError, "Failed to repair"):
+            with (
+                self.subTest(policy=policy),
+                patch("trimesh.repair.fix_normals", side_effect=RuntimeError("repair")),
+                self.assertRaisesRegex(MeshLoadError, "Failed to repair"),
+            ):
                 load_panel_mesh([path], 1.0, validation_policy=policy)
 
     def test_all_policy_names_reject_inconsistent_winding_after_repair(self) -> None:
         path = FIXTURE_STL / "cube.stl"
         for policy in MeshValidationPolicy:
             clear_mesh_cache()
-            with self.subTest(policy=policy), patch.object(
-                trimesh.Trimesh,
-                "is_winding_consistent",
-                new_callable=PropertyMock,
-                return_value=False,
-            ), self.assertRaisesRegex(MeshLoadError, "winding remains inconsistent"):
+            with (
+                self.subTest(policy=policy),
+                patch.object(
+                    trimesh.Trimesh,
+                    "is_winding_consistent",
+                    new_callable=PropertyMock,
+                    return_value=False,
+                ),
+                self.assertRaisesRegex(MeshLoadError, "winding remains inconsistent"),
+            ):
                 load_panel_mesh([path], 1.0, validation_policy=policy)
 
     def test_rejects_nonfinite_vertices_before_repair(self) -> None:
@@ -178,9 +184,10 @@ class MeshLoadingTests(unittest.TestCase):
         )
         mesh.vertices[0, 0] = np.nan
         source = FIXTURE_STL / "cube.stl"
-        with patch(
-            "panelsolver.core.mesh_loading._load_source_mesh", return_value=mesh
-        ), patch("trimesh.repair.fix_normals") as repair:
+        with (
+            patch("panelsolver.core.mesh_loading._load_source_mesh", return_value=mesh),
+            patch("trimesh.repair.fix_normals") as repair,
+        ):
             with self.assertRaisesRegex(MeshLoadError, "non-finite vertices"):
                 load_panel_mesh([source], 1.0)
         repair.assert_not_called()

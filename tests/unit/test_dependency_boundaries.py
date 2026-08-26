@@ -17,10 +17,7 @@ def module_name(path: Path) -> str:
 
 
 def production_modules() -> dict[str, Path]:
-    return {
-        module_name(path): path
-        for path in sorted(SRC_ROOT.rglob("*.py"))
-    }
+    return {module_name(path): path for path in sorted(SRC_ROOT.rglob("*.py"))}
 
 
 def _resolved_from_base(current: str, node: ast.ImportFrom) -> str:
@@ -57,10 +54,7 @@ def internal_dependency_graph() -> dict[str, set[str]]:
     for current, path in modules.items():
         for imported in imported_names(path, current):
             parts = imported.split(".")
-            candidates = (
-                ".".join(parts[:end])
-                for end in range(len(parts), 0, -1)
-            )
+            candidates = (".".join(parts[:end]) for end in range(len(parts), 0, -1))
             target = next((item for item in candidates if item in modules), None)
             if target is not None:
                 graph[current].add(target)
@@ -124,9 +118,13 @@ class DependencyBoundaryTests(unittest.TestCase):
             sorted(node for node, edges in graph.items() if node in edges),
         )
         cycle = find_cycle(graph)
-        self.assertIsNone(cycle, "Internal dependency cycle: " + " -> ".join(cycle or ()))
+        self.assertIsNone(
+            cycle, "Internal dependency cycle: " + " -> ".join(cycle or ())
+        )
 
-    def test_core_has_no_product_environment_identity_or_environment_reads(self) -> None:
+    def test_core_has_no_product_environment_identity_or_environment_reads(
+        self,
+    ) -> None:
         prohibited = (
             "FMFSOLVER_",
             "NEWTSOLVER_",

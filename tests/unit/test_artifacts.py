@@ -26,12 +26,7 @@ from panelsolver.core import (
 )
 
 FIXTURE_STL = (
-    Path(__file__).parents[1]
-    / "fixtures"
-    / "phase1"
-    / "inputs"
-    / "stl"
-    / "plate.stl"
+    Path(__file__).parents[1] / "fixtures" / "phase1" / "inputs" / "stl" / "plate.stl"
 )
 
 
@@ -137,7 +132,9 @@ class ArtifactProjectionTests(unittest.TestCase):
             self.assertEqual([output], list(Path(temp_dir).iterdir()))
             self.assertEqual("artifact", str(pv.read(output).field_data["case_id"][0]))
 
-    def test_vtp_temp_write_failure_preserves_existing_file_and_cleans_temp(self) -> None:
+    def test_vtp_temp_write_failure_preserves_existing_file_and_cleans_temp(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             output = Path(temp_dir) / "case001.vtp"
             output.write_bytes(b"existing-vtp")
@@ -205,7 +202,9 @@ class ArtifactProjectionTests(unittest.TestCase):
         self.assertEqual("newtonian", vtp.field_data["windward_eq_used"][0])
         self.assertEqual('["plate.stl"]', vtp.field_data["stl_paths_json"][0])
         np.testing.assert_array_equal(vtp.faces, [3, 0, 1, 2, 3, 1, 3, 2])
-        np.testing.assert_array_equal(vtp.cell_data["C_face_stl"], [[1, 0, 0], [1, 0, 0]])
+        np.testing.assert_array_equal(
+            vtp.cell_data["C_face_stl"], [[1, 0, 0], [1, 0, 0]]
+        )
         self.assertFalse(vtp.cell_data["C_face_stl"].flags.writeable)
 
     def test_unicode_stl_source_writes_and_round_trips_through_vtk(self) -> None:

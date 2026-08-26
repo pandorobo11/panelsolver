@@ -30,9 +30,7 @@ class ShieldingBackendGoldenTests(unittest.TestCase):
         for backend in ("rtree", "embree"):
             if backend == "embree" and not has_embree:
                 self.skipTest("rayaccel extra is required for the Embree golden")
-            case_path = (
-                GOLDEN_ROOT / "fmfsolver" / f"fmf_shield_{backend}.json"
-            )
+            case_path = GOLDEN_ROOT / "fmfsolver" / f"fmf_shield_{backend}.json"
             case = json.loads(case_path.read_text(encoding="utf-8"))
             clear_mesh_cache()
             clear_shielding_cache()

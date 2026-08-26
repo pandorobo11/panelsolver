@@ -181,18 +181,24 @@ def ordered_success_snapshot[ResultT](
     )
 
 
-def _validated_execution_order(total: int, order: Sequence[int] | None) -> tuple[int, ...]:
+def _validated_execution_order(
+    total: int, order: Sequence[int] | None
+) -> tuple[int, ...]:
     raw = tuple(range(total)) if order is None else tuple(order)
     normalized: list[int] = []
     for value in raw:
-        if isinstance(value, (bool, np.bool_)) or not isinstance(value, (int, np.integer)):
+        if isinstance(value, (bool, np.bool_)) or not isinstance(
+            value, (int, np.integer)
+        ):
             raise SchedulerError("execution_order must contain integer indices.")
         index = int(value)
         if index < 0 or index >= total:
             raise SchedulerError("execution_order contains an out-of-range index.")
         normalized.append(index)
     if len(normalized) != total or len(set(normalized)) != total:
-        raise SchedulerError("execution_order must contain every case index exactly once.")
+        raise SchedulerError(
+            "execution_order must contain every case index exactly once."
+        )
     return tuple(normalized)
 
 
@@ -303,10 +309,7 @@ def _stable_affinity_groups(
         hints = affinity_hints[index]
         if not hints:
             return (0, 0)
-        return min(
-            (-hint.priority, identity_order[hint.identity])
-            for hint in hints
-        )
+        return min((-hint.priority, identity_order[hint.identity]) for hint in hints)
 
     grouped: dict[tuple[int, int], list[int]] = {}
     for index in indices:
@@ -503,8 +506,7 @@ def _validate_spawn_callable(run_case_fn: object) -> None:
         mp.reduction.ForkingPickler.dumps(run_case_fn)
     except Exception as exc:
         raise WorkerStartupError(
-            "Could not serialize spawn worker callable: "
-            f"{_safe_exception_text(exc)}"
+            f"Could not serialize spawn worker callable: {_safe_exception_text(exc)}"
         ) from exc
 
 
@@ -516,9 +518,11 @@ def _encode_worker_message(message: Mapping[str, object]) -> memoryview:
         message_type = str(message.get("type", "unknown"))
         worker_id = int(message.get("worker_id", -1))
         serialization_error = _safe_exception_text(exc)
-        original_error = _exception_detail(message.get("error")) if isinstance(
-            message.get("error"), Exception
-        ) else str(message.get("error") or "")
+        original_error = (
+            _exception_detail(message.get("error"))
+            if isinstance(message.get("error"), Exception)
+            else str(message.get("error") or "")
+        )
         original_traceback = str(message.get("traceback") or "")
         if original_error:
             error = (
@@ -601,8 +605,7 @@ def _worker_loop[CaseT, ResultT](
                     "type": "error",
                     "worker_id": worker_id,
                     "error": (
-                        "Could not decode worker task: "
-                        f"{_safe_exception_text(exc)}"
+                        f"Could not decode worker task: {_safe_exception_text(exc)}"
                     ),
                     "traceback": traceback.format_exc(),
                     "logs": (),
@@ -636,7 +639,7 @@ def _worker_loop[CaseT, ResultT](
                     "traceback": "",
                     "logs": (),
                     "results": (),
-                }
+                },
             )
             return
 
@@ -654,7 +657,7 @@ def _worker_loop[CaseT, ResultT](
                     "traceback": "",
                     "logs": (),
                     "results": (),
-                }
+                },
             )
             return
 
@@ -677,7 +680,7 @@ def _worker_loop[CaseT, ResultT](
                     "traceback": traceback.format_exc(),
                     "logs": tuple(logs),
                     "results": tuple(results) if include_partial_results else (),
-                }
+                },
             )
             return
 
@@ -690,7 +693,7 @@ def _worker_loop[CaseT, ResultT](
                 "canceled": bool(cancel_event.is_set()),
                 "logs": tuple(logs),
                 "results": tuple(results),
-            }
+            },
         )
 
 
@@ -943,9 +946,7 @@ def iter_case_results_parallel[CaseT, ResultT](
     bucket_owner: dict[Hashable, int | None] = {
         bucket: None for bucket in bucket_chunks
     }
-    bucket_order = {
-        bucket: position for position, bucket in enumerate(bucket_chunks)
-    }
+    bucket_order = {bucket: position for position, bucket in enumerate(bucket_chunks)}
     worker_last_bucket: list[Hashable | None] = [None] * worker_count
     worker_affinities: list[OrderedDict[Hashable, None]] = [
         OrderedDict() for _ in range(worker_count)
@@ -1069,8 +1070,7 @@ def iter_case_results_parallel[CaseT, ResultT](
                 dead_workers = [
                     (worker_id, processes[worker_id].exitcode)
                     for worker_id in range(worker_count)
-                    if worker_busy[worker_id]
-                    and not processes[worker_id].is_alive()
+                    if worker_busy[worker_id] and not processes[worker_id].is_alive()
                 ]
                 if dead_workers:
                     cancel_event.set()

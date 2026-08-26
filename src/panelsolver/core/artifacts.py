@@ -41,7 +41,9 @@ class ArtifactProjectionPolicy:
             object.__setattr__(
                 self,
                 name,
-                nonempty_text(getattr(self, name), field=f"ArtifactProjectionPolicy.{name}"),
+                nonempty_text(
+                    getattr(self, name), field=f"ArtifactProjectionPolicy.{name}"
+                ),
             )
         object.__setattr__(
             self,
@@ -119,7 +121,9 @@ def project_vtp_artifact(
 ) -> VtpProjection:
     """Project common results and policy additions into VTP semantics."""
     _validate_projection_inputs(mesh, results, policy)
-    integration = integrate_panel_loads(results.geometry, results.local_loads, results.case)
+    integration = integrate_panel_loads(
+        results.geometry, results.local_loads, results.case
+    )
     cell_data: dict[str, object] = {
         "C_face_stl": integration.face_force_coeff_stl,
         "area_m2": results.geometry.areas_m2,

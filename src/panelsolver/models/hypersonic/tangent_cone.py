@@ -35,7 +35,9 @@ def _mach_from_nondim_speed(v_prime: float, gamma: float) -> float:
     return float(math.sqrt(2.0 / denom))
 
 
-def _taylor_maccoll_rhs(theta: float, vr: float, vtheta: float, gamma: float) -> tuple[float, float]:
+def _taylor_maccoll_rhs(
+    theta: float, vr: float, vtheta: float, gamma: float
+) -> tuple[float, float]:
     """Taylor-Maccoll first-order system in nondimensional form."""
     th = max(float(theta), 1.0e-8)
     g = float(gamma)
@@ -94,7 +96,9 @@ def _integrate_taylor_maccoll_to_surface(
     vtheta = -v2_prime * math.sin(angle)
     try:
         sol = solve_ivp(
-            fun=lambda theta, y: _taylor_maccoll_rhs(theta, float(y[0]), float(y[1]), g),
+            fun=lambda theta, y: _taylor_maccoll_rhs(
+                theta, float(y[0]), float(y[1]), g
+            ),
             t_span=(beta, 1.0e-6),
             y0=np.array([vr, vtheta], dtype=float),
             method="LSODA",
@@ -115,16 +119,18 @@ def _integrate_taylor_maccoll_to_surface(
     m_c = _mach_from_nondim_speed(v_c, g)
     if not math.isfinite(m_c) or m_c <= 0.0:
         return None
-    p_c_p2 = ((1.0 + 0.5 * (g - 1.0) * m2 * m2) / (1.0 + 0.5 * (g - 1.0) * m_c * m_c)) ** (
-        g / (g - 1.0)
-    )
+    p_c_p2 = (
+        (1.0 + 0.5 * (g - 1.0) * m2 * m2) / (1.0 + 0.5 * (g - 1.0) * m_c * m_c)
+    ) ** (g / (g - 1.0))
     p_c_p1 = p2_p1 * p_c_p2
     cp_c = (2.0 / (g * M * M)) * (p_c_p1 - 1.0)
     return float(theta_c), float(max(cp_c, 0.0))
 
 
 @lru_cache(maxsize=128)
-def _tangent_cone_attached_table(Mach: float, gamma: float) -> tuple[np.ndarray, np.ndarray]:
+def _tangent_cone_attached_table(
+    Mach: float, gamma: float
+) -> tuple[np.ndarray, np.ndarray]:
     """Build attached-branch table ``theta -> Cp`` using Taylor-Maccoll integration."""
     M = float(Mach)
     g = float(gamma)
@@ -150,7 +156,9 @@ def _tangent_cone_attached_table(Mach: float, gamma: float) -> tuple[np.ndarray,
         cp_list.append(float(max(cp_c, 0.0)))
 
     if len(theta_list) < 6:
-        raise RuntimeError("Failed to build tangent-cone table from Taylor-Maccoll integration.")
+        raise RuntimeError(
+            "Failed to build tangent-cone table from Taylor-Maccoll integration."
+        )
 
     theta_raw = np.asarray(theta_list, dtype=float)
     cp_raw = np.asarray(cp_list, dtype=float)
@@ -222,7 +230,11 @@ def tangent_cone_pressure_coefficient(
     if not np.any(windward):
         return out
 
-    cap = float(cp_cap) if cp_cap is not None else modified_newtonian_cp_max(Mach=M, gamma=g)
+    cap = (
+        float(cp_cap)
+        if cp_cap is not None
+        else modified_newtonian_cp_max(Mach=M, gamma=g)
+    )
     theta_table, cp_table = _tangent_cone_attached_table(M, g)
     pchip = _tangent_cone_attached_pchip(M, g)
     theta_max = float(theta_table[-1])

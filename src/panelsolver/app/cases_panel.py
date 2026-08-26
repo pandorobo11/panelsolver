@@ -83,7 +83,9 @@ class ValidationIssuesDialog(QtWidgets.QDialog):
                 _issue_value(issue, "field"),
                 _issue_value(issue, "message"),
             )
-            lines.append("\t".join("" if value is None else str(value) for value in values))
+            lines.append(
+                "\t".join("" if value is None else str(value) for value in values)
+            )
         QtWidgets.QApplication.clipboard().setText("\n".join(lines))
 
 
@@ -279,8 +281,7 @@ class CasesPanel(QtWidgets.QWidget):
         self.case_table.setColumnCount(len(self._table_columns))
         self.case_table.setRowCount(len(self.case_rows))
         headers = [
-            "stl_name" if name == "stl_path" else name
-            for name in self._table_columns
+            "stl_name" if name == "stl_path" else name for name in self._table_columns
         ]
         self.case_table.setHorizontalHeaderLabels(headers)
         for row_index, row in enumerate(self.case_rows):
@@ -476,10 +477,7 @@ class CasesPanel(QtWidgets.QWidget):
             self.progress.setFormat("Completed with output errors")
         else:
             self.progress.setFormat("Completed")
-        if (
-            self._run_output_path is not None
-            and result.summary_csv_saved is not False
-        ):
+        if self._run_output_path is not None and result.summary_csv_saved is not False:
             self.logln(f"[OK] Wrote results: {self._run_output_path}")
         if result.output_issues:
             QtWidgets.QMessageBox.warning(

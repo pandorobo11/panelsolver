@@ -56,12 +56,8 @@ def integrated(seed: float = 1.0) -> IntegratedCoefficients:
     return IntegratedCoefficients(
         force_coeff_stl=np.array([seed, seed + 1.0, seed + 2.0]),
         force_coeff_body=np.array([-seed, seed + 1.0, -(seed + 2.0)]),
-        force_coeff_stability=np.array(
-            [-(seed + 3.0), seed + 1.0, -(seed + 4.0)]
-        ),
-        moment_area_coeff_body_m=np.array(
-            [seed + 5.0, seed + 6.0, seed + 7.0]
-        ),
+        force_coeff_stability=np.array([-(seed + 3.0), seed + 1.0, -(seed + 4.0)]),
+        moment_area_coeff_body_m=np.array([seed + 5.0, seed + 6.0, seed + 7.0]),
         moment_coeff_body=np.array([seed + 8.0, seed + 9.0, seed + 10.0]),
     )
 
@@ -230,10 +226,13 @@ class GeometryAndFlowValidationTests(unittest.TestCase):
             (np.array([1.0, 0.0, 0.0]), np.empty(0, dtype=bool), ContractValueError),
         )
         for velocity, shielded, expected_error in invalid:
-            with self.subTest(
-                velocity=velocity,
-                shielded=shielded,
-            ), self.assertRaises(expected_error):
+            with (
+                self.subTest(
+                    velocity=velocity,
+                    shielded=shielded,
+                ),
+                self.assertRaises(expected_error),
+            ):
                 PanelFlowState(velocity_hat_stl=velocity, shielded=shielded)
 
     def test_array_coercion_errors_are_field_aware_contract_errors(self) -> None:
@@ -292,9 +291,10 @@ class GeometryAndFlowValidationTests(unittest.TestCase):
             ),
         )
         for construct, field in cases:
-            with self.subTest(field=field), self.assertRaises(
-                ContractValueError
-            ) as caught:
+            with (
+                self.subTest(field=field),
+                self.assertRaises(ContractValueError) as caught,
+            ):
                 construct()
             self.assertEqual(field, caught.exception.field)
 

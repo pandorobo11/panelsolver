@@ -47,9 +47,7 @@ def _adapters(rows, signatures, *, validator=None, reader=None):
         build_case_signatures=lambda row: signatures[str(row["case_id"])],
         run_cases=lambda _request: GuiRunResult(),
         validate_output_path=(
-            validator
-            if validator is not None
-            else lambda out, _input, _rows: Path(out)
+            validator if validator is not None else lambda out, _input, _rows: Path(out)
         ),
         resolve_velocity_hat_stl=lambda _row: (1.0, 0.0, 0.0),
     )
@@ -236,7 +234,10 @@ class CasesPanelTests(unittest.TestCase):
     def test_selected_rows_keep_table_order_and_no_selection_means_all(self) -> None:
         panel, _ = self.make_panel()
         panel.load_input_file("/tmp/input.csv")
-        self.assertEqual(["case_b", "case_a"], [r["case_id"] for r in panel.selected_or_all_case_rows()])
+        self.assertEqual(
+            ["case_b", "case_a"],
+            [r["case_id"] for r in panel.selected_or_all_case_rows()],
+        )
         selection = panel.case_table.selectionModel()
         selection.select(
             panel.case_table.model().index(1, 0),
@@ -248,7 +249,9 @@ class CasesPanelTests(unittest.TestCase):
             QtCore.QItemSelectionModel.SelectionFlag.Select
             | QtCore.QItemSelectionModel.SelectionFlag.Rows,
         )
-        self.assertEqual(["case_b", "case_a"], [r["case_id"] for r in panel.selected_case_rows()])
+        self.assertEqual(
+            ["case_b", "case_a"], [r["case_id"] for r in panel.selected_case_rows()]
+        )
 
     def test_selected_case_signal_tracks_batch_export_availability(self) -> None:
         panel, _ = self.make_panel()
@@ -261,7 +264,9 @@ class CasesPanelTests(unittest.TestCase):
         panel.case_table.clearSelection()
         self.assertEqual((), emitted[-1])
 
-    def test_automatic_artifact_requires_current_signature_and_clears_otherwise(self) -> None:
+    def test_automatic_artifact_requires_current_signature_and_clears_otherwise(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory(prefix="phase6_cases_") as directory:
             rows = _rows(directory)
             panel, signatures = self.make_panel(rows)
@@ -289,7 +294,9 @@ class CasesPanelTests(unittest.TestCase):
             panel.case_table.clearSelection()
             self.assertGreaterEqual(len(cleared), 2)
 
-    def test_automatic_artifact_resolves_relative_out_dir_from_input_parent(self) -> None:
+    def test_automatic_artifact_resolves_relative_out_dir_from_input_parent(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory(prefix="gui_relative_vtp_") as directory:
             root = Path(directory)
             rows = _rows("outputs")
@@ -322,11 +329,15 @@ class CasesPanelTests(unittest.TestCase):
             panel.case_table.selectRow(0)
             self.assertTrue(cleared)
             Path(directory, "case_b.vtp").write_text("fixture", encoding="utf-8")
-            panel._artifact_reader = lambda _path: (_ for _ in ()).throw(ValueError("broken"))
+            panel._artifact_reader = lambda _path: (_ for _ in ()).throw(
+                ValueError("broken")
+            )
             panel.on_case_selection_changed()
             self.assertIn("Failed to read VTP", panel.log.toPlainText())
 
-    def test_vtp_suppression_uses_case_and_path_and_resets_with_input_state(self) -> None:
+    def test_vtp_suppression_uses_case_and_path_and_resets_with_input_state(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory(prefix="gui_vtp_validity_") as directory:
             root = Path(directory)
             first_dir = root / "first"
@@ -381,16 +392,16 @@ class CasesPanelTests(unittest.TestCase):
             panel.clear_loaded_cases()
             self.assertEqual(set(), panel._invalid_current_vtp_artifacts)
 
-    def test_validation_failure_clears_prior_state_and_shows_structured_issues(self) -> None:
+    def test_validation_failure_clears_prior_state_and_shows_structured_issues(
+        self,
+    ) -> None:
         panel, _ = self.make_panel()
         panel.load_input_file("/tmp/good.csv")
 
         def read_invalid(_path):
             raise StructuredError()
 
-        failing_spec = fmf_solver_spec(
-            adapters=_adapters((), {}, reader=read_invalid)
-        )
+        failing_spec = fmf_solver_spec(adapters=_adapters((), {}, reader=read_invalid))
         panel.spec = failing_spec
         with patch.object(ValidationIssuesDialog, "exec", return_value=0) as show:
             self.assertFalse(panel.load_input_file("/tmp/bad.csv"))
@@ -420,7 +431,9 @@ class CasesPanelTests(unittest.TestCase):
                 captured["dir_existed"] = Path(default).parent.exists()
                 return (str(Path(directory) / "result.csv"), "CSV")
 
-            with patch.object(QtWidgets.QFileDialog, "getSaveFileName", side_effect=choose):
+            with patch.object(
+                QtWidgets.QFileDialog, "getSaveFileName", side_effect=choose
+            ):
                 panel.request_run()
             self.wait_until(lambda: not panel.is_running())
             self.assertEqual(
@@ -428,7 +441,9 @@ class CasesPanelTests(unittest.TestCase):
                 captured["default"],
             )
             self.assertTrue(captured["dir_existed"])
-            self.assertEqual(["case_b", "case_a"], [r["case_id"] for r in emitted[0][0]])
+            self.assertEqual(
+                ["case_b", "case_a"], [r["case_id"] for r in emitted[0][0]]
+            )
             self.assertEqual(1, emitted[0][1])
             self.assertEqual(37, emitted[0][2])
             self.assertEqual(Path(directory) / "result.csv", emitted[0][3])
@@ -451,7 +466,9 @@ class CasesPanelTests(unittest.TestCase):
         panel.load_input_file("/tmp/cases.csv")
         emitted: list[tuple] = []
         panel.run_requested.connect(lambda *args: emitted.append(args))
-        with patch.object(QtWidgets.QFileDialog, "getSaveFileName", return_value=("", "")):
+        with patch.object(
+            QtWidgets.QFileDialog, "getSaveFileName", return_value=("", "")
+        ):
             panel.request_run()
         with (
             patch.object(

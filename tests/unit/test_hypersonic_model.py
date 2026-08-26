@@ -276,9 +276,7 @@ class HypersonicModelTests(unittest.TestCase):
             )
 
     def test_ray_shield_and_leeward_shield_remain_distinct(self) -> None:
-        geometry = _geometry(
-            np.array([[-1.0, 0.0, 0.0], [1.0, 0.0, 0.0]])
-        )
+        geometry = _geometry(np.array([[-1.0, 0.0, 0.0], [1.0, 0.0, 0.0]]))
         flow = PanelFlowState(
             np.array([1.0, 0.0, 0.0]),
             np.array([True, False]),
@@ -321,8 +319,9 @@ class HypersonicModelTests(unittest.TestCase):
             _case(windward_eq="newtonian;;tangent_cone"),
         )
         for invalid_case in invalid:
-            with self.subTest(payload=dict(invalid_case.payload)), self.assertRaises(
-                HypersonicCaseError
+            with (
+                self.subTest(payload=dict(invalid_case.payload)),
+                self.assertRaises(HypersonicCaseError),
             ):
                 model.validate_case(invalid_case)
 

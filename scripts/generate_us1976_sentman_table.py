@@ -47,7 +47,9 @@ def _load_reference() -> ModuleType:
     return module
 
 
-def _published_row(pdas: ModuleType, altitude_km: int) -> tuple[int, float, float, float]:
+def _published_row(
+    pdas: ModuleType, altitude_km: int
+) -> tuple[int, float, float, float]:
     altitude = float(altitude_km)
     if altitude > 86.0:
         temperature_ratio = pdas.KineticTemperature(altitude) / pdas.TZERO

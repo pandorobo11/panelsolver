@@ -31,8 +31,7 @@ class LegacyRollbackProbeTests(unittest.TestCase):
                 with self.subTest(legacy_cli=legacy_cli):
                     output = root / f"results-{legacy_cli}.csv"
                     output.write_text(
-                        "case_id,CA,CY,CN,Cl,Cm,Cn,CD,CL\n"
-                        "case-a,0,0,0,0,0,0,0,0\n",
+                        "case_id,CA,CY,CN,Cl,Cm,Cn,CD,CL\ncase-a,0,0,0,0,0,0,0,0\n",
                         encoding="utf-8",
                     )
                     with patch("scripts.probe_legacy_rollback._run") as run:
@@ -72,10 +71,14 @@ class LegacyRollbackProbeTests(unittest.TestCase):
 
     def test_archive_refuses_a_commit_other_than_the_exact_pin(self) -> None:
         spec = LEGACY_SPECS[0]
-        with tempfile.TemporaryDirectory() as temp_dir, patch(
-            "scripts.probe_legacy_rollback._git",
-            return_value="0" * 40,
-        ), self.assertRaisesRegex(RuntimeError, "commit mismatch"):
+        with (
+            tempfile.TemporaryDirectory() as temp_dir,
+            patch(
+                "scripts.probe_legacy_rollback._git",
+                return_value="0" * 40,
+            ),
+            self.assertRaisesRegex(RuntimeError, "commit mismatch"),
+        ):
             _archive_commit(
                 Path(temp_dir),
                 spec,

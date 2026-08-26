@@ -45,9 +45,7 @@ class ResolvedAttitude:
         scaled = velocity / scale
         scaled_norm = math.hypot(*(float(component) for component in scaled))
         normalized = scaled / scaled_norm
-        normalized_norm = math.hypot(
-            *(float(component) for component in normalized)
-        )
+        normalized_norm = math.hypot(*(float(component) for component in normalized))
         if not np.isfinite(normalized).all() or not math.isclose(
             normalized_norm,
             1.0,
@@ -154,15 +152,11 @@ def resolve_attitude(
         beta_sin_rad = math.radians(beta_in)
         tangent_alpha = math.tan(alpha_rad)
         sin_beta = math.sin(beta_sin_rad)
-        x_squared = (1.0 - sin_beta * sin_beta) / (
-            1.0 + tangent_alpha * tangent_alpha
-        )
+        x_squared = (1.0 - sin_beta * sin_beta) / (1.0 + tangent_alpha * tangent_alpha)
         if x_squared < -1.0e-14:
             raise ValueError("Inconsistent alpha_t/beta_s inputs.")
         x_squared = max(x_squared, 0.0)
-        x_value = (1.0 if math.cos(alpha_rad) >= 0.0 else -1.0) * math.sqrt(
-            x_squared
-        )
+        x_value = (1.0 if math.cos(alpha_rad) >= 0.0 else -1.0) * math.sqrt(x_squared)
         velocity = _unit(
             (x_value, -sin_beta, tangent_alpha * x_value),
             message="Invalid beta-sin inputs leading to zero direction.",

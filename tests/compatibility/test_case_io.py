@@ -48,7 +48,9 @@ def _write_case_table(frame: pd.DataFrame, path: Path) -> None:
 
 
 class CaseReaderCompatibilityTests(unittest.TestCase):
-    def test_removed_npz_field_is_absent_from_current_schemas_and_defaults(self) -> None:
+    def test_removed_npz_field_is_absent_from_current_schemas_and_defaults(
+        self,
+    ) -> None:
         for module in (fmf_case_module, newt_case_module):
             with self.subTest(product=module.__name__):
                 self.assertNotIn("save_npz_on", module.INPUT_COLUMN_ORDER)
@@ -65,7 +67,9 @@ class CaseReaderCompatibilityTests(unittest.TestCase):
                 base = read_current_cases(reader, _INPUTS / filename).iloc[[0]].copy()
                 for value in (0, 1):
                     for suffix in (".csv", ".xlsx", ".xlsm"):
-                        with self.subTest(filename=filename, value=value, suffix=suffix):
+                        with self.subTest(
+                            filename=filename, value=value, suffix=suffix
+                        ):
                             frame = base.copy()
                             frame["save_npz_on"] = value
                             path = root / f"{Path(filename).stem}-{value}{suffix}"
@@ -73,7 +77,9 @@ class CaseReaderCompatibilityTests(unittest.TestCase):
                             with self.assertRaises(Exception) as caught:
                                 reader(path)
                             error = caught.exception
-                            self.assertEqual("InputValidationError", type(error).__name__)
+                            self.assertEqual(
+                                "InputValidationError", type(error).__name__
+                            )
                             self.assertEqual(
                                 ["save_npz_on"],
                                 [issue.field for issue in error.issues],
@@ -148,9 +154,7 @@ class CaseReaderCompatibilityTests(unittest.TestCase):
             ("fmfsolver", read_fmf_cases),
             ("newtsolver", read_newt_cases),
         ):
-            contract = json.loads(
-                (_GOLDEN / product / "contracts.json").read_text()
-            )
+            contract = json.loads((_GOLDEN / product / "contracts.json").read_text())
             for filename, expected in contract["invalid_inputs"].items():
                 with self.subTest(product=product, filename=filename):
                     with self.assertRaises(Exception) as caught:
@@ -158,7 +162,9 @@ class CaseReaderCompatibilityTests(unittest.TestCase):
                     error = caught.exception
                     self.assertEqual("InputValidationError", type(error).__name__)
                     if filename == "fmf_beta_tan_90.csv":
-                        self.assertEqual(["alpha_deg"], [issue.field for issue in error.issues])
+                        self.assertEqual(
+                            ["alpha_deg"], [issue.field for issue in error.issues]
+                        )
                         continue
                     self.assertEqual(expected["message"], str(error))
                     self.assertEqual(
@@ -173,14 +179,15 @@ class CaseReaderCompatibilityTests(unittest.TestCase):
         ):
             frame = read_current_cases(reader, _INPUTS / filename)
             for suffix in (".xlsx", ".xlsm"):
-                with self.subTest(filename=filename, suffix=suffix), patch(
-                    "panelsolver.app.case_io.pd.read_excel",
-                    return_value=frame.copy(),
-                ) as read_excel:
+                with (
+                    self.subTest(filename=filename, suffix=suffix),
+                    patch(
+                        "panelsolver.app.case_io.pd.read_excel",
+                        return_value=frame.copy(),
+                    ) as read_excel,
+                ):
                     reader(f"cases{suffix}")
-                    self.assertEqual(
-                        "openpyxl", read_excel.call_args.kwargs["engine"]
-                    )
+                    self.assertEqual("openpyxl", read_excel.call_args.kwargs["engine"])
                     self.assertEqual(
                         {"case_id": "string"}, read_excel.call_args.kwargs["dtype"]
                     )
@@ -215,8 +222,7 @@ class CaseReaderCompatibilityTests(unittest.TestCase):
                 source.loc[source.index[0], "stl_path"] = "geometry/plate.stl"
                 source.loc[source.index[0], "out_dir"] = "outputs"
                 paths = tuple(
-                    temp / f"cases{suffix}"
-                    for suffix in (".csv", ".xlsx", ".xlsm")
+                    temp / f"cases{suffix}" for suffix in (".csv", ".xlsx", ".xlsm")
                 )
                 for path in paths:
                     _write_case_table(source, path)
@@ -247,9 +253,10 @@ class CaseReaderCompatibilityTests(unittest.TestCase):
                 uppercase = Path(temp_dir) / f"{stem}.XLS"
                 shutil.copyfile(_INPUTS / f"{stem}.xls", uppercase)
                 for path in (_INPUTS / f"{stem}.xls", uppercase):
-                    with self.subTest(stem=stem, suffix=path.suffix), patch(
-                        "panelsolver.app.case_io.pd.read_excel"
-                    ) as read_excel:
+                    with (
+                        self.subTest(stem=stem, suffix=path.suffix),
+                        patch("panelsolver.app.case_io.pd.read_excel") as read_excel,
+                    ):
                         with self.assertRaises(ValueError) as caught:
                             reader(path)
                     read_excel.assert_not_called()
@@ -297,7 +304,8 @@ class CaseReaderCompatibilityTests(unittest.TestCase):
                             "InputValidationError", type(caught.exception).__name__
                         )
                         self.assertIn(
-                            "case_id", [issue.field for issue in caught.exception.issues]
+                            "case_id",
+                            [issue.field for issue in caught.exception.issues],
                         )
 
                 duplicates = pd.concat([base, base], ignore_index=True)
@@ -380,37 +388,49 @@ class CaseReaderCompatibilityTests(unittest.TestCase):
 
 
 class ProductCaseAdapterTests(unittest.TestCase):
-    def test_rows_bind_independent_models_mesh_policies_and_environment_prefixes(self) -> None:
-        fmf_row = read_current_cases(
-            read_fmf_cases, _INPUTS / "fmfsolver_cases.csv"
-        ).iloc[0].to_dict()
-        newt_row = read_current_cases(
-            read_newt_cases, _INPUTS / "newtsolver_cases.csv"
-        ).iloc[0].to_dict()
+    def test_rows_bind_independent_models_mesh_policies_and_environment_prefixes(
+        self,
+    ) -> None:
+        fmf_row = (
+            read_current_cases(read_fmf_cases, _INPUTS / "fmfsolver_cases.csv")
+            .iloc[0]
+            .to_dict()
+        )
+        newt_row = (
+            read_current_cases(read_newt_cases, _INPUTS / "newtsolver_cases.csv")
+            .iloc[0]
+            .to_dict()
+        )
         fmf = adapt_fmf_row(fmf_row)
         newt = adapt_newt_row(newt_row)
         self.assertEqual("sentman", fmf.request.model_case.model_id)
-        self.assertEqual(MeshValidationPolicy.STRICT, fmf.request.mesh_validation_policy)
+        self.assertEqual(
+            MeshValidationPolicy.STRICT, fmf.request.mesh_validation_policy
+        )
         self.assertFalse(hasattr(fmf.request.shielding, "legacy_env_prefix"))
         self.assertEqual("hypersonic", newt.request.model_case.model_id)
-        self.assertEqual(MeshValidationPolicy.STRICT, newt.request.mesh_validation_policy)
+        self.assertEqual(
+            MeshValidationPolicy.STRICT, newt.request.mesh_validation_policy
+        )
         self.assertFalse(hasattr(newt.request.shielding, "legacy_env_prefix"))
         self.assertEqual("1.3.8", FMFSOLVER_COMPATIBILITY_VERSION)
         self.assertEqual("1.0.3", NEWTSOLVER_COMPATIBILITY_VERSION)
 
-    def test_prepared_primary_signature_is_exactly_the_execution_signature(self) -> None:
+    def test_prepared_primary_signature_is_exactly_the_execution_signature(
+        self,
+    ) -> None:
         cases = (
             (
-                read_current_cases(
-                    read_fmf_cases, _INPUTS / "fmfsolver_cases.csv"
-                ).iloc[0].to_dict(),
+                read_current_cases(read_fmf_cases, _INPUTS / "fmfsolver_cases.csv")
+                .iloc[0]
+                .to_dict(),
                 adapt_fmf_row,
                 build_fmf_signatures,
             ),
             (
-                read_current_cases(
-                    read_newt_cases, _INPUTS / "newtsolver_cases.csv"
-                ).iloc[0].to_dict(),
+                read_current_cases(read_newt_cases, _INPUTS / "newtsolver_cases.csv")
+                .iloc[0]
+                .to_dict(),
                 adapt_newt_row,
                 build_newt_signatures,
             ),
@@ -442,9 +462,9 @@ class ProductCaseAdapterTests(unittest.TestCase):
 
     def test_beta_sin_endpoint_does_not_escape_beta_tan_principal_domain(self) -> None:
         frame = read_current_cases(read_newt_cases, _INPUTS / "newtsolver_cases.csv")
-        beta_sin = frame.loc[
-            frame["case_id"] == "newt_beta_sin_boundary"
-        ].iloc[0].to_dict()
+        beta_sin = (
+            frame.loc[frame["case_id"] == "newt_beta_sin_boundary"].iloc[0].to_dict()
+        )
         beta_tan = dict(beta_sin)
         beta_tan["attitude_input"] = "beta_tan"
 

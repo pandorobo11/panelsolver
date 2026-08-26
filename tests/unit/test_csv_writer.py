@@ -70,7 +70,10 @@ class CsvWriterTests(unittest.TestCase):
 
     def test_both_products_flush_fsync_replace_and_preserve_semantic_csv(self) -> None:
         for adapter in (fmf_csv, newt_csv):
-            with self.subTest(adapter=adapter.__name__), tempfile.TemporaryDirectory() as td:
+            with (
+                self.subTest(adapter=adapter.__name__),
+                tempfile.TemporaryDirectory() as td,
+            ):
                 output = Path(td) / "results.csv"
                 with (
                     patch("panelsolver.app.csv_writer.os.fsync") as fsync,
@@ -95,7 +98,10 @@ class CsvWriterTests(unittest.TestCase):
 
     def test_atomic_writer_emits_bom_and_round_trips_unicode(self) -> None:
         for adapter in (fmf_csv, newt_csv):
-            with self.subTest(adapter=adapter.__name__), tempfile.TemporaryDirectory() as td:
+            with (
+                self.subTest(adapter=adapter.__name__),
+                tempfile.TemporaryDirectory() as td,
+            ):
                 output = Path(td) / "日本語-results.csv"
                 adapter.write_csv(output, unicode_projection())
                 self.assertEqual(b"\xef\xbb\xbf", output.read_bytes()[:3])
@@ -176,9 +182,10 @@ class CsvWriterTests(unittest.TestCase):
                     second_stl_path,
                     out_dir / "case_a.vtp",
                 ):
-                    with self.subTest(
-                        adapter=adapter.__name__, protected=protected
-                    ), self.assertRaisesRegex(ValueError, "protected path"):
+                    with (
+                        self.subTest(adapter=adapter.__name__, protected=protected),
+                        self.assertRaisesRegex(ValueError, "protected path"),
+                    ):
                         adapter.validate_results_output_path(
                             protected,
                             input_path,
@@ -201,10 +208,13 @@ class CsvWriterTests(unittest.TestCase):
                     input_path.parent / "geometry" / "mesh.stl",
                     input_path.parent / "outputs" / "case_a.vtp",
                 ):
-                    with self.subTest(
-                        adapter=adapter.__name__,
-                        protected=protected,
-                    ), self.assertRaisesRegex(ValueError, "protected path"):
+                    with (
+                        self.subTest(
+                            adapter=adapter.__name__,
+                            protected=protected,
+                        ),
+                        self.assertRaisesRegex(ValueError, "protected path"),
+                    ):
                         adapter.validate_results_output_path(
                             protected,
                             input_path,
@@ -222,34 +232,40 @@ class CsvWriterTests(unittest.TestCase):
                 (
                     root / "outputs" / "CASE_A.VTP",
                     input_path,
-                    ({
-                        "case_id": "case_a",
-                        "stl_path": str(root / "mesh.stl"),
-                        "out_dir": str(root / "outputs"),
-                        "save_vtp_on": 0,
-                    },),
+                    (
+                        {
+                            "case_id": "case_a",
+                            "stl_path": str(root / "mesh.stl"),
+                            "out_dir": str(root / "outputs"),
+                            "save_vtp_on": 0,
+                        },
+                    ),
                     "planned VTP",
                     root / "outputs" / "case_a.vtp",
                 ),
                 (
                     root / "CASES.CSV",
                     input_path,
-                    ({
-                        "case_id": "case_a",
-                        "stl_path": str(root / "mesh.stl"),
-                        "out_dir": str(root / "outputs"),
-                    },),
+                    (
+                        {
+                            "case_id": "case_a",
+                            "stl_path": str(root / "mesh.stl"),
+                            "out_dir": str(root / "outputs"),
+                        },
+                    ),
                     "input",
                     input_path,
                 ),
                 (
                     root / f"mesh-{nfd}.stl",
                     input_path,
-                    ({
-                        "case_id": "case_a",
-                        "stl_path": str(stl_nfc),
-                        "out_dir": str(root / "outputs"),
-                    },),
+                    (
+                        {
+                            "case_id": "case_a",
+                            "stl_path": str(stl_nfc),
+                            "out_dir": str(root / "outputs"),
+                        },
+                    ),
                     "STL",
                     stl_nfc,
                 ),
@@ -322,9 +338,12 @@ class CsvWriterTests(unittest.TestCase):
                 },
             )
             for adapter in (fmf_csv, newt_csv):
-                with self.subTest(adapter=adapter.__name__), self.assertRaisesRegex(
-                    ValueError,
-                    "planned VTP",
+                with (
+                    self.subTest(adapter=adapter.__name__),
+                    self.assertRaisesRegex(
+                        ValueError,
+                        "planned VTP",
+                    ),
                 ):
                     adapter.validate_results_output_path(
                         real_out / "case_a.vtp",
@@ -355,11 +374,14 @@ class CsvWriterTests(unittest.TestCase):
                     },
                 )
                 for adapter in (fmf_csv, newt_csv):
-                    with self.subTest(
-                        adapter=adapter.__name__,
-                        first_out=first_out,
-                        second_out=second_out,
-                    ), self.assertRaisesRegex(ValueError, "planned VTP"):
+                    with (
+                        self.subTest(
+                            adapter=adapter.__name__,
+                            first_out=first_out,
+                            second_out=second_out,
+                        ),
+                        self.assertRaisesRegex(ValueError, "planned VTP"),
+                    ):
                         adapter.validate_results_output_path(
                             root / "summary.csv",
                             root / "cases.csv",
@@ -411,9 +433,10 @@ class CsvWriterTests(unittest.TestCase):
             )
             for validator in validators:
                 for protected in (input_path, stl_path, artifact):
-                    with self.subTest(
-                        validator=validator, protected=protected
-                    ), self.assertRaisesRegex(ValueError, "protected path"):
+                    with (
+                        self.subTest(validator=validator, protected=protected),
+                        self.assertRaisesRegex(ValueError, "protected path"),
+                    ):
                         validator(protected, input_path, rows)
 
 

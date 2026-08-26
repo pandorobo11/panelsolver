@@ -75,7 +75,7 @@ def _flat_plate_reference(
     inverse_s_sqrt_pi = inverse_s / math.sqrt(math.pi)
     normal = sin_alpha * cos_alpha * erf_term
     normal += sin_alpha * inverse_s_sqrt_pi * exponential
-    axial_incident = (cos_alpha * cos_alpha + 0.5 * inverse_s_squared)
+    axial_incident = cos_alpha * cos_alpha + 0.5 * inverse_s_squared
     axial_incident *= erf_term
     axial_incident += cos_alpha * inverse_s_sqrt_pi * exponential
     axial_reflected = math.sqrt(wall_to_translation) * (
@@ -102,10 +102,7 @@ class SentmanModelTests(unittest.TestCase):
 
         self.assertNotEqual(0.0, loads.traction_coeff_stl[0, 2])
         self.assertTrue(
-            np.any(
-                np.cross(loads.traction_coeff_stl, geometry.normals_out_stl)
-                != 0.0
-            )
+            np.any(np.cross(loads.traction_coeff_stl, geometry.normals_out_stl) != 0.0)
         )
         self.assertEqual(
             (
@@ -126,8 +123,10 @@ class SentmanModelTests(unittest.TestCase):
             rtol=0.0,
             atol=0.0,
         )
-        tangent = velocity - np.dot(velocity, geometry.normals_out_stl[0]) * (
-            geometry.normals_out_stl[0]
+        tangent = (
+            velocity
+            - np.dot(velocity, geometry.normals_out_stl[0])
+            * (geometry.normals_out_stl[0])
         )
         tangent_hat = tangent / np.linalg.norm(tangent)
         self.assertAlmostEqual(
@@ -137,9 +136,7 @@ class SentmanModelTests(unittest.TestCase):
         )
 
     def test_normal_incidence_has_zero_tangential_traction_scalar(self) -> None:
-        geometry = _geometry(
-            np.array([[-1.0, 0.0, 0.0], [1.0, 0.0, 0.0]])
-        )
+        geometry = _geometry(np.array([[-1.0, 0.0, 0.0], [1.0, 0.0, 0.0]]))
         loads = SentmanModel().evaluate(
             geometry,
             PanelFlowState(
@@ -160,9 +157,7 @@ class SentmanModelTests(unittest.TestCase):
             for alpha_deg in (0.0, 10.0, 30.0, 60.0):
                 alpha_rad = math.radians(alpha_deg)
                 flow = PanelFlowState(
-                    np.array(
-                        [math.cos(alpha_rad), 0.0, math.sin(alpha_rad)]
-                    ),
+                    np.array([math.cos(alpha_rad), 0.0, math.sin(alpha_rad)]),
                     np.array([False]),
                 )
                 loads = model.evaluate(
@@ -191,13 +186,15 @@ class SentmanModelTests(unittest.TestCase):
                     1.0,
                 )
                 with self.subTest(S=speed_ratio, alpha_deg=alpha_deg):
-                    self.assertAlmostEqual(integrated.total.CN, expected_cn, delta=1e-10)
-                    self.assertAlmostEqual(integrated.total.CA, expected_ca, delta=1e-10)
+                    self.assertAlmostEqual(
+                        integrated.total.CN, expected_cn, delta=1e-10
+                    )
+                    self.assertAlmostEqual(
+                        integrated.total.CA, expected_ca, delta=1e-10
+                    )
 
     def test_shielded_faces_are_exact_zero_but_keep_geometry_scalar(self) -> None:
-        geometry = _geometry(
-            np.array([[-1.0, 0.0, 0.0], [-1.0, 0.0, 0.0]])
-        )
+        geometry = _geometry(np.array([[-1.0, 0.0, 0.0], [-1.0, 0.0, 0.0]]))
         flow = PanelFlowState(
             np.array([1.0, 0.0, 0.0]),
             np.array([False, True]),
@@ -235,9 +232,7 @@ class SentmanModelTests(unittest.TestCase):
         minimum_altitude, maximum_altitude = altitude_range_km()
         for altitude_km in (minimum_altitude, 100.0, maximum_altitude):
             with self.subTest(altitude_km=altitude_km):
-                resolved = resolve_sentman_case(
-                    _mode_b_case(Altitude_km=altitude_km)
-                )
+                resolved = resolve_sentman_case(_mode_b_case(Altitude_km=altitude_km))
                 self.assertTrue(math.isfinite(resolved.speed_ratio))
                 self.assertGreater(resolved.speed_ratio, 0.0)
 
@@ -258,9 +253,7 @@ class SentmanModelTests(unittest.TestCase):
             1.0e308,
             sys.float_info.max,
         ):
-            with self.subTest(mach=mach), self.assertRaises(
-                SentmanCaseError
-            ) as caught:
+            with self.subTest(mach=mach), self.assertRaises(SentmanCaseError) as caught:
                 resolve_sentman_case(_mode_b_case(Mach=mach))
             self.assertEqual(
                 "ResolvedSentmanCase.speed_ratio",
@@ -311,8 +304,9 @@ class SentmanModelTests(unittest.TestCase):
             ),
         )
         for case in invalid:
-            with self.subTest(payload=dict(case.payload)), self.assertRaises(
-                SentmanCaseError
+            with (
+                self.subTest(payload=dict(case.payload)),
+                self.assertRaises(SentmanCaseError),
             ):
                 SentmanModel().validate_case(case)
 
@@ -365,16 +359,18 @@ class SentmanModelTests(unittest.TestCase):
             ("shielded", [[True], [False, True]], "shielded"),
         )
         for name, value, field in invalid:
-            with self.subTest(name=name, value=value), self.assertRaises(
-                SentmanCaseError
-            ) as caught:
+            with (
+                self.subTest(name=name, value=value),
+                self.assertRaises(SentmanCaseError) as caught,
+            ):
                 sentman_dC_dA_vectors(**{**valid, name: value})
             self.assertEqual(field, caught.exception.field)
 
         for aref in (0.0, np.nan, np.inf):
-            with self.subTest(scalar_aref=aref), self.assertRaises(
-                SentmanCaseError
-            ) as caught:
+            with (
+                self.subTest(scalar_aref=aref),
+                self.assertRaises(SentmanCaseError) as caught,
+            ):
                 sentman_dC_dA_vector(
                     velocity,
                     normals[0],
@@ -386,7 +382,9 @@ class SentmanModelTests(unittest.TestCase):
                 )
             self.assertEqual("Aref", caught.exception.field)
 
-    def test_public_helpers_preserve_valid_shielded_and_unshielded_results(self) -> None:
+    def test_public_helpers_preserve_valid_shielded_and_unshielded_results(
+        self,
+    ) -> None:
         velocity = np.array([1.0, 0.0, 0.0])
         normals = np.array([[-1.0, 0.0, 0.0], [0.0, 0.0, 1.0]])
         all_shielded = sentman_dC_dA_vectors(

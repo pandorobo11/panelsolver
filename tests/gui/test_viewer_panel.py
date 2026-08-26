@@ -91,7 +91,9 @@ class FakePoly:
         self.field_data = {} if field_data is None else field_data
         first = next(iter(self.cell_data.values()))
         self.n_cells = len(first) if indices is None else len(indices)
-        self._indices = np.arange(len(first)) if indices is None else np.asarray(indices)
+        self._indices = (
+            np.arange(len(first)) if indices is None else np.asarray(indices)
+        )
 
     def extract_cells(self, indices):
         selected = self._indices[np.asarray(indices)]
@@ -396,9 +398,7 @@ class ViewerPanelTests(unittest.TestCase):
 
     def test_single_directory_failure_does_not_capture(self) -> None:
         viewer, plotter = self.make_viewer(
-            make_directory=lambda _path: (_ for _ in ()).throw(
-                OSError("read only")
-            ),
+            make_directory=lambda _path: (_ for _ in ()).throw(OSError("read only")),
         )
         messages = []
         viewer.log_message.connect(messages.append)
@@ -533,9 +533,7 @@ class ViewerPanelTests(unittest.TestCase):
     def test_batch_standard_directory_failure_skips_dialog_and_capture(self) -> None:
         row = {"case_id": "one", "out_dir": "/artifacts"}
         viewer, plotter = self.make_viewer(
-            make_directory=lambda _path: (_ for _ in ()).throw(
-                OSError("read only")
-            )
+            make_directory=lambda _path: (_ for _ in ()).throw(OSError("read only"))
         )
         messages = []
         viewer.log_message.connect(messages.append)
@@ -578,7 +576,9 @@ class ViewerPanelTests(unittest.TestCase):
             self.assertEqual(1, len(seen))
             assert_paths_equivalent(self, root / "outputs" / "one.vtp", seen[0])
 
-    def test_batch_mixed_output_default_is_input_based_and_order_independent(self) -> None:
+    def test_batch_mixed_output_default_is_input_based_and_order_independent(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory(prefix="mixed_images_") as directory:
             root = Path(directory)
             input_path = root / "project" / "cases.csv"
@@ -696,9 +696,7 @@ class ViewerPanelTests(unittest.TestCase):
             ) as manual_dialog:
                 viewer.save_view_image()
             self.assertEqual(
-                manual_vtp.parent
-                / "images"
-                / "sample__normal_traction_coeff.png",
+                manual_vtp.parent / "images" / "sample__normal_traction_coeff.png",
                 Path(manual_dialog.call_args.args[2]),
             )
             viewer.load_vtp(

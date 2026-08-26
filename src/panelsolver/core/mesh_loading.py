@@ -82,7 +82,9 @@ def _source_snapshot(path_value: str | Path) -> _MeshSourceSnapshot:
         path = Path(path_value).expanduser().resolve()
         content = path.read_bytes()
     except (OSError, TypeError, ValueError) as exc:
-        raise MeshLoadError(f"Unable to read mesh source {path_value!r}: {exc}") from exc
+        raise MeshLoadError(
+            f"Unable to read mesh source {path_value!r}: {exc}"
+        ) from exc
     fingerprint = MeshSourceFingerprint(
         str(path),
         len(content),
@@ -193,7 +195,9 @@ def _load_uncached(
         if len(source_meshes) > 1
         else source_meshes[0]
     )
-    combined.vertices = np.asarray(combined.vertices, dtype=np.float64) * scale_m_per_unit
+    combined.vertices = (
+        np.asarray(combined.vertices, dtype=np.float64) * scale_m_per_unit
+    )
     vertices = np.asarray(combined.vertices, dtype=np.float64)
     if not np.isfinite(vertices).all():
         raise MeshLoadError(
@@ -203,9 +207,7 @@ def _load_uncached(
     with np.errstate(over="ignore", invalid="ignore"):
         edges_a = vertices[faces[:, 1]] - vertices[faces[:, 0]]
         edges_b = vertices[faces[:, 2]] - vertices[faces[:, 0]]
-        pre_repair_areas = 0.5 * np.linalg.norm(
-            np.cross(edges_a, edges_b), axis=1
-        )
+        pre_repair_areas = 0.5 * np.linalg.norm(np.cross(edges_a, edges_b), axis=1)
     invalid_pre_repair = ~np.isfinite(pre_repair_areas) | (pre_repair_areas <= 0.0)
     if np.any(invalid_pre_repair):
         count = int(np.count_nonzero(invalid_pre_repair))
@@ -226,7 +228,9 @@ def _load_uncached(
             "Mesh face winding remains inconsistent after normal repair."
         )
     if not combined.is_watertight:
-        warning_messages.append("[WARN] Mesh is not watertight (trimesh). Continuing anyway.")
+        warning_messages.append(
+            "[WARN] Mesh is not watertight (trimesh). Continuing anyway."
+        )
 
     areas = np.asarray(combined.area_faces, dtype=np.float64)
     invalid_areas = ~np.isfinite(areas) | (areas <= 0.0)
@@ -254,7 +258,9 @@ def _load_uncached(
             ),
         )
     except PanelSolverError as exc:
-        raise MeshLoadError(f"Mesh geometry violates the shared contract: {exc}") from exc
+        raise MeshLoadError(
+            f"Mesh geometry violates the shared contract: {exc}"
+        ) from exc
 
     return LoadedPanelMesh(
         mesh=panel_mesh,

@@ -156,9 +156,9 @@ def _run_parsed_cli(policy: ProductCliPolicy, args: argparse.Namespace) -> int:
 
     case_ids = parse_case_ids(args.cases)
     if case_ids is not None:
-        selected = frame[
-            frame["case_id"].astype(str).isin(case_ids)
-        ].reset_index(drop=True)
+        selected = frame[frame["case_id"].astype(str).isin(case_ids)].reset_index(
+            drop=True
+        )
         missing = sorted(case_ids - set(frame["case_id"].astype(str)))
         if missing:
             raise ValueError(f"Unknown case_id values: {missing}")

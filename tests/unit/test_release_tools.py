@@ -56,17 +56,12 @@ class ReleaseToolTests(unittest.TestCase):
             *_DOCS_THEME_ASSET_LICENSES,
             "LICENSE",
             "THIRD_PARTY_NOTICES.md",
-            *(
-                f"THIRD_PARTY_LICENSES/{name}"
-                for name in _DOCS_REQUIRED_LICENSES
-            ),
+            *(f"THIRD_PARTY_LICENSES/{name}" for name in _DOCS_REQUIRED_LICENSES),
         }
         payloads = {
             **self.theme_asset_payloads(),
             "LICENSE": b"project license\n",
-            "THIRD_PARTY_NOTICES.md": (
-                "\n".join(_DOCS_NOTICE_MARKERS) + "\n"
-            ).encode(),
+            "THIRD_PARTY_NOTICES.md": ("\n".join(_DOCS_NOTICE_MARKERS) + "\n").encode(),
             **{
                 f"THIRD_PARTY_LICENSES/{name}": (
                     f"third-party license: {name}\n"
@@ -80,8 +75,7 @@ class ReleaseToolTests(unittest.TestCase):
         repository = root / "repository"
         repository.mkdir()
         (repository / "pyproject.toml").write_text(
-            "[project]\nname = \"panelsolver\"\n"
-            f'version = "{version}"\n',
+            f'[project]\nname = "panelsolver"\nversion = "{version}"\n',
             encoding="utf-8",
         )
         (repository / "uv.lock").write_text(
@@ -244,9 +238,7 @@ class ReleaseToolTests(unittest.TestCase):
                     "examples/hypersonic/basic.csv",
                 }
                 if include_pdas:
-                    required_sources.add(
-                        "tools/reference/pdas/bigtables_v1_5.py"
-                    )
+                    required_sources.add("tools/reference/pdas/bigtables_v1_5.py")
                 for documentation_root in ("docs", "devdocs"):
                     required_sources.update(
                         path.relative_to(repository).as_posix()
@@ -256,9 +248,7 @@ class ReleaseToolTests(unittest.TestCase):
                 if omitted_documentation is not None:
                     required_sources.remove(omitted_documentation)
                 for relative in sorted(required_sources):
-                    source_info = tarfile.TarInfo(
-                        f"panelsolver-{version}/{relative}"
-                    )
+                    source_info = tarfile.TarInfo(f"panelsolver-{version}/{relative}")
                     archive.addfile(source_info, io.BytesIO())
         return sdist
 
@@ -311,7 +301,9 @@ class ReleaseToolTests(unittest.TestCase):
             self.assertEqual(sdist, select_built_sdist(repository))
             verify_wheel_contents(repository, wheel)
 
-    def test_distribution_selection_rejects_duplicates_and_identity_mismatch(self) -> None:
+    def test_distribution_selection_rejects_duplicates_and_identity_mismatch(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             repository = self.make_repository(Path(temp_dir))
             self.write_wheel(repository)
@@ -329,8 +321,12 @@ class ReleaseToolTests(unittest.TestCase):
                     repository = self.make_repository(Path(temp_dir))
                     writer = self.write_wheel if kind == "wheel" else self.write_sdist
                     writer(repository, name=name, version=version)
-                    selector = select_built_wheel if kind == "wheel" else select_built_sdist
-                    with self.assertRaisesRegex(RuntimeError, f"{kind} (name|version) mismatch"):
+                    selector = (
+                        select_built_wheel if kind == "wheel" else select_built_sdist
+                    )
+                    with self.assertRaisesRegex(
+                        RuntimeError, f"{kind} (name|version) mismatch"
+                    ):
                         selector(repository)
 
     def test_release_archives_are_deterministic_and_current_only(self) -> None:
@@ -377,8 +373,7 @@ class ReleaseToolTests(unittest.TestCase):
                 )
                 for license_name in _DOCS_REQUIRED_LICENSES:
                     docs_license = (
-                        "panelsolver/_docs_site/THIRD_PARTY_LICENSES/"
-                        f"{license_name}"
+                        f"panelsolver/_docs_site/THIRD_PARTY_LICENSES/{license_name}"
                     )
                     metadata_license = next(
                         name
@@ -415,7 +410,10 @@ class ReleaseToolTests(unittest.TestCase):
             "solvers/hypersonic-overview.html",
         )
         for relative in forbidden_docs:
-            with self.subTest(relative=relative), tempfile.TemporaryDirectory() as temp_dir:
+            with (
+                self.subTest(relative=relative),
+                tempfile.TemporaryDirectory() as temp_dir,
+            ):
                 repository = self.make_repository(Path(temp_dir))
                 wheel = self.write_wheel(repository)
                 with zipfile.ZipFile(wheel, "a") as archive:
@@ -453,9 +451,7 @@ class ReleaseToolTests(unittest.TestCase):
         payloads = {
             **self.theme_asset_payloads(),
             "LICENSE": b"project license\n",
-            "THIRD_PARTY_NOTICES.md": (
-                "\n".join(_DOCS_NOTICE_MARKERS) + "\n"
-            ).encode(),
+            "THIRD_PARTY_NOTICES.md": ("\n".join(_DOCS_NOTICE_MARKERS) + "\n").encode(),
         }
         with self.assertRaisesRegex(RuntimeError, "missing third-party license"):
             verify_offline_documentation_licenses(members, payloads.__getitem__)
@@ -468,9 +464,12 @@ class ReleaseToolTests(unittest.TestCase):
         members, payloads = self.audited_docs_payloads()
         verify_offline_documentation_licenses(members, payloads.__getitem__)
         for missing in _DOCS_THEME_ASSET_LICENSES:
-            with self.subTest(missing=missing), self.assertRaisesRegex(
-                RuntimeError,
-                "missing audited theme assets",
+            with (
+                self.subTest(missing=missing),
+                self.assertRaisesRegex(
+                    RuntimeError,
+                    "missing audited theme assets",
+                ),
             ):
                 verify_offline_documentation_licenses(
                     members - {missing},
@@ -543,9 +542,12 @@ class ReleaseToolTests(unittest.TestCase):
             members, payloads = self.audited_docs_payloads()
             members.add(unknown)
             payloads[unknown] = b"unknown\n"
-            with self.subTest(unknown=unknown), self.assertRaisesRegex(
-                RuntimeError,
-                "unaudited theme assets",
+            with (
+                self.subTest(unknown=unknown),
+                self.assertRaisesRegex(
+                    RuntimeError,
+                    "unaudited theme assets",
+                ),
             ):
                 verify_offline_documentation_licenses(
                     members,
@@ -580,9 +582,12 @@ class ReleaseToolTests(unittest.TestCase):
             members, payloads = self.audited_docs_payloads()
             members.add(old_asset)
             payloads[old_asset] = b"obsolete theme asset\n"
-            with self.subTest(old_asset=old_asset), self.assertRaisesRegex(
-                RuntimeError,
-                "unaudited theme assets",
+            with (
+                self.subTest(old_asset=old_asset),
+                self.assertRaisesRegex(
+                    RuntimeError,
+                    "unaudited theme assets",
+                ),
             ):
                 verify_offline_documentation_licenses(
                     members,
@@ -608,9 +613,7 @@ class ReleaseToolTests(unittest.TestCase):
             incomplete = self.write_sdist(
                 repository,
                 complete=True,
-                omitted_documentation=(
-                    "devdocs/data/us1976-generation-and-audit.md"
-                ),
+                omitted_documentation=("devdocs/data/us1976-generation-and-audit.md"),
             )
             with self.assertRaisesRegex(
                 RuntimeError,
@@ -650,7 +653,9 @@ class ReleaseToolTests(unittest.TestCase):
             )
             self.assertEqual(
                 manifest,
-                verify_dist_manifest(repository, manifest_path, expected_commit="a" * 40),
+                verify_dist_manifest(
+                    repository, manifest_path, expected_commit="a" * 40
+                ),
             )
 
     def test_manifest_rejects_missing_extra_hash_and_commit_tampering(self) -> None:
@@ -679,7 +684,9 @@ class ReleaseToolTests(unittest.TestCase):
                         expected_commit="c" * 40 if case == "commit" else None,
                     )
 
-    def test_manifest_rejects_order_duplicate_kind_filename_and_unexpected_filename(self) -> None:
+    def test_manifest_rejects_order_duplicate_kind_filename_and_unexpected_filename(
+        self,
+    ) -> None:
         for case in ("order", "kind", "duplicate_filename", "unexpected_filename"):
             with self.subTest(case=case), tempfile.TemporaryDirectory() as temp_dir:
                 repository = self.make_repository(Path(temp_dir))
@@ -687,7 +694,9 @@ class ReleaseToolTests(unittest.TestCase):
                 manifest_path = repository / "dist" / "manifest.json"
                 create_dist_manifest(repository, "d" * 40, manifest_path)
                 if case == "order":
-                    self.mutate_manifest(manifest_path, lambda value: value["artifacts"].reverse())
+                    self.mutate_manifest(
+                        manifest_path, lambda value: value["artifacts"].reverse()
+                    )
                     expected = "kinds/order mismatch"
                 elif case == "kind":
                     self.mutate_manifest(
@@ -696,9 +705,14 @@ class ReleaseToolTests(unittest.TestCase):
                     )
                     expected = "kinds/order mismatch"
                 elif case == "duplicate_filename":
+
                     def duplicate(value):
-                        value["artifacts"][3]["filename"] = value["artifacts"][2]["filename"]
-                        value["artifacts"][3]["sha256"] = value["artifacts"][2]["sha256"]
+                        value["artifacts"][3]["filename"] = value["artifacts"][2][
+                            "filename"
+                        ]
+                        value["artifacts"][3]["sha256"] = value["artifacts"][2][
+                            "sha256"
+                        ]
 
                     self.mutate_manifest(manifest_path, duplicate)
                     expected = "filenames must be unique"
@@ -808,7 +822,9 @@ class ReleaseToolTests(unittest.TestCase):
                 verify_release_tag(repository, "v2.3.4")
         with tempfile.TemporaryDirectory() as temp_dir:
             repository = self.make_git_repository(Path(temp_dir))
-            self.commit_file(repository, "CHANGELOG.md", "# Changelog\n\n## [Unreleased]\n")
+            self.commit_file(
+                repository, "CHANGELOG.md", "# Changelog\n\n## [Unreleased]\n"
+            )
             self.git(repository, "tag", "-a", "v2.3.4", "-m", "no notes")
             with self.assertRaisesRegex(RuntimeError, "no release section"):
                 verify_release_tag(repository, "v2.3.4")
@@ -821,21 +837,28 @@ class ReleaseToolTests(unittest.TestCase):
         ):
             verify_github_release_state()
         for counts in ((1, 0), (0, 1)):
-            with self.subTest(counts=counts), patch(
-                "scripts.release_tools._github_api_json",
-                side_effect=[
-                    canonical,
-                    {"total_count": counts[0]},
-                    {"total_count": counts[1]},
-                ],
-            ), self.assertRaisesRegex(RuntimeError, "zero open"):
+            with (
+                self.subTest(counts=counts),
+                patch(
+                    "scripts.release_tools._github_api_json",
+                    side_effect=[
+                        canonical,
+                        {"total_count": counts[0]},
+                        {"total_count": counts[1]},
+                    ],
+                ),
+                self.assertRaisesRegex(RuntimeError, "zero open"),
+            ):
                 verify_github_release_state()
         with self.assertRaisesRegex(RuntimeError, "repository mismatch"):
             verify_github_release_state("pandorobo11/panel-solvers")
-        with patch(
-            "scripts.release_tools._github_api_json",
-            return_value={"full_name": "someone/panelsolver"},
-        ), self.assertRaisesRegex(RuntimeError, "canonical repository"):
+        with (
+            patch(
+                "scripts.release_tools._github_api_json",
+                return_value={"full_name": "someone/panelsolver"},
+            ),
+            self.assertRaisesRegex(RuntimeError, "canonical repository"),
+        ):
             verify_github_release_state()
 
     def test_github_gate_accepts_only_latest_exact_main_push_ci(self) -> None:
@@ -910,9 +933,7 @@ class ReleaseToolTests(unittest.TestCase):
                 "workflow_runs": [run(number=30, conclusion="failure")]
             },
             "main push running": {
-                "workflow_runs": [
-                    run(number=30, status="in_progress", conclusion=None)
-                ]
+                "workflow_runs": [run(number=30, status="in_progress", conclusion=None)]
             },
             "no matching main push": {"workflow_runs": []},
             "pull request success only": {
@@ -922,15 +943,19 @@ class ReleaseToolTests(unittest.TestCase):
             },
         }
         for case, runs in failing_cases.items():
-            with self.subTest(case=case), patch(
-                "scripts.release_tools._github_api_json",
-                side_effect=[
-                    canonical,
-                    {"total_count": 0},
-                    {"total_count": 0},
-                    runs,
-                ],
-            ), self.assertRaisesRegex(RuntimeError, "exact-main CI"):
+            with (
+                self.subTest(case=case),
+                patch(
+                    "scripts.release_tools._github_api_json",
+                    side_effect=[
+                        canonical,
+                        {"total_count": 0},
+                        {"total_count": 0},
+                        runs,
+                    ],
+                ),
+                self.assertRaisesRegex(RuntimeError, "exact-main CI"),
+            ):
                 verify_github_release_state(expected_commit=commit)
 
     def test_github_api_errors_and_invalid_json_fail_closed(self) -> None:
@@ -949,10 +974,14 @@ class ReleaseToolTests(unittest.TestCase):
             ),
         )
         for result in failures:
-            with self.subTest(stderr=result.stderr), patch(
-                "scripts.release_tools.subprocess.run",
-                return_value=result,
-            ), self.assertRaisesRegex(RuntimeError, "GitHub API request failed"):
+            with (
+                self.subTest(stderr=result.stderr),
+                patch(
+                    "scripts.release_tools.subprocess.run",
+                    return_value=result,
+                ),
+                self.assertRaisesRegex(RuntimeError, "GitHub API request failed"),
+            ):
                 _github_api_json("repos/pandorobo11/panelsolver")
 
         invalid_json = subprocess.CompletedProcess(
@@ -961,10 +990,13 @@ class ReleaseToolTests(unittest.TestCase):
             stdout="not-json",
             stderr="",
         )
-        with patch(
-            "scripts.release_tools.subprocess.run",
-            return_value=invalid_json,
-        ), self.assertRaisesRegex(RuntimeError, "invalid JSON"):
+        with (
+            patch(
+                "scripts.release_tools.subprocess.run",
+                return_value=invalid_json,
+            ),
+            self.assertRaisesRegex(RuntimeError, "invalid JSON"),
+        ):
             _github_api_json("repos/pandorobo11/panelsolver")
 
     def test_smoke_environment_is_fixed_and_removes_product_tuning(self) -> None:
@@ -976,10 +1008,13 @@ class ReleaseToolTests(unittest.TestCase):
             "NEWTSOLVER_SHIELD_CACHE_MAX": "4",
             "UNRELATED_SETTING": "preserved",
         }
-        with tempfile.TemporaryDirectory() as temp_dir, patch.dict(
-            os.environ,
-            inherited,
-            clear=True,
+        with (
+            tempfile.TemporaryDirectory() as temp_dir,
+            patch.dict(
+                os.environ,
+                inherited,
+                clear=True,
+            ),
         ):
             environment = _smoke_subprocess_environment(Path(temp_dir))
             self.assertEqual("80", environment["COLUMNS"])

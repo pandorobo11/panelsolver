@@ -117,8 +117,7 @@ class ExampleLibrary:
             if target.exists():
                 if not target.is_file() or target.read_bytes() != payload:
                     raise ExampleResourceError(
-                        "Example copy would overwrite an existing file: "
-                        f"{target}"
+                        f"Example copy would overwrite an existing file: {target}"
                     )
                 continue
             payloads.append((target, payload))

@@ -162,9 +162,9 @@ class LegacyRuntimeGoldenTests(unittest.TestCase):
                         ]
                         legacy_normal = expected["vtp"]["cell_data"].pop("Cp_n")
                         if product == "fmfsolver":
-                            expected["vtp"]["cell_data"][
-                                "normal_traction_coeff"
-                            ] = legacy_normal
+                            expected["vtp"]["cell_data"]["normal_traction_coeff"] = (
+                                legacy_normal
+                            )
                             normals = _npz_array(golden, "normals_out_stl")
                             velocity = _npz_array(golden, "Vhat_stl")
                             normal_dot_velocity = normals @ velocity
@@ -178,12 +178,13 @@ class LegacyRuntimeGoldenTests(unittest.TestCase):
                             tangent_hat[defined] = (
                                 tangent[defined] / tangent_norm[defined, None]
                             )
-                            traction = _record_array(
-                                golden["vtp"]["cell_data"]["C_face_stl"]
-                            ) * (
-                                golden["normalized_input"]["Aref_m2"]
-                                / _npz_array(golden, "areas_m2")
-                            )[:, None]
+                            traction = (
+                                _record_array(golden["vtp"]["cell_data"]["C_face_stl"])
+                                * (
+                                    golden["normalized_input"]["Aref_m2"]
+                                    / _npz_array(golden, "areas_m2")
+                                )[:, None]
+                            )
                             expected["vtp"]["cell_data"][
                                 "tangential_traction_coeff"
                             ] = _array_record(

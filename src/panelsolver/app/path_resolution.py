@@ -104,9 +104,13 @@ def resolve_manual_vtp_image_path(
 ) -> Path:
     """Return the standard image path for an unmatched manually opened VTP."""
     source = Path(vtp_path).expanduser()
-    return source.parent / DEFAULT_IMAGE_DIRECTORY / default_image_filename(
-        source.stem,
-        scalar_name,
+    return (
+        source.parent
+        / DEFAULT_IMAGE_DIRECTORY
+        / default_image_filename(
+            source.stem,
+            scalar_name,
+        )
     )
 
 

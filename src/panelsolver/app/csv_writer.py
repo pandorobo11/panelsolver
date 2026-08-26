@@ -145,9 +145,7 @@ def _validate_no_output_collisions(candidates: Iterable[_CollisionPath]) -> None
         resolved = _resolved_path(candidate.path)
         key = _portable_key_from_resolved(resolved)
         portable_match = (
-            portable_seen.get(key)
-            if candidate.is_output
-            else portable_outputs.get(key)
+            portable_seen.get(key) if candidate.is_output else portable_outputs.get(key)
         )
         if portable_match is not None:
             _raise_output_collision(portable_match, candidate)
@@ -233,10 +231,7 @@ def validate_csv_output_path(
     _validate_no_output_collisions(
         (
             _CollisionPath(out, "output", is_output=True),
-            *(
-                _CollisionPath(Path(path), "protected")
-                for path in protected_paths
-            ),
+            *(_CollisionPath(Path(path), "protected") for path in protected_paths),
         )
     )
     return _resolved_path(out)
@@ -279,7 +274,9 @@ def validate_summary_output_path(
 def _write_projection(handle: TextIO, projection: CsvProjection) -> None:
     writer = csv.writer(handle, lineterminator="\n")
     writer.writerow(projection.columns)
-    writer.writerows(tuple(row[name] for name in projection.columns) for row in projection.rows)
+    writer.writerows(
+        tuple(row[name] for name in projection.columns) for row in projection.rows
+    )
 
 
 __all__ = (

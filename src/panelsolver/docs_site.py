@@ -97,9 +97,11 @@ def build_documentation_site(project_root: Path, site_dir: Path) -> None:
 
 
 def _verify_audited_build_dependencies() -> None:
-    for distribution, display_name, expected in (
-        _AUDITED_DOCUMENTATION_BUILD_DEPENDENCIES
-    ):
+    for (
+        distribution,
+        display_name,
+        expected,
+    ) in _AUDITED_DOCUMENTATION_BUILD_DEPENDENCIES:
         try:
             actual = distribution_version(distribution)
         except PackageNotFoundError:

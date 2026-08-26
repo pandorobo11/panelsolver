@@ -37,15 +37,11 @@ def sample_at_altitude_km(altitude_km: float) -> dict[str, float]:
         raise ValueError(f"Altitude_km must be finite, got {altitude!r}")
     minimum, maximum = altitude_range_km()
     if altitude < minimum or altitude > maximum:
-        raise ValueError(
-            f"Altitude_km={altitude} out of range [{minimum}, {maximum}]"
-        )
+        raise ValueError(f"Altitude_km={altitude} out of range [{minimum}, {maximum}]")
     return {
         "T_K": float(np.interp(altitude, _ALTITUDE_KM, _TEMPERATURE_K)),
         "c_ms": float(np.interp(altitude, _ALTITUDE_KM, _SPEED_OF_SOUND_MS)),
-        "Vmean_ms": float(
-            np.interp(altitude, _ALTITUDE_KM, _MEAN_MOLECULAR_SPEED_MS)
-        ),
+        "Vmean_ms": float(np.interp(altitude, _ALTITUDE_KM, _MEAN_MOLECULAR_SPEED_MS)),
     }
 
 
@@ -57,9 +53,7 @@ def mean_to_most_probable_speed(mean_speed_ms: float) -> float:
 def load_us1976_tables() -> tuple[pd.DataFrame, pd.DataFrame]:
     """Return defensive legacy-shaped views of the single canonical table."""
     return (
-        pd.DataFrame(
-            {"Z": _ALTITUDE_KM, "T": _TEMPERATURE_K, "c": _SPEED_OF_SOUND_MS}
-        ),
+        pd.DataFrame({"Z": _ALTITUDE_KM, "T": _TEMPERATURE_K, "c": _SPEED_OF_SOUND_MS}),
         pd.DataFrame({"Z": _ALTITUDE_KM, "V": _MEAN_MOLECULAR_SPEED_MS}),
     )
 

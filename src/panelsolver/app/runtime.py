@@ -401,8 +401,7 @@ def run_product_cases(
         if snapshot_cb is None:
             return
         if not force and (
-            checkpoint_every <= 0
-            or completed_since_snapshot < checkpoint_every
+            checkpoint_every <= 0 or completed_since_snapshot < checkpoint_every
         ):
             return
         available = tuple(case for case in completed if case is not None)
@@ -431,10 +430,10 @@ def run_product_cases(
         for run_index, index in enumerate(order, start=1):
             if cancel_cb is not None and cancel_cb():
                 raise SchedulerCancelled("Canceled by user at a case boundary.")
-            logger(
-                f"[RUN] ({run_index}/{total}) case_id={cases[index].row['case_id']}"
+            logger(f"[RUN] ({run_index}/{total}) case_id={cases[index].row['case_id']}")
+            accept(
+                index, _run_prepared_product_case(cases[index], logger), parallel=False
             )
-            accept(index, _run_prepared_product_case(cases[index], logger), parallel=False)
     else:
         logger(f"[RUN] Parallel execution with {workers} worker(s)")
         requests = tuple(case.adapted.request for case in cases)
@@ -468,9 +467,7 @@ def run_product_cases(
         raise RuntimeError("case execution completed without every result")
     snapshot(True)
     projection = combine_csv_projections(tuple(case.csv for case in ordered))
-    output_issues = tuple(
-        issue for case in ordered for issue in case.output_issues
-    )
+    output_issues = tuple(issue for case in ordered for issue in case.output_issues)
     return ProductBatchRunResult(ordered, projection, output_issues)
 
 

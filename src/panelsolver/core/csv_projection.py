@@ -313,9 +313,7 @@ def _column_tuple(value: object, *, field: str) -> tuple[str, ...]:
         raise ContractValueError(field, "must be an iterable of column names") from exc
     if not columns:
         raise ContractValueError(field, "must contain at least one column")
-    validated = tuple(
-        nonempty_text(name, field=f"{field} item") for name in columns
-    )
+    validated = tuple(nonempty_text(name, field=f"{field} item") for name in columns)
     if len(validated) != len(set(validated)):
         raise ContractValueError(field, "must contain unique column names")
     return validated

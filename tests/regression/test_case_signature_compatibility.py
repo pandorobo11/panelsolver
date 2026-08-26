@@ -82,8 +82,7 @@ class CaseSignatureCompatibilityTests(unittest.TestCase):
                 golden = json.loads(path.read_text(encoding="utf-8"))
                 normalized = golden["normalized_input"]
                 source_names = [
-                    Path(value).name
-                    for value in str(normalized["stl_path"]).split(";")
+                    Path(value).name for value in str(normalized["stl_path"]).split(";")
                 ]
                 clear_mesh_cache()
                 loaded = load_panel_mesh(

@@ -88,9 +88,7 @@ class SignatureTests(unittest.TestCase):
             _signature(shielding_config=_shielding(requested_backend="rtree")),
             _signature(shielding_config=_shielding(effective_backend="rtree")),
             _signature(shielding_config=_shielding(batch_size=8)),
-            _signature(
-                shielding_config=_shielding(algorithm_version="shielding-v2")
-            ),
+            _signature(shielding_config=_shielding(algorithm_version="shielding-v2")),
         )
         self.assertTrue(all(item.digest != baseline for item in variants))
 

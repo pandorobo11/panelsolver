@@ -136,7 +136,9 @@ def _load_json(path: Path) -> Any:
 
 def _write_json(path: Path, value: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    text = json.dumps(value, indent=2, sort_keys=True, ensure_ascii=True, allow_nan=False)
+    text = json.dumps(
+        value, indent=2, sort_keys=True, ensure_ascii=True, allow_nan=False
+    )
     path.write_text(text + "\n", encoding="utf-8")
 
 
@@ -189,7 +191,9 @@ def _verify_legacy_checkout(repo: Path, source: Mapping[str, Any]) -> None:
         )
     tracked_status = _git_text(repo, "status", "--porcelain", "--untracked-files=no")
     if tracked_status:
-        raise Phase1GenerationError(f"Legacy checkout has tracked modifications: {repo}")
+        raise Phase1GenerationError(
+            f"Legacy checkout has tracked modifications: {repo}"
+        )
     actual_remote = _normalized_remote(_git_text(repo, "remote", "get-url", "origin"))
     expected_remote = _normalized_remote(str(source["repository"]))
     if actual_remote != expected_remote:
@@ -276,7 +280,9 @@ def _run_legacy_suite(python: Path, *, source: Path, scratch: Path) -> dict[str,
     transcript = completed.stdout + completed.stderr
     match = re.search(r"Ran (\d+) tests? in ", transcript)
     if match is None or not re.search(r"\nOK(?:\n|$)", transcript):
-        raise Phase1GenerationError("Legacy unittest transcript has no successful summary")
+        raise Phase1GenerationError(
+            "Legacy unittest transcript has no successful summary"
+        )
     return {
         "command": "python -m unittest discover -s tests -p test_*.py -v",
         "tests_run": int(match.group(1)),
@@ -334,7 +340,9 @@ def _capture_environment(
     _run(command, cwd=source, env=env)
 
 
-def _source_case_index(manifest: Mapping[str, Any], solver: str) -> dict[str, dict[str, Any]]:
+def _source_case_index(
+    manifest: Mapping[str, Any], solver: str
+) -> dict[str, dict[str, Any]]:
     return {str(item["case_id"]): dict(item) for item in manifest["cases"][solver]}
 
 
@@ -417,9 +425,13 @@ def _build_solver_capture(
     cases: dict[str, dict[str, Any]] = {}
     for case_id, capture in accel_capture["cases"].items():
         case_metadata = expected_cases[case_id]
-        total_rows = [row for row in capture["csv"]["rows"] if row.get("scope") == "total"]
+        total_rows = [
+            row for row in capture["csv"]["rows"] if row.get("scope") == "total"
+        ]
         if len(total_rows) != 1:
-            raise Phase1GenerationError(f"{solver}/{case_id} has no unique total CSV row")
+            raise Phase1GenerationError(
+                f"{solver}/{case_id} has no unique total CSV row"
+            )
         effective = total_rows[0]["ray_backend_used"]
         requested = capture["normalized_input"]["ray_backend"]
         expected_requested = case_metadata["requested_backend"]
@@ -494,11 +506,13 @@ def _tolerance_for_path(
     profile = manifest["tolerance_profiles"][profile_name]
     tolerance_name = profile["default"]
     semantic_path = "/".join(path)
-    if "normalized_input" in path or (
-        "csv" in path and "rows" in path and path[-1] in CSV_INPUT_COLUMNS
-    ) or any(
-        fnmatchcase(semantic_path, str(pattern))
-        for pattern in manifest.get("exact_numeric_paths", [])
+    if (
+        "normalized_input" in path
+        or ("csv" in path and "rows" in path and path[-1] in CSV_INPUT_COLUMNS)
+        or any(
+            fnmatchcase(semantic_path, str(pattern))
+            for pattern in manifest.get("exact_numeric_paths", [])
+        )
     ):
         tolerance_name = profile["discrete"]
     elif any(part in GEOMETRY_QUANTITY_NAMES for part in path):
@@ -532,23 +546,22 @@ def _compare_values(
 ) -> list[str]:
     display = "/".join(path) or "<root>"
     if isinstance(expected, bool) or isinstance(actual, bool):
-        return [] if expected is actual else [f"{display}: expected {expected!r}, got {actual!r}"]
+        return (
+            []
+            if expected is actual
+            else [f"{display}: expected {expected!r}, got {actual!r}"]
+        )
     if isinstance(expected, (int, float)) and isinstance(actual, (int, float)):
         if isinstance(expected, int):
             if isinstance(actual, int) and expected == actual:
                 return []
-            return [
-                f"{display}: expected exact integer {expected}, got {actual!r}"
-            ]
+            return [f"{display}: expected exact integer {expected}, got {actual!r}"]
         atol, rtol = _tolerance_for_path(manifest, profile_name, path)
         expected_float = float(expected)
         actual_float = float(actual)
         if not math.isfinite(expected_float) or not math.isfinite(actual_float):
             return [
-                (
-                    f"{display}: non-finite numeric comparison "
-                    f"{expected!r} != {actual!r}"
-                )
+                (f"{display}: non-finite numeric comparison {expected!r} != {actual!r}")
             ]
         difference = abs(actual_float - expected_float)
         limit = atol + rtol * abs(expected_float)
@@ -588,7 +601,9 @@ def _compare_values(
         if len(expected) != len(actual):
             return [f"{display}: length {len(expected)} != {len(actual)}"]
         differences = []
-        for index, (expected_item, actual_item) in enumerate(zip(expected, actual, strict=True)):
+        for index, (expected_item, actual_item) in enumerate(
+            zip(expected, actual, strict=True)
+        ):
             differences.extend(
                 _compare_values(
                     expected_item,
@@ -599,7 +614,11 @@ def _compare_values(
                 )
             )
         return differences
-    return [] if expected == actual else [f"{display}: expected {expected!r}, got {actual!r}"]
+    return (
+        []
+        if expected == actual
+        else [f"{display}: expected {expected!r}, got {actual!r}"]
+    )
 
 
 def compare_capture_trees(
@@ -608,8 +627,12 @@ def compare_capture_trees(
     manifest: Mapping[str, Any],
 ) -> list[str]:
     """Return semantic differences between two generated golden directories."""
-    expected_files = {path.relative_to(expected_root) for path in expected_root.rglob("*.json")}
-    actual_files = {path.relative_to(actual_root) for path in actual_root.rglob("*.json")}
+    expected_files = {
+        path.relative_to(expected_root) for path in expected_root.rglob("*.json")
+    }
+    actual_files = {
+        path.relative_to(actual_root) for path in actual_root.rglob("*.json")
+    }
     differences: list[str] = []
     if expected_files != actual_files:
         differences.append(
@@ -663,7 +686,10 @@ def _generate(args: argparse.Namespace) -> int:
                 for difference in differences[:200]:
                     print(f"- {difference}", file=sys.stderr)
                 if len(differences) > 200:
-                    print(f"- ... {len(differences) - 200} more differences", file=sys.stderr)
+                    print(
+                        f"- ... {len(differences) - 200} more differences",
+                        file=sys.stderr,
+                    )
                 return 1
             print(f"Phase 1 semantic goldens match: {output_root}")
             return 0
@@ -684,9 +710,7 @@ def _normalize_string(value: str, *, key: str, roots: Mapping[Path, str]) -> str
             raise Phase1GenerationError(
                 f"stl_paths_json is not a string list: {value!r}"
             )
-        normalized_paths = [
-            _normalize_rooted_text(path, roots=roots) for path in paths
-        ]
+        normalized_paths = [_normalize_rooted_text(path, roots=roots) for path in paths]
         return json.dumps(normalized_paths, ensure_ascii=True, separators=(",", ":"))
 
     text = _normalize_rooted_text(value, roots=roots)
@@ -703,7 +727,9 @@ def _normalize_string(value: str, *, key: str, roots: Mapping[Path, str]) -> str
 def _normalize_rooted_text(value: str, *, roots: Mapping[Path, str]) -> str:
     text = value
     replaced = False
-    for root, marker in sorted(roots.items(), key=lambda item: len(str(item[0])), reverse=True):
+    for root, marker in sorted(
+        roots.items(), key=lambda item: len(str(item[0])), reverse=True
+    ):
         variants = {str(root), root.as_posix()}
         for variant in sorted(variants, key=len, reverse=True):
             if variant in text:
@@ -753,7 +779,9 @@ def _normalize_scalar(value: Any, *, key: str, roots: Mapping[Path, str]) -> Any
     return value
 
 
-def _normalize_mapping(value: Mapping[str, Any], *, roots: Mapping[Path, str]) -> dict[str, Any]:
+def _normalize_mapping(
+    value: Mapping[str, Any], *, roots: Mapping[Path, str]
+) -> dict[str, Any]:
     return {
         str(key): _normalize_value(item, key=str(key), roots=roots)
         for key, item in value.items()
@@ -768,13 +796,17 @@ def _normalize_value(value: Any, *, key: str, roots: Mapping[Path, str]) -> Any:
     return _normalize_scalar(value, key=key, roots=roots)
 
 
-def _array_record(name: str, value: Any, *, roots: Mapping[Path, str]) -> dict[str, Any]:
+def _array_record(
+    name: str, value: Any, *, roots: Mapping[Path, str]
+) -> dict[str, Any]:
     import numpy as np
 
     array = np.asarray(value)
     if array.dtype.kind in {"f", "c"} and not np.all(np.isfinite(array)):
         raise Phase1GenerationError(f"Array {name!r} contains NaN or infinity")
-    logical_dtype = "string" if array.dtype.kind in {"O", "S", "U"} else str(array.dtype)
+    logical_dtype = (
+        "string" if array.dtype.kind in {"O", "S", "U"} else str(array.dtype)
+    )
     raw_values = array.tolist()
     values = _normalize_value(raw_values, key=name, roots=roots)
     return {
@@ -807,7 +839,11 @@ def _csv_cell(column: str, value: str, *, roots: Mapping[Path, str]) -> Any:
     if not math.isfinite(numeric):
         if math.isnan(numeric):
             return CSV_NAN_MARKER
-        return CSV_POSITIVE_INFINITY_MARKER if numeric > 0 else CSV_NEGATIVE_INFINITY_MARKER
+        return (
+            CSV_POSITIVE_INFINITY_MARKER
+            if numeric > 0
+            else CSV_NEGATIVE_INFINITY_MARKER
+        )
     return numeric
 
 
@@ -871,7 +907,11 @@ def _call_contract(fn: Callable[[], Any]) -> dict[str, Any]:
     try:
         value = fn()
     except Exception as exc:  # intentional behavior capture at a public boundary
-        return {"status": "error", "error_type": type(exc).__name__, "message": str(exc)}
+        return {
+            "status": "error",
+            "error_type": type(exc).__name__,
+            "message": str(exc),
+        }
     return {"status": "ok", "value": value}
 
 
@@ -930,9 +970,7 @@ def _capture_environment_contract(
         )
     embree_binding = {
         "available": bool(embree_distributions),
-        "distribution": (
-            EMBREE_DISTRIBUTION_MARKER if embree_distributions else None
-        ),
+        "distribution": (EMBREE_DISTRIBUTION_MARKER if embree_distributions else None),
         "version": EMBREE_VERSION_MARKER if embree_distributions else None,
     }
 
@@ -953,7 +991,9 @@ def _capture_environment_contract(
                 "import_time_value": int(shielding._SHIELD_CACHE_MAX),
                 "unset": under(cache_name, None, shielding._resolve_shield_cache_max),
                 "valid_3": under(cache_name, "3", shielding._resolve_shield_cache_max),
-                "invalid": under(cache_name, "bad", shielding._resolve_shield_cache_max),
+                "invalid": under(
+                    cache_name, "bad", shielding._resolve_shield_cache_max
+                ),
             },
             batch_name: {
                 "precedence": "explicit argument > environment > backend default",
@@ -985,9 +1025,15 @@ def _capture_environment_contract(
             },
             chunk_name: {
                 "precedence": "explicit scheduler argument > environment > default",
-                "unset": under(chunk_name, None, scheduler.resolve_parallel_chunk_cases),
-                "valid_5": under(chunk_name, "5", scheduler.resolve_parallel_chunk_cases),
-                "invalid": under(chunk_name, "bad", scheduler.resolve_parallel_chunk_cases),
+                "unset": under(
+                    chunk_name, None, scheduler.resolve_parallel_chunk_cases
+                ),
+                "valid_5": under(
+                    chunk_name, "5", scheduler.resolve_parallel_chunk_cases
+                ),
+                "invalid": under(
+                    chunk_name, "bad", scheduler.resolve_parallel_chunk_cases
+                ),
             },
         },
     }
@@ -1014,7 +1060,9 @@ def _capture_invalid_inputs(
                 "stage": "read_cases",
                 "status": "error",
                 "error_type": type(exc).__name__,
-                "message": _normalize_string(str(exc), key="error_message", roots=roots),
+                "message": _normalize_string(
+                    str(exc), key="error_message", roots=roots
+                ),
                 "issues": issues,
             }
         else:
@@ -1101,18 +1149,16 @@ def _capture_valid_cases(
         case_id = str(raw["case_id"])
         out_dir = Path(str(raw["out_dir"]))
         csv_rows = [item for item in semantic_csv["rows"] if item["case_id"] == case_id]
-        raw_case_rows = [
-            item
-            for item in raw_csv_rows
-            if item["case_id"] == case_id
-        ]
+        raw_case_rows = [item for item in raw_csv_rows if item["case_id"] == case_id]
         if len(raw_case_rows) != len(csv_rows):
             raise Phase1GenerationError(
                 f"{solver}/{case_id} raw and semantic CSV row counts differ"
             )
         raw_total_rows = [item for item in raw_case_rows if item["scope"] == "total"]
         if len(raw_total_rows) != 1:
-            raise Phase1GenerationError(f"{solver}/{case_id} has no unique raw total row")
+            raise Phase1GenerationError(
+                f"{solver}/{case_id} has no unique raw total row"
+            )
         poly = pv.read(out_dir / f"{case_id}.vtp")
         field_signature = np.asarray(poly.field_data["case_signature"]).reshape(-1)[0]
         if isinstance(field_signature, bytes):
@@ -1165,7 +1211,9 @@ def _capture_valid_cases(
         "exit_code": exit_code,
         "stdout": _normalize_string(stdout.getvalue(), key="cli_stdout", roots=roots),
         "result_csv_columns": semantic_csv["columns"],
-        "case_order": [str(case_id) for case_id in normalized_cases["case_id"].tolist()],
+        "case_order": [
+            str(case_id) for case_id in normalized_cases["case_id"].tolist()
+        ],
     }
     return cases, cli_run
 
@@ -1180,7 +1228,9 @@ def _capture(args: argparse.Namespace) -> int:
         source_root: "<legacy-source>",
     }
     api = _solver_imports(solver)
-    project = tomllib.loads((source_root / "pyproject.toml").read_text(encoding="utf-8"))
+    project = tomllib.loads(
+        (source_root / "pyproject.toml").read_text(encoding="utf-8")
+    )
     package_module = __import__(solver)
     capture: dict[str, Any] = {
         "package": {
