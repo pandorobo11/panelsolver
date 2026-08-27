@@ -110,8 +110,13 @@ uv sync --locked --extra rayaccel --group docs
 uv run --no-sync pytest
 uv run --no-sync ruff format --check src tests scripts hatch_build.py
 uv run --no-sync ruff check src tests scripts hatch_build.py
+uv run --no-sync mypy src/panelsolver/core/contracts.py src/panelsolver/core/execution.py src/panelsolver/models/registry.py src/panelsolver/app/execution.py src/panelsolver/api.py src/panelsolver/__init__.py
 uv build
 ```
+
+The mypy command checks only the explicit model-contract, registry, execution,
+and package-root solve API boundary shown above; it is not a repository-wide
+typing guarantee.
 
 Most existing tests remain written with `unittest`; use pytest as the standard
 test runner.

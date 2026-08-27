@@ -36,7 +36,7 @@ class ModelOutputError(ModelRegistryError):
     """A model returned data that violates the shared output contract."""
 
 
-class ModelRegistry:
+class ModelRegistry[ModelT: PanelLoadModel]:
     """Mutable assembly object that dispatches through ``PanelLoadModel`` only.
 
     Numerical contract objects remain immutable. Registration is intentionally
@@ -44,8 +44,8 @@ class ModelRegistry:
     models they expose without adding concrete-model branches to core.
     """
 
-    def __init__(self, models: Iterable[PanelLoadModel] = ()) -> None:
-        self._models: dict[str, PanelLoadModel] = {}
+    def __init__(self, models: Iterable[ModelT] = ()) -> None:
+        self._models: dict[str, ModelT] = {}
         for model in models:
             self.register(model)
 
@@ -54,7 +54,7 @@ class ModelRegistry:
         """Registered IDs in deterministic insertion order."""
         return tuple(self._models)
 
-    def register(self, model: PanelLoadModel) -> None:
+    def register(self, model: ModelT) -> None:
         """Register one conforming model, rejecting duplicate identities."""
         if not isinstance(model, PanelLoadModel):
             raise ModelRegistryError(
@@ -83,7 +83,7 @@ class ModelRegistry:
             raise DuplicateModelError(f"model {model_id!r} is already registered")
         self._models[model_id] = model
 
-    def get(self, model_id: str) -> PanelLoadModel:
+    def get(self, model_id: str) -> ModelT:
         """Return one model or raise a stable lookup error."""
         try:
             return self._models[model_id]

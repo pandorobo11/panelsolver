@@ -21,8 +21,13 @@ uv sync --locked --extra rayaccel --group docs
 uv run --no-sync pytest
 uv run --no-sync ruff format --check src tests scripts hatch_build.py
 uv run --no-sync ruff check src tests scripts hatch_build.py
+uv run --no-sync mypy src/panelsolver/core/contracts.py src/panelsolver/core/execution.py src/panelsolver/models/registry.py src/panelsolver/app/execution.py src/panelsolver/api.py src/panelsolver/__init__.py
 uv build
 ```
+
+The explicit mypy paths are the current checked boundary: the model contracts,
+typed registry/execution wiring, and stable package-root solve API. Other
+modules are not claimed to be mypy-clean.
 
 Most existing tests remain written with `unittest`; pytest is the standard test
 runner for the repository.
