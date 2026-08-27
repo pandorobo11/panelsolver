@@ -116,6 +116,10 @@ uv build
 Most existing tests remain written with `unittest`; use pytest as the standard
 test runner.
 
+For fast feedback during development, run `uv run --no-sync pytest -m "not slow"`.
+The unfiltered pytest suite remains authoritative and must be run before a push
+or pull request and in CI.
+
 As applicable, also test the changed CLI's `--help`, the built wheel, the GUI,
 Embree and rtree backends, and model-specific golden regressions.
 

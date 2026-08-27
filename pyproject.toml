@@ -102,3 +102,6 @@ ignore = ["BLE001", "EXE001", "S110", "SIM113", "SIM117"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
+markers = [
+  "slow: exercises real process/subprocess lifecycle or other high-wall-time integration behavior",
+]

@@ -6,6 +6,8 @@ import unittest
 from importlib.metadata import version
 from pathlib import Path
 
+import pytest
+
 from fmfsolver.app.cli_app import _CLI_POLICY as LEGACY_FMF_CLI_POLICY
 from newtsolver.app.cli_app import _CLI_POLICY as LEGACY_HYPERSONIC_CLI_POLICY
 from panelsolver.domains import fmf, hypersonic
@@ -31,6 +33,7 @@ class DomainOwnershipTests(unittest.TestCase):
             LEGACY_HYPERSONIC_CLI_POLICY.runtime_policy,
         )
 
+    @pytest.mark.slow
     def test_canonical_domain_execution_does_not_load_legacy_or_compat(self) -> None:
         code = f"""
 import sys

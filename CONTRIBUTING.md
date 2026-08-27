@@ -27,6 +27,11 @@ uv build
 Most existing tests remain written with `unittest`; pytest is the standard test
 runner for the repository.
 
+During development, `uv run --no-sync pytest -m "not slow"` provides fast
+feedback by excluding real process/subprocess and other high-wall-time
+integration tests. The unfiltered pytest suite remains authoritative; run it
+before pushing or opening a pull request. CI also runs the full suite.
+
 Installed-interface changes also require a built-wheel smoke test. Changes to a
 physical model, shielding, geometry, integration, caching, or signatures require
 the applicable golden regression suite and a report of observed numeric

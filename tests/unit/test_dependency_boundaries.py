@@ -4,6 +4,8 @@ import sys
 import unittest
 from pathlib import Path
 
+import pytest
+
 SRC_ROOT = Path(__file__).parents[2] / "src"
 FRONTEND_ROOTS = ("fmfsolver", "newtsolver")
 
@@ -182,6 +184,7 @@ class DependencyBoundaryTests(unittest.TestCase):
         ]
         self.assertEqual([], violations)
 
+    @pytest.mark.slow
     def test_canonical_cli_import_does_not_load_private_compatibility(self) -> None:
         code = (
             "import sys; import panelsolver.cli; "
@@ -192,6 +195,7 @@ class DependencyBoundaryTests(unittest.TestCase):
         )
         subprocess.run([sys.executable, "-c", code], check=True)
 
+    @pytest.mark.slow
     def test_canonical_api_import_does_not_load_private_compatibility(self) -> None:
         code = (
             "import sys; import panelsolver; "
@@ -202,6 +206,7 @@ class DependencyBoundaryTests(unittest.TestCase):
         )
         subprocess.run([sys.executable, "-c", code], check=True)
 
+    @pytest.mark.slow
     def test_canonical_gui_import_does_not_load_private_compatibility(self) -> None:
         code = (
             "import sys; import panelsolver.gui; "
@@ -212,6 +217,7 @@ class DependencyBoundaryTests(unittest.TestCase):
         )
         subprocess.run([sys.executable, "-c", code], check=True)
 
+    @pytest.mark.slow
     def test_canonical_domain_composition_does_not_load_legacy_packages(self) -> None:
         code = (
             "import sys; "
