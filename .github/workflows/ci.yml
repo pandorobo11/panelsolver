@@ -56,9 +56,9 @@ jobs:
           (_ for _ in ()).throw(SystemExit('Embree backend is required in CI but not available.'))
           if not ray.has_embree else None"
 
-      - name: Unit tests
+      - name: Tests
         timeout-minutes: 10
-        run: uv run python -m unittest discover -s tests -p "test_*.py" -v
+        run: uv run pytest
 
       - name: Scheduler lifecycle stress
         timeout-minutes: 3
