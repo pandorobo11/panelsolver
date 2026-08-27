@@ -259,9 +259,7 @@ def _validate_optional_numeric(
             frame[column] = float("nan")
         filled = frame[column].map(is_filled)
         boolean = frame[column].map(_is_numeric_boolean)
-        parsed = pd.to_numeric(
-            frame[column].where(filled & ~boolean), errors="coerce"
-        )
+        parsed = pd.to_numeric(frame[column].where(filled & ~boolean), errors="coerce")
         invalid = filled & (boolean | parsed.isna())
         nonfinite = parsed.notna() & (~np.isfinite(parsed))
         for index in frame.index[invalid]:

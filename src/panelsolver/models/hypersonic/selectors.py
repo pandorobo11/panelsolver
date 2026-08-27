@@ -2,7 +2,12 @@ from __future__ import annotations
 
 """Surface-equation normalization and ';'-selector parsing helpers."""
 
-WINDWARD_EQUATION_VALUES = {"newtonian", "modified_newtonian", "tangent_wedge", "tangent_cone"}
+WINDWARD_EQUATION_VALUES = {
+    "newtonian",
+    "modified_newtonian",
+    "tangent_wedge",
+    "tangent_cone",
+}
 LEEWARD_EQUATION_VALUES = {"shield", "prandtl_meyer"}
 
 
@@ -22,8 +27,7 @@ def normalize_leeward_equation(value: str | None) -> str:
     eq = str(value or "").strip().lower() or "shield"
     if eq not in LEEWARD_EQUATION_VALUES:
         raise ValueError(
-            f"Invalid leeward_eq: '{value}'. "
-            "Expected one of: shield, prandtl_meyer."
+            f"Invalid leeward_eq: '{value}'. Expected one of: shield, prandtl_meyer."
         )
     return eq
 

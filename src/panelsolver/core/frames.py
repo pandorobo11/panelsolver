@@ -51,9 +51,7 @@ def stl_to_body(vectors_stl: object) -> np.ndarray:
     ``body = (-x_stl, +y_stl, -z_stl)``.
     """
     vectors = _vector_array(vectors_stl, field="vectors_stl")
-    return np.ascontiguousarray(
-        vectors * np.array([-1.0, 1.0, -1.0], dtype=np.float64)
-    )
+    return np.ascontiguousarray(vectors * np.array([-1.0, 1.0, -1.0], dtype=np.float64))
 
 
 def body_to_stability(

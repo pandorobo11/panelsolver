@@ -476,7 +476,9 @@ def format_case(row: Mapping[str, object]) -> str:
         ("l_eq", row.get("leeward_eq")),
     ]
     fields.extend(_attitude_fields(row))
-    fields.extend((("shield", row.get("shielding_on")), ("ray", row.get("ray_backend"))))
+    fields.extend(
+        (("shield", row.get("shielding_on")), ("ray", row.get("ray_backend")))
+    )
     return " | ".join(
         f"{name}={text}"
         for name, value in fields

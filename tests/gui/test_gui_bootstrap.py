@@ -61,7 +61,9 @@ class GuiBootstrapTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
-    def test_prepare_preserves_complete_spec_and_adds_only_unavailable_adapters(self) -> None:
+    def test_prepare_preserves_complete_spec_and_adds_only_unavailable_adapters(
+        self,
+    ) -> None:
         complete = fmf_solver_spec(adapters=_adapters())
         self.assertIs(complete, prepare_gui_spec(complete))
 

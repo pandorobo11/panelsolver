@@ -52,8 +52,12 @@ class ComponentAggregationTests(unittest.TestCase):
         self.assertEqual((2, 7), tuple(item.component_id for item in components))
         self.assertEqual((1, 2), tuple(item.face_count for item in components))
         self.assertEqual((1, 0), tuple(item.shielded_face_count for item in components))
-        np.testing.assert_array_equal(components[0].integrated.force_coeff_stl, [0, 0, 0])
-        np.testing.assert_array_equal(components[1].integrated.force_coeff_stl, [4, 0, 0])
+        np.testing.assert_array_equal(
+            components[0].integrated.force_coeff_stl, [0, 0, 0]
+        )
+        np.testing.assert_array_equal(
+            components[1].integrated.force_coeff_stl, [4, 0, 0]
+        )
         self.assertEqual("seven", components[1].metadata["source"])
         np.testing.assert_array_equal(
             sum(
@@ -75,7 +79,9 @@ class ComponentAggregationTests(unittest.TestCase):
         )
 
         self.assertEqual("synthetic", results.model_id)
-        self.assertEqual((2, 7), tuple(item.component_id for item in results.components))
+        self.assertEqual(
+            (2, 7), tuple(item.component_id for item in results.components)
+        )
         self.assertEqual("unit", results.metadata["run"])
         self.assertEqual("two", results.components[0].metadata["name"])
         np.testing.assert_array_equal(results.total.force_coeff_stl, [4, 0, 0])

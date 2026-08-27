@@ -14,9 +14,7 @@ def paths_equivalent(
     try:
         return os.path.samefile(first_path, second_path)
     except OSError:
-        return first_path.resolve(strict=False) == second_path.resolve(
-            strict=False
-        )
+        return first_path.resolve(strict=False) == second_path.resolve(strict=False)
 
 
 def assert_paths_equivalent(

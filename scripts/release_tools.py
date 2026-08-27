@@ -41,33 +41,15 @@ _RTD_CSS_LICENSES = (
     "ROBOTO-SLAB-0.10.0-APACHE-2.0.txt",
 )
 _DOCS_THEME_ASSET_LICENSES = {
-    "css/fonts/Roboto-Slab-Bold.woff": (
-        "ROBOTO-SLAB-0.10.0-APACHE-2.0.txt",
-    ),
-    "css/fonts/Roboto-Slab-Bold.woff2": (
-        "ROBOTO-SLAB-0.10.0-APACHE-2.0.txt",
-    ),
-    "css/fonts/Roboto-Slab-Regular.woff": (
-        "ROBOTO-SLAB-0.10.0-APACHE-2.0.txt",
-    ),
-    "css/fonts/Roboto-Slab-Regular.woff2": (
-        "ROBOTO-SLAB-0.10.0-APACHE-2.0.txt",
-    ),
-    "css/fonts/fontawesome-webfont.eot": (
-        "FONT-AWESOME-4.7.0-MIT-AND-OFL-1.1.txt",
-    ),
-    "css/fonts/fontawesome-webfont.svg": (
-        "FONT-AWESOME-4.7.0-MIT-AND-OFL-1.1.txt",
-    ),
-    "css/fonts/fontawesome-webfont.ttf": (
-        "FONT-AWESOME-4.7.0-MIT-AND-OFL-1.1.txt",
-    ),
-    "css/fonts/fontawesome-webfont.woff": (
-        "FONT-AWESOME-4.7.0-MIT-AND-OFL-1.1.txt",
-    ),
-    "css/fonts/fontawesome-webfont.woff2": (
-        "FONT-AWESOME-4.7.0-MIT-AND-OFL-1.1.txt",
-    ),
+    "css/fonts/Roboto-Slab-Bold.woff": ("ROBOTO-SLAB-0.10.0-APACHE-2.0.txt",),
+    "css/fonts/Roboto-Slab-Bold.woff2": ("ROBOTO-SLAB-0.10.0-APACHE-2.0.txt",),
+    "css/fonts/Roboto-Slab-Regular.woff": ("ROBOTO-SLAB-0.10.0-APACHE-2.0.txt",),
+    "css/fonts/Roboto-Slab-Regular.woff2": ("ROBOTO-SLAB-0.10.0-APACHE-2.0.txt",),
+    "css/fonts/fontawesome-webfont.eot": ("FONT-AWESOME-4.7.0-MIT-AND-OFL-1.1.txt",),
+    "css/fonts/fontawesome-webfont.svg": ("FONT-AWESOME-4.7.0-MIT-AND-OFL-1.1.txt",),
+    "css/fonts/fontawesome-webfont.ttf": ("FONT-AWESOME-4.7.0-MIT-AND-OFL-1.1.txt",),
+    "css/fonts/fontawesome-webfont.woff": ("FONT-AWESOME-4.7.0-MIT-AND-OFL-1.1.txt",),
+    "css/fonts/fontawesome-webfont.woff2": ("FONT-AWESOME-4.7.0-MIT-AND-OFL-1.1.txt",),
     "css/fonts/lato-bold-italic.woff": ("LATO-3.0.0-OFL-1.1.txt",),
     "css/fonts/lato-bold-italic.woff2": ("LATO-3.0.0-OFL-1.1.txt",),
     "css/fonts/lato-bold.woff": ("LATO-3.0.0-OFL-1.1.txt",),
@@ -188,8 +170,7 @@ def select_built_wheel(repository: Path, dist_dir: Path | None = None) -> Path:
         expected_name
     ):
         raise RuntimeError(
-            f"wheel name mismatch: metadata={actual_name!r}, "
-            f"project={expected_name!r}"
+            f"wheel name mismatch: metadata={actual_name!r}, project={expected_name!r}"
         )
     if actual_version != expected_version:
         raise RuntimeError(
@@ -301,9 +282,7 @@ def verify_offline_documentation_licenses(
 ) -> None:
     """Require a complete license mapping for every bundled theme asset."""
     theme_prefixes = ("css/", "img/", "js/", "webfonts/")
-    actual_assets = {
-        name for name in member_names if name.startswith(theme_prefixes)
-    }
+    actual_assets = {name for name in member_names if name.startswith(theme_prefixes)}
     expected_assets = set(_DOCS_THEME_ASSET_LICENSES)
     missing_assets = expected_assets - actual_assets
     unknown_assets = actual_assets - expected_assets
@@ -320,8 +299,7 @@ def verify_offline_documentation_licenses(
     if set(_DOCS_THEME_ASSET_SHA256) != expected_assets:
         raise RuntimeError("offline documentation asset hash inventory is incomplete")
     actual_hashes = {
-        name: hashlib.sha256(read_member(name)).hexdigest()
-        for name in expected_assets
+        name: hashlib.sha256(read_member(name)).hexdigest() for name in expected_assets
     }
     changed_assets = {
         name: actual_hash
@@ -361,8 +339,7 @@ def verify_offline_documentation_licenses(
     ]
     if missing_markers:
         raise RuntimeError(
-            "offline documentation notices omit audited components: "
-            f"{missing_markers}"
+            f"offline documentation notices omit audited components: {missing_markers}"
         )
 
 
@@ -407,8 +384,7 @@ def create_release_archives(
     examples = repository / "examples"
     example_entries = _zip_entries(examples, prefix="examples/")
     example_entries.extend(
-        (name, repository / name)
-        for name in ("LICENSE", "THIRD_PARTY_NOTICES.md")
+        (name, repository / name) for name in ("LICENSE", "THIRD_PARTY_NOTICES.md")
     )
     example_entries.sort(key=lambda item: item[0])
     examples_zip = write_deterministic_zip(
@@ -464,22 +440,30 @@ def _verify_release_zip(kind: str, archive_path: Path) -> None:
                 part in {"outputs", "__pycache__", ".cache", ".pytest_cache"}
                 for name in names
                 for part in PurePosixPath(name).parts
-            ) or any(PurePosixPath(name).suffix.casefold() in {".npz", ".xls"} for name in names):
-                raise RuntimeError("examples ZIP contains excluded generated or legacy files")
+            ) or any(
+                PurePosixPath(name).suffix.casefold() in {".npz", ".xls"}
+                for name in names
+            ):
+                raise RuntimeError(
+                    "examples ZIP contains excluded generated or legacy files"
+                )
         else:
             raise ValueError(f"unsupported release archive kind: {kind}")
         missing = required - set(names)
         if missing:
-            raise RuntimeError(f"{kind} ZIP is missing required members: {sorted(missing)}")
+            raise RuntimeError(
+                f"{kind} ZIP is missing required members: {sorted(missing)}"
+            )
         if kind == "docs":
             verify_offline_documentation_licenses(set(names), archive.read)
 
 
 def _verify_docs_zip_matches_wheel(wheel: Path, docs_zip: Path) -> None:
     prefix = "panelsolver/_docs_site/"
-    with zipfile.ZipFile(wheel) as wheel_archive, zipfile.ZipFile(
-        docs_zip
-    ) as docs_archive:
+    with (
+        zipfile.ZipFile(wheel) as wheel_archive,
+        zipfile.ZipFile(docs_zip) as docs_archive,
+    ):
         wheel_members = {
             name.removeprefix(prefix): wheel_archive.read(name)
             for name in wheel_archive.namelist()
@@ -491,7 +475,9 @@ def _verify_docs_zip_matches_wheel(wheel: Path, docs_zip: Path) -> None:
             if not name.endswith("/")
         }
     if wheel_members != docs_members:
-        raise RuntimeError("docs ZIP content does not exactly match wheel documentation")
+        raise RuntimeError(
+            "docs ZIP content does not exactly match wheel documentation"
+        )
 
 
 def _validated_commit_sha(value: str) -> str:
@@ -571,16 +557,15 @@ def _manifest_artifact(
     if set(value) != allowed_keys:
         raise RuntimeError(f"manifest {field} fields are invalid: {sorted(value)}")
     if value.get("kind") != expected_kind:
-        raise RuntimeError(
-            f"manifest {field} kind mismatch: {value.get('kind')!r}"
-        )
+        raise RuntimeError(f"manifest {field} kind mismatch: {value.get('kind')!r}")
     filename = value.get("filename")
     expected_hash = value.get("sha256")
     if not isinstance(filename, str) or Path(filename).name != filename:
         raise RuntimeError(f"manifest {field} filename is invalid: {filename!r}")
-    if not isinstance(expected_hash, str) or re.fullmatch(
-        r"[0-9a-f]{64}", expected_hash
-    ) is None:
+    if (
+        not isinstance(expected_hash, str)
+        or re.fullmatch(r"[0-9a-f]{64}", expected_hash) is None
+    ):
         raise RuntimeError(f"manifest {field} SHA-256 is invalid")
     artifact = directory / filename
     if not artifact.is_file():
@@ -623,8 +608,7 @@ def verify_dist_manifest(
         expected = _validated_commit_sha(expected_commit)
         if commit_sha != expected:
             raise RuntimeError(
-                "manifest commit mismatch: "
-                f"manifest={commit_sha}, checkout={expected}"
+                f"manifest commit mismatch: manifest={commit_sha}, checkout={expected}"
             )
 
     artifacts = manifest.get("artifacts")
@@ -663,7 +647,9 @@ def verify_dist_manifest(
     for kind in ("docs", "examples"):
         artifact = entries[kind][0]
         if artifact != _release_archive_path(repository, kind, directory):
-            raise RuntimeError(f"manifest {kind} filename does not match project version")
+            raise RuntimeError(
+                f"manifest {kind} filename does not match project version"
+            )
         _verify_release_zip(kind, artifact)
     _verify_docs_zip_matches_wheel(wheel, entries["docs"][0])
 
@@ -694,9 +680,11 @@ def verify_dist_manifest(
             f"manifest={metadata!r}, wheel={{'name': {actual_name!r}, "
             f"'version': {actual_version!r}}}"
         )
-    if canonical_distribution_name(actual_name) != canonical_distribution_name(
-        expected_name
-    ) or actual_version != expected_version:
+    if (
+        canonical_distribution_name(actual_name)
+        != canonical_distribution_name(expected_name)
+        or actual_version != expected_version
+    ):
         raise RuntimeError(
             "wheel METADATA project mismatch: "
             f"wheel={actual_name!r} {actual_version!r}, "
@@ -883,9 +871,7 @@ def verify_wheel_contents(repository: Path, wheel: Path) -> None:
             if f"{license_prefix}{legal_name}" not in names:
                 raise RuntimeError(f"wheel is missing license file {legal_name}")
         for license_name in _DOCS_REQUIRED_LICENSES:
-            license_path = (
-                f"{license_prefix}{_DOCS_LICENSE_DIRECTORY}/{license_name}"
-            )
+            license_path = f"{license_prefix}{_DOCS_LICENSE_DIRECTORY}/{license_name}"
             if license_path not in names:
                 raise RuntimeError(
                     f"wheel metadata is missing third-party license {license_name}"
@@ -904,8 +890,7 @@ def verify_wheel_contents(repository: Path, wheel: Path) -> None:
         raise RuntimeError("wheel METADATA must identify an author or maintainer")
     project_urls = metadata.get_all("Project-URL", [])
     if not any(
-        "https://github.com/pandorobo11/panelsolver" in value
-        for value in project_urls
+        "https://github.com/pandorobo11/panelsolver" in value for value in project_urls
     ):
         raise RuntimeError("wheel METADATA has no canonical repository URL")
     runtime_requirements = metadata.get_all("Requires-Dist", [])
@@ -1034,8 +1019,7 @@ def verify_built_distributions(
         source_roots = [path for path in extracted.iterdir() if path.is_dir()]
         if len(source_roots) != 1:
             raise RuntimeError(
-                "extracted sdist must have exactly one source root: "
-                f"{source_roots}"
+                f"extracted sdist must have exactly one source root: {source_roots}"
             )
         source_root = source_roots[0]
         subprocess.run(
@@ -1096,7 +1080,10 @@ def verify_github_release_state(
             f"release repository mismatch: {repository_name!r} != {_REPOSITORY_NAME!r}"
         )
     repository = _github_api_json(f"repos/{repository_name}")
-    if not isinstance(repository, dict) or repository.get("full_name") != _REPOSITORY_NAME:
+    if (
+        not isinstance(repository, dict)
+        or repository.get("full_name") != _REPOSITORY_NAME
+    ):
         raise RuntimeError("GitHub API did not resolve the canonical repository")
     queries = {
         "issue": f"search/issues?q=repo:{repository_name}+is:issue+is:open&per_page=1",
@@ -1105,7 +1092,9 @@ def verify_github_release_state(
     counts: dict[str, int] = {}
     for kind, endpoint in queries.items():
         payload = _github_api_json(endpoint)
-        if not isinstance(payload, dict) or not isinstance(payload.get("total_count"), int):
+        if not isinstance(payload, dict) or not isinstance(
+            payload.get("total_count"), int
+        ):
             raise TypeError(f"GitHub {kind} query returned an invalid payload")
         counts[kind] = payload["total_count"]
     if counts != {"issue": 0, "pull request": 0}:
@@ -1119,7 +1108,9 @@ def verify_github_release_state(
             f"repos/{repository_name}/actions/workflows/{_CI_WORKFLOW}/runs"
             f"?branch={_PROTECTED_BRANCH}&event=push&head_sha={commit}&per_page=100"
         )
-        if not isinstance(runs, dict) or not isinstance(runs.get("workflow_runs"), list):
+        if not isinstance(runs, dict) or not isinstance(
+            runs.get("workflow_runs"), list
+        ):
             raise RuntimeError("GitHub exact-main CI query returned an invalid payload")
         if any(not isinstance(run, dict) for run in runs["workflow_runs"]):
             raise RuntimeError("GitHub exact-main CI query returned an invalid run")
@@ -1131,7 +1122,9 @@ def verify_github_release_state(
             and run.get("head_sha") == commit
         ]
         if not main_push_runs:
-            raise RuntimeError(f"exact-main CI has no main push workflow run for {commit}")
+            raise RuntimeError(
+                f"exact-main CI has no main push workflow run for {commit}"
+            )
         if any(
             not isinstance(run.get(field), int)
             for run in main_push_runs
@@ -1142,7 +1135,10 @@ def verify_github_release_state(
             main_push_runs,
             key=lambda run: (run["run_number"], run["run_attempt"], run["id"]),
         )
-        if accepted.get("status") != "completed" or accepted.get("conclusion") != "success":
+        if (
+            accepted.get("status") != "completed"
+            or accepted.get("conclusion") != "success"
+        ):
             summary = {
                 "id": accepted.get("id"),
                 "run_number": accepted.get("run_number"),
@@ -1150,9 +1146,7 @@ def verify_github_release_state(
                 "status": accepted.get("status"),
                 "conclusion": accepted.get("conclusion"),
             }
-            raise RuntimeError(
-                f"latest exact-main CI run is not successful: {summary}"
-            )
+            raise RuntimeError(f"latest exact-main CI run is not successful: {summary}")
 
 
 def _replace_version(repository: Path, old: str, new: str) -> None:
@@ -1325,7 +1319,11 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(json.dumps(manifest, sort_keys=True))
     elif args.command == "create-release-archives":
-        print("\n".join(str(path) for path in create_release_archives(repository, args.dist_dir)))
+        print(
+            "\n".join(
+                str(path) for path in create_release_archives(repository, args.dist_dir)
+            )
+        )
     elif args.command == "verify-distributions":
         verify_built_distributions(repository, args.dist_dir)
     elif args.command == "verify-tag":

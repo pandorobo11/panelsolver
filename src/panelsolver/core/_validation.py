@@ -76,8 +76,10 @@ def _restore_read_only_array(
     dtype: str,
     shape: tuple[int, ...],
 ) -> np.ndarray:
-    return np.frombuffer(buffer, dtype=np.dtype(dtype)).reshape(shape).view(
-        _ImmutableArray
+    return (
+        np.frombuffer(buffer, dtype=np.dtype(dtype))
+        .reshape(shape)
+        .view(_ImmutableArray)
     )
 
 

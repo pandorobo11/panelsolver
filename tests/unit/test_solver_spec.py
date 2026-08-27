@@ -94,6 +94,7 @@ class SolverSpecTests(unittest.TestCase):
         self.assertEqual("Model scalar", spec.scalar_labels["model_scalar"])
         with self.assertRaises(TypeError):
             spec.scalar_labels["model_scalar"] = "Changed"
+
     def test_adapter_bundle_requires_every_member_to_be_callable(self) -> None:
         adapters = SolverGuiAdapters(
             read_cases=lambda _path: (),
@@ -152,7 +153,9 @@ class SolverSpecTests(unittest.TestCase):
             ),
             newt.preferred_scalars,
         )
-        self.assertEqual("Normal traction coeff.", fmf.scalar_labels["normal_traction_coeff"])
+        self.assertEqual(
+            "Normal traction coeff.", fmf.scalar_labels["normal_traction_coeff"]
+        )
         self.assertEqual(
             "Tangential traction coeff.",
             fmf.scalar_labels["tangential_traction_coeff"],

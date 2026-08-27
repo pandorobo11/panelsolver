@@ -82,9 +82,13 @@ class CsvProjectionTests(unittest.TestCase):
             ),
             projection.columns,
         )
-        self.assertEqual(["total", "component", "component"], [r["scope"] for r in projection.rows])
+        self.assertEqual(
+            ["total", "component", "component"], [r["scope"] for r in projection.rows]
+        )
         self.assertEqual([None, 0, 1], [r["component_id"] for r in projection.rows])
-        self.assertEqual(["ordered.vtp", None, None], [r["vtp_path"] for r in projection.rows])
+        self.assertEqual(
+            ["ordered.vtp", None, None], [r["vtp_path"] for r in projection.rows]
+        )
         self.assertEqual([2, 1, 1], [r["faces"] for r in projection.rows])
         self.assertEqual(4, projection.rows[0]["extra"])
         with self.assertRaises(TypeError):

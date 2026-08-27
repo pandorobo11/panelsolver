@@ -300,7 +300,9 @@ def _prepare_current_inputs(inputs: Path) -> None:
         with path.open(encoding=CSV_ENCODING, newline="") as stream:
             reader = csv.DictReader(stream)
             rows = list(reader)
-            columns = [name for name in (reader.fieldnames or ()) if name != "save_npz_on"]
+            columns = [
+                name for name in (reader.fieldnames or ()) if name != "save_npz_on"
+            ]
         with path.open("w", encoding=CSV_ENCODING, newline="") as stream:
             writer = csv.DictWriter(stream, fieldnames=columns, lineterminator="\n")
             writer.writeheader()
@@ -355,22 +357,16 @@ def _current_expected_vtp(product: str, golden: dict[str, object]) -> dict[str, 
         raise ValueError(f"unknown installed-smoke product: {product!r}")
 
     cell_data["normal_traction_coeff"] = legacy_normal
-    normals_out_stl = _record_array(
-        golden["npz"]["arrays"]["normals_out_stl"]
-    )
+    normals_out_stl = _record_array(golden["npz"]["arrays"]["normals_out_stl"])
     velocity_hat_stl = _record_array(golden["npz"]["arrays"]["Vhat_stl"])
     normal_dot_velocity = normals_out_stl @ velocity_hat_stl
     tangent_stl = (
-        velocity_hat_stl[None, :]
-        - normal_dot_velocity[:, None] * normals_out_stl
+        velocity_hat_stl[None, :] - normal_dot_velocity[:, None] * normals_out_stl
     )
     tangent_norm = np.linalg.norm(tangent_stl, axis=1)
     tangent_hat_stl = np.zeros_like(tangent_stl)
     defined = tangent_norm > 1.0e-12
-    tangent_hat_stl[defined] = (
-        tangent_stl[defined]
-        / tangent_norm[defined, None]
-    )
+    tangent_hat_stl[defined] = tangent_stl[defined] / tangent_norm[defined, None]
     c_face_stl = _record_array(golden["vtp"]["cell_data"]["C_face_stl"])
     area_m2 = _record_array(golden["vtp"]["cell_data"]["area_m2"])
     aref_m2 = golden["normalized_input"]["Aref_m2"]
@@ -405,7 +401,6 @@ def _validate_cli_help(product: str, help_text: str) -> None:
         raise RuntimeError(f"{product} help is missing Phase 8 contract: {missing}")
 
 
-
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("repository", type=Path)
@@ -423,7 +418,9 @@ def _smoke_packaged_documentation() -> None:
                 raise RuntimeError(f"installed documentation page is missing: {page}")
         for legal_name in ("LICENSE", "THIRD_PARTY_NOTICES.md"):
             if not (root / legal_name).is_file():
-                raise RuntimeError(f"installed documentation file is missing: {legal_name}")
+                raise RuntimeError(
+                    f"installed documentation file is missing: {legal_name}"
+                )
 
 
 def _smoke_packaged_examples(staging: Path) -> None:
@@ -461,7 +458,9 @@ def _extract_release_archives(
     docs_zip = dist_dir / f"panelsolver-docs-v{version}.zip"
     examples_zip = dist_dir / f"panelsolver-examples-v{version}.zip"
     destinations = (staging / "offline-docs", staging / "release-examples")
-    for archive_path, destination in zip((docs_zip, examples_zip), destinations, strict=True):
+    for archive_path, destination in zip(
+        (docs_zip, examples_zip), destinations, strict=True
+    ):
         with zipfile.ZipFile(archive_path) as archive:
             for name in archive.namelist():
                 member = Path(name)
@@ -609,7 +608,13 @@ def main(argv: list[str] | None = None) -> int:
 
     neutral_core = importlib.import_module("panelsolver.core")
     neutral_app = importlib.import_module("panelsolver.app")
-    for name in ("legacy_adapter", "legacy_mesh", "legacy_results", "legacy_scheduler", "legacy_shielding"):
+    for name in (
+        "legacy_adapter",
+        "legacy_mesh",
+        "legacy_results",
+        "legacy_scheduler",
+        "legacy_shielding",
+    ):
         if importlib.util.find_spec(f"panelsolver.app.{name}") is not None:
             raise RuntimeError(f"compatibility implementation remains in app: {name}")
         if importlib.util.find_spec(f"panelsolver._compat.{name}") is not None:
@@ -719,8 +724,7 @@ def main(argv: list[str] | None = None) -> int:
             )
             if (
                 domain_help.returncode != 0
-                or f"usage: panelsolver {domain}"
-                not in domain_help.stdout.casefold()
+                or f"usage: panelsolver {domain}" not in domain_help.stdout.casefold()
                 or description not in domain_help.stdout
                 or "Input cases file (.csv/.xlsx/.xlsm)" not in domain_help.stdout
                 or "--cases CASES [CASES ...]" not in domain_help.stdout
@@ -766,9 +770,7 @@ def main(argv: list[str] | None = None) -> int:
                 raise RuntimeError(f"canonical {domain} restored NPZ output")
             with output.open(encoding=CSV_ENCODING, newline="") as stream:
                 canonical_rows = list(csv.DictReader(stream))
-            canonical_versions = {
-                row["solver_version"] for row in canonical_rows
-            }
+            canonical_versions = {row["solver_version"] for row in canonical_rows}
             if canonical_versions != {installed_version}:
                 raise RuntimeError(
                     f"canonical {domain} artifact version changed: "
@@ -951,16 +953,15 @@ def main(argv: list[str] | None = None) -> int:
                 actual_csv_versions = {
                     row["solver_version"] for row in actual["csv"]["rows"]
                 }
-                actual_vtp_version = actual["vtp"]["field_data"][
-                    "solver_version"
-                ]["values"][0]
+                actual_vtp_version = actual["vtp"]["field_data"]["solver_version"][
+                    "values"
+                ][0]
                 if (
                     actual_csv_versions != {installed_version}
                     or actual_vtp_version != installed_version
                 ):
                     raise RuntimeError(
-                        f"{product} CSV/VTP distribution versions differ for "
-                        f"{case_id}"
+                        f"{product} CSV/VTP distribution versions differ for {case_id}"
                     )
                 differences = comparator._compare_values(
                     expected,

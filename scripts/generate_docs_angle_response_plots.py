@@ -545,9 +545,7 @@ def _plot_windward(response: WindwardResponse, path: Path) -> None:
             textcoords="offset points",
             color=color,
             fontsize=8,
-            horizontalalignment=(
-                "right" if equation == "tangent_wedge" else "left"
-            ),
+            horizontalalignment=("right" if equation == "tangent_wedge" else "left"),
             arrowprops={"arrowstyle": "-", "color": color, "linewidth": 0.8},
             bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.88},
         )
@@ -629,9 +627,7 @@ def _managed_svg_names(output_dir: Path) -> set[str]:
         return set()
     marker = GENERATOR_MARKER.encode()
     return {
-        path.name
-        for path in output_dir.glob("*.svg")
-        if marker in path.read_bytes()
+        path.name for path in output_dir.glob("*.svg") if marker in path.read_bytes()
     }
 
 

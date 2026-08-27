@@ -32,9 +32,7 @@ class CustomBuildHook(BuildHookInterface):
                 or source.suffix.lower() in {".npz", ".xls"}
             ):
                 continue
-            force_include[str(source)] = (
-                f"panelsolver/_examples/{relative.as_posix()}"
-            )
+            force_include[str(source)] = f"panelsolver/_examples/{relative.as_posix()}"
 
 
 def _load_module(path: Path):

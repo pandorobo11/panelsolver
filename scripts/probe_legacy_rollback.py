@@ -109,9 +109,7 @@ def _resolve_repository(source: str, work: Path, name: str) -> Path:
             raise RuntimeError(f"legacy source must be clean: {local}")
         return local.resolve()
     clone = work / f"{name}-git"
-    _run(
-        ["git", "clone", "--filter=blob:none", "--no-checkout", source, clone]
-    )
+    _run(["git", "clone", "--filter=blob:none", "--no-checkout", source, clone])
     return clone
 
 
@@ -167,9 +165,7 @@ def _build_legacy(
     wheel = select_built_wheel(source, output)
     name, version = wheel_identity(wheel)
     if canonical_distribution_name(name) != spec.name or version != spec.version:
-        raise RuntimeError(
-            f"{spec.name} wheel identity mismatch: {name} {version}"
-        )
+        raise RuntimeError(f"{spec.name} wheel identity mismatch: {name} {version}")
     record = {
         "repository": spec.repository,
         "commit": spec.commit,
@@ -198,11 +194,7 @@ def _assert_commands(
     python: Path,
     expected: dict[str, str] = EXPECTED_ENTRY_POINTS,
 ) -> list[str]:
-    missing = [
-        name
-        for name in expected
-        if not _command_path(python, name).is_file()
-    ]
+    missing = [name for name in expected if not _command_path(python, name).is_file()]
     if missing:
         raise RuntimeError(f"missing installed commands: {missing}")
     return list(expected)
@@ -213,10 +205,8 @@ def _assert_distribution(
     name: str,
     version: str | None,
 ) -> None:
-    code = (
-        "import importlib.metadata as m; "
-        f"value=m.version({name!r}); "
-        + (f"assert value == {version!r}, value" if version else "print(value)")
+    code = f"import importlib.metadata as m; value=m.version({name!r}); " + (
+        f"assert value == {version!r}, value" if version else "print(value)"
     )
     _run([python, "-c", code])
 
@@ -241,9 +231,7 @@ def _run_sample(
 ) -> dict[str, object]:
     command = _command_path(python, f"{product}-cli")
     checkpoint_option = (
-        "--flush-every-cases"
-        if legacy_cli
-        else "--checkpoint-every-cases"
+        "--flush-every-cases" if legacy_cli else "--checkpoint-every-cases"
     )
     _run(
         [
@@ -274,8 +262,7 @@ def _run_sample(
     if total is None:
         raise RuntimeError(f"{product} rollback sample output is missing {case_id}")
     coefficients = {
-        name: total[name]
-        for name in ("CA", "CY", "CN", "Cl", "Cm", "Cn", "CD", "CL")
+        name: total[name] for name in ("CA", "CY", "CN", "Cl", "Cm", "Cn", "CD", "CL")
     }
     return {
         "case_id": case_id,

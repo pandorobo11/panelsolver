@@ -62,9 +62,7 @@ def _configure_application(application: QtWidgets.QApplication) -> None:
 
 
 def _unavailable_adapters(product_id: str) -> SolverGuiAdapters:
-    message = (
-        f"{product_id} case I/O and execution adapters are not configured."
-    )
+    message = f"{product_id} case I/O and execution adapters are not configured."
 
     def unavailable(*_args, **_kwargs):
         raise GuiAdaptersUnavailable(message)

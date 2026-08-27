@@ -66,6 +66,9 @@ jobs:
           uv run python scripts/probe_scheduler_lifecycle.py
           --iterations 10 --timeout-seconds 90
 
+      - name: Formatting
+        run: uv run ruff format --check src tests scripts hatch_build.py
+
       - name: Static checks
         run: uv run ruff check src tests scripts hatch_build.py
 

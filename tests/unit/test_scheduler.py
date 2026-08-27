@@ -159,9 +159,7 @@ def _stubborn_worker(case: tuple[str, str], _logfn) -> int:
 
 def _worker_resource_state() -> tuple[set[int], set[int]]:
     process_ids = {
-        int(process.pid)
-        for process in mp.active_children()
-        if process.pid is not None
+        int(process.pid) for process in mp.active_children() if process.pid is not None
     }
     feeder_ids = {
         int(thread.ident)
@@ -265,7 +263,9 @@ class SchedulerTests(unittest.TestCase):
         for group in (range(5), range(5, 10), range(10, 15)):
             self.assertEqual(
                 tuple(group),
-                tuple(index for chunk in decisions[0] for index in chunk if index in group),
+                tuple(
+                    index for chunk in decisions[0] for index in chunk if index in group
+                ),
             )
 
     def test_affinity_chunk_count_matches_fixed_width_baseline(self) -> None:
@@ -608,13 +608,7 @@ class SchedulerTests(unittest.TestCase):
         )
 
         def affinity_worker_spread(results, label):
-            return len(
-                {
-                    result[0]
-                    for result in results.values()
-                    if result[1] == label
-                }
-            )
+            return len({result[0] for result in results.values() if result[1] == label})
 
         self.assertEqual(2, affinity_worker_spread(baseline, "a"))
         self.assertEqual(2, affinity_worker_spread(baseline, "b"))
@@ -773,7 +767,9 @@ class SchedulerTests(unittest.TestCase):
             yielded.extend(iterator)
         self.assertGreaterEqual(len(yielded), 1)
         self.assertLess(len(yielded), 4)
-        self.assertEqual(list(range(1, len(yielded) + 1)), [p.completed for p in progress])
+        self.assertEqual(
+            list(range(1, len(yielded) + 1)), [p.completed for p in progress]
+        )
         self.assert_no_new_worker_resources(before)
 
     def test_unexpected_exit_is_reported_with_exit_code(self) -> None:
@@ -812,7 +808,9 @@ class SchedulerTests(unittest.TestCase):
 
     def test_unpickleable_result_is_a_bounded_worker_error(self) -> None:
         before = _worker_resource_state()
-        with self.assertRaisesRegex(WorkerExecutionError, "serialize worker chunk_done"):
+        with self.assertRaisesRegex(
+            WorkerExecutionError, "serialize worker chunk_done"
+        ):
             list(
                 iter_case_results_parallel(
                     ("result", "ok"),
@@ -892,7 +890,9 @@ class SchedulerTests(unittest.TestCase):
 
     def test_unpickleable_forwarded_log_is_a_bounded_worker_error(self) -> None:
         before = _worker_resource_state()
-        with self.assertRaisesRegex(WorkerExecutionError, "serialize worker chunk_done"):
+        with self.assertRaisesRegex(
+            WorkerExecutionError, "serialize worker chunk_done"
+        ):
             list(
                 iter_case_results_parallel(
                     ("log", "ok"),
@@ -951,7 +951,9 @@ class SchedulerTests(unittest.TestCase):
                 iterator.close()
         self.assert_no_new_worker_resources(before)
 
-    def test_cleanup_reports_a_process_that_survives_kill_without_blocking(self) -> None:
+    def test_cleanup_reports_a_process_that_survives_kill_without_blocking(
+        self,
+    ) -> None:
         calls: list[str] = []
 
         class FakeEvent:
@@ -998,7 +1000,9 @@ class SchedulerTests(unittest.TestCase):
         self.assertIn("kill", calls)
         self.assertNotIn("task:send", calls)
         self.assertNotIn("process:close", calls)
-        self.assertTrue(all(call == "join:True" for call in calls if call.startswith("join")))
+        self.assertTrue(
+            all(call == "join:True" for call in calls if call.startswith("join"))
+        )
 
     def test_mid_frame_connection_failure_is_a_worker_exit_error(self) -> None:
         before = _worker_resource_state()
@@ -1117,7 +1121,9 @@ class SchedulerTests(unittest.TestCase):
                 self.assertEqual(((0, 7),), caught.exception.exits)
                 self.assertIsNone(caught.exception.__cause__)
                 self.assertIsNone(caught.exception.__context__)
-                self.assertEqual(scheduler_module._CLEANUP_SECONDS, process.join_timeout)
+                self.assertEqual(
+                    scheduler_module._CLEANUP_SECONDS, process.join_timeout
+                )
 
     def test_readiness_eof_with_live_process_retains_startup_transport_chain(
         self,

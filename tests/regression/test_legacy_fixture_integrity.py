@@ -70,7 +70,9 @@ COMMON_NPZ_ARRAYS = {
 
 
 def _load_case(solver: str, case_id: str) -> dict:
-    return json.loads((GOLDEN_ROOT / solver / f"{case_id}.json").read_text(encoding="utf-8"))
+    return json.loads(
+        (GOLDEN_ROOT / solver / f"{case_id}.json").read_text(encoding="utf-8")
+    )
 
 
 def _values(record: dict) -> np.ndarray:
@@ -140,15 +142,26 @@ class LegacyFixtureManifestTests(unittest.TestCase):
                 self.assertEqual(source["repository"], provenance["source_repository"])
                 self.assertEqual(source["commit"], provenance["source_commit"])
                 self.assertRegex(provenance["source_lock_sha256"], r"^[0-9a-f]{64}$")
-                self.assertEqual(MANIFEST["generation"]["command"], provenance["generation_command"])
-                self.assertEqual(expected["requested_backend"], provenance["requested_backend"])
+                self.assertEqual(
+                    MANIFEST["generation"]["command"], provenance["generation_command"]
+                )
+                self.assertEqual(
+                    expected["requested_backend"], provenance["requested_backend"]
+                )
                 self.assertEqual(
                     expected["requested_backend"],
                     case["normalized_input"]["ray_backend"],
                 )
-                self.assertEqual(expected["expected_effective_backend"], provenance["effective_backend"])
-                self.assertEqual(expected["tolerance_profile"], provenance["tolerance_profile"])
-                self.assertIn(provenance["tolerance_profile"], MANIFEST["tolerance_profiles"])
+                self.assertEqual(
+                    expected["expected_effective_backend"],
+                    provenance["effective_backend"],
+                )
+                self.assertEqual(
+                    expected["tolerance_profile"], provenance["tolerance_profile"]
+                )
+                self.assertIn(
+                    provenance["tolerance_profile"], MANIFEST["tolerance_profiles"]
+                )
 
     def test_fixture_matrix_covers_phase1_minimum(self) -> None:
         covered = {"invalid_input", *MANIFEST["contract_coverage"]}
@@ -165,9 +178,7 @@ class LegacyFixtureManifestTests(unittest.TestCase):
             for case_id, metadata in _case_metadata(solver).items():
                 paths = set(_numeric_leaf_paths(_load_case(solver, case_id)))
                 all_paths.update(paths)
-                profile = MANIFEST["tolerance_profiles"][
-                    metadata["tolerance_profile"]
-                ]
+                profile = MANIFEST["tolerance_profiles"][metadata["tolerance_profile"]]
                 for override in profile.get("path_overrides", []):
                     for pattern in override["paths"]:
                         self.assertTrue(
@@ -192,22 +203,38 @@ class LegacyFixtureComparatorTests(unittest.TestCase):
             contract = json.loads(
                 (GOLDEN_ROOT / solver / "contracts.json").read_text(encoding="utf-8")
             )
-            self.assertEqual(expected_scripts[solver], set(contract["package"]["scripts"]))
+            self.assertEqual(
+                expected_scripts[solver], set(contract["package"]["scripts"])
+            )
             self.assertEqual([], contract["package"]["package_all"])
-            self.assertIn(f"usage: {solver.replace('solver', 'solver-cli')}", contract["cli"]["help"])
+            self.assertIn(
+                f"usage: {solver.replace('solver', 'solver-cli')}",
+                contract["cli"]["help"],
+            )
             self.assertIn(solver, contract["module_paths"])
-            self.assertEqual(expected_suite_counts[solver], contract["legacy_suite"]["tests_run"])
+            self.assertEqual(
+                expected_suite_counts[solver], contract["legacy_suite"]["tests_run"]
+            )
             self.assertEqual("passed", contract["legacy_suite"]["status"])
 
             locked = contract["environments"]["locked"]
             accelerated = contract["environments"]["rayaccel"]
             self.assertFalse(locked["trimesh_has_embree"])
-            self.assertEqual("rtree", locked["backend_selection"]["auto"]["value"]["effective"])
+            self.assertEqual(
+                "rtree", locked["backend_selection"]["auto"]["value"]["effective"]
+            )
             self.assertEqual("error", locked["backend_selection"]["embree"]["status"])
             self.assertTrue(accelerated["trimesh_has_embree"])
-            self.assertEqual("embree", accelerated["backend_selection"]["auto"]["value"]["effective"])
-            self.assertEqual("rtree", accelerated["backend_selection"]["rtree"]["value"]["effective"])
-            self.assertEqual("embree", accelerated["backend_selection"]["embree"]["value"]["effective"])
+            self.assertEqual(
+                "embree", accelerated["backend_selection"]["auto"]["value"]["effective"]
+            )
+            self.assertEqual(
+                "rtree", accelerated["backend_selection"]["rtree"]["value"]["effective"]
+            )
+            self.assertEqual(
+                "embree",
+                accelerated["backend_selection"]["embree"]["value"]["effective"],
+            )
             self.assertFalse(locked["embree_binding"]["available"])
             self.assertTrue(accelerated["embree_binding"]["available"])
             self.assertEqual(
@@ -224,7 +251,9 @@ class LegacyFixtureComparatorTests(unittest.TestCase):
             self.assertEqual(environments[1], provenance["cli_run_environment"])
 
             invalid = contract["invalid_inputs"]
-            expected_names = {Path(path).name for path in MANIFEST["invalid_inputs"][solver]}
+            expected_names = {
+                Path(path).name for path in MANIFEST["invalid_inputs"][solver]
+            }
             self.assertEqual(expected_names, set(invalid))
             self.assertTrue(all(item["status"] == "error" for item in invalid.values()))
 
@@ -258,20 +287,14 @@ class LegacyFixtureComparatorTests(unittest.TestCase):
         self.assertTrue(compare(1.0, 1.0 + 1e-15, "fmf_default", input_path))
 
         geometry_path = ("npz", "arrays", "vertices", "values", "0")
-        self.assertEqual(
-            [], compare(1.0, 1.0 + 5e-13, "newt_algebraic", geometry_path)
-        )
-        self.assertTrue(
-            compare(1.0, 1.0 + 5e-11, "newt_algebraic", geometry_path)
-        )
+        self.assertEqual([], compare(1.0, 1.0 + 5e-13, "newt_algebraic", geometry_path))
+        self.assertTrue(compare(1.0, 1.0 + 5e-11, "newt_algebraic", geometry_path))
 
         cone_path = ("vtp", "cell_data", "Cp_n", "values", "0")
         self.assertEqual(
             [], compare(1.0, 1.0 + 5.05e-8, "newt_tangent_cone", cone_path)
         )
-        self.assertTrue(
-            compare(1.0, 1.0 + 8e-8, "newt_tangent_cone", cone_path)
-        )
+        self.assertTrue(compare(1.0, 1.0 + 8e-8, "newt_tangent_cone", cone_path))
 
         blank = module._csv_cell("CA", "", roots={})
         numeric_nan = module._csv_cell("CA", "nan", roots={})
@@ -384,7 +407,8 @@ class LegacyFixtureSemanticIntegrityTests(unittest.TestCase):
                     total = _total_row(case)
                     self.assertEqual(case_id, total["case_id"])
                     self.assertEqual(
-                        metadata["expected_effective_backend"], total["ray_backend_used"]
+                        metadata["expected_effective_backend"],
+                        total["ray_backend_used"],
                     )
                     self.assertEqual(
                         "<case-signature:path-and-version-dependent>",
@@ -437,7 +461,9 @@ class LegacyFixtureSemanticIntegrityTests(unittest.TestCase):
                         _values(vtp["cell_data"]["stl_index"]),
                         _values(npz["face_stl_index"]),
                     )
-                    profile = MANIFEST["tolerance_profiles"][metadata["tolerance_profile"]]
+                    profile = MANIFEST["tolerance_profiles"][
+                        metadata["tolerance_profile"]
+                    ]
                     tolerance = MANIFEST["tolerances"][profile["default"]]
                     np.testing.assert_allclose(
                         _values(vtp["cell_data"]["C_face_stl"]).sum(axis=0),
@@ -463,10 +489,15 @@ class LegacyFixtureSemanticIntegrityTests(unittest.TestCase):
 
                     rows = case["csv"]["rows"]
                     if "multi_component" in metadata["coverage"]:
-                        self.assertEqual(["total", "component", "component"], [r["scope"] for r in rows])
+                        self.assertEqual(
+                            ["total", "component", "component"],
+                            [r["scope"] for r in rows],
+                        )
                         for coefficient in COEFFICIENTS:
                             component_sum = sum(
-                                float(row[coefficient]) for row in rows if row["scope"] == "component"
+                                float(row[coefficient])
+                                for row in rows
+                                if row["scope"] == "component"
                             )
                             self.assertTrue(
                                 math.isclose(

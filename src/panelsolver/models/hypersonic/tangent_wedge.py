@@ -25,7 +25,9 @@ def _oblique_theta_from_beta(Mach: float, gamma: float, beta: float) -> float:
     return math.atan(rhs)
 
 
-def _oblique_theta_from_beta_vec(Mach: float, gamma: float, beta: np.ndarray) -> np.ndarray:
+def _oblique_theta_from_beta_vec(
+    Mach: float, gamma: float, beta: np.ndarray
+) -> np.ndarray:
     """Vectorized variant of :func:`_oblique_theta_from_beta`."""
     m2 = float(Mach) * float(Mach)
     g = float(gamma)
@@ -35,8 +37,10 @@ def _oblique_theta_from_beta_vec(Mach: float, gamma: float, beta: np.ndarray) ->
     denom = m2 * (g + np.cos(2.0 * b)) + 2.0
     rhs = np.zeros_like(b)
     valid_denom = denom > 0.0
-    rhs[valid_denom] = 2.0 * (m2 * sin_b2[valid_denom] - 1.0) / (
-        np.tan(b[valid_denom]) * denom[valid_denom]
+    rhs[valid_denom] = (
+        2.0
+        * (m2 * sin_b2[valid_denom] - 1.0)
+        / (np.tan(b[valid_denom]) * denom[valid_denom])
     )
     out = np.zeros_like(b)
     valid_rhs = valid_denom & (rhs > 0.0)
@@ -73,7 +77,9 @@ def _tangent_wedge_detach_limit(Mach: float, gamma: float) -> tuple[float, float
     beta_peak = min(max(beta_peak, mu + 1e-12), 0.5 * math.pi - 1e-12)
     theta_max = _oblique_theta_from_beta(M, g, beta_peak)
     if theta_max <= 0.0 or (not math.isfinite(theta_max)):
-        raise RuntimeError("Failed to compute tangent-wedge detach theta from closed-form beta_max.")
+        raise RuntimeError(
+            "Failed to compute tangent-wedge detach theta from closed-form beta_max."
+        )
 
     mn1 = M * math.sin(beta_peak)
     p2_p1 = 1.0 + (2.0 * g / (g + 1.0)) * (mn1 * mn1 - 1.0)
@@ -81,7 +87,9 @@ def _tangent_wedge_detach_limit(Mach: float, gamma: float) -> tuple[float, float
     return float(theta_max), float(max(cp_crit, 0.0))
 
 
-def _weak_oblique_shock_beta(Mach: float, gamma: float, theta: np.ndarray) -> np.ndarray:
+def _weak_oblique_shock_beta(
+    Mach: float, gamma: float, theta: np.ndarray
+) -> np.ndarray:
     """Vectorized weak-shock ``beta`` [rad] solver.
 
     Returns ``NaN`` where no attached weak solution exists.
@@ -218,7 +226,11 @@ def tangent_wedge_pressure_coefficient(
     if not np.any(windward):
         return out
 
-    cap = float(cp_cap) if cp_cap is not None else modified_newtonian_cp_max(Mach=M, gamma=g)
+    cap = (
+        float(cp_cap)
+        if cp_cap is not None
+        else modified_newtonian_cp_max(Mach=M, gamma=g)
+    )
     theta = theta_all[windward]
     theta_max, cp_crit_raw = _tangent_wedge_detach_limit(M, g)
     cp_crit = min(max(cp_crit_raw, 0.0), cap)

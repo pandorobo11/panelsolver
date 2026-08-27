@@ -108,6 +108,7 @@ Run the standard checks:
 ```bash
 uv sync --locked --extra rayaccel --group docs
 uv run --no-sync python -m unittest discover -s tests -p "test_*.py" -v
+uv run --no-sync ruff format --check src tests scripts hatch_build.py
 uv run --no-sync ruff check src tests scripts hatch_build.py
 uv build
 ```

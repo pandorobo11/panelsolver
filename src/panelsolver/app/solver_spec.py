@@ -60,17 +60,12 @@ class GuiRunRequest:
             raise TypeError("GuiRunRequest.workers must be an integer")
         if self.workers < 1:
             raise ValueError("GuiRunRequest.workers must be at least one")
-        if (
-            isinstance(self.checkpoint_every_cases, bool)
-            or not isinstance(self.checkpoint_every_cases, int)
+        if isinstance(self.checkpoint_every_cases, bool) or not isinstance(
+            self.checkpoint_every_cases, int
         ):
-            raise TypeError(
-                "GuiRunRequest.checkpoint_every_cases must be an integer"
-            )
+            raise TypeError("GuiRunRequest.checkpoint_every_cases must be an integer")
         if self.checkpoint_every_cases < 0:
-            raise ValueError(
-                "GuiRunRequest.checkpoint_every_cases must be nonnegative"
-            )
+            raise ValueError("GuiRunRequest.checkpoint_every_cases must be nonnegative")
         output_path = Path(self.output_path)
         for field_name in ("log", "progress", "cancel_requested"):
             if not callable(getattr(self, field_name)):
@@ -121,7 +116,9 @@ class GuiRunResult:
             raise TypeError("GuiRunResult.summary_csv_saved must be a boolean or None")
         issues = tuple(self.output_issues)
         if any(not isinstance(issue, OutputIssue) for issue in issues):
-            raise TypeError("GuiRunResult.output_issues must contain OutputIssue values")
+            raise TypeError(
+                "GuiRunResult.output_issues must contain OutputIssue values"
+            )
         object.__setattr__(self, "output_issues", issues)
 
 
@@ -144,9 +141,7 @@ def gui_run_result_from_batch(
         calculation_completed_cases=len(result.cases),
         calculation_total_cases=len(request.rows),
         summary_csv_saved=result.summary_csv_saved,
-        vtp_requested=sum(
-            bool(int(row.get("save_vtp_on", 1))) for row in request.rows
-        ),
+        vtp_requested=sum(bool(int(row.get("save_vtp_on", 1))) for row in request.rows),
         vtp_saved=sum(bool(case.vtp_path) for case in result.cases),
         output_issues=result.output_issues,
     )
@@ -161,7 +156,9 @@ class ArtifactSignatureCandidates:
 
     def __post_init__(self) -> None:
         if not isinstance(self.primary, CaseSignature):
-            raise TypeError("ArtifactSignatureCandidates.primary must be a CaseSignature")
+            raise TypeError(
+                "ArtifactSignatureCandidates.primary must be a CaseSignature"
+            )
         try:
             legacy = tuple(self.legacy_signatures)
         except TypeError as exc:
@@ -219,10 +216,7 @@ def _unique_names(value: object, *, field: str) -> tuple[str, ...]:
         iterator = iter(value)
     except TypeError as exc:
         raise TypeError(f"{field} must be an iterable of names") from exc
-    names = tuple(
-        _nonempty_text(item, field=f"{field} item")
-        for item in iterator
-    )
+    names = tuple(_nonempty_text(item, field=f"{field} item") for item in iterator)
     if not names:
         raise ValueError(f"{field} must not be empty")
     if len(names) != len(set(names)):
@@ -324,9 +318,7 @@ class SolverSpec:
         except TypeError as exc:
             raise TypeError("SolverSpec.examples must be iterable") from exc
         if any(not isinstance(example, ExampleDefinition) for example in examples):
-            raise TypeError(
-                "SolverSpec.examples must contain ExampleDefinition values"
-            )
+            raise TypeError("SolverSpec.examples must contain ExampleDefinition values")
         labels = tuple(example.label for example in examples)
         inputs = tuple(example.input_resource for example in examples)
         if len(labels) != len(set(labels)) or len(inputs) != len(set(inputs)):

@@ -147,8 +147,7 @@ def _validate_rows(frame: pd.DataFrame, add_issue: AddIssue) -> None:
         add_issue(
             int(index),
             "mode",
-            "Specify one complete mode "
-            "(Mode A: S+Ti_K, Mode B: Mach+Altitude_km).",
+            "Specify one complete mode (Mode A: S+Ti_K, Mode B: Mach+Altitude_km).",
         )
     for column in ("S", "Ti_K", "Mach"):
         for index in frame.index[frame[column].notna() & (frame[column] <= 0.0)]:
@@ -442,11 +441,17 @@ def format_case(row: Mapping[str, object]) -> str:
         fields.extend((("mode", "A"), ("S", row.get("S")), ("Ti", row.get("Ti_K"))))
     elif _present(row.get("Mach")) and _present(row.get("Altitude_km")):
         fields.extend(
-            (("mode", "B"), ("Mach", row.get("Mach")), ("Alt_km", row.get("Altitude_km")))
+            (
+                ("mode", "B"),
+                ("Mach", row.get("Mach")),
+                ("Alt_km", row.get("Altitude_km")),
+            )
         )
     fields.append(("Tw", row.get("Tw_K")))
     fields.extend(_attitude_fields(row))
-    fields.extend((("shield", row.get("shielding_on")), ("ray", row.get("ray_backend"))))
+    fields.extend(
+        (("shield", row.get("shielding_on")), ("ray", row.get("ray_backend")))
+    )
     return " | ".join(
         f"{name}={text}"
         for name, value in fields

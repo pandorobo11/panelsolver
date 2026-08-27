@@ -265,9 +265,7 @@ class ShieldingTests(unittest.TestCase):
                 ValueError,
             ),
             (
-                lambda: ShieldingResult(
-                    TypeErrorArray(), config, "fingerprint", False
-                ),
+                lambda: ShieldingResult(TypeErrorArray(), config, "fingerprint", False),
                 "shielded",
                 TypeError,
             ),
@@ -291,9 +289,10 @@ class ShieldingTests(unittest.TestCase):
             ),
         )
         for construct, field, cause_type in cases:
-            with self.subTest(field=field), self.assertRaisesRegex(
-                ShieldingError, field
-            ) as caught:
+            with (
+                self.subTest(field=field),
+                self.assertRaisesRegex(ShieldingError, field) as caught,
+            ):
                 construct()
             self.assertIsInstance(caught.exception.__cause__, cause_type)
 

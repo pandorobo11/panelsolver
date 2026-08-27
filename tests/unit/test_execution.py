@@ -98,7 +98,9 @@ class ExecutionTests(unittest.TestCase):
         self.assertEqual(1, model.evaluate_calls)
         self.assertEqual("not_used", result.shielding.config.effective_backend)
         self.assertEqual("synthetic", result.results.model_id)
-        self.assertEqual(result.signature.digest, result.results.metadata["case_signature"])
+        self.assertEqual(
+            result.signature.digest, result.results.metadata["case_signature"]
+        )
         self.assertEqual(
             result.mesh.n_faces,
             result.results.local_loads.traction_coeff_stl.shape[0],
@@ -178,9 +180,7 @@ class ExecutionTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "model validation failed"):
             execute_case(
                 _request(
-                    model_case=ModelCasePayload(
-                        "synthetic", {"fail_validation": True}
-                    )
+                    model_case=ModelCasePayload("synthetic", {"fail_validation": True})
                 )
             )
         with self.assertRaisesRegex(ExecutionModelError, "LocalLoads"):

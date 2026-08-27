@@ -163,7 +163,10 @@ class ModelRegistryTests(unittest.TestCase):
             (NonzeroShieldedModel("nonzero-shielded"), flow(shielded=(False, True))),
         )
         for model, state in cases:
-            with self.subTest(model=model.model_id), self.assertRaises(ModelOutputError):
+            with (
+                self.subTest(model=model.model_id),
+                self.assertRaises(ModelOutputError),
+            ):
                 ModelRegistry((model,)).evaluate(
                     geometry(),
                     state,

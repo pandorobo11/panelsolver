@@ -48,9 +48,7 @@ class ResolvedSentmanCase:
         return {
             "mode": self.mode,
             "S": self.speed_ratio if self.mode == "A" else None,
-            "Ti_K": (
-                self.translational_temperature_k if self.mode == "A" else None
-            ),
+            "Ti_K": (self.translational_temperature_k if self.mode == "A" else None),
             "Mach": self.mach,
             "Altitude_km": self.altitude_km,
             "Tw_K": self.wall_temperature_k,
@@ -212,9 +210,7 @@ class SentmanModel:
             geometry.normals_out_stl,
             flow_state.velocity_hat_stl,
         )
-        theta_deg = np.degrees(
-            np.arccos(np.clip(normal_dot_velocity, -1.0, 1.0))
-        )
+        theta_deg = np.degrees(np.arccos(np.clip(normal_dot_velocity, -1.0, 1.0)))
         normal_traction_coeff = -np.einsum(
             "ij,ij->i",
             traction,
@@ -228,8 +224,7 @@ class SentmanModel:
         tangent_hat_stl = np.zeros_like(tangent_stl)
         tangent_is_defined = tangent_norm > 1.0e-12
         tangent_hat_stl[tangent_is_defined] = (
-            tangent_stl[tangent_is_defined]
-            / tangent_norm[tangent_is_defined, None]
+            tangent_stl[tangent_is_defined] / tangent_norm[tangent_is_defined, None]
         )
         tangential_traction_coeff = np.einsum(
             "ij,ij->i",
@@ -287,9 +282,10 @@ def _sentman_traction_coefficients(
 
     incident = gamma * phi + (inverse_s / sqrt_pi) * exponential
     normal_incident = 0.5 * inverse_s_squared * phi
-    reflected = 0.5 * sqrt_wall_to_translation * (
-        (gamma * sqrt_pi * inverse_s) * phi
-        + inverse_s_squared * exponential
+    reflected = (
+        0.5
+        * sqrt_wall_to_translation
+        * ((gamma * sqrt_pi * inverse_s) * phi + inverse_s_squared * exponential)
     )
     out[active] = (
         incident[:, None] * velocity_hat_stl[None, :]
@@ -370,14 +366,17 @@ def sentman_dC_dA_vectors(
     if normals.shape[0] == 0:
         raise SentmanCaseError("n_out", "must contain at least one panel normal")
     mask = _helper_shield_mask(shielded, n_faces=normals.shape[0])
-    return _sentman_traction_coefficients(
-        velocity_hat_stl=velocity,
-        normals_out_stl=normals,
-        speed_ratio=speed_ratio,
-        translational_temperature_k=translational_temperature,
-        wall_temperature_k=wall_temperature,
-        shielded=mask,
-    ) / reference_area
+    return (
+        _sentman_traction_coefficients(
+            velocity_hat_stl=velocity,
+            normals_out_stl=normals,
+            speed_ratio=speed_ratio,
+            translational_temperature_k=translational_temperature,
+            wall_temperature_k=wall_temperature,
+            shielded=mask,
+        )
+        / reference_area
+    )
 
 
 def sentman_dC_dA_vector(

@@ -54,9 +54,7 @@ def _stubborn_worker(case: tuple[str, str], _logfn) -> int:
 
 def _resource_state() -> tuple[set[int], set[int]]:
     processes = {
-        int(process.pid)
-        for process in mp.active_children()
-        if process.pid is not None
+        int(process.pid) for process in mp.active_children() if process.pid is not None
     }
     feeders = {
         int(thread.ident)

@@ -74,8 +74,9 @@ class ResolvedAttitudeInvariantTests(unittest.TestCase):
                     "input_mode": "beta_tan",
                     field: value,
                 }
-                with self.subTest(field=field, value=value), self.assertRaisesRegex(
-                    ValueError, field
+                with (
+                    self.subTest(field=field, value=value),
+                    self.assertRaisesRegex(ValueError, field),
                 ):
                     ResolvedAttitude(**kwargs)
 
@@ -93,8 +94,9 @@ class ResolvedAttitudeInvariantTests(unittest.TestCase):
             [np.inf, 0.0, 0.0],
         )
         for velocity in invalid:
-            with self.subTest(velocity=repr(velocity)), self.assertRaisesRegex(
-                ValueError, "velocity_hat_stl"
+            with (
+                self.subTest(velocity=repr(velocity)),
+                self.assertRaisesRegex(ValueError, "velocity_hat_stl"),
             ):
                 ResolvedAttitude(velocity, 0.0, 0.0, "beta_tan")
 
@@ -102,8 +104,9 @@ class ResolvedAttitudeInvariantTests(unittest.TestCase):
         self,
     ) -> None:
         for alpha, beta in ((True, 0.0), (np.bool_(False), 0.0), (0.0, True)):
-            with self.subTest(alpha=alpha, beta=beta), self.assertRaisesRegex(
-                ValueError, "finite real"
+            with (
+                self.subTest(alpha=alpha, beta=beta),
+                self.assertRaisesRegex(ValueError, "finite real"),
             ):
                 resolve_attitude(
                     alpha,
@@ -113,8 +116,9 @@ class ResolvedAttitudeInvariantTests(unittest.TestCase):
 
     def test_beta_tan_uses_one_canonical_principal_domain(self) -> None:
         for alpha, beta in ((-90.0, 0.0), (90.0, 0.0), (0.0, -90.0), (0.0, 90.0)):
-            with self.subTest(alpha=alpha, beta=beta), self.assertRaisesRegex(
-                ValueError, "strictly between -90 and 90"
+            with (
+                self.subTest(alpha=alpha, beta=beta),
+                self.assertRaisesRegex(ValueError, "strictly between -90 and 90"),
             ):
                 resolve_attitude(alpha, beta, "beta_tan")
 
@@ -131,8 +135,11 @@ class ResolvedAttitudeInvariantTests(unittest.TestCase):
 
     def test_beta_sin_restricts_only_alpha_to_principal_domain(self) -> None:
         for alpha in (-90.0, 90.0):
-            with self.subTest(alpha=alpha), self.assertRaisesRegex(
-                ValueError, "alpha_deg.*strictly between -90 and 90"
+            with (
+                self.subTest(alpha=alpha),
+                self.assertRaisesRegex(
+                    ValueError, "alpha_deg.*strictly between -90 and 90"
+                ),
             ):
                 resolve_attitude(alpha, 180.0, "beta_sin")
 
@@ -160,14 +167,19 @@ class ResolvedAttitudeInvariantTests(unittest.TestCase):
         for selector in (None, "", "   ", "BETA_TAN", " beta_sin ", "BaNk"):
             with self.subTest(selector=repr(selector)):
                 resolved = resolve_attitude(0.0, 0.0, selector)
-                expected = "beta_tan" if selector is None or not selector.strip() else (
-                    selector.strip().lower()
+                expected = (
+                    "beta_tan"
+                    if selector is None or not selector.strip()
+                    else (selector.strip().lower())
                 )
                 self.assertEqual(expected, resolved.input_mode)
 
         for selector in (False, 0, [], object()):
-            with self.subTest(selector=repr(selector)), self.assertRaisesRegex(
-                TypeError, "attitude_input must be text or None"
+            with (
+                self.subTest(selector=repr(selector)),
+                self.assertRaisesRegex(
+                    TypeError, "attitude_input must be text or None"
+                ),
             ):
                 resolve_attitude(0.0, 0.0, selector)
         with self.assertRaisesRegex(ValueError, "Invalid attitude_input"):

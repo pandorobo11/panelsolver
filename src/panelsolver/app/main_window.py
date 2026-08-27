@@ -188,9 +188,7 @@ class MainWindow(QtWidgets.QMainWindow):
             if not self._close_when_run_finishes:
                 self._close_when_run_finishes = True
                 self.cases_panel.cancel_run()
-                self.cases_panel.logln(
-                    "[CLOSE] Waiting for the active run to stop..."
-                )
+                self.cases_panel.logln("[CLOSE] Waiting for the active run to stop...")
             event.ignore()
             return
         self._documentation_site.close()

@@ -446,9 +446,7 @@ class CommonResults:
                 "CommonResults.local_loads",
                 "panel count must match geometry",
             )
-        if np.any(
-            self.local_loads.traction_coeff_stl[self.flow_state.shielded] != 0.0
-        ):
+        if np.any(self.local_loads.traction_coeff_stl[self.flow_state.shielded] != 0.0):
             raise ContractValueError(
                 "CommonResults.local_loads",
                 "shielded panels must have exact-zero traction",

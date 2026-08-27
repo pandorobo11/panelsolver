@@ -34,7 +34,11 @@ class SentmanAtmosphereTableTests(unittest.TestCase):
         self.assertEqual(201, len(set(altitudes)))
         self.assertTrue(all(next_z > z for z, next_z in pairwise(altitudes)))
         self.assertTrue(
-            all(math.isfinite(float(value)) for row in US1976_SENTMAN_TABLE for value in row)
+            all(
+                math.isfinite(float(value))
+                for row in US1976_SENTMAN_TABLE
+                for value in row
+            )
         )
         self.assertEqual((0.0, 1000.0), altitude_range_km())
 
@@ -55,7 +59,9 @@ class SentmanAtmosphereTableTests(unittest.TestCase):
         names = tuple(PREVIOUS_COLUMN_SHA256)
         for name, values, value_format in zip(names, columns, formats, strict=True):
             with self.subTest(column=name):
-                payload = ("\n".join(format(value, value_format) for value in values) + "\n").encode()
+                payload = (
+                    "\n".join(format(value, value_format) for value in values) + "\n"
+                ).encode()
                 self.assertEqual(
                     PREVIOUS_COLUMN_SHA256[name],
                     hashlib.sha256(payload).hexdigest(),

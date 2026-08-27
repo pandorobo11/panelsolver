@@ -181,7 +181,9 @@ class ScalarDiscoveryTests(unittest.TestCase):
         self.assertTrue(fields[1].categorical)
         self.assertEqual(np.dtype(np.int32), fields[-1].dtype)
 
-    def test_excludes_vectors_strings_shape_mismatches_nonfinite_and_empty(self) -> None:
+    def test_excludes_vectors_strings_shape_mismatches_nonfinite_and_empty(
+        self,
+    ) -> None:
         fields = discover_scalar_fields(
             {
                 "valid": [1, 2],

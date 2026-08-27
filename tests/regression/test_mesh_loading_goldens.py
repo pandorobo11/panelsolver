@@ -37,8 +37,7 @@ class MeshLoadingGoldenTests(unittest.TestCase):
                 case = json.loads(path.read_text(encoding="utf-8"))
                 normalized = case["normalized_input"]
                 source_names = [
-                    Path(value).name
-                    for value in str(normalized["stl_path"]).split(";")
+                    Path(value).name for value in str(normalized["stl_path"]).split(";")
                 ]
                 loaded = load_panel_mesh(
                     [FIXTURE_ROOT / "inputs" / "stl" / name for name in source_names],

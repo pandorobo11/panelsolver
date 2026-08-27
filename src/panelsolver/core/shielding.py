@@ -154,7 +154,9 @@ def _normalize_backend(value: RayBackend | str | None) -> RayBackend:
     try:
         return RayBackend(raw.strip().lower() or "auto")
     except ValueError as exc:
-        raise ShieldingError("ray_backend must be one of: auto, rtree, embree.") from exc
+        raise ShieldingError(
+            "ray_backend must be one of: auto, rtree, embree."
+        ) from exc
 
 
 def _positive_integer(value: object, *, field: str) -> int:
@@ -223,7 +225,9 @@ def _resolve_intersector(
         auto_intersector = ray_mesh.ray
         module = type(auto_intersector).__module__
         effective = (
-            RayBackend.EMBREE.value if "ray_pyembree" in module else RayBackend.RTREE.value
+            RayBackend.EMBREE.value
+            if "ray_pyembree" in module
+            else RayBackend.RTREE.value
         )
     else:
         auto_intersector = None

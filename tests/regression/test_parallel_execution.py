@@ -111,15 +111,9 @@ class ParallelExecutionRegressionTests(unittest.TestCase):
             )
 
     def test_bucket_hints_share_only_model_neutral_shielding_work(self) -> None:
-        sentman = _request_for(
-            GOLDEN_ROOT / "fmfsolver" / "fmf_shield_rtree.json"
-        )
-        hypersonic = _request_for(
-            GOLDEN_ROOT / "newtsolver" / "newt_shield_rtree.json"
-        )
-        disabled = _request_for(
-            GOLDEN_ROOT / "fmfsolver" / "fmf_zero_plate.json"
-        )
+        sentman = _request_for(GOLDEN_ROOT / "fmfsolver" / "fmf_shield_rtree.json")
+        hypersonic = _request_for(GOLDEN_ROOT / "newtsolver" / "newt_shield_rtree.json")
+        disabled = _request_for(GOLDEN_ROOT / "fmfsolver" / "fmf_zero_plate.json")
         keys = case_execution_bucket_keys((sentman, hypersonic, disabled))
         self.assertEqual(keys[0], keys[1])
         self.assertEqual("single", keys[2][0])
@@ -129,15 +123,9 @@ class ParallelExecutionRegressionTests(unittest.TestCase):
         )
 
     def test_model_affinity_hints_do_not_change_primary_bucket_identity(self) -> None:
-        sentman = _request_for(
-            GOLDEN_ROOT / "fmfsolver" / "fmf_zero_plate.json"
-        )
-        cone = _request_for(
-            GOLDEN_ROOT / "newtsolver" / "newt_tangent_cone.json"
-        )
-        wedge = _request_for(
-            GOLDEN_ROOT / "newtsolver" / "newt_tangent_wedge.json"
-        )
+        sentman = _request_for(GOLDEN_ROOT / "fmfsolver" / "fmf_zero_plate.json")
+        cone = _request_for(GOLDEN_ROOT / "newtsolver" / "newt_tangent_cone.json")
+        wedge = _request_for(GOLDEN_ROOT / "newtsolver" / "newt_tangent_wedge.json")
         hints = case_execution_affinity_hints((sentman, cone, wedge))
         self.assertEqual((), hints[0])
         self.assertEqual(("tangent_cone", 6.0, 1.4), hints[1][0].identity)

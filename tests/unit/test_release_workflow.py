@@ -91,5 +91,6 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertNotIn("issues: write", self.workflow)
         self.assertNotIn("pull-requests: write", self.workflow)
 
+
 if __name__ == "__main__":
     unittest.main()

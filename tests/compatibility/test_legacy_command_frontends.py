@@ -96,9 +96,11 @@ class LegacyCommandFrontendTests(unittest.TestCase):
                 self.assertEqual(product_id, spec.product_id)
                 self.assertEqual(model_id, spec.model_id)
                 self.assertEqual(title, spec.window_title)
-                row = read_current_cases(domain.read_cases, INPUTS / filename).iloc[
-                    0
-                ].to_dict()
+                row = (
+                    read_current_cases(domain.read_cases, INPUTS / filename)
+                    .iloc[0]
+                    .to_dict()
+                )
                 candidates = builder(row)
                 self.assertEqual(
                     domain.build_primary_signatures(row).primary,
@@ -126,7 +128,10 @@ class LegacyCommandFrontendTests(unittest.TestCase):
 
         with patch("panelsolver.app.gui_bootstrap.run_gui", side_effect=capture):
             for name in expected:
-                with self.subTest(command=name), self.assertRaises(SystemExit) as caught:
+                with (
+                    self.subTest(command=name),
+                    self.assertRaises(SystemExit) as caught,
+                ):
                     entry_points[name].load()()
                 self.assertEqual(0, caught.exception.code)
         self.assertEqual(list(expected.values()), observed)
