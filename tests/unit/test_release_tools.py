@@ -12,6 +12,8 @@ from importlib import resources
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 from scripts.release_tools import (
     _DOCS_NOTICE_MARKERS,
     _DOCS_REQUIRED_LICENSES,
@@ -781,6 +783,7 @@ class ReleaseToolTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "tag/version mismatch"):
                 verify_tag("2.3.4", "2.3.4")
 
+    @pytest.mark.slow
     def test_annotated_tag_matches_exact_main_and_wrong_forms_fail(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             repository = self.make_git_repository(Path(temp_dir))
@@ -804,6 +807,7 @@ class ReleaseToolTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "tag target mismatch"):
                 verify_release_tag(repository, "v2.3.4", "refs/remotes/origin/main")
 
+    @pytest.mark.slow
     def test_release_tag_rejects_wrong_version_lock_and_changelog(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             repository = self.make_git_repository(Path(temp_dir))

@@ -12,6 +12,8 @@ from itertools import product
 from pathlib import Path
 from unittest import mock
 
+import pytest
+
 import panelsolver.core.scheduler as scheduler_module
 from panelsolver.core import (
     PartialResultPolicy,
@@ -458,6 +460,7 @@ class SchedulerTests(unittest.TestCase):
             history,
         )
 
+    @pytest.mark.slow
     def test_completion_progress_logs_and_ordered_snapshots(self) -> None:
         before = _worker_resource_state()
         logs: list[str] = []
@@ -489,6 +492,7 @@ class SchedulerTests(unittest.TestCase):
         )
         self.assert_no_new_worker_resources(before)
 
+    @pytest.mark.slow
     def test_successful_results_guide_later_worker_affinity_without_ray_steal(
         self,
     ) -> None:
@@ -561,6 +565,7 @@ class SchedulerTests(unittest.TestCase):
         self.assertEqual((0, 1, 2, 3), tuple(index for index, _ in snapshots[-1]))
         self.assert_no_new_worker_resources(before)
 
+    @pytest.mark.slow
     def test_bucket_local_grouping_reduces_worker_affinity_spread_without_more_steal(
         self,
     ) -> None:
@@ -620,6 +625,7 @@ class SchedulerTests(unittest.TestCase):
         self.assertEqual(order, tuple(index for index, _ in snapshots[-1]))
         self.assert_no_new_worker_resources(before)
 
+    @pytest.mark.slow
     def test_bucket_local_grouping_does_not_add_ray_workers_when_groups_conflict(
         self,
     ) -> None:
@@ -661,6 +667,7 @@ class SchedulerTests(unittest.TestCase):
         self.assertEqual(order, tuple(index for index, _ in snapshots[-1]))
         self.assert_no_new_worker_resources(before)
 
+    @pytest.mark.slow
     def test_forward_logs_and_discard_failed_chunk_results(self) -> None:
         before = _worker_resource_state()
         logs: list[str] = []
@@ -683,6 +690,7 @@ class SchedulerTests(unittest.TestCase):
         self.assertIn("ValueError", caught.exception.remote_traceback)
         self.assert_no_new_worker_resources(before)
 
+    @pytest.mark.slow
     def test_drop_logs_and_yield_completed_failed_chunk_results(self) -> None:
         before = _worker_resource_state()
         logs: list[str] = []
@@ -702,6 +710,7 @@ class SchedulerTests(unittest.TestCase):
         self.assertEqual([], logs)
         self.assert_no_new_worker_resources(before)
 
+    @pytest.mark.slow
     def test_drop_logs_and_discard_failed_chunk_results_remain_orthogonal(
         self,
     ) -> None:
@@ -724,6 +733,7 @@ class SchedulerTests(unittest.TestCase):
         self.assertEqual([], logs)
         self.assert_no_new_worker_resources(before)
 
+    @pytest.mark.slow
     def test_forward_logs_and_yield_completed_failed_chunk_results_remain_orthogonal(
         self,
     ) -> None:
@@ -745,6 +755,7 @@ class SchedulerTests(unittest.TestCase):
         self.assertEqual(["case=0", "case=1"], logs)
         self.assert_no_new_worker_resources(before)
 
+    @pytest.mark.slow
     def test_cancellation_waits_for_case_boundary_and_stops_dispatch(self) -> None:
         before = _worker_resource_state()
         progress = []
@@ -772,6 +783,7 @@ class SchedulerTests(unittest.TestCase):
         )
         self.assert_no_new_worker_resources(before)
 
+    @pytest.mark.slow
     def test_unexpected_exit_is_reported_with_exit_code(self) -> None:
         before = _worker_resource_state()
         with self.assertRaises(WorkerUnexpectedExitError) as caught:
@@ -788,6 +800,7 @@ class SchedulerTests(unittest.TestCase):
         self.assertIn((0, 7), caught.exception.exits)
         self.assert_no_new_worker_resources(before)
 
+    @pytest.mark.slow
     def test_fast_unexpected_exit_is_repeatable_after_all_workers_are_ready(
         self,
     ) -> None:
@@ -806,6 +819,7 @@ class SchedulerTests(unittest.TestCase):
                 )
         self.assert_no_new_worker_resources(before)
 
+    @pytest.mark.slow
     def test_unpickleable_result_is_a_bounded_worker_error(self) -> None:
         before = _worker_resource_state()
         with self.assertRaisesRegex(
@@ -824,6 +838,7 @@ class SchedulerTests(unittest.TestCase):
             )
         self.assert_no_new_worker_resources(before)
 
+    @pytest.mark.slow
     def test_unpickleable_case_is_rejected_before_pipe_dispatch(self) -> None:
         before = _worker_resource_state()
         unpickleable_case = lambda: None
@@ -840,6 +855,7 @@ class SchedulerTests(unittest.TestCase):
             )
         self.assert_no_new_worker_resources(before)
 
+    @pytest.mark.slow
     def test_unpickleable_partial_result_is_a_bounded_delivery_error(
         self,
     ) -> None:
@@ -866,6 +882,7 @@ class SchedulerTests(unittest.TestCase):
         )
         self.assert_no_new_worker_resources(before)
 
+    @pytest.mark.slow
     def test_early_close_interrupts_a_backpressured_large_result(self) -> None:
         before = _worker_resource_state()
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -888,6 +905,7 @@ class SchedulerTests(unittest.TestCase):
             self.assertLess(time.monotonic() - started, 7.0)
         self.assert_no_new_worker_resources(before)
 
+    @pytest.mark.slow
     def test_unpickleable_forwarded_log_is_a_bounded_worker_error(self) -> None:
         before = _worker_resource_state()
         with self.assertRaisesRegex(
@@ -906,6 +924,7 @@ class SchedulerTests(unittest.TestCase):
             )
         self.assert_no_new_worker_resources(before)
 
+    @pytest.mark.slow
     def test_early_iterator_close_kills_and_reaps_a_resistant_worker(self) -> None:
         before = _worker_resource_state()
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -925,6 +944,7 @@ class SchedulerTests(unittest.TestCase):
             self.assertLess(time.monotonic() - started, 7.0)
         self.assert_no_new_worker_resources(before)
 
+    @pytest.mark.slow
     def test_cleanup_failure_during_generator_close_is_not_hidden(self) -> None:
         before = _worker_resource_state()
         original_cleanup = scheduler_module._cleanup_workers
@@ -1004,6 +1024,7 @@ class SchedulerTests(unittest.TestCase):
             all(call == "join:True" for call in calls if call.startswith("join"))
         )
 
+    @pytest.mark.slow
     def test_mid_frame_connection_failure_is_a_worker_exit_error(self) -> None:
         before = _worker_resource_state()
         connection_base = scheduler_module.mp.connection._ConnectionBase
@@ -1038,6 +1059,7 @@ class SchedulerTests(unittest.TestCase):
         self.assertTrue(failed)
         self.assert_no_new_worker_resources(before)
 
+    @pytest.mark.slow
     def test_readiness_cancellation_is_typed_bounded_and_reaps_workers(self) -> None:
         before = _worker_resource_state()
         calls = 0
@@ -1067,6 +1089,7 @@ class SchedulerTests(unittest.TestCase):
         self.assertGreaterEqual(calls, 2)
         self.assert_no_new_worker_resources(before)
 
+    @pytest.mark.slow
     def test_real_pre_ready_exit_is_an_unexpected_exit_without_chain(self) -> None:
         before = _worker_resource_state()
         with mock.patch.object(

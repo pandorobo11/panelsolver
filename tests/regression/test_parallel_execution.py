@@ -6,6 +6,7 @@ from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 from panelsolver.app import default_model_registry, request_from_registry
 from panelsolver.core import (
@@ -66,6 +67,7 @@ def _request_for(path: Path):
 
 
 class ParallelExecutionRegressionTests(unittest.TestCase):
+    @pytest.mark.slow
     def test_both_models_match_serial_engine_through_spawn_scheduler(self) -> None:
         paths = (
             GOLDEN_ROOT / "fmfsolver" / "fmf_zero_plate.json",

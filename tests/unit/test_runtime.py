@@ -9,6 +9,7 @@ from pathlib import Path
 from unittest import mock
 
 import numpy as np
+import pytest
 import pyvista as pv
 
 from panelsolver.app import (
@@ -129,6 +130,7 @@ class RuntimeTests(unittest.TestCase):
             self.assertTrue(result.summary_csv_saved)
             self.assertTrue(any("VTP output failed" in message for message in logs))
 
+    @pytest.mark.slow
     def test_parallel_vtp_failures_are_aggregated_without_stopping_cases(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -508,6 +510,7 @@ class RuntimeTests(unittest.TestCase):
                 run_fmf_cases((row,), cancel_cb=lambda: True)
             self.assertFalse(out_dir.exists())
 
+    @pytest.mark.slow
     def test_failed_chunk_policy_controls_checkpoint_logs_and_partial_result(
         self,
     ) -> None:
@@ -617,6 +620,7 @@ class RuntimeTests(unittest.TestCase):
                         any(message.startswith("[WARN]") for message in logs)
                     )
 
+    @pytest.mark.slow
     def test_parallel_success_is_input_ordered_and_forwards_worker_logs(self) -> None:
         products = (
             (

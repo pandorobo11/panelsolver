@@ -54,6 +54,17 @@ uv build
 Most existing tests remain written with `unittest`; pytest is the standard test
 runner and collects that suite without requiring a test-style rewrite.
 
+For fast feedback while developing, run:
+
+```bash
+uv run --no-sync pytest -m "not slow"
+```
+
+The `slow` marker identifies real process/subprocess lifecycle and other
+high-wall-time integration tests. The fast suite supplements rather than
+replaces the authoritative unfiltered pytest suite. Run the full suite before a
+push or pull request; CI continues to run it on every supported operating system.
+
 For installed-interface or packaging changes, install the built wheel into a
 clean environment and test imports, canonical `panelsolver` and subcommand help,
 canonical `panelsolver-gui` dispatch and construction, plus both compatibility
