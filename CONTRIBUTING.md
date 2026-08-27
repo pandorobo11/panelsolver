@@ -18,11 +18,14 @@ relevant [ADRs](devdocs/adr/README.md), and the current issue or task.
 
 ```bash
 uv sync --locked --extra rayaccel --group docs
-uv run --no-sync python -m unittest discover -s tests -p "test_*.py" -v
+uv run --no-sync pytest
 uv run --no-sync ruff format --check src tests scripts hatch_build.py
 uv run --no-sync ruff check src tests scripts hatch_build.py
 uv build
 ```
+
+Most existing tests remain written with `unittest`; pytest is the standard test
+runner for the repository.
 
 Installed-interface changes also require a built-wheel smoke test. Changes to a
 physical model, shielding, geometry, integration, caching, or signatures require

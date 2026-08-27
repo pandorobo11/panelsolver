@@ -107,11 +107,14 @@ Run the standard checks:
 
 ```bash
 uv sync --locked --extra rayaccel --group docs
-uv run --no-sync python -m unittest discover -s tests -p "test_*.py" -v
+uv run --no-sync pytest
 uv run --no-sync ruff format --check src tests scripts hatch_build.py
 uv run --no-sync ruff check src tests scripts hatch_build.py
 uv build
 ```
+
+Most existing tests remain written with `unittest`; use pytest as the standard
+test runner.
 
 As applicable, also test the changed CLI's `--help`, the built wheel, the GUI,
 Embree and rtree backends, and model-specific golden regressions.

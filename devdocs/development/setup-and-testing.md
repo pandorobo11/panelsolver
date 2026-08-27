@@ -45,11 +45,14 @@ or change expected values merely to make tests pass.
 ## Standard quality gates
 
 ```bash
-uv run --no-sync python -m unittest discover -s tests -p "test_*.py" -v
+uv run --no-sync pytest
 uv run --no-sync ruff format --check src tests scripts hatch_build.py
 uv run --no-sync ruff check src tests scripts hatch_build.py
 uv build
 ```
+
+Most existing tests remain written with `unittest`; pytest is the standard test
+runner and collects that suite without requiring a test-style rewrite.
 
 For installed-interface or packaging changes, install the built wheel into a
 clean environment and test imports, canonical `panelsolver` and subcommand help,
