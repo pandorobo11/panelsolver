@@ -103,27 +103,41 @@ contracts unless another ADR explicitly promotes a neutral API.
 
 ## Verification
 
-Run the standard checks:
+Use the cross-platform local validation runner as the primary workflow:
 
 ```bash
-uv sync --locked --extra rayaccel --group docs
-uv run --no-sync pytest
-uv run --no-sync ruff format --check src tests scripts hatch_build.py
-uv run --no-sync ruff check src tests scripts hatch_build.py
-uv run --no-sync mypy src/panelsolver/core/contracts.py src/panelsolver/core/execution.py src/panelsolver/models/registry.py src/panelsolver/app/execution.py src/panelsolver/api.py src/panelsolver/__init__.py
-uv build
+python scripts/check.py --quick  # during development
+python scripts/check.py          # before push or pull request
+python scripts/check.py --full   # deeper packaging/process validation
 ```
 
-The mypy command checks only the explicit model-contract, registry, execution,
-and package-root solve API boundary shown above; it is not a repository-wide
-typing guarantee.
+On POSIX systems, `scripts/check.sh` accepts the same arguments and only forwards
+them to the Python runner. Each mode begins with the locked dependency sync.
+The runner reports each step and elapsed time and stops at the first failure.
+
+The quick mode runs Ruff formatting and lint, scoped mypy, and
+`pytest -m "not slow"`. The default standard mode substitutes the authoritative
+full pytest suite, then checks generated sources and plots, builds strict docs,
+and builds the distributions. Full additionally runs the scheduler lifecycle
+probe, distribution verification, and installed-wheel smoke in a temporary
+clean environment.
+
+For targeted typing troubleshooting, the exact checked boundary remains:
+
+```bash
+uv run --no-sync mypy src/panelsolver/core/contracts.py src/panelsolver/core/execution.py src/panelsolver/models/registry.py src/panelsolver/app/execution.py src/panelsolver/api.py src/panelsolver/__init__.py
+```
+
+This checks only the explicit model-contract, registry, execution, and
+package-root solve API boundary shown above; it is not a repository-wide typing
+guarantee.
 
 Most existing tests remain written with `unittest`; use pytest as the standard
 test runner.
 
-For fast feedback during development, run `uv run --no-sync pytest -m "not slow"`.
-The unfiltered pytest suite remains authoritative and must be run before a push
-or pull request and in CI.
+For targeted test troubleshooting, the fast command is
+`uv run --no-sync pytest -m "not slow"` and the full command is
+`uv run --no-sync pytest`. The unfiltered pytest suite remains authoritative.
 
 As applicable, also test the changed CLI's `--help`, the built wheel, the GUI,
 Embree and rtree backends, and model-specific golden regressions.

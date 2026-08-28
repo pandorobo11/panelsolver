@@ -17,25 +17,36 @@ relevant [ADRs](devdocs/adr/README.md), and the current issue or task.
 ## Required checks
 
 ```bash
-uv sync --locked --extra rayaccel --group docs
+python scripts/check.py --quick  # during development
+python scripts/check.py          # before push or pull request
+python scripts/check.py --full   # deeper packaging/process validation
+```
+
+The Python runner is canonical on Windows, macOS, and Linux. On POSIX systems,
+`scripts/check.sh` forwards the same arguments. All modes perform the locked
+dependency sync first and stop at the first failed step.
+
+For targeted troubleshooting, the individual commands remain available:
+
+```bash
+uv run --no-sync pytest -m "not slow"
 uv run --no-sync pytest
 uv run --no-sync ruff format --check src tests scripts hatch_build.py
 uv run --no-sync ruff check src tests scripts hatch_build.py
 uv run --no-sync mypy src/panelsolver/core/contracts.py src/panelsolver/core/execution.py src/panelsolver/models/registry.py src/panelsolver/app/execution.py src/panelsolver/api.py src/panelsolver/__init__.py
-uv build
 ```
 
-The explicit mypy paths are the current checked boundary: the model contracts,
-typed registry/execution wiring, and stable package-root solve API. Other
-modules are not claimed to be mypy-clean.
+The explicit mypy paths are the current six-file checked boundary: the model
+contracts, typed registry/execution wiring, and stable package-root solve API.
+Other modules are not claimed to be mypy-clean.
 
 Most existing tests remain written with `unittest`; pytest is the standard test
 runner for the repository.
 
-During development, `uv run --no-sync pytest -m "not slow"` provides fast
-feedback by excluding real process/subprocess and other high-wall-time
-integration tests. The unfiltered pytest suite remains authoritative; run it
-before pushing or opening a pull request. CI also runs the full suite.
+Quick mode uses the fast suite, which excludes real process/subprocess and other
+high-wall-time integration tests. Standard and full modes run only the
+unfiltered authoritative suite; they do not repeat the fast suite. CI also runs
+the full suite on all supported operating systems.
 
 Installed-interface changes also require a built-wheel smoke test. Changes to a
 physical model, shielding, geometry, integration, caching, or signatures require
