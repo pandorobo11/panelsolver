@@ -50,6 +50,7 @@ newtsolver-cli = "newtsolver.app.cli_app:main"
 
 [dependency-groups]
 dev = [
+  "mypy",
   "pytest",
   "ruff",
 ]
@@ -105,3 +106,8 @@ python_files = ["test_*.py"]
 markers = [
   "slow: exercises real process/subprocess lifecycle or other high-wall-time integration behavior",
 ]
+
+[tool.mypy]
+python_version = "3.12"
+follow_imports = "silent"
+show_error_codes = true

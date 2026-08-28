@@ -19,6 +19,7 @@ from panelsolver.core import (
     ModelCasePayload,
     PanelFlowState,
     PanelGeometry,
+    PayloadValue,
     ShieldingConfig,
     execute_case,
 )
@@ -130,7 +131,7 @@ def _solve(
     case: FMFCase | HypersonicCase,
     *,
     model: SentmanModel | HypersonicModel,
-    model_payload: Mapping[str, object],
+    model_payload: Mapping[str, PayloadValue],
 ) -> SolveResult:
     attitude = case.attitude
     common = CommonCasePayload(

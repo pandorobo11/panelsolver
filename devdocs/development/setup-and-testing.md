@@ -48,8 +48,15 @@ or change expected values merely to make tests pass.
 uv run --no-sync pytest
 uv run --no-sync ruff format --check src tests scripts hatch_build.py
 uv run --no-sync ruff check src tests scripts hatch_build.py
+uv run --no-sync mypy src/panelsolver/core/contracts.py src/panelsolver/core/execution.py src/panelsolver/models/registry.py src/panelsolver/app/execution.py src/panelsolver/api.py src/panelsolver/__init__.py
 uv build
 ```
+
+The mypy invocation deliberately names the initial coherent typing boundary:
+the shared model contract, registry-to-execution wiring, and stable in-memory
+solve API. It does not check all of `panelsolver.core`, model implementations,
+the GUI, or compatibility frontends, and it is not a repository-wide typing
+claim.
 
 Most existing tests remain written with `unittest`; pytest is the standard test
 runner and collects that suite without requiring a test-style rewrite.

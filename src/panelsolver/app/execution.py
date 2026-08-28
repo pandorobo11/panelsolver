@@ -10,6 +10,7 @@ import numpy as np
 from panelsolver.core import (
     CaseExecutionRequest,
     CommonCasePayload,
+    ExecutablePanelLoadModel,
     MeshValidationPolicy,
     ModelCasePayload,
     ShieldingConfig,
@@ -21,13 +22,13 @@ from panelsolver.models import (
 )
 
 
-def default_model_registry() -> ModelRegistry:
+def default_model_registry() -> ModelRegistry[ExecutablePanelLoadModel]:
     """Return the registry of built-in Sentman and Hypersonic models."""
     return ModelRegistry((SentmanModel(), HypersonicModel()))
 
 
-def request_from_registry(
-    registry: ModelRegistry,
+def request_from_registry[ModelT: ExecutablePanelLoadModel](
+    registry: ModelRegistry[ModelT],
     *,
     common_case: CommonCasePayload,
     model_case: ModelCasePayload,

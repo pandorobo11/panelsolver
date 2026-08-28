@@ -72,6 +72,16 @@ jobs:
       - name: Static checks
         run: uv run ruff check src tests scripts hatch_build.py
 
+      - name: Scoped typing
+        run: >-
+          uv run mypy
+          src/panelsolver/core/contracts.py
+          src/panelsolver/core/execution.py
+          src/panelsolver/models/registry.py
+          src/panelsolver/app/execution.py
+          src/panelsolver/api.py
+          src/panelsolver/__init__.py
+
       - name: Reinstall exact verified wheel
         run: >-
           uv run --no-sync python scripts/release_tools.py reinstall-wheel .
