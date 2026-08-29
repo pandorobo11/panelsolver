@@ -42,35 +42,75 @@ Their exact source commits are in
 [Migration sources](../history/migration/MIGRATION_SOURCES.md). Do not regenerate
 or change expected values merely to make tests pass.
 
-## Standard quality gates
+## Canonical local quality gates
 
 ```bash
+python scripts/check.py --quick  # during development
+python scripts/check.py          # before push or pull request
+python scripts/check.py --full   # deeper local validation
+```
+
+The Python runner is canonical and resolves the repository root independently
+of the caller's current directory. It works on Windows, macOS, and Linux. POSIX
+users may invoke `scripts/check.sh` with the same flags; the shell script is only
+a thin argument-forwarding wrapper. Every mode performs
+`uv sync --locked --extra rayaccel --group docs` first, uses `--no-sync` for
+subsequent `uv run` commands, reports step and total elapsed times, and stops at
+the first failure.
+
+The modes contain:
+
+- **quick:** Ruff format check, Ruff lint, the six-file mypy boundary, and
+  `pytest -m "not slow"`;
+- **standard (default):** the same quality checks, the unfiltered pytest suite,
+  generated US1976 and documentation-plot checks, strict MkDocs, and `uv build`;
+- **full:** standard plus the scheduler lifecycle stress probe, wheel/sdist and
+  isolated sdist-rebuild verification, and the installed-wheel smoke in a
+  temporary clean virtual environment.
+
+The documentation-plot check compares generated SVG bytes. The generator fixes
+metadata and hash salt, renders bundled DejaVu glyphs as paths, rounds serialized
+plot values, and normalizes line endings to make that comparison suitable for
+the cross-platform standard gate.
+
+Full mode does not modify the active development environment when testing the
+built wheel. It creates a temporary Python 3.12 environment, installs the wheel
+with its dependencies, invokes the existing installed-wheel helper outside the
+checkout, and removes the temporary environment even after failure.
+
+GitHub Actions remains responsible for the multi-OS matrix, protected-main and
+release-tag state, exact legacy rollback, release archive/manifest orchestration,
+artifact transfer, and GitHub Release publication. The local runner does not
+attempt to reproduce those CI/release-only operations.
+
+For targeted troubleshooting, use the individual checks directly:
+
+```bash
+uv run --no-sync pytest -m "not slow"
 uv run --no-sync pytest
 uv run --no-sync ruff format --check src tests scripts hatch_build.py
 uv run --no-sync ruff check src tests scripts hatch_build.py
 uv run --no-sync mypy src/panelsolver/core/contracts.py src/panelsolver/core/execution.py src/panelsolver/models/registry.py src/panelsolver/app/execution.py src/panelsolver/api.py src/panelsolver/__init__.py
+uv run --no-sync python scripts/generate_us1976_sentman_table.py --check
+uv run --no-sync python scripts/generate_docs_angle_response_plots.py --check
+uv run --no-sync mkdocs build --strict
 uv build
 ```
 
-The mypy invocation deliberately names the initial coherent typing boundary:
-the shared model contract, registry-to-execution wiring, and stable in-memory
-solve API. It does not check all of `panelsolver.core`, model implementations,
-the GUI, or compatibility frontends, and it is not a repository-wide typing
-claim.
+The mypy invocation deliberately names the initial coherent six-file typing
+boundary: the shared model contract, registry-to-execution wiring, and stable
+in-memory solve API. It does not check all of `panelsolver.core`, model
+implementations, the GUI, or compatibility frontends, and it is not a
+repository-wide typing claim.
 
 Most existing tests remain written with `unittest`; pytest is the standard test
 runner and collects that suite without requiring a test-style rewrite.
 
-For fast feedback while developing, run:
-
-```bash
-uv run --no-sync pytest -m "not slow"
-```
-
 The `slow` marker identifies real process/subprocess lifecycle and other
 high-wall-time integration tests. The fast suite supplements rather than
 replaces the authoritative unfiltered pytest suite. Run the full suite before a
-push or pull request; CI continues to run it on every supported operating system.
+push or pull request through the standard runner; CI continues to run it on
+every supported operating system.
 
 For installed-interface or packaging changes, install the built wheel into a
 clean environment and test imports, canonical `panelsolver` and subcommand help,
