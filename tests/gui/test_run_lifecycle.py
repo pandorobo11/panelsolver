@@ -169,6 +169,9 @@ class RunLifecycleTests(unittest.TestCase):
             self.assertTrue(
                 panel.start_run(rows, 2, 17, Path(directory) / "results.csv")
             )
+            self.assertEqual("0/2", panel.progress.text())
+            self.assertEqual("info", panel.progress.property("fluentStatus"))
+            self.assertTrue(panel.progress.property("fluentBusy"))
             self.assertFalse(panel.btn_pick_input.isEnabled())
             self.assertTrue(panel.btn_cancel.isEnabled())
             self.wait_until(lambda: not panel.is_running())
@@ -177,6 +180,8 @@ class RunLifecycleTests(unittest.TestCase):
             self.assertEqual(2, captured["request"].workers)
             self.assertEqual(17, captured["request"].checkpoint_every_cases)
             self.assertEqual("Completed", panel.progress.text())
+            self.assertEqual("success", panel.progress.property("fluentStatus"))
+            self.assertFalse(panel.progress.property("fluentBusy"))
             self.assertIn("[SAVE] checkpoint 1/2", panel.log.toPlainText())
             self.assertIn("[SAVE] final 2/2", panel.log.toPlainText())
             self.assertEqual(1, len(loaded))
@@ -222,6 +227,8 @@ class RunLifecycleTests(unittest.TestCase):
             self.wait_until(lambda: not panel.is_running())
 
         self.assertEqual("Completed with output errors", panel.progress.text())
+        self.assertEqual("warning", panel.progress.property("fluentStatus"))
+        self.assertFalse(panel.progress.property("fluentBusy"))
         warning.assert_called_once()
         message = warning.call_args.args[2]
         self.assertIn("7/7 cases completed", message)
@@ -382,11 +389,22 @@ class RunLifecycleTests(unittest.TestCase):
                     panel.start_run(rows, 1, DEFAULT_CHECKPOINT_CASES, "results.csv")
                 )
                 self.wait_until(entered.is_set)
+                if emit_progress:
+                    self.wait_until(
+                        lambda active_panel=panel: active_panel.progress.text() == "1/2"
+                    )
+                format_before_cancel = panel.progress.text()
                 panel.cancel_run()
+                self.assertEqual(format_before_cancel, panel.progress.text())
+                self.assertEqual("warning", panel.progress.property("fluentStatus"))
+                self.assertTrue(panel.progress.property("fluentBusy"))
+                self.assertFalse(panel.btn_cancel.isEnabled())
                 self.wait_until(
                     lambda active_panel=panel: not active_panel.is_running()
                 )
                 self.assertEqual("Canceled", panel.progress.text())
+                self.assertEqual("warning", panel.progress.property("fluentStatus"))
+                self.assertFalse(panel.progress.property("fluentBusy"))
                 self.assertIn("[CANCEL] Run canceled.", panel.log.toPlainText())
                 if emit_progress:
                     self.assertGreaterEqual(panel.progress.value(), 1)
@@ -416,8 +434,60 @@ class RunLifecycleTests(unittest.TestCase):
         self.wait_until(lambda: not panel.is_running())
         self.assertEqual(1, len(calls))
         self.assertEqual("Failed", panel.progress.text())
+        self.assertEqual("danger", panel.progress.property("fluentStatus"))
+        self.assertFalse(panel.progress.property("fluentBusy"))
         self.assertIn("primary solver failure", panel.log.toPlainText())
         self.assertNotIn("Run canceled.", panel.log.toPlainText())
+
+    def test_status_resets_for_next_run_and_clear_loaded_cases(self) -> None:
+        entered = (threading.Event(), threading.Event())
+        release = (threading.Event(), threading.Event())
+        calls = 0
+
+        def runner(_request):
+            nonlocal calls
+            index = calls
+            calls += 1
+            entered[index].set()
+            release[index].wait(timeout=3.0)
+            return GuiRunResult()
+
+        panel, rows, _ = self.make_panel(runner)
+        self.assertEqual("Idle", panel.progress.text())
+        self.assertEqual("neutral", panel.progress.property("fluentStatus"))
+        self.assertFalse(panel.progress.property("fluentBusy"))
+
+        for index in range(2):
+            self.assertTrue(
+                panel.start_run(
+                    rows,
+                    1,
+                    DEFAULT_CHECKPOINT_CASES,
+                    f"results_{index}.csv",
+                )
+            )
+            self.assertEqual("0/2", panel.progress.text())
+            self.assertEqual("info", panel.progress.property("fluentStatus"))
+            self.assertTrue(panel.progress.property("fluentBusy"))
+            self.wait_until(entered[index].is_set)
+            release[index].set()
+            self.wait_until(lambda: not panel.is_running())
+            self.assertEqual("Completed", panel.progress.text())
+            self.assertEqual("success", panel.progress.property("fluentStatus"))
+            self.assertFalse(panel.progress.property("fluentBusy"))
+
+        panel.clear_loaded_cases()
+        self.assertEqual("Idle", panel.progress.text())
+        self.assertEqual(
+            (0, 1, 0),
+            (
+                panel.progress.minimum(),
+                panel.progress.maximum(),
+                panel.progress.value(),
+            ),
+        )
+        self.assertEqual("neutral", panel.progress.property("fluentStatus"))
+        self.assertFalse(panel.progress.property("fluentBusy"))
 
     def test_both_products_defer_active_close_until_thread_cleanup(self) -> None:
         for spec_factory in (fmf_solver_spec, newt_solver_spec):

@@ -171,6 +171,66 @@ class ViewerPanelTests(unittest.TestCase):
         self.assertIn("case_id=case", plotter.text_calls[-1])
         self.assertTrue(plotter.parallel_enabled)
 
+    def test_semantic_action_roles_preserve_enabled_and_click_behavior(self) -> None:
+        viewer, _plotter = self.make_viewer()
+        for button in (
+            viewer.btn_open_vtp,
+            viewer.btn_save_image,
+            viewer.btn_save_selected_images,
+        ):
+            self.assertEqual("secondary", button.property("fluentAppearance"))
+        self.assertTrue(viewer.btn_open_vtp.isEnabled())
+        self.assertFalse(viewer.btn_save_image.isEnabled())
+        self.assertFalse(viewer.btn_save_selected_images.isEnabled())
+
+        opens: list[bool] = []
+        saves: list[bool] = []
+        selected_saves: list[bool] = []
+        batch_requests: list[bool] = []
+        viewer.btn_open_vtp.clicked.connect(lambda checked=False: opens.append(checked))
+        viewer.btn_save_image.clicked.connect(
+            lambda checked=False: saves.append(checked)
+        )
+        viewer.btn_save_selected_images.clicked.connect(
+            lambda checked=False: selected_saves.append(checked)
+        )
+        viewer.save_selected_images_requested.connect(
+            lambda: batch_requests.append(True)
+        )
+        with patch.object(
+            QtWidgets.QFileDialog,
+            "getOpenFileName",
+            return_value=("", ""),
+        ):
+            viewer.btn_open_vtp.click()
+        viewer.btn_save_image.click()
+        viewer.btn_save_selected_images.click()
+        self.assertEqual([False], opens)
+        self.assertEqual([], saves)
+        self.assertEqual([], selected_saves)
+        self.assertEqual([], batch_requests)
+
+        row = {"case_id": "one"}
+        viewer.set_input_path("/tmp/cases.csv")
+        viewer.set_case_rows((row,))
+        viewer.set_selected_case_rows((row,))
+        viewer.btn_save_selected_images.click()
+        self.assertEqual([False], selected_saves)
+        self.assertEqual([True], batch_requests)
+
+        viewer.load_vtp(
+            "/tmp/one.vtp",
+            FakePoly({"normal_traction_coeff": [1.0]}),
+            row,
+        )
+        with patch.object(
+            QtWidgets.QFileDialog,
+            "getSaveFileName",
+            return_value=("", ""),
+        ):
+            viewer.btn_save_image.click()
+        self.assertEqual([False], saves)
+
     def test_hypersonic_scalar_label_selects_cp_and_titles_colorbar(self) -> None:
         viewer, plotter = self.make_viewer(spec=newt_solver_spec())
         self.assertTrue(viewer.load_vtp("/tmp/case.vtp", FakePoly({"cp": [0.7]})))

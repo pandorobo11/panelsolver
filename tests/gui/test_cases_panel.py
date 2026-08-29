@@ -139,6 +139,44 @@ class CasesPanelTests(unittest.TestCase):
         self.assertIn("gamma", newt._table_columns)
         self.assertNotIn("S", newt._table_columns)
 
+    def test_semantic_action_roles_preserve_enabled_and_click_behavior(self) -> None:
+        panel, _ = self.make_panel()
+        self.assertEqual("secondary", panel.btn_pick_input.property("fluentAppearance"))
+        self.assertEqual("primary", panel.btn_run.property("fluentAppearance"))
+        self.assertEqual("danger", panel.btn_cancel.property("fluentAppearance"))
+        self.assertTrue(panel.btn_pick_input.isEnabled())
+        self.assertFalse(panel.btn_run.isEnabled())
+        self.assertFalse(panel.btn_cancel.isEnabled())
+
+        picks: list[bool] = []
+        runs: list[bool] = []
+        cancels: list[bool] = []
+        panel.btn_pick_input.clicked.connect(
+            lambda checked=False: picks.append(checked)
+        )
+        panel.btn_run.clicked.connect(lambda checked=False: runs.append(checked))
+        panel.btn_cancel.clicked.connect(lambda checked=False: cancels.append(checked))
+        with patch.object(
+            QtWidgets.QFileDialog,
+            "getOpenFileName",
+            return_value=("", ""),
+        ):
+            panel.btn_pick_input.click()
+        panel.btn_run.click()
+        panel.btn_cancel.click()
+        self.assertEqual([False], picks)
+        self.assertEqual([], runs)
+        self.assertEqual([], cancels)
+
+        self.assertTrue(panel.load_input_file("/tmp/input.csv"))
+        with patch.object(
+            QtWidgets.QFileDialog,
+            "getSaveFileName",
+            return_value=("", ""),
+        ):
+            panel.btn_run.click()
+        self.assertEqual([False], runs)
+
     def test_input_picker_offers_only_current_case_table_formats(self) -> None:
         panel, _ = self.make_panel()
         with patch.object(

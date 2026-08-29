@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -19,6 +19,24 @@ from panelsolver.app.gui_theme import (
     resolve_theme,
     set_semantic_property,
 )
+
+
+def _relative_luminance(value: str) -> float:
+    color = QtGui.QColor(value)
+    channels = (color.redF(), color.greenF(), color.blueF())
+    linear = tuple(
+        channel / 12.92 if channel <= 0.04045 else ((channel + 0.055) / 1.055) ** 2.4
+        for channel in channels
+    )
+    return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+
+
+def _contrast_ratio(first: str, second: str) -> float:
+    lighter, darker = sorted(
+        (_relative_luminance(first), _relative_luminance(second)),
+        reverse=True,
+    )
+    return (lighter + 0.05) / (darker + 0.05)
 
 
 class GuiThemeTests(unittest.TestCase):
@@ -173,6 +191,43 @@ class GuiThemeTests(unittest.TestCase):
             item_view_rule = qss.split("QAbstractItemView {", 1)[1].split("}", 1)[0]
             self.assertNotIn("selection-background-color", item_view_rule)
             self.assertNotIn("selection-color", item_view_rule)
+
+    def test_progress_qss_is_bounded_and_resolves_semantic_statuses(self) -> None:
+        for mode in (ThemeMode.LIGHT, ThemeMode.DARK):
+            qss = render_application_qss(resolve_theme(mode))
+            self.assertIn("QProgressBar {", qss)
+            self.assertIn("QProgressBar::chunk {", qss)
+            for status in ("info", "success", "warning", "danger"):
+                with self.subTest(mode=mode, status=status):
+                    self.assertIn(f'QProgressBar[fluentStatus="{status}"]', qss)
+            for decorative_treatment in (
+                "qlineargradient",
+                "qradiagradient",
+                "conical-gradient",
+                "animation",
+                "image:",
+            ):
+                self.assertNotIn(decorative_treatment, qss)
+
+    def test_progress_status_text_and_boundaries_have_contrast(self) -> None:
+        roles = (
+            ("info", "link", "inactive_selection_background"),
+            ("success", "success_foreground", "success_background"),
+            ("warning", "warning_foreground", "warning_background"),
+            ("danger", "danger_foreground", "danger_background"),
+        )
+        for mode in (ThemeMode.LIGHT, ThemeMode.DARK):
+            tokens = resolve_theme(mode).tokens
+            for status, border, fill in roles:
+                with self.subTest(mode=mode, status=status):
+                    self.assertGreaterEqual(
+                        _contrast_ratio(tokens["text_primary"], tokens[fill]),
+                        4.5,
+                    )
+                    self.assertGreaterEqual(
+                        _contrast_ratio(tokens[border], tokens["control_background"]),
+                        3.0,
+                    )
 
     def test_focus_rules_keep_the_base_border_width(self) -> None:
         qss = render_application_qss(resolve_theme(ThemeMode.LIGHT))
@@ -368,7 +423,7 @@ class GuiThemeTests(unittest.TestCase):
 
     def test_semantic_property_helper_preserves_behavior(self) -> None:
         self.assertEqual(
-            {"fluentAppearance", "fluentBusy", "fluentInvalid"},
+            {"fluentAppearance", "fluentStatus", "fluentBusy", "fluentInvalid"},
             SEMANTIC_PROPERTY_NAMES,
         )
         button = QtWidgets.QPushButton("Run")
@@ -376,8 +431,10 @@ class GuiThemeTests(unittest.TestCase):
         button.clicked.connect(lambda checked=False: activations.append(checked))
 
         set_semantic_property(button, "fluentAppearance", "primary")
+        set_semantic_property(button, "fluentStatus", "info")
         set_semantic_property(button, "fluentBusy", False)
         self.assertEqual("primary", button.property("fluentAppearance"))
+        self.assertEqual("info", button.property("fluentStatus"))
         self.assertFalse(button.property("fluentBusy"))
         self.assertTrue(button.isEnabled())
         button.click()
@@ -387,8 +444,26 @@ class GuiThemeTests(unittest.TestCase):
             set_semantic_property(button, "unknownProperty", True)
         with self.assertRaisesRegex(ValueError, "Unsupported fluentAppearance"):
             set_semantic_property(button, "fluentAppearance", "large")
+        with self.assertRaisesRegex(ValueError, "Unsupported fluentStatus"):
+            set_semantic_property(button, "fluentStatus", "running")
         with self.assertRaisesRegex(TypeError, "must be a bool"):
             set_semantic_property(button, "fluentInvalid", "true")
+
+    def test_semantic_property_repolishes_only_when_value_changes(self) -> None:
+        class StyleProbeWidget(QtWidgets.QWidget):
+            def __init__(self) -> None:
+                super().__init__()
+                self.style_probe = Mock()
+
+            def style(self):
+                return self.style_probe
+
+        widget = StyleProbeWidget()
+        set_semantic_property(widget, "fluentStatus", "neutral")
+        set_semantic_property(widget, "fluentStatus", "neutral")
+
+        widget.style_probe.unpolish.assert_called_once_with(widget)
+        widget.style_probe.polish.assert_called_once_with(widget)
 
     def test_theme_apply_preserves_application_identity(self) -> None:
         identity = ("Identity", "Display", "Organization", "example.invalid")

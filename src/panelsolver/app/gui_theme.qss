@@ -151,6 +151,52 @@ QLineEdit:disabled, QPlainTextEdit:disabled, QTextEdit:disabled {
     border-color: @{disabled_border};
 }
 
+QProgressBar {
+    background-color: @{control_background};
+    color: @{text_primary};
+    border: 1px solid @{border_control};
+    border-radius: 3px;
+    padding: 1px;
+    text-align: center;
+}
+
+QProgressBar::chunk {
+    background-color: @{control_pressed};
+    border-radius: 2px;
+}
+
+QProgressBar[fluentStatus="info"] {
+    border-color: @{link};
+}
+
+QProgressBar[fluentStatus="info"]::chunk {
+    background-color: @{inactive_selection_background};
+}
+
+QProgressBar[fluentStatus="success"] {
+    border-color: @{success_foreground};
+}
+
+QProgressBar[fluentStatus="success"]::chunk {
+    background-color: @{success_background};
+}
+
+QProgressBar[fluentStatus="warning"] {
+    border-color: @{warning_foreground};
+}
+
+QProgressBar[fluentStatus="warning"]::chunk {
+    background-color: @{warning_background};
+}
+
+QProgressBar[fluentStatus="danger"] {
+    border-color: @{danger_foreground};
+}
+
+QProgressBar[fluentStatus="danger"]::chunk {
+    background-color: @{danger_background};
+}
+
 QCheckBox, QRadioButton {
     color: @{text_primary};
     border: 1px solid transparent;

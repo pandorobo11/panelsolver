@@ -9,6 +9,7 @@ from pathlib import Path
 import pyvista as pv
 from PySide6 import QtCore, QtWidgets
 
+from .gui_theme import set_semantic_property
 from .output_status import OutputKind, OutputPhase
 from .path_resolution import (
     absolute_input_path,
@@ -128,6 +129,9 @@ class CasesPanel(QtWidgets.QWidget):
         self.btn_pick_input = QtWidgets.QPushButton("Select Input File")
         self.btn_run = QtWidgets.QPushButton("Run Selected Cases")
         self.btn_cancel = QtWidgets.QPushButton("Cancel")
+        set_semantic_property(self.btn_pick_input, "fluentAppearance", "secondary")
+        set_semantic_property(self.btn_run, "fluentAppearance", "primary")
+        set_semantic_property(self.btn_cancel, "fluentAppearance", "danger")
         self.btn_cancel.setEnabled(False)
         self.btn_run.setEnabled(False)
         self.lbl_case_summary = QtWidgets.QLabel("No cases loaded")
@@ -160,6 +164,8 @@ class CasesPanel(QtWidgets.QWidget):
         self.progress.setRange(0, 1)
         self.progress.setValue(0)
         self.progress.setFormat("Idle")
+        set_semantic_property(self.progress, "fluentStatus", "neutral")
+        set_semantic_property(self.progress, "fluentBusy", False)
         self._run_thread: QtCore.QThread | None = None
         self._run_worker: CaseRunWorker | None = None
         self._run_rows: tuple[CaseRow, ...] = ()
@@ -416,6 +422,8 @@ class CasesPanel(QtWidgets.QWidget):
         self.progress.setRange(0, total)
         self.progress.setValue(0)
         self.progress.setFormat(f"0/{total}")
+        set_semantic_property(self.progress, "fluentStatus", "info")
+        set_semantic_property(self.progress, "fluentBusy", True)
         self._set_running_state(True)
         self.logln(f"[RUN] Running {total} case(s)...")
 
@@ -454,6 +462,8 @@ class CasesPanel(QtWidgets.QWidget):
             return
         self._run_worker.cancel()
         self.btn_cancel.setEnabled(False)
+        set_semantic_property(self.progress, "fluentStatus", "warning")
+        set_semantic_property(self.progress, "fluentBusy", True)
         self.logln("[CANCEL] Cancellation requested...")
 
     def is_running(self) -> bool:
@@ -475,8 +485,11 @@ class CasesPanel(QtWidgets.QWidget):
         self.progress.setValue(total)
         if result.output_issues:
             self.progress.setFormat("Completed with output errors")
+            set_semantic_property(self.progress, "fluentStatus", "warning")
         else:
             self.progress.setFormat("Completed")
+            set_semantic_property(self.progress, "fluentStatus", "success")
+        set_semantic_property(self.progress, "fluentBusy", False)
         if self._run_output_path is not None and result.summary_csv_saved is not False:
             self.logln(f"[OK] Wrote results: {self._run_output_path}")
         if result.output_issues:
@@ -588,11 +601,15 @@ class CasesPanel(QtWidgets.QWidget):
     def _on_run_failed(self, message: str) -> None:
         self.logln(f"[ERROR] {message}")
         self.progress.setFormat("Failed")
+        set_semantic_property(self.progress, "fluentStatus", "danger")
+        set_semantic_property(self.progress, "fluentBusy", False)
 
     @QtCore.Slot()
     def _on_run_canceled(self) -> None:
         self.logln("[CANCEL] Run canceled.")
         self.progress.setFormat("Canceled")
+        set_semantic_property(self.progress, "fluentStatus", "warning")
+        set_semantic_property(self.progress, "fluentBusy", False)
 
     @QtCore.Slot()
     def _cleanup_run_worker(self) -> None:
@@ -623,6 +640,8 @@ class CasesPanel(QtWidgets.QWidget):
         self.progress.setRange(0, 1)
         self.progress.setValue(0)
         self.progress.setFormat("Idle")
+        set_semantic_property(self.progress, "fluentStatus", "neutral")
+        set_semantic_property(self.progress, "fluentBusy", False)
         self.viewer_clear_requested.emit()
         self.input_path_changed.emit(None)
         self.cases_updated.emit(self.case_rows)
