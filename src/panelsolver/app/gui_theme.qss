@@ -1,0 +1,200 @@
+/* Generated application stylesheet. All colors resolve through gui_theme.py. */
+
+QMainWindow, QDialog {
+    background-color: @{window_background};
+    color: @{text_primary};
+}
+
+QPushButton, QToolButton {
+    background-color: @{control_background};
+    color: @{text_primary};
+    border: 1px solid @{border_control};
+    border-radius: 3px;
+    padding: 4px 10px;
+}
+
+QPushButton:hover, QToolButton:hover {
+    background-color: @{control_hover};
+    border-color: @{border_hover};
+}
+
+QPushButton:pressed, QToolButton:pressed {
+    background-color: @{control_pressed};
+    border-color: @{border_hover};
+}
+
+QPushButton:checked, QToolButton:checked {
+    background-color: @{inactive_selection_background};
+    color: @{inactive_selection_text};
+    border-color: @{brand_background};
+}
+
+QPushButton[fluentAppearance="primary"],
+QToolButton[fluentAppearance="primary"] {
+    background-color: @{brand_background};
+    color: @{brand_text};
+    border-color: @{brand_background};
+}
+
+QPushButton[fluentAppearance="primary"]:hover,
+QToolButton[fluentAppearance="primary"]:hover {
+    background-color: @{brand_hover};
+    border-color: @{brand_hover};
+}
+
+QPushButton[fluentAppearance="primary"]:pressed,
+QToolButton[fluentAppearance="primary"]:pressed {
+    background-color: @{brand_pressed};
+    border-color: @{brand_pressed};
+}
+
+QPushButton[fluentAppearance="secondary"],
+QToolButton[fluentAppearance="secondary"] {
+    background-color: @{control_background};
+    color: @{text_primary};
+    border-color: @{border_control};
+}
+
+QPushButton[fluentAppearance="subtle"],
+QToolButton[fluentAppearance="subtle"] {
+    background-color: transparent;
+    color: @{text_primary};
+    border-color: transparent;
+}
+
+QPushButton[fluentAppearance="subtle"]:hover,
+QToolButton[fluentAppearance="subtle"]:hover {
+    background-color: @{control_hover};
+}
+
+QPushButton[fluentAppearance="subtle"]:pressed,
+QToolButton[fluentAppearance="subtle"]:pressed {
+    background-color: @{control_pressed};
+}
+
+QPushButton[fluentAppearance="danger"],
+QToolButton[fluentAppearance="danger"] {
+    background-color: @{danger_action_background};
+    color: @{brand_text};
+    border-color: @{danger_action_background};
+}
+
+QPushButton[fluentAppearance="danger"]:hover,
+QToolButton[fluentAppearance="danger"]:hover {
+    background-color: @{danger_action_hover};
+    border-color: @{danger_action_hover};
+}
+
+QPushButton[fluentAppearance="danger"]:pressed,
+QToolButton[fluentAppearance="danger"]:pressed {
+    background-color: @{danger_action_pressed};
+    border-color: @{danger_action_pressed};
+}
+
+QPushButton[fluentBusy="true"], QToolButton[fluentBusy="true"] {
+    border-color: @{brand_background};
+}
+
+QPushButton:focus, QToolButton:focus {
+    border: 2px solid @{focus_border};
+}
+
+QPushButton:disabled, QToolButton:disabled,
+QPushButton[fluentAppearance="primary"]:disabled,
+QToolButton[fluentAppearance="primary"]:disabled,
+QPushButton[fluentAppearance="danger"]:disabled,
+QToolButton[fluentAppearance="danger"]:disabled {
+    background-color: @{disabled_background};
+    color: @{disabled_text};
+    border-color: @{disabled_border};
+}
+
+QLineEdit, QPlainTextEdit, QTextEdit, QComboBox,
+QSpinBox, QDoubleSpinBox, QDateEdit, QTimeEdit, QDateTimeEdit {
+    background-color: @{control_background};
+    color: @{text_primary};
+    border: 1px solid @{border_control};
+    border-radius: 3px;
+    padding: 3px 5px;
+    selection-background-color: @{selection_background};
+    selection-color: @{selection_text};
+}
+
+QLineEdit:hover, QPlainTextEdit:hover, QTextEdit:hover, QComboBox:hover,
+QSpinBox:hover, QDoubleSpinBox:hover, QDateEdit:hover, QTimeEdit:hover,
+QDateTimeEdit:hover {
+    border-color: @{border_hover};
+}
+
+QLineEdit:focus, QPlainTextEdit:focus, QTextEdit:focus, QComboBox:focus,
+QSpinBox:focus, QDoubleSpinBox:focus, QDateEdit:focus, QTimeEdit:focus,
+QDateTimeEdit:focus {
+    border: 2px solid @{focus_border};
+}
+
+QLineEdit:read-only, QPlainTextEdit:read-only, QTextEdit:read-only,
+QSpinBox:read-only, QDoubleSpinBox:read-only, QDateEdit:read-only,
+QTimeEdit:read-only, QDateTimeEdit:read-only {
+    background-color: @{read_only_background};
+    color: @{read_only_text};
+}
+
+QLineEdit[fluentInvalid="true"], QPlainTextEdit[fluentInvalid="true"],
+QTextEdit[fluentInvalid="true"], QComboBox[fluentInvalid="true"],
+QSpinBox[fluentInvalid="true"], QDoubleSpinBox[fluentInvalid="true"] {
+    background-color: @{danger_background};
+    border-color: @{danger_border};
+}
+
+QLineEdit[fluentInvalid="true"]:focus,
+QPlainTextEdit[fluentInvalid="true"]:focus,
+QTextEdit[fluentInvalid="true"]:focus,
+QComboBox[fluentInvalid="true"]:focus,
+QSpinBox[fluentInvalid="true"]:focus,
+QDoubleSpinBox[fluentInvalid="true"]:focus {
+    background-color: @{danger_background};
+    border: 2px solid @{focus_border};
+}
+
+QLineEdit:disabled, QPlainTextEdit:disabled, QTextEdit:disabled,
+QComboBox:disabled, QSpinBox:disabled, QDoubleSpinBox:disabled,
+QDateEdit:disabled, QTimeEdit:disabled, QDateTimeEdit:disabled {
+    background-color: @{disabled_background};
+    color: @{disabled_text};
+    border-color: @{disabled_border};
+}
+
+QCheckBox, QRadioButton {
+    color: @{text_primary};
+    border: 1px solid transparent;
+    border-radius: 2px;
+    padding: 1px;
+}
+
+QCheckBox:focus, QRadioButton:focus {
+    border-color: @{focus_border};
+}
+
+QCheckBox:disabled, QRadioButton:disabled {
+    color: @{disabled_text};
+}
+
+QAbstractItemView {
+    background-color: @{canvas_background};
+    alternate-background-color: @{secondary_surface};
+    color: @{text_primary};
+    border: 1px solid @{border_subtle};
+    selection-background-color: @{inactive_selection_background};
+    selection-color: @{inactive_selection_text};
+}
+
+QAbstractItemView:focus {
+    border: 2px solid @{focus_border};
+}
+
+QToolTip {
+    background-color: @{tooltip_background};
+    color: @{tooltip_text};
+    border: 1px solid @{border_control};
+    padding: 3px 5px;
+}

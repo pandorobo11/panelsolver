@@ -176,6 +176,7 @@ class GuiBootstrapTests(unittest.TestCase):
                 "panelsolver.app.gui_bootstrap._application_icon",
                 return_value=MagicMock(),
             ),
+            patch("panelsolver.app.gui_bootstrap.apply_application_theme"),
         ):
             run_gui(
                 newt_solver_spec(),
