@@ -155,6 +155,36 @@ class GuiThemeTests(unittest.TestCase):
                 "QWidget { color: @{missing_role}; }",
             )
 
+    def test_qss_leaves_complex_controls_and_item_selection_to_qt(self) -> None:
+        for mode in (ThemeMode.LIGHT, ThemeMode.DARK):
+            qss = render_application_qss(resolve_theme(mode))
+            for control in (
+                "QComboBox",
+                "QSpinBox",
+                "QDoubleSpinBox",
+                "QDateEdit",
+                "QTimeEdit",
+                "QDateTimeEdit",
+            ):
+                with self.subTest(mode=mode, control=control):
+                    self.assertNotIn(control, qss)
+
+            item_view_rule = qss.split("QAbstractItemView {", 1)[1].split("}", 1)[0]
+            self.assertNotIn("selection-background-color", item_view_rule)
+            self.assertNotIn("selection-color", item_view_rule)
+
+    def test_focus_rules_keep_the_base_border_width(self) -> None:
+        qss = render_application_qss(resolve_theme(ThemeMode.LIGHT))
+        self.assertNotIn("border: 2px", qss)
+        for selector in (
+            "QPushButton:focus, QToolButton:focus",
+            "QLineEdit:focus, QPlainTextEdit:focus, QTextEdit:focus",
+            "QAbstractItemView:focus",
+        ):
+            with self.subTest(selector=selector):
+                rule = qss.split(f"{selector} {{", 1)[1].split("}", 1)[0]
+                self.assertIn("border: 1px solid", rule)
+
     def test_palette_populates_active_inactive_and_disabled_groups(self) -> None:
         theme = resolve_theme(ThemeMode.LIGHT)
         palette = build_application_palette(theme)
@@ -192,6 +222,44 @@ class GuiThemeTests(unittest.TestCase):
                 QtGui.QPalette.ColorRole.Text,
             ).name(),
         )
+        self.assertEqual(
+            theme.value("selection_background"),
+            palette.color(
+                QtGui.QPalette.ColorGroup.Active,
+                QtGui.QPalette.ColorRole.Highlight,
+            ).name(),
+        )
+        self.assertEqual(
+            theme.value("inactive_selection_background"),
+            palette.color(
+                QtGui.QPalette.ColorGroup.Inactive,
+                QtGui.QPalette.ColorRole.Highlight,
+            ).name(),
+        )
+        self.assertEqual(
+            theme.value("selection_text"),
+            palette.color(
+                QtGui.QPalette.ColorGroup.Active,
+                QtGui.QPalette.ColorRole.HighlightedText,
+            ).name(),
+        )
+        self.assertEqual(
+            theme.value("inactive_selection_text"),
+            palette.color(
+                QtGui.QPalette.ColorGroup.Inactive,
+                QtGui.QPalette.ColorRole.HighlightedText,
+            ).name(),
+        )
+        self.assertNotEqual(
+            palette.color(
+                QtGui.QPalette.ColorGroup.Active,
+                QtGui.QPalette.ColorRole.Highlight,
+            ),
+            palette.color(
+                QtGui.QPalette.ColorGroup.Inactive,
+                QtGui.QPalette.ColorRole.Highlight,
+            ),
+        )
         self.assertNotEqual(
             palette.color(
                 QtGui.QPalette.ColorGroup.Active,
@@ -202,6 +270,55 @@ class GuiThemeTests(unittest.TestCase):
                 QtGui.QPalette.ColorRole.Text,
             ),
         )
+
+    def test_complex_controls_inherit_light_and_dark_application_palette(self) -> None:
+        for mode in (ThemeMode.LIGHT, ThemeMode.DARK):
+            theme = resolve_theme(mode)
+            palette = build_application_palette(theme)
+            self.app.setPalette(palette)
+            self.app.setStyleSheet(render_application_qss(theme))
+            controls = (
+                QtWidgets.QComboBox(),
+                QtWidgets.QSpinBox(),
+                QtWidgets.QDoubleSpinBox(),
+                QtWidgets.QDateEdit(),
+                QtWidgets.QTimeEdit(),
+                QtWidgets.QDateTimeEdit(),
+            )
+            for control in controls:
+                control.ensurePolished()
+                with self.subTest(mode=mode, control=type(control).__name__):
+                    self.assertEqual(
+                        palette.color(
+                            QtGui.QPalette.ColorGroup.Active,
+                            QtGui.QPalette.ColorRole.Text,
+                        ),
+                        control.palette().color(
+                            QtGui.QPalette.ColorGroup.Active,
+                            QtGui.QPalette.ColorRole.Text,
+                        ),
+                    )
+                    self.assertEqual(
+                        palette.color(
+                            QtGui.QPalette.ColorGroup.Active,
+                            QtGui.QPalette.ColorRole.Highlight,
+                        ),
+                        control.palette().color(
+                            QtGui.QPalette.ColorGroup.Active,
+                            QtGui.QPalette.ColorRole.Highlight,
+                        ),
+                    )
+                    self.assertEqual(
+                        palette.color(
+                            QtGui.QPalette.ColorGroup.Disabled,
+                            QtGui.QPalette.ColorRole.Text,
+                        ),
+                        control.palette().color(
+                            QtGui.QPalette.ColorGroup.Disabled,
+                            QtGui.QPalette.ColorRole.Text,
+                        ),
+                    )
+                control.deleteLater()
 
     def test_semantic_property_helper_preserves_behavior(self) -> None:
         self.assertEqual(

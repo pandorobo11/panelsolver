@@ -106,6 +106,20 @@ The small `assets/stylesheets/panelsolver-docs.css` table-width correction and
 Solver-owned project code under Apache-2.0; they are kept outside the
 third-party theme asset prefixes and license mapping.
 
+## Fluent UI semantic color token reference
+
+The packaged `gui_theme_tokens.json` resource contains a small, renamed
+semantic color subset derived from `@fluentui/react-theme` 9.2.1. Panel Solver
+does not redistribute the React package, Fluent UI components, fonts, icons,
+or branded assets. The selected values are mapped to Panel Solver-owned Qt
+semantic roles and are used only by the application theme resolver.
+
+The upstream Fluent UI repository and `@fluentui/react-theme` package are
+licensed under the MIT License, Copyright (c) Microsoft Corporation. The
+upstream copyright and complete MIT permission notice are preserved in
+`THIRD_PARTY_LICENSES/FLUENT-UI-REACT-THEME-9.2.1-MIT.txt`. The project Apache
+License 2.0 does not relicense the upstream token source.
+
 ## Runtime dependencies
 
 The runtime dependencies declared in `pyproject.toml`--NetworkX, NumPy,

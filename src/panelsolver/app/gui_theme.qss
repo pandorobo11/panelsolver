@@ -96,7 +96,7 @@ QPushButton[fluentBusy="true"], QToolButton[fluentBusy="true"] {
 }
 
 QPushButton:focus, QToolButton:focus {
-    border: 2px solid @{focus_border};
+    border: 1px solid @{focus_border};
 }
 
 QPushButton:disabled, QToolButton:disabled,
@@ -109,8 +109,7 @@ QToolButton[fluentAppearance="danger"]:disabled {
     border-color: @{disabled_border};
 }
 
-QLineEdit, QPlainTextEdit, QTextEdit, QComboBox,
-QSpinBox, QDoubleSpinBox, QDateEdit, QTimeEdit, QDateTimeEdit {
+QLineEdit, QPlainTextEdit, QTextEdit {
     background-color: @{control_background};
     color: @{text_primary};
     border: 1px solid @{border_control};
@@ -120,45 +119,33 @@ QSpinBox, QDoubleSpinBox, QDateEdit, QTimeEdit, QDateTimeEdit {
     selection-color: @{selection_text};
 }
 
-QLineEdit:hover, QPlainTextEdit:hover, QTextEdit:hover, QComboBox:hover,
-QSpinBox:hover, QDoubleSpinBox:hover, QDateEdit:hover, QTimeEdit:hover,
-QDateTimeEdit:hover {
+QLineEdit:hover, QPlainTextEdit:hover, QTextEdit:hover {
     border-color: @{border_hover};
 }
 
-QLineEdit:focus, QPlainTextEdit:focus, QTextEdit:focus, QComboBox:focus,
-QSpinBox:focus, QDoubleSpinBox:focus, QDateEdit:focus, QTimeEdit:focus,
-QDateTimeEdit:focus {
-    border: 2px solid @{focus_border};
+QLineEdit:focus, QPlainTextEdit:focus, QTextEdit:focus {
+    border: 1px solid @{focus_border};
 }
 
-QLineEdit:read-only, QPlainTextEdit:read-only, QTextEdit:read-only,
-QSpinBox:read-only, QDoubleSpinBox:read-only, QDateEdit:read-only,
-QTimeEdit:read-only, QDateTimeEdit:read-only {
+QLineEdit:read-only, QPlainTextEdit:read-only, QTextEdit:read-only {
     background-color: @{read_only_background};
     color: @{read_only_text};
 }
 
 QLineEdit[fluentInvalid="true"], QPlainTextEdit[fluentInvalid="true"],
-QTextEdit[fluentInvalid="true"], QComboBox[fluentInvalid="true"],
-QSpinBox[fluentInvalid="true"], QDoubleSpinBox[fluentInvalid="true"] {
+QTextEdit[fluentInvalid="true"] {
     background-color: @{danger_background};
     border-color: @{danger_border};
 }
 
 QLineEdit[fluentInvalid="true"]:focus,
 QPlainTextEdit[fluentInvalid="true"]:focus,
-QTextEdit[fluentInvalid="true"]:focus,
-QComboBox[fluentInvalid="true"]:focus,
-QSpinBox[fluentInvalid="true"]:focus,
-QDoubleSpinBox[fluentInvalid="true"]:focus {
+QTextEdit[fluentInvalid="true"]:focus {
     background-color: @{danger_background};
-    border: 2px solid @{focus_border};
+    border: 1px solid @{focus_border};
 }
 
-QLineEdit:disabled, QPlainTextEdit:disabled, QTextEdit:disabled,
-QComboBox:disabled, QSpinBox:disabled, QDoubleSpinBox:disabled,
-QDateEdit:disabled, QTimeEdit:disabled, QDateTimeEdit:disabled {
+QLineEdit:disabled, QPlainTextEdit:disabled, QTextEdit:disabled {
     background-color: @{disabled_background};
     color: @{disabled_text};
     border-color: @{disabled_border};
@@ -184,12 +171,10 @@ QAbstractItemView {
     alternate-background-color: @{secondary_surface};
     color: @{text_primary};
     border: 1px solid @{border_subtle};
-    selection-background-color: @{inactive_selection_background};
-    selection-color: @{inactive_selection_text};
 }
 
 QAbstractItemView:focus {
-    border: 2px solid @{focus_border};
+    border: 1px solid @{focus_border};
 }
 
 QToolTip {
