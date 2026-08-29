@@ -27,6 +27,21 @@ Before changing code, read in this order:
 5. only the historical evidence in `devdocs/history/` needed for the task;
 6. the current issue or task.
 
+## GUI visual smoke on macOS
+
+When inspecting the real PySide6/PyVista GUI through Computer Use, launch the
+repository-owned helper app from the repository root:
+
+```bash
+open tools/macos/PanelSolverVisual.app --args --domain fmf --theme system
+```
+
+Target bundle ID `io.github.pandorobo11.panelsolver.visual-smoke` in Computer
+Use. Use a normal macOS display; do not set `QT_QPA_PLATFORM=offscreen` or
+`PYVISTA_OFF_SCREEN`. See
+[`devdocs/development/gui-visual-smoke.md`](devdocs/development/gui-visual-smoke.md)
+for representative loaded-state and light/dark capture commands.
+
 ## Legacy references
 
 The legacy implementations are read-only references. Their authoritative URLs

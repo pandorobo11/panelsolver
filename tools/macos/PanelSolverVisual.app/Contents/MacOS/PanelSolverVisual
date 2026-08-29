@@ -1,0 +1,16 @@
+#!/bin/zsh
+set -euo pipefail
+
+bundle_root="${0:A:h:h:h}"
+repo_root="${bundle_root:h:h:h}"
+
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+unset QT_QPA_PLATFORM
+unset PYVISTA_OFF_SCREEN
+cd "$repo_root"
+
+if [[ -x "$repo_root/.venv/bin/python" ]]; then
+  exec "$repo_root/.venv/bin/python" "$repo_root/scripts/gui_visual_smoke.py" "$@"
+fi
+
+exec uv run python "$repo_root/scripts/gui_visual_smoke.py" "$@"
