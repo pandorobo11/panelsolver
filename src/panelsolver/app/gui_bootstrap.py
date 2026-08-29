@@ -9,6 +9,7 @@ from importlib import resources
 
 from PySide6 import QtGui, QtWidgets
 
+from .gui_theme import apply_application_theme
 from .main_window import MainWindow
 from .solver_spec import SolverGuiAdapters, SolverSpec
 
@@ -59,6 +60,7 @@ def _configure_application(application: QtWidgets.QApplication) -> None:
     application.setOrganizationName(_ORGANIZATION_NAME)
     application.setOrganizationDomain(_ORGANIZATION_DOMAIN)
     application.setWindowIcon(_application_icon())
+    apply_application_theme(application)
 
 
 def _unavailable_adapters(product_id: str) -> SolverGuiAdapters:
