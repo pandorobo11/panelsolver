@@ -300,6 +300,29 @@ def build_application_palette(
     return palette
 
 
+def _native_combo_box_palette(
+    system_palette: QtGui.QPalette,
+) -> QtGui.QPalette:
+    """Pair the native combo surface with Qt's separately painted label.
+
+    On macOS the native style paints a non-editable combo's bezel with an
+    ``NSPopUpButton``, while ``QComboBox.paintEvent()`` paints its current label
+    with ``QPalette.Text``.  A partial class palette maps only that label role to
+    the system ``ButtonText`` foreground; every other combo and popup role keeps
+    resolving from the application palette.
+    """
+    palette = QtGui.QPalette()
+    role = QtGui.QPalette.ColorRole
+    group = QtGui.QPalette.ColorGroup
+    for color_group in (group.Active, group.Inactive, group.Disabled):
+        palette.setColor(
+            color_group,
+            role.Text,
+            system_palette.color(color_group, role.ButtonText),
+        )
+    return palette
+
+
 def _qss_template() -> str:
     return (
         resources.files("panelsolver.app")
@@ -475,6 +498,10 @@ class ApplicationThemeManager(QtCore.QObject):
             )
             qss = render_application_qss(theme)
             self.application.setPalette(palette)
+            self.application.setPalette(
+                _native_combo_box_palette(self._system_palette),
+                "QComboBox",
+            )
             self.application.setStyleSheet(qss)  # fluent-audit: allow generated app QSS
             self._current_theme = theme
             self.theme_changed.emit(theme)
