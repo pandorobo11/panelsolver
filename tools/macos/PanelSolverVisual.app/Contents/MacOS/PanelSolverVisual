@@ -13,4 +13,4 @@ if [[ -x "$repo_root/.venv/bin/python" ]]; then
   exec "$repo_root/.venv/bin/python" "$repo_root/scripts/gui_visual_smoke.py" "$@"
 fi
 
-exec uv run python "$repo_root/scripts/gui_visual_smoke.py" "$@"
+exec uv run --locked python "$repo_root/scripts/gui_visual_smoke.py" "$@"

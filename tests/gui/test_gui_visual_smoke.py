@@ -47,6 +47,16 @@ class GuiVisualSmokeParserTests(unittest.TestCase):
         with self.assertRaises(SystemExit):
             gui_visual_smoke.build_parser().parse_args(["--row", "-1"])
 
+    def test_out_of_range_row_is_reported(self) -> None:
+        gui_visual_smoke._validate_requested_row(2, 3)
+
+        with self.assertRaisesRegex(
+            ValueError,
+            r"requested row 3 is out of range for 3 loaded case\(s\); "
+            r"valid range: 0-2",
+        ):
+            gui_visual_smoke._validate_requested_row(3, 3)
+
 
 if __name__ == "__main__":
     unittest.main()

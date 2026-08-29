@@ -27,6 +27,15 @@ def _nonnegative_row(value: str) -> int:
     return row
 
 
+def _validate_requested_row(requested_row: int, row_count: int) -> None:
+    if requested_row >= row_count:
+        valid_range = "none" if row_count == 0 else f"0-{row_count - 1}"
+        raise ValueError(
+            f"requested row {requested_row} is out of range for "
+            f"{row_count} loaded case(s); valid range: {valid_range}"
+        )
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build the development-only visual-smoke parser."""
     parser = argparse.ArgumentParser(
@@ -72,12 +81,20 @@ def main(argv: list[str] | None = None) -> int:
                 args.input,
                 remember_directory=False,
             )
-            if loaded and args.row < window.cases_panel.case_table.rowCount():
-                window.cases_panel.case_table.selectRow(args.row)
-                window.cases_panel.case_table.setCurrentCell(args.row, 0)
-                window.cases_panel.case_table.setFocus(
-                    QtCore.Qt.FocusReason.OtherFocusReason
-                )
+            if loaded:
+                try:
+                    _validate_requested_row(
+                        args.row,
+                        window.cases_panel.case_table.rowCount(),
+                    )
+                except ValueError as exc:
+                    window.cases_panel.logln(f"[ERROR] {exc}")
+                else:
+                    window.cases_panel.case_table.selectRow(args.row)
+                    window.cases_panel.case_table.setCurrentCell(args.row, 0)
+                    window.cases_panel.case_table.setFocus(
+                        QtCore.Qt.FocusReason.OtherFocusReason
+                    )
         window.raise_()
         window.activateWindow()
 
