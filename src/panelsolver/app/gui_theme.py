@@ -216,7 +216,15 @@ def build_application_palette(
     *,
     base_palette: QtGui.QPalette | None = None,
 ) -> QtGui.QPalette:
-    """Build broad Active, Inactive, and Disabled Qt palette roles."""
+    """Build broad Qt roles while retaining native control surface pairs.
+
+    Platform styles can own complex-control surfaces independently of an
+    explicit application light/dark request.  In particular, macOS Aqua keeps
+    a non-editable ``QComboBox`` aligned with the system appearance.  Preserve
+    the base palette's ``Button``/``ButtonText`` pair so that its native surface
+    and foreground cannot diverge.  Application-QSS buttons continue to use the
+    resolved semantic control tokens.
+    """
     palette = (
         QtGui.QPalette(base_palette) if base_palette is not None else QtGui.QPalette()
     )
@@ -230,8 +238,6 @@ def build_application_palette(
         role.Base: token["canvas_background"],
         role.AlternateBase: token["secondary_surface"],
         role.Text: token["text_primary"],
-        role.Button: token["control_background"],
-        role.ButtonText: token["text_primary"],
         role.BrightText: token["danger_foreground"],
         role.Highlight: token["selection_background"],
         role.HighlightedText: token["selection_text"],
@@ -272,8 +278,6 @@ def build_application_palette(
         role.Base: token["disabled_background"],
         role.AlternateBase: token["disabled_background"],
         role.Text: token["disabled_text"],
-        role.Button: token["disabled_background"],
-        role.ButtonText: token["disabled_text"],
         role.BrightText: token["disabled_text"],
         role.Highlight: token["disabled_background"],
         role.HighlightedText: token["disabled_text"],
@@ -422,8 +426,10 @@ class ApplicationThemeManager(QtCore.QObject):
         style = self.application.style()
         if style is not None:
             self._system_palette = QtGui.QPalette(style.standardPalette())
-        if self._mode == ThemeMode.SYSTEM:
-            QtCore.QTimer.singleShot(0, self.apply)
+        # Explicit application themes still retain native complex-control
+        # Button/ButtonText roles. Refresh those roles when the system scheme
+        # changes even though the requested semantic mode stays fixed.
+        QtCore.QTimer.singleShot(0, self.apply)
 
     @staticmethod
     def _system_high_contrast() -> bool:
@@ -459,9 +465,7 @@ class ApplicationThemeManager(QtCore.QObject):
             )
             palette = build_application_palette(
                 theme,
-                base_palette=(
-                    self._system_palette if theme.uses_system_palette else None
-                ),
+                base_palette=self._system_palette,
             )
             qss = render_application_qss(theme)
             self.application.setPalette(palette)

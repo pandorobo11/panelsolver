@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import unittest
+from unittest.mock import patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -271,6 +272,41 @@ class GuiThemeTests(unittest.TestCase):
             ),
         )
 
+    def test_palette_preserves_native_button_surface_and_text_pairs(self) -> None:
+        role = QtGui.QPalette.ColorRole
+        group = QtGui.QPalette.ColorGroup
+        base_palette = QtGui.QPalette()
+        expected = {
+            group.Active: ("#fafafa", "#111111"),
+            group.Inactive: ("#f0f0f0", "#222222"),
+            group.Disabled: ("#e0e0e0", "#777777"),
+        }
+        for color_group, (surface, foreground) in expected.items():
+            base_palette.setColor(color_group, role.Button, QtGui.QColor(surface))
+            base_palette.setColor(
+                color_group,
+                role.ButtonText,
+                QtGui.QColor(foreground),
+            )
+
+        theme = resolve_theme(ThemeMode.DARK)
+        palette = build_application_palette(theme, base_palette=base_palette)
+
+        for color_group, (surface, foreground) in expected.items():
+            with self.subTest(group=color_group):
+                self.assertEqual(
+                    QtGui.QColor(surface),
+                    palette.color(color_group, role.Button),
+                )
+                self.assertEqual(
+                    QtGui.QColor(foreground),
+                    palette.color(color_group, role.ButtonText),
+                )
+        self.assertEqual(
+            QtGui.QColor(theme.value("text_primary")),
+            palette.color(group.Active, role.Text),
+        )
+
     def test_complex_controls_inherit_light_and_dark_application_palette(self) -> None:
         for mode in (ThemeMode.LIGHT, ThemeMode.DARK):
             theme = resolve_theme(mode)
@@ -306,6 +342,16 @@ class GuiThemeTests(unittest.TestCase):
                         control.palette().color(
                             QtGui.QPalette.ColorGroup.Active,
                             QtGui.QPalette.ColorRole.Highlight,
+                        ),
+                    )
+                    self.assertEqual(
+                        palette.color(
+                            QtGui.QPalette.ColorGroup.Active,
+                            QtGui.QPalette.ColorRole.ButtonText,
+                        ),
+                        control.palette().color(
+                            QtGui.QPalette.ColorGroup.Active,
+                            QtGui.QPalette.ColorRole.ButtonText,
                         ),
                     )
                     self.assertEqual(
@@ -369,6 +415,16 @@ class GuiThemeTests(unittest.TestCase):
         self.assertEqual(ThemeMode.LIGHT, light.effective_mode)
         self.assertEqual(ThemeMode.DARK, dark.effective_mode)
         self.assertNotIn("@{", self.app.styleSheet())
+        manager.deleteLater()
+
+    def test_explicit_theme_refreshes_native_roles_on_system_change(self) -> None:
+        manager = ApplicationThemeManager(self.app, mode=ThemeMode.DARK)
+        manager.apply()
+
+        with patch.object(QtCore.QTimer, "singleShot") as single_shot:
+            manager._on_system_preference_changed()
+
+        single_shot.assert_called_once_with(0, manager.apply)
         manager.deleteLater()
 
 
