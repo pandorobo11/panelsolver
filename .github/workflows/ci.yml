@@ -8,8 +8,40 @@ permissions:
   contents: read
 
 jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v9.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Formatting
+        run: uv run --no-sync ruff format --check src tests scripts hatch_build.py
+
+      - name: Static checks
+        run: uv run --no-sync ruff check src tests scripts hatch_build.py
+
+      - name: Scoped typing
+        run: >-
+          uv run --no-sync mypy
+          src/panelsolver/core/contracts.py
+          src/panelsolver/core/execution.py
+          src/panelsolver/models/registry.py
+          src/panelsolver/app/execution.py
+          src/panelsolver/api.py
+          src/panelsolver/__init__.py
+
   test:
-    needs: artifact
+    needs:
+      - artifact
+      - quality
     strategy:
       fail-fast: false
       matrix:
@@ -65,22 +97,6 @@ jobs:
         run: >-
           uv run python scripts/probe_scheduler_lifecycle.py
           --iterations 10 --timeout-seconds 90
-
-      - name: Formatting
-        run: uv run ruff format --check src tests scripts hatch_build.py
-
-      - name: Static checks
-        run: uv run ruff check src tests scripts hatch_build.py
-
-      - name: Scoped typing
-        run: >-
-          uv run mypy
-          src/panelsolver/core/contracts.py
-          src/panelsolver/core/execution.py
-          src/panelsolver/models/registry.py
-          src/panelsolver/app/execution.py
-          src/panelsolver/api.py
-          src/panelsolver/__init__.py
 
       - name: Reinstall exact verified wheel
         run: >-
@@ -199,7 +215,9 @@ jobs:
           if-no-files-found: error
 
   clean-install:
-    needs: artifact
+    needs:
+      - artifact
+      - quality
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
