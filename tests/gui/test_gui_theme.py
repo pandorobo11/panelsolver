@@ -202,8 +202,8 @@ class GuiThemeTests(unittest.TestCase):
                     self.assertIn(f'QProgressBar[fluentStatus="{status}"]', qss)
             for decorative_treatment in (
                 "qlineargradient",
-                "qradiagradient",
-                "conical-gradient",
+                "qradialgradient",
+                "qconicalgradient",
                 "animation",
                 "image:",
             ):
