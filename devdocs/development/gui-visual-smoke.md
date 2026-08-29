@@ -19,11 +19,17 @@ available and otherwise falls back to `uv run`.
 
 ## Launch
 
-Open an ordinary production-composed window that follows the system theme:
+From the repository root, resolve the helper in the current physical checkout
+and open an ordinary production-composed window that follows the system theme:
 
 ```bash
-open tools/macos/PanelSolverVisual.app --args --domain fmf --theme system
+visual_app="$(pwd -P)/tools/macos/PanelSolverVisual.app"
+printf '%s\n' "$visual_app"
+open "$visual_app" --args --domain fmf --theme system
 ```
+
+Keep the printed absolute path: pass that exact path to Computer Use so the
+launched bundle and the inspected bundle come from the same checkout.
 
 The development-only launcher accepts:
 
@@ -36,7 +42,7 @@ For a representative state containing loaded cases, an enabled Run button, a
 disabled Cancel button, and a focused selected row, use:
 
 ```bash
-open tools/macos/PanelSolverVisual.app --args \
+open "$visual_app" --args \
   --domain hypersonic \
   --theme light \
   --input examples/hypersonic/pressure_models.csv \
@@ -51,15 +57,31 @@ or copy solver output.
 
 ## Computer Use target
 
-Target the stable bundle identifier:
+Use the absolute path printed during launch as the Computer Use app target. For
+example, pass the fully expanded value in this form:
+
+```text
+/absolute/path/to/current/checkout/tools/macos/PanelSolverVisual.app
+```
+
+The `open "$visual_app"` target and the path passed to Computer Use must identify
+the same bundle. The stable bundle identifier remains available as a shorter
+target when only one matching bundle is registered:
 
 ```text
 io.github.pandorobo11.panelsolver.visual-smoke
 ```
 
-The executable is Python, but the app bundle gives Computer Use a stable target
-instead of relying on a generic `python3.12` process name. Inspect the fresh
-accessibility tree after every action and use it to locate the current controls.
+Multiple checkouts or Codex worktrees can each contain this app. Launch Services
+may register more than one copy, all with the intentionally stable bundle ID, so
+Computer Use can reject the bundle-ID target as ambiguous. If that happens,
+switch to the current checkout's absolute app path; the path uniquely selects
+the intended copy without changing its bundle ID.
+
+The executable is Python, but the app bundle gives Computer Use a specific app
+target instead of relying on a generic `python3.12` process name. Inspect the
+fresh accessibility tree after every action and use it to locate the current
+controls.
 
 Capture evidence should normally show:
 
