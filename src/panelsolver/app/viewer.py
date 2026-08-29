@@ -10,6 +10,7 @@ import pyvista as pv
 from PySide6 import QtCore, QtWidgets
 from pyvistaqt import QtInteractor
 
+from .gui_theme import set_semantic_property
 from .path_resolution import (
     absolute_input_path,
     auto_rename_path,
@@ -152,6 +153,12 @@ class ViewerPanel(QtWidgets.QWidget):
         self.btn_view_wind_rev = QtWidgets.QPushButton("Wind -")
         self.btn_save_image = QtWidgets.QPushButton("Save Image...")
         self.btn_save_selected_images = QtWidgets.QPushButton("Save Selected...")
+        for button in (
+            self.btn_open_vtp,
+            self.btn_save_image,
+            self.btn_save_selected_images,
+        ):
+            set_semantic_property(button, "fluentAppearance", "secondary")
         self.btn_save_image.setEnabled(False)
         self.btn_save_selected_images.setEnabled(False)
 

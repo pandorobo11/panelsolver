@@ -340,6 +340,7 @@ def render_application_qss(
 _SEMANTIC_PROPERTIES = MappingProxyType(
     {
         "fluentAppearance": frozenset({"primary", "secondary", "subtle", "danger"}),
+        "fluentStatus": frozenset({"neutral", "info", "success", "warning", "danger"}),
         "fluentBusy": bool,
         "fluentInvalid": bool,
     }
@@ -352,7 +353,12 @@ def set_semantic_property(
     name: str,
     value: object,
 ) -> None:
-    """Set one approved semantic dynamic property and repolish that widget."""
+    """Set one approved semantic dynamic property and repolish that widget.
+
+    ``fluentStatus`` is a generic visual-status vocabulary.  Product lifecycle
+    names remain owned by their widgets and are projected onto these semantic
+    values instead of becoming part of the application QSS contract.
+    """
     if not isinstance(widget, QtWidgets.QWidget):
         raise TypeError("widget must be a QWidget")
     if name not in _SEMANTIC_PROPERTIES:
