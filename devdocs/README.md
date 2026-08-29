@@ -13,6 +13,11 @@ Use repository documentation in this order:
 4. [`devdocs/history/`](history/README.md) preserves migration and audit evidence
    that is non-normative for the current product contract.
 
+Development workflows begin with
+[setup and testing](development/setup-and-testing.md). For normal-display
+PySide6/PyVista inspection on macOS, use the
+[GUI visual-smoke helper](development/gui-visual-smoke.md).
+
 Words such as “current”, “supported”, “next”, and “must” inside a historical
 record describe the repository state at the time named by that record. Do not
 use that historical prose as present implementation instructions or derive the

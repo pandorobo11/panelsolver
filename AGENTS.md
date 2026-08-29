@@ -27,6 +27,26 @@ Before changing code, read in this order:
 5. only the historical evidence in `devdocs/history/` needed for the task;
 6. the current issue or task.
 
+## GUI visual smoke on macOS
+
+When inspecting the real PySide6/PyVista GUI through Computer Use, resolve the
+helper in the current checkout from the repository root and use that same
+absolute path for both launch and the Computer Use app target:
+
+```bash
+visual_app="$(pwd -P)/tools/macos/PanelSolverVisual.app"
+printf '%s\n' "$visual_app"
+open "$visual_app" --args --domain fmf --theme system
+```
+
+Pass the printed path to Computer Use. The bundle ID
+`io.github.pandorobo11.panelsolver.visual-smoke` is a convenient target only
+when it identifies one bundle; if Computer Use reports an ambiguous app
+identifier, switch to the current checkout's absolute path. Use a normal macOS
+display; do not set `QT_QPA_PLATFORM=offscreen` or `PYVISTA_OFF_SCREEN`. See
+[`devdocs/development/gui-visual-smoke.md`](devdocs/development/gui-visual-smoke.md)
+for representative loaded-state and light/dark capture commands.
+
 ## Legacy references
 
 The legacy implementations are read-only references. Their authoritative URLs
