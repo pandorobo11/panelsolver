@@ -241,9 +241,10 @@ class ViewerPanelTests(unittest.TestCase):
         self.assertEqual(ArtifactViewStatus.CURRENT, viewer.artifact_view_state.status)
         self.assertEqual("Current result", viewer.lbl_artifact_state.text())
         self.assertEqual("case · case.vtp", viewer.lbl_artifact_detail.text())
-        self.assertIn("/tmp/case.vtp", viewer.lbl_artifact_detail.toolTip())
+        expected_path = str(Path("/tmp/case.vtp").resolve(strict=False))
+        self.assertIn(expected_path, viewer.lbl_artifact_detail.toolTip())
         self.assertIn(
-            "/tmp/case.vtp",
+            expected_path,
             viewer.lbl_artifact_detail.accessibleDescription(),
         )
 
