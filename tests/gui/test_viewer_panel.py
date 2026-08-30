@@ -421,6 +421,193 @@ class ViewerPanelTests(unittest.TestCase):
             viewer.lbl_artifact_detail.text(),
         )
 
+    def test_manual_unmatched_refreshes_to_matching_rows_and_case_context(
+        self,
+    ) -> None:
+        current = _signature("current")
+        matching_row = {
+            "case_id": "case",
+            "out_dir": "results",
+            "S": 5.0,
+            "Ti_K": 300.0,
+        }
+        viewer, plotter = self.make_viewer(
+            spec=fmf_solver_spec(adapters=_adapters(current))
+        )
+        viewer.set_case_rows(({"case_id": "different"},))
+        poly = FakePoly(
+            {"normal_traction_coeff": [1.0]},
+            {"case_id": ["case"], "case_signature": [current.digest]},
+        )
+        manual_path = Path("/tmp/manual-current.vtp")
+        self.assertTrue(viewer.load_vtp(str(manual_path), poly))
+        self.assertEqual(
+            ArtifactViewStatus.MANUAL_UNMATCHED,
+            viewer.artifact_view_state.status,
+        )
+        self.assertIsNone(viewer._display_case_row)
+        mesh_calls = list(plotter.mesh_calls)
+        camera_position = plotter.camera.position
+
+        viewer.set_input_path("/tmp/current/cases.csv")
+        viewer.set_case_rows((matching_row,))
+        viewer.set_selected_case_rows(())
+
+        self.assertEqual(
+            ArtifactViewStatus.MANUAL_MATCHED,
+            viewer.artifact_view_state.status,
+        )
+        self.assertEqual(matching_row, viewer._display_case_row)
+        self.assertEqual(
+            "Matched to case · manual-current.vtp",
+            viewer.lbl_artifact_detail.text(),
+        )
+        self.assertIs(poly, viewer._poly)
+        self.assertEqual(manual_path, viewer._loaded_vtp_path)
+        self.assertEqual(mesh_calls, plotter.mesh_calls)
+        self.assertEqual(camera_position, plotter.camera.position)
+        self.assertIn("mode=A", plotter.text_calls[-1])
+        assert_paths_equivalent(
+            self,
+            "/tmp/current/results/images/case__normal_traction_coeff.png",
+            viewer._standard_view_image_path(),
+        )
+        viewer.set_view_wind()
+        self.assertEqual((-1.0, -0.0, -0.0), plotter.view_vectors[-1])
+
+    def test_manual_matched_refreshes_to_nonmatching_rows_and_manual_context(
+        self,
+    ) -> None:
+        current = _signature("current")
+        matching_row = {
+            "case_id": "case",
+            "out_dir": "results",
+            "S": 5.0,
+            "Ti_K": 300.0,
+        }
+        viewer, plotter = self.make_viewer(
+            spec=fmf_solver_spec(adapters=_adapters(current))
+        )
+        viewer.set_input_path("/tmp/current/cases.csv")
+        viewer.set_case_rows((matching_row,))
+        poly = FakePoly(
+            {"normal_traction_coeff": [1.0]},
+            {"case_id": ["case"], "case_signature": [current.digest]},
+        )
+        manual_path = Path("/tmp/manual-current.vtp")
+        self.assertTrue(viewer.load_vtp(str(manual_path), poly))
+        self.assertEqual(
+            ArtifactViewStatus.MANUAL_MATCHED,
+            viewer.artifact_view_state.status,
+        )
+        self.assertEqual(matching_row, viewer._display_case_row)
+        mesh_calls = list(plotter.mesh_calls)
+        view_vectors = list(plotter.view_vectors)
+        messages: list[str] = []
+        viewer.log_message.connect(messages.append)
+
+        viewer.set_input_path("/tmp/different/cases.csv")
+        viewer.set_case_rows(({"case_id": "different", "out_dir": "other"},))
+
+        self.assertEqual(
+            ArtifactViewStatus.MANUAL_UNMATCHED,
+            viewer.artifact_view_state.status,
+        )
+        self.assertIsNone(viewer._display_case_row)
+        self.assertEqual(
+            "Not matched to current input · manual-current.vtp",
+            viewer.lbl_artifact_detail.text(),
+        )
+        self.assertIs(poly, viewer._poly)
+        self.assertEqual(manual_path, viewer._loaded_vtp_path)
+        self.assertEqual(mesh_calls, plotter.mesh_calls)
+        self.assertEqual("case_id=case", plotter.text_calls[-1])
+        assert_paths_equivalent(
+            self,
+            "/tmp/images/manual-current__normal_traction_coeff.png",
+            viewer._standard_view_image_path(),
+        )
+        viewer.set_view_wind()
+        self.assertEqual(view_vectors, plotter.view_vectors)
+        self.assertIn("Wind view is unavailable", messages[-1])
+
+    def test_manual_matched_refreshes_to_unmatched_for_empty_rows(self) -> None:
+        current = _signature("current")
+        matching_row = {"case_id": "case", "out_dir": "results"}
+        viewer, plotter = self.make_viewer(
+            spec=fmf_solver_spec(adapters=_adapters(current))
+        )
+        viewer.set_case_rows((matching_row,))
+        poly = FakePoly(
+            {"normal_traction_coeff": [1.0]},
+            {"case_id": ["case"], "case_signature": [current.digest]},
+        )
+        manual_path = Path("/tmp/manual-current.vtp")
+        self.assertTrue(viewer.load_vtp(str(manual_path), poly))
+        mesh_calls = list(plotter.mesh_calls)
+        selected_scalar = viewer.cmb_scalar.currentData()
+
+        viewer.set_case_rows(())
+
+        self.assertEqual(
+            ArtifactViewStatus.MANUAL_UNMATCHED,
+            viewer.artifact_view_state.status,
+        )
+        self.assertIsNone(viewer._display_case_row)
+        self.assertIs(poly, viewer._poly)
+        self.assertEqual(manual_path, viewer._loaded_vtp_path)
+        self.assertEqual(mesh_calls, plotter.mesh_calls)
+        self.assertEqual(selected_scalar, viewer.cmb_scalar.currentData())
+
+    def test_manual_context_refresh_without_adapters_stays_unmatched(self) -> None:
+        viewer, _plotter = self.make_viewer(spec=fmf_solver_spec(adapters=None))
+        poly = FakePoly(
+            {"normal_traction_coeff": [1.0]},
+            {"case_id": ["case"], "case_signature": [_signature("case").digest]},
+        )
+        self.assertTrue(viewer.load_vtp("/tmp/manual.vtp", poly))
+
+        viewer.set_case_rows(({"case_id": "case"},))
+        viewer.set_case_rows(None)
+
+        self.assertEqual(
+            ArtifactViewStatus.MANUAL_UNMATCHED,
+            viewer.artifact_view_state.status,
+        )
+        self.assertIsNone(viewer._display_case_row)
+        self.assertIs(poly, viewer._poly)
+
+    def test_new_input_selection_reset_clears_previous_automatic_result(
+        self,
+    ) -> None:
+        old_row = {"case_id": "old"}
+        viewer, _plotter = self.make_viewer()
+        viewer.set_input_path("/tmp/old/cases.csv")
+        viewer.set_case_rows((old_row,))
+        viewer.set_selected_case_rows((old_row,))
+        viewer.load_vtp(
+            "/tmp/old/old.vtp",
+            FakePoly({"normal_traction_coeff": [1.0]}),
+            old_row,
+        )
+        self.assertEqual(
+            ArtifactViewStatus.CURRENT,
+            viewer.artifact_view_state.status,
+        )
+
+        viewer.set_input_path("/tmp/new/cases.csv")
+        viewer.set_case_rows(({"case_id": "new"},))
+        self.assertEqual(
+            ArtifactViewStatus.CURRENT,
+            viewer.artifact_view_state.status,
+        )
+        self.assertIsNotNone(viewer._poly)
+        viewer.set_selected_case_rows(())
+
+        self.assertEqual(ArtifactViewStatus.EMPTY, viewer.artifact_view_state.status)
+        self.assertIsNone(viewer._poly)
+        self.assertIsNone(viewer._loaded_vtp_path)
+
     def test_failed_read_and_invalid_cell_data_clear_previous_view(self) -> None:
         def broken(_path):
             raise ValueError("broken")

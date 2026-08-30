@@ -294,10 +294,41 @@ class ViewerPanel(QtWidgets.QWidget):
     def set_case_rows(self, rows: Sequence[CaseRow] | None) -> None:
         self._case_rows = () if rows is None else tuple(rows)
         self._selected_case_rows = ()
+        self._refresh_manual_artifact_context()
         self._update_export_controls()
+
+    def _refresh_manual_artifact_context(self) -> None:
+        manual_statuses = {
+            ArtifactViewStatus.MANUAL_MATCHED,
+            ArtifactViewStatus.MANUAL_UNMATCHED,
+        }
+        if (
+            self._poly is None
+            or self._loaded_vtp_path is None
+            or self._artifact_view_state.status not in manual_statuses
+        ):
+            return
+        matched_row = None
+        if self.spec.adapters is not None:
+            matched_row = resolve_matching_case_row(
+                self._poly,
+                self._case_rows,
+                self.spec.adapters.build_case_signatures,
+            )
+        self._display_case_row = matched_row
+        self.set_artifact_view_state(
+            manual_artifact_view_state(self._loaded_vtp_path, matched_row)
+        )
+        self._update_overlay()
+        self.plotter.render()
 
     def set_selected_case_rows(self, rows: Sequence[CaseRow] | None) -> None:
         self._selected_case_rows = () if rows is None else tuple(rows)
+        if (
+            not self._selected_case_rows
+            and self._artifact_view_state.status is ArtifactViewStatus.CURRENT
+        ):
+            self.clear_view()
         self._update_export_controls()
 
     def set_input_path(self, path: str | Path | None) -> None:
