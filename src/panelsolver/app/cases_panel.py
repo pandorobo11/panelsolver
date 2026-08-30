@@ -164,6 +164,15 @@ class CasesPanel(QtWidgets.QWidget):
         self.case_table.setAlternatingRowColors(True)
         self.case_table.setWordWrap(False)
         self.case_table.verticalHeader().setVisible(False)
+        self.btn_diagnostics = QtWidgets.QToolButton()
+        self.btn_diagnostics.setText("Diagnostics")
+        self.btn_diagnostics.setCheckable(True)
+        self.btn_diagnostics.setChecked(False)
+        self.btn_diagnostics.setArrowType(QtCore.Qt.ArrowType.RightArrow)
+        self.btn_diagnostics.setToolButtonStyle(
+            QtCore.Qt.ToolButtonStyle.ToolButtonTextBesideIcon
+        )
+        self.btn_diagnostics.setAccessibleName("Diagnostics")
         self.log = QtWidgets.QPlainTextEdit()
         self.log.setReadOnly(True)
         self.log.setMaximumBlockCount(8000)
@@ -180,10 +189,12 @@ class CasesPanel(QtWidgets.QWidget):
         self._run_output_path: Path | None = None
         self._invalid_current_vtp_artifacts: set[tuple[str, Path]] = set()
         self._build_layout()
+        self._set_diagnostics_expanded(False)
 
         self.btn_pick_input.clicked.connect(self.pick_input_file)
         self.btn_run.clicked.connect(self.request_run)
         self.btn_cancel.clicked.connect(self.cancel_run)
+        self.btn_diagnostics.toggled.connect(self._set_diagnostics_expanded)
         self.case_table.itemSelectionChanged.connect(self.on_case_selection_changed)
         self.run_requested.connect(self.start_run)
 
@@ -209,10 +220,23 @@ class CasesPanel(QtWidgets.QWidget):
         run_row.addWidget(self.btn_cancel)
         layout.addLayout(run_row)
         layout.addWidget(self.progress)
+        layout.addWidget(self.btn_diagnostics)
         layout.addWidget(self.log, 2)
 
     def logln(self, message: str) -> None:
         self.log.appendPlainText(message)
+
+    @QtCore.Slot(bool)
+    def _set_diagnostics_expanded(self, expanded: bool) -> None:
+        self.log.setVisible(expanded)
+        self.btn_diagnostics.setArrowType(
+            QtCore.Qt.ArrowType.DownArrow
+            if expanded
+            else QtCore.Qt.ArrowType.RightArrow
+        )
+        description = "Hide diagnostic log" if expanded else "Show diagnostic log"
+        self.btn_diagnostics.setToolTip(description)
+        self.btn_diagnostics.setAccessibleDescription(description)
 
     def input_dialog_directory(self) -> Path:
         """Return this session's existing input directory, or the current one."""

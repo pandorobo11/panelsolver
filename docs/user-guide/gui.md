@@ -44,7 +44,13 @@ alive for the lifetime of the window.
    disable intermediate Summary CSV snapshots.
 5. Choose **Run All Cases** or **Run Selected Cases**, as shown for the current
    selection, and select the summary CSV destination.
-6. Follow progress and diagnostics in the log panel.
+6. Follow the always-visible progress state. Select **Diagnostics** when detailed
+   operational messages are useful.
+
+The Diagnostics log is collapsed by default so cases, run controls, progress,
+the Viewer, and Viewer provenance retain priority. Collapsing Diagnostics does
+not discard its history: messages continue to accumulate and are available when
+the section is expanded again.
 
 The case table uses user-facing headers with source units while retaining the
 canonical case-file columns internally. Comparable numeric values are right-

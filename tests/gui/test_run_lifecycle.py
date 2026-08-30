@@ -177,6 +177,12 @@ class RunLifecycleTests(unittest.TestCase):
             self.assertTrue(panel.progress.property("fluentBusy"))
             self.assertFalse(panel.btn_pick_input.isEnabled())
             self.assertTrue(panel.btn_cancel.isEnabled())
+            self.assertTrue(panel.btn_diagnostics.isEnabled())
+            self.assertFalse(panel.btn_diagnostics.isChecked())
+            self.assertTrue(panel.log.isHidden())
+            panel.btn_diagnostics.click()
+            self.assertTrue(panel.btn_diagnostics.isChecked())
+            self.assertFalse(panel.log.isHidden())
             self.wait_until(lambda: not panel.is_running())
 
             self.assertIsInstance(captured["request"], GuiRunRequest)
@@ -441,6 +447,8 @@ class RunLifecycleTests(unittest.TestCase):
         self.assertFalse(panel.progress.property("fluentBusy"))
         self.assertIn("primary solver failure", panel.log.toPlainText())
         self.assertNotIn("Run canceled.", panel.log.toPlainText())
+        self.assertFalse(panel.btn_diagnostics.isChecked())
+        self.assertTrue(panel.log.isHidden())
 
     def test_status_resets_for_next_run_and_clear_loaded_cases(self) -> None:
         entered = (threading.Event(), threading.Event())
