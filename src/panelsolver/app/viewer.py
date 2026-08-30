@@ -50,6 +50,13 @@ def _process_gui_events() -> None:
     )
 
 
+_VIEWER_CHROME_HORIZONTAL_INSET = 12
+_CONTROL_COLUMN_SPACING = 6
+_CONTROL_ROW_SPACING = 6
+_CAMERA_GROUP_SPACING = 4
+_CAMERA_SUBGROUP_SPACING = 12
+
+
 class ViewerPanel(QtWidgets.QWidget):
     """Render VTP cell data without owning product or numerical behavior."""
 
@@ -178,7 +185,12 @@ class ViewerPanel(QtWidgets.QWidget):
             QtWidgets.QSizePolicy.Policy.Maximum,
         )
         row = QtWidgets.QHBoxLayout(self.artifact_status_row)
-        row.setContentsMargins(0, 0, 0, 0)
+        row.setContentsMargins(
+            _VIEWER_CHROME_HORIZONTAL_INSET,
+            0,
+            _VIEWER_CHROME_HORIZONTAL_INSET,
+            0,
+        )
         row.setSpacing(8)
 
         self.lbl_artifact_state = QtWidgets.QLabel()
@@ -206,62 +218,158 @@ class ViewerPanel(QtWidgets.QWidget):
         self._root_layout.addWidget(self.artifact_status_row)
 
     def _build_controls_layout(self) -> None:
-        controls = QtWidgets.QVBoxLayout()
-        controls.setSpacing(3)
-        controls.setContentsMargins(0, 0, 0, 0)
+        self.controls_chrome = QtWidgets.QWidget()
+        self.controls_chrome.setObjectName("viewerControlsChrome")
+        self._controls_grid = QtWidgets.QGridLayout(self.controls_chrome)
+        self._controls_grid.setContentsMargins(
+            _VIEWER_CHROME_HORIZONTAL_INSET,
+            0,
+            _VIEWER_CHROME_HORIZONTAL_INSET,
+            0,
+        )
+        self._controls_grid.setHorizontalSpacing(_CONTROL_COLUMN_SPACING)
+        self._controls_grid.setVerticalSpacing(_CONTROL_ROW_SPACING)
 
-        display = QtWidgets.QHBoxLayout()
-        display.addWidget(QtWidgets.QLabel("Scalar"))
-        display.addWidget(self.cmb_scalar)
-        display.addSpacing(10)
-        display.addWidget(QtWidgets.QLabel("Colormap"))
-        display.addWidget(self.cmb_cmap)
+        self.lbl_scalar = QtWidgets.QLabel("Scalar")
+        self.lbl_display = QtWidgets.QLabel("Display")
+        self.lbl_colorbar = QtWidgets.QLabel("Colorbar")
+        self.lbl_camera = QtWidgets.QLabel("Camera")
+        self.lbl_export = QtWidgets.QLabel("Export")
+
+        self.scalar_row = self._make_control_row()
+        scalar = self.scalar_row.layout()
+        assert isinstance(scalar, QtWidgets.QHBoxLayout)
+        scalar.setSpacing(0)
+        scalar.addWidget(self.cmb_scalar)
+        scalar.addSpacing(12)
+        scalar.addWidget(QtWidgets.QLabel("Colormap"))
+        scalar.addSpacing(_CONTROL_COLUMN_SPACING)
+        scalar.addWidget(self.cmb_cmap)
+        scalar.addStretch(1)
+        scalar.addWidget(self.btn_open_vtp)
+
+        self.display_row = self._make_control_row(spacing=8)
+        display = self.display_row.layout()
+        assert isinstance(display, QtWidgets.QHBoxLayout)
+        display.addWidget(self.chk_edges)
+        display.addWidget(self.chk_shield_transparent)
+        display.addWidget(self.chk_overlay_text)
         display.addStretch(1)
-        display.addWidget(self.btn_open_vtp)
 
-        options = QtWidgets.QHBoxLayout()
-        options.addWidget(QtWidgets.QLabel("Display"))
-        options.addWidget(self.chk_edges)
-        options.addWidget(self.chk_shield_transparent)
-        options.addWidget(self.chk_overlay_text)
-        options.addStretch(1)
-
-        colorbar = QtWidgets.QHBoxLayout()
-        colorbar.addWidget(QtWidgets.QLabel("Colorbar"))
+        self.colorbar_row = self._make_control_row()
+        colorbar = self.colorbar_row.layout()
+        assert isinstance(colorbar, QtWidgets.QHBoxLayout)
         colorbar.addWidget(self.edit_vmin)
         colorbar.addWidget(self.edit_vmax)
         colorbar.addWidget(self.btn_auto_range)
         colorbar.addStretch(1)
 
-        camera = QtWidgets.QHBoxLayout()
-        camera.addWidget(QtWidgets.QLabel("Camera"))
-        for button in (
+        self._camera_axis_buttons = (
             self.btn_view_xp,
             self.btn_view_xn,
             self.btn_view_yp,
             self.btn_view_yn,
             self.btn_view_zp,
             self.btn_view_zn,
+        )
+        self._camera_isometric_buttons = (
             self.btn_view_iso_1,
             self.btn_view_iso_2,
+        )
+        self._camera_wind_buttons = (
             self.btn_view_wind,
             self.btn_view_wind_rev,
-        ):
-            camera.addWidget(button)
+        )
+        self._camera_buttons = (
+            *self._camera_axis_buttons,
+            *self._camera_isometric_buttons,
+            *self._camera_wind_buttons,
+        )
+        for button in self._camera_buttons:
+            button.setProperty("viewerCameraControl", True)
+
+        self.camera_row = self._make_control_row(spacing=_CAMERA_SUBGROUP_SPACING)
+        camera = self.camera_row.layout()
+        assert isinstance(camera, QtWidgets.QHBoxLayout)
+        self.camera_axis_group = self._make_camera_group(self._camera_axis_buttons)
+        self.camera_isometric_group = self._make_camera_group(
+            self._camera_isometric_buttons
+        )
+        self.camera_wind_group = self._make_camera_group(self._camera_wind_buttons)
+        self._camera_groups = (
+            self.camera_axis_group,
+            self.camera_isometric_group,
+            self.camera_wind_group,
+        )
+        for group in self._camera_groups:
+            camera.addWidget(group)
         camera.addStretch(1)
 
-        export = QtWidgets.QHBoxLayout()
-        export.addWidget(QtWidgets.QLabel("Export"))
+        self.export_row = self._make_control_row()
+        export = self.export_row.layout()
+        assert isinstance(export, QtWidgets.QHBoxLayout)
         export.addWidget(self.btn_save_image)
         export.addWidget(self.btn_save_selected_images)
         export.addStretch(1)
 
-        controls.addLayout(display)
-        controls.addLayout(options)
-        controls.addLayout(colorbar)
-        controls.addLayout(camera)
-        controls.addLayout(export)
-        self._root_layout.addLayout(controls)
+        labels = (
+            self.lbl_scalar,
+            self.lbl_display,
+            self.lbl_colorbar,
+            self.lbl_camera,
+            self.lbl_export,
+        )
+        rows = (
+            self.scalar_row,
+            self.display_row,
+            self.colorbar_row,
+            self.camera_row,
+            self.export_row,
+        )
+        for row_index, (label, row_widget) in enumerate(zip(labels, rows, strict=True)):
+            self._controls_grid.addWidget(
+                label,
+                row_index,
+                0,
+                QtCore.Qt.AlignmentFlag.AlignLeft
+                | QtCore.Qt.AlignmentFlag.AlignVCenter,
+            )
+            self._controls_grid.addWidget(row_widget, row_index, 1)
+        self._controls_grid.setColumnStretch(1, 1)
+        self._root_layout.addWidget(self.controls_chrome)
+
+    @staticmethod
+    def _make_control_row(
+        *, spacing: int = _CONTROL_COLUMN_SPACING
+    ) -> QtWidgets.QWidget:
+        row_widget = QtWidgets.QWidget()
+        row = QtWidgets.QHBoxLayout(row_widget)
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(spacing)
+        return row_widget
+
+    @staticmethod
+    def _equalize_button_minimum_widths(
+        buttons: Sequence[QtWidgets.QPushButton],
+    ) -> int:
+        for button in buttons:
+            button.ensurePolished()
+        width = max(button.sizeHint().width() for button in buttons)
+        for button in buttons:
+            button.setMinimumWidth(width)
+        return width
+
+    def _make_camera_group(
+        self,
+        buttons: Sequence[QtWidgets.QPushButton],
+    ) -> QtWidgets.QWidget:
+        group = self._make_control_row(spacing=_CAMERA_GROUP_SPACING)
+        layout = group.layout()
+        assert isinstance(layout, QtWidgets.QHBoxLayout)
+        self._equalize_button_minimum_widths(buttons)
+        for button in buttons:
+            layout.addWidget(button)
+        return group
 
     def _connect_controls(self) -> None:
         self.btn_open_vtp.clicked.connect(self.open_vtp)

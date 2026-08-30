@@ -243,6 +243,18 @@ class GuiThemeTests(unittest.TestCase):
                 rule = qss.split(f"{selector} {{", 1)[1].split("}", 1)[0]
                 self.assertIn("border: 1px solid", rule)
 
+    def test_viewer_camera_compaction_is_property_scoped_and_horizontal(self) -> None:
+        qss = render_application_qss(resolve_theme(ThemeMode.LIGHT))
+        selector = 'QPushButton[viewerCameraControl="true"]'
+        rule = qss.split(f"{selector} {{", 1)[1].split("}", 1)[0]
+
+        self.assertIn("padding-left: 6px", rule)
+        self.assertIn("padding-right: 6px", rule)
+        self.assertNotIn("padding-top", rule)
+        self.assertNotIn("padding-bottom", rule)
+        self.assertNotIn("min-height", rule)
+        self.assertNotIn("fluentSize", qss)
+
     def test_palette_populates_active_inactive_and_disabled_groups(self) -> None:
         theme = resolve_theme(ThemeMode.LIGHT)
         palette = build_application_palette(theme)

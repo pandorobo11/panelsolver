@@ -156,6 +156,156 @@ class ViewerPanelTests(unittest.TestCase):
             viewer.lbl_artifact_detail.sizePolicy().horizontalPolicy(),
         )
 
+    def test_control_grid_shares_one_label_and_control_boundary(self) -> None:
+        viewer, _plotter = self.make_viewer()
+        expected = (
+            (viewer.lbl_scalar, viewer.scalar_row, viewer.cmb_scalar),
+            (viewer.lbl_display, viewer.display_row, viewer.chk_edges),
+            (viewer.lbl_colorbar, viewer.colorbar_row, viewer.edit_vmin),
+            (viewer.lbl_camera, viewer.camera_row, viewer.btn_view_xp),
+            (viewer.lbl_export, viewer.export_row, viewer.btn_save_image),
+        )
+
+        for row_index, (label, row_widget, _first_control) in enumerate(expected):
+            with self.subTest(label=label.text()):
+                label_position = viewer._controls_grid.getItemPosition(
+                    viewer._controls_grid.indexOf(label)
+                )
+                row_position = viewer._controls_grid.getItemPosition(
+                    viewer._controls_grid.indexOf(row_widget)
+                )
+                self.assertEqual((row_index, 0, 1, 1), label_position)
+                self.assertEqual((row_index, 1, 1, 1), row_position)
+
+        viewer.resize(max(800, viewer.minimumSizeHint().width()), 600)
+        viewer.show()
+        self.app.processEvents()
+        starts = {
+            first_control.mapTo(viewer, QtCore.QPoint(0, 0)).x()
+            for _label, _row_widget, first_control in expected
+        }
+        self.assertEqual(1, len(starts))
+        viewer.close()
+
+    def test_camera_buttons_are_ordered_and_equal_only_within_subgroups(
+        self,
+    ) -> None:
+        viewer, _plotter = self.make_viewer()
+        groups = (
+            viewer._camera_axis_buttons,
+            viewer._camera_isometric_buttons,
+            viewer._camera_wind_buttons,
+        )
+        self.assertEqual(
+            [
+                viewer.camera_axis_group,
+                viewer.camera_isometric_group,
+                viewer.camera_wind_group,
+            ],
+            [viewer.camera_row.layout().itemAt(index).widget() for index in range(3)],
+        )
+        self.assertEqual(
+            [
+                "+X",
+                "-X",
+                "+Y",
+                "-Y",
+                "+Z",
+                "-Z",
+                "-X -Y +Z",
+                "+X -Y -Z",
+                "Wind +",
+                "Wind -",
+            ],
+            [button.text() for button in viewer._camera_buttons],
+        )
+        for buttons in groups:
+            with self.subTest(buttons=[button.text() for button in buttons]):
+                widths = {button.minimumWidth() for button in buttons}
+                self.assertEqual(1, len(widths))
+                width = widths.pop()
+                self.assertGreater(width, 0)
+                self.assertEqual(
+                    width,
+                    max(button.sizeHint().width() for button in buttons),
+                )
+                self.assertTrue(
+                    all(
+                        button.property("viewerCameraControl") is True
+                        for button in buttons
+                    )
+                )
+        viewer.show()
+        self.app.processEvents()
+        wanted = set(viewer._camera_buttons)
+        focus_order = []
+        current = viewer.btn_view_xp
+        for _index in range(80):
+            if current in wanted and current not in focus_order:
+                focus_order.append(current)
+            if len(focus_order) == len(wanted):
+                break
+            current = current.nextInFocusChain()
+        self.assertEqual(list(viewer._camera_buttons), focus_order)
+        viewer.close()
+
+    def test_canvas_is_full_bleed_while_viewer_chrome_is_inset(self) -> None:
+        viewer, plotter = self.make_viewer()
+        root_margins = viewer._root_layout.contentsMargins()
+        self.assertEqual(
+            (0, 0, 0, 0),
+            (
+                root_margins.left(),
+                root_margins.top(),
+                root_margins.right(),
+                root_margins.bottom(),
+            ),
+        )
+        self.assertGreaterEqual(viewer._root_layout.indexOf(plotter.interactor), 0)
+        self.assertIs(viewer, plotter.interactor.parentWidget())
+
+        artifact_margins = viewer.artifact_status_row.layout().contentsMargins()
+        control_margins = viewer._controls_grid.contentsMargins()
+        self.assertGreater(artifact_margins.left(), 0)
+        self.assertEqual(artifact_margins.left(), artifact_margins.right())
+        self.assertEqual(control_margins.left(), artifact_margins.left())
+        self.assertEqual(control_margins.right(), artifact_margins.right())
+
+        viewer.resize(max(800, viewer.minimumSizeHint().width()), 600)
+        viewer.show()
+        self.app.processEvents()
+        self.assertEqual(0, plotter.interactor.mapTo(viewer, QtCore.QPoint()).x())
+        self.assertEqual(viewer.width(), plotter.interactor.width())
+        self.assertGreater(
+            viewer.lbl_artifact_state.mapTo(viewer, QtCore.QPoint()).x(),
+            plotter.interactor.mapTo(viewer, QtCore.QPoint()).x(),
+        )
+        viewer.close()
+
+    def test_runtime_long_labels_keep_viewer_actions_available(self) -> None:
+        viewer, _plotter = self.make_viewer()
+        viewer.lbl_colorbar.setText("Colorbar limits")
+        viewer.chk_edges.setText("Show all panel edges")
+        viewer.chk_shield_transparent.setText("Show shielded panels with transparency")
+        viewer.chk_overlay_text.setText("Show complete case information")
+        viewer.resize(max(1000, viewer.minimumSizeHint().width()), 600)
+        viewer.show()
+        self.app.processEvents()
+
+        actions = (
+            viewer.btn_open_vtp,
+            *viewer._camera_buttons,
+            viewer.btn_save_image,
+            viewer.btn_save_selected_images,
+        )
+        for action in actions:
+            with self.subTest(action=action.text()):
+                self.assertTrue(action.isVisible())
+                self.assertGreater(action.width(), 0)
+                right = action.mapTo(viewer, QtCore.QPoint()).x() + action.width()
+                self.assertLessEqual(right, viewer.width())
+        viewer.close()
+
     def test_automatic_unavailable_states_use_explicit_text_and_severity(self) -> None:
         viewer, _plotter = self.make_viewer()
         expected = (
@@ -342,10 +492,21 @@ class ViewerPanelTests(unittest.TestCase):
         plotter.camera.position = (9.0, 8.0, 7.0)
         viewer.chk_edges.setChecked(False)
         self.assertEqual((9.0, 8.0, 7.0), plotter.camera.position)
-        viewer.btn_view_xp.click()
-        viewer.btn_view_iso_2.click()
-        self.assertEqual((1, 0, 0), plotter.view_vectors[-2])
-        self.assertEqual((1, -1, -1), plotter.view_vectors[-1])
+        for button in viewer._camera_buttons[:8]:
+            button.click()
+        self.assertEqual(
+            [
+                (1, 0, 0),
+                (-1, 0, 0),
+                (0, 1, 0),
+                (0, -1, 0),
+                (0, 0, 1),
+                (0, 0, -1),
+                (-1, -1, 1),
+                (1, -1, -1),
+            ],
+            plotter.view_vectors[-8:],
+        )
 
     def test_wind_views_use_only_the_injected_spec_adapter(self) -> None:
         signature = _signature("wind")
@@ -357,8 +518,8 @@ class ViewerPanelTests(unittest.TestCase):
             FakePoly({"normal_traction_coeff": [1.0]}),
             {"case_id": "case"},
         )
-        viewer.set_view_wind()
-        viewer.set_view_wind_reverse()
+        viewer.btn_view_wind.click()
+        viewer.btn_view_wind_rev.click()
         self.assertEqual((-1.0, -0.0, -0.0), plotter.view_vectors[-2])
         self.assertEqual((1.0, 0.0, 0.0), plotter.view_vectors[-1])
 
