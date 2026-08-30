@@ -5,6 +5,8 @@ import os
 import tempfile
 import time
 import unittest
+from dataclasses import replace
+from decimal import Decimal
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -138,6 +140,167 @@ class CasesPanelTests(unittest.TestCase):
         self.assertTrue(newt.load_input_file("/tmp/newt.csv"))
         self.assertIn("gamma", newt._table_columns)
         self.assertNotIn("S", newt._table_columns)
+
+    def test_product_headers_use_documented_labels_and_source_units(self) -> None:
+        cases = (
+            (
+                fmf_solver_spec,
+                {
+                    "case_id": "Case ID",
+                    "stl_path": "STL",
+                    "stl_scale_m_per_unit": "STL scale [m/unit]",
+                    "Mach": "Mach",
+                    "Altitude_km": "Altitude [km]",
+                    "Tw_K": "Tw [K]",
+                    "alpha_deg": "Alpha [deg]",
+                    "Aref_m2": "Aref [m²]",
+                },
+            ),
+            (
+                newt_solver_spec,
+                {
+                    "case_id": "Case ID",
+                    "stl_path": "STL",
+                    "stl_scale_m_per_unit": "STL scale [m/unit]",
+                    "Mach": "Mach",
+                    "gamma": "Gamma",
+                    "windward_eq": "Windward equation",
+                    "leeward_eq": "Leeward equation",
+                    "alpha_deg": "Alpha [deg]",
+                    "Aref_m2": "Aref [m²]",
+                },
+            ),
+        )
+        for spec_factory, expected in cases:
+            with self.subTest(domain=spec_factory.__module__):
+                rows = ({"case_id": "one", "stl_path": "/mesh/one.stl"},)
+                panel, _ = self.make_panel(rows, spec_factory=spec_factory)
+                self.assertTrue(panel.load_input_file("/tmp/input.csv"))
+                actual = {
+                    name: panel.case_table.horizontalHeaderItem(
+                        panel._table_columns.index(name)
+                    ).text()
+                    for name in expected
+                }
+                self.assertEqual(expected, actual)
+
+    def test_column_categories_project_to_engineering_alignment(self) -> None:
+        rows = (
+            {
+                "case_id": "one",
+                "stl_path": "/mesh/one.stl",
+                "Mach": 8.0,
+                "alpha_deg": 1.25,
+                "Aref_m2": 2.5,
+                "ref_x_m": -0.5,
+                "windward_eq": "newtonian",
+                "ray_backend": "auto",
+                "shielding_on": 0,
+                "save_vtp_on": 1,
+                "custom": "left fallback",
+            },
+        )
+        panel, _ = self.make_panel(rows, spec_factory=newt_solver_spec)
+        self.assertTrue(panel.load_input_file("/tmp/input.csv"))
+
+        def alignment(name: str) -> QtCore.Qt.AlignmentFlag:
+            item = panel.case_table.item(0, panel._table_columns.index(name))
+            return QtCore.Qt.AlignmentFlag(item.textAlignment())
+
+        for name in ("Mach", "alpha_deg", "Aref_m2", "ref_x_m"):
+            with self.subTest(name=name):
+                self.assertTrue(alignment(name) & QtCore.Qt.AlignmentFlag.AlignRight)
+                self.assertTrue(alignment(name) & QtCore.Qt.AlignmentFlag.AlignVCenter)
+        for name in (
+            "case_id",
+            "stl_path",
+            "windward_eq",
+            "ray_backend",
+            "custom",
+        ):
+            with self.subTest(name=name):
+                self.assertTrue(alignment(name) & QtCore.Qt.AlignmentFlag.AlignLeft)
+                self.assertTrue(alignment(name) & QtCore.Qt.AlignmentFlag.AlignVCenter)
+        for name in ("shielding_on", "save_vtp_on"):
+            with self.subTest(name=name):
+                self.assertTrue(alignment(name) & QtCore.Qt.AlignmentFlag.AlignHCenter)
+                self.assertTrue(alignment(name) & QtCore.Qt.AlignmentFlag.AlignVCenter)
+
+        custom_column = panel._table_columns.index("custom")
+        self.assertEqual(
+            "custom", panel.case_table.horizontalHeaderItem(custom_column).text()
+        )
+
+    def test_cell_text_precision_and_existing_identities_are_preserved(self) -> None:
+        long_decimal = Decimal("1.2345678901234567890123456789")
+        scientific = 1e-12
+        row = {
+            "case_id": "exact",
+            "stl_path": "/mesh/body.stl;/mesh/fin.stl",
+            "stl_scale_m_per_unit": 1,
+            "S": 5.0,
+            "Ti_K": None,
+            "Mach": long_decimal,
+            "Altitude_km": scientific,
+            "Tw_K": 300.0,
+            "ray_backend": "rtree",
+            "shielding_on": 0,
+            "save_vtp_on": 1,
+            "custom": Decimal("9.876543210987654321"),
+        }
+        panel, _ = self.make_panel((row,))
+        self.assertTrue(panel.load_input_file("/tmp/input.csv"))
+        self.assertEqual(
+            (*panel.spec.case_columns, "custom"),
+            panel._table_columns,
+        )
+
+        expected = {
+            "case_id": "exact",
+            "stl_scale_m_per_unit": "1",
+            "S": "5.0",
+            "Ti_K": "",
+            "Mach": str(long_decimal),
+            "Altitude_km": str(scientific),
+            "Tw_K": "300.0",
+            "ray_backend": "rtree",
+            "shielding_on": "0",
+            "save_vtp_on": "1",
+            "custom": "9.876543210987654321",
+        }
+        for name, text in expected.items():
+            with self.subTest(name=name):
+                column = panel._table_columns.index(name)
+                self.assertEqual(text, panel.case_table.item(0, column).text())
+
+        stl_column = panel._table_columns.index("stl_path")
+        stl_item = panel.case_table.item(0, stl_column)
+        self.assertEqual("body.stl, fin.stl", stl_item.text())
+        self.assertEqual(row["stl_path"], stl_item.toolTip())
+        self.assertEqual(
+            0,
+            panel.case_table.item(0, 0).data(QtCore.Qt.ItemDataRole.UserRole),
+        )
+
+    def test_shared_panel_uses_spec_metadata_without_product_branching(self) -> None:
+        def renamed_spec(*, adapters):
+            return replace(
+                fmf_solver_spec(adapters=adapters),
+                product_id="synthetic-product",
+            )
+
+        panel, _ = self.make_panel(spec_factory=renamed_spec)
+        self.assertTrue(panel.load_input_file("/tmp/input.csv"))
+        mach_column = panel._table_columns.index("Mach")
+        self.assertEqual(
+            "Mach", panel.case_table.horizontalHeaderItem(mach_column).text()
+        )
+        self.assertTrue(
+            QtCore.Qt.AlignmentFlag(
+                panel.case_table.item(0, mach_column).textAlignment()
+            )
+            & QtCore.Qt.AlignmentFlag.AlignRight
+        )
 
     def test_semantic_action_roles_preserve_enabled_and_click_behavior(self) -> None:
         panel, _ = self.make_panel()

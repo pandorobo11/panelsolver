@@ -18,7 +18,7 @@ from .path_resolution import (
 )
 from .run_lifecycle import CaseRunWorker
 from .runtime import DEFAULT_CHECKPOINT_CASES
-from .solver_spec import CaseRow, GuiRunResult, SolverSpec
+from .solver_spec import CaseColumnKind, CaseRow, GuiRunResult, SolverSpec
 from .viewer_data import match_artifact_case
 
 
@@ -289,8 +289,13 @@ class CasesPanel(QtWidgets.QWidget):
         self.case_table.clear()
         self.case_table.setColumnCount(len(self._table_columns))
         self.case_table.setRowCount(len(self.case_rows))
+        presentations = {
+            presentation.name: presentation
+            for presentation in self.spec.case_column_presentations
+        }
         headers = [
-            "stl_name" if name == "stl_path" else name for name in self._table_columns
+            presentations[name].label if name in presentations else name
+            for name in self._table_columns
         ]
         self.case_table.setHorizontalHeaderLabels(headers)
         for row_index, row in enumerate(self.case_rows):
@@ -299,15 +304,41 @@ class CasesPanel(QtWidgets.QWidget):
                 text = "" if value is None else str(value)
                 display = self.format_stl_name(text) if name == "stl_path" else text
                 item = QtWidgets.QTableWidgetItem(display)
+                kind = (
+                    presentations[name].kind
+                    if name in presentations
+                    else CaseColumnKind.TEXT
+                )
+                item.setTextAlignment(self._column_alignment(kind))
                 if name == "stl_path" and text:
                     item.setToolTip(text)
                 if column == 0:
                     item.setData(QtCore.Qt.ItemDataRole.UserRole, row_index)
                 self.case_table.setItem(row_index, column, item)
         self.case_table.resizeColumnsToContents()
+        header = self.case_table.horizontalHeader()
+        header_padding = 2 * self.case_table.style().pixelMetric(
+            QtWidgets.QStyle.PixelMetric.PM_HeaderMargin,
+            None,
+            header,
+        )
+        for column in range(len(self._table_columns)):
+            self.case_table.setColumnWidth(
+                column,
+                self.case_table.columnWidth(column) + header_padding,
+            )
         if "stl_path" in self._table_columns:
             self.case_table.setColumnWidth(self._table_columns.index("stl_path"), 220)
         self._refresh_summary()
+
+    @staticmethod
+    def _column_alignment(kind: CaseColumnKind) -> QtCore.Qt.AlignmentFlag:
+        horizontal = QtCore.Qt.AlignmentFlag.AlignLeft
+        if kind is CaseColumnKind.NUMERIC:
+            horizontal = QtCore.Qt.AlignmentFlag.AlignRight
+        elif kind is CaseColumnKind.FLAG:
+            horizontal = QtCore.Qt.AlignmentFlag.AlignHCenter
+        return horizontal | QtCore.Qt.AlignmentFlag.AlignVCenter
 
     @staticmethod
     def format_stl_name(value: str) -> str:
