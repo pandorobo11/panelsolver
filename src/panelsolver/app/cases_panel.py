@@ -25,6 +25,10 @@ from .viewer_data import (
     automatic_artifact_view_state,
 )
 
+_INLINE_LABEL_CONTROL_SPACING = 4
+_RUN_SETTINGS_GROUP_SPACING = 12
+_RUN_ACTION_SPACING = 8
+
 
 def _issue_value(issue: object, name: str) -> object | None:
     if isinstance(issue, Mapping):
@@ -173,6 +177,11 @@ class CasesPanel(QtWidgets.QWidget):
             QtCore.Qt.ToolButtonStyle.ToolButtonTextBesideIcon
         )
         self.btn_diagnostics.setAccessibleName("Diagnostics")
+        set_semantic_property(
+            self.btn_diagnostics,
+            "fluentAppearance",
+            "subtle",
+        )
         self.log = QtWidgets.QPlainTextEdit()
         self.log.setReadOnly(True)
         self.log.setMaximumBlockCount(8000)
@@ -210,15 +219,35 @@ class CasesPanel(QtWidgets.QWidget):
         summaries.addWidget(self.lbl_selection_summary)
         layout.addLayout(summaries)
         layout.addWidget(self.case_table, 4)
-        run_row = QtWidgets.QHBoxLayout()
-        run_row.addWidget(QtWidgets.QLabel("Workers:"))
-        run_row.addWidget(self.spin_workers)
-        run_row.addWidget(QtWidgets.QLabel("Checkpoint every:"))
-        run_row.addWidget(self.spin_checkpoint_every_cases)
-        run_row.addStretch(1)
-        run_row.addWidget(self.btn_run)
-        run_row.addWidget(self.btn_cancel)
-        layout.addLayout(run_row)
+        self.lbl_workers = QtWidgets.QLabel("Workers:")
+        self.lbl_checkpoint_every_cases = QtWidgets.QLabel("Checkpoint every:")
+
+        self.workers_group = QtWidgets.QHBoxLayout()
+        self.workers_group.setContentsMargins(0, 0, 0, 0)
+        self.workers_group.setSpacing(_INLINE_LABEL_CONTROL_SPACING)
+        self.workers_group.addWidget(self.lbl_workers)
+        self.workers_group.addWidget(self.spin_workers)
+
+        self.checkpoint_group = QtWidgets.QHBoxLayout()
+        self.checkpoint_group.setContentsMargins(0, 0, 0, 0)
+        self.checkpoint_group.setSpacing(_INLINE_LABEL_CONTROL_SPACING)
+        self.checkpoint_group.addWidget(self.lbl_checkpoint_every_cases)
+        self.checkpoint_group.addWidget(self.spin_checkpoint_every_cases)
+
+        self.run_actions_group = QtWidgets.QHBoxLayout()
+        self.run_actions_group.setContentsMargins(0, 0, 0, 0)
+        self.run_actions_group.setSpacing(_RUN_ACTION_SPACING)
+        self.run_actions_group.addWidget(self.btn_run)
+        self.run_actions_group.addWidget(self.btn_cancel)
+
+        self.run_row = QtWidgets.QHBoxLayout()
+        self.run_row.setSpacing(0)
+        self.run_row.addLayout(self.workers_group)
+        self.run_row.addSpacing(_RUN_SETTINGS_GROUP_SPACING)
+        self.run_row.addLayout(self.checkpoint_group)
+        self.run_row.addStretch(1)
+        self.run_row.addLayout(self.run_actions_group)
+        layout.addLayout(self.run_row)
         layout.addWidget(self.progress)
         layout.addWidget(self.btn_diagnostics)
         layout.addWidget(self.log, 2)
