@@ -46,6 +46,12 @@ alive for the lifetime of the window.
    selection, and select the summary CSV destination.
 6. Follow progress and diagnostics in the log panel.
 
+The case table uses user-facing headers with source units while retaining the
+canonical case-file columns internally. Comparable numeric values are right-
+aligned; identifiers and text remain left-aligned, and 0/1 flags are centered.
+This presentation layer does not round values, normalize scientific notation,
+or convert units.
+
 A successful calculation with one or more VTP, checkpoint, or final Summary CSV
 write failures finishes as **Completed with output errors**, not **Failed**. The
 run continues after per-case VTP failures and shows one bounded summary at the

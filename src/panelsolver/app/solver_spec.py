@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 from types import MappingProxyType
 
@@ -247,6 +248,66 @@ def _scalar_label_mapping(value: object) -> Mapping[str, str]:
     return MappingProxyType(labels)
 
 
+class CaseColumnKind(str, Enum):
+    """Model-neutral display category for one case-table column."""
+
+    TEXT = "text"
+    NUMERIC = "numeric"
+    FLAG = "flag"
+
+
+@dataclass(frozen=True, slots=True)
+class CaseColumnPresentation:
+    """Immutable UI label and comparison category for one internal column."""
+
+    name: str
+    label: str
+    kind: CaseColumnKind
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "name",
+            _nonempty_text(self.name, field="CaseColumnPresentation.name"),
+        )
+        object.__setattr__(
+            self,
+            "label",
+            _nonempty_text(self.label, field="CaseColumnPresentation.label"),
+        )
+        if not isinstance(self.kind, CaseColumnKind):
+            raise TypeError("CaseColumnPresentation.kind must be a CaseColumnKind")
+
+
+def _case_column_presentations(value: object) -> tuple[CaseColumnPresentation, ...]:
+    if isinstance(value, (str, bytes)):
+        raise TypeError(
+            "SolverSpec.case_column_presentations must be an iterable of metadata"
+        )
+    try:
+        presentations = tuple(value)  # type: ignore[arg-type]
+    except TypeError as exc:
+        raise TypeError(
+            "SolverSpec.case_column_presentations must be an iterable"
+        ) from exc
+    if not presentations:
+        raise ValueError("SolverSpec.case_column_presentations must not be empty")
+    if any(
+        not isinstance(presentation, CaseColumnPresentation)
+        for presentation in presentations
+    ):
+        raise TypeError(
+            "SolverSpec.case_column_presentations must contain "
+            "CaseColumnPresentation values"
+        )
+    names = tuple(presentation.name for presentation in presentations)
+    if len(names) != len(set(names)):
+        raise ValueError(
+            "SolverSpec.case_column_presentations must contain unique internal names"
+        )
+    return presentations
+
+
 @dataclass(frozen=True, slots=True)
 class SolverSpec:
     """Identity and presentation policy consumed by every shared GUI widget."""
@@ -256,6 +317,7 @@ class SolverSpec:
     window_title: str
     domain_name: str
     case_columns: tuple[str, ...]
+    case_column_presentations: tuple[CaseColumnPresentation, ...]
     preferred_scalars: tuple[str, ...]
     scalar_labels: Mapping[str, str]
     format_case: FormatCaseCallback
@@ -290,6 +352,22 @@ class SolverSpec:
         )
         if self.case_columns[0] != "case_id":
             raise ValueError("SolverSpec.case_columns must start with 'case_id'")
+        case_column_presentations = _case_column_presentations(
+            self.case_column_presentations
+        )
+        presentation_names = tuple(
+            presentation.name for presentation in case_column_presentations
+        )
+        if presentation_names != self.case_columns:
+            raise ValueError(
+                "SolverSpec.case_column_presentations internal names must match "
+                "SolverSpec.case_columns in order"
+            )
+        object.__setattr__(
+            self,
+            "case_column_presentations",
+            case_column_presentations,
+        )
         object.__setattr__(
             self,
             "preferred_scalars",
@@ -331,6 +409,8 @@ __all__ = (
     "ArtifactSignatureCandidates",
     "BuildCaseSignaturesCallback",
     "CancelRequestedCallback",
+    "CaseColumnKind",
+    "CaseColumnPresentation",
     "CaseRow",
     "ExampleDefinition",
     "FormatCaseCallback",

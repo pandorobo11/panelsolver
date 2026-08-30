@@ -59,6 +59,8 @@ from .runtime import (
 from .solver_spec import (
     COMMON_SCALAR_LABELS,
     ArtifactSignatureCandidates,
+    CaseColumnKind,
+    CaseColumnPresentation,
     GuiRunRequest,
     GuiRunResult,
     SolverGuiAdapters,
@@ -89,6 +91,8 @@ __all__ = (
     "ArtifactLoadMode",
     "ArtifactSignatureCandidates",
     "AtomicCsvWritePolicy",
+    "CaseColumnKind",
+    "CaseColumnPresentation",
     "CaseReaderPolicy",
     "ExampleDefinition",
     "ExampleLibrary",
