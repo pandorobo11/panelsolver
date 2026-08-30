@@ -342,12 +342,68 @@ class CasesPanelTests(unittest.TestCase):
             panel.btn_run.click()
         self.assertEqual([False], runs)
 
+    def test_run_row_groups_settings_and_trailing_actions_semantically(self) -> None:
+        panel, _ = self.make_panel()
+
+        self.assertEqual(5, panel.run_row.count())
+        self.assertIs(panel.workers_group, panel.run_row.itemAt(0).layout())
+        settings_gap = panel.run_row.itemAt(1).spacerItem()
+        self.assertIsNotNone(settings_gap)
+        self.assertIs(panel.checkpoint_group, panel.run_row.itemAt(2).layout())
+        action_stretch = panel.run_row.itemAt(3).spacerItem()
+        self.assertIsNotNone(action_stretch)
+        self.assertEqual(
+            QtWidgets.QSizePolicy.Policy.Expanding,
+            action_stretch.sizePolicy().horizontalPolicy(),
+        )
+        self.assertIs(panel.run_actions_group, panel.run_row.itemAt(4).layout())
+
+        self.assertEqual(
+            [panel.lbl_workers, panel.spin_workers],
+            [panel.workers_group.itemAt(index).widget() for index in range(2)],
+        )
+        self.assertEqual(
+            [
+                panel.lbl_checkpoint_every_cases,
+                panel.spin_checkpoint_every_cases,
+            ],
+            [panel.checkpoint_group.itemAt(index).widget() for index in range(2)],
+        )
+        self.assertEqual(
+            [panel.btn_run, panel.btn_cancel],
+            [panel.run_actions_group.itemAt(index).widget() for index in range(2)],
+        )
+        self.assertLess(
+            panel.workers_group.spacing(),
+            settings_gap.sizeHint().width(),
+        )
+        self.assertLess(
+            panel.checkpoint_group.spacing(),
+            settings_gap.sizeHint().width(),
+        )
+        self.assertEqual(8, panel.run_actions_group.spacing())
+
+        for group in (
+            panel.workers_group,
+            panel.checkpoint_group,
+            panel.run_actions_group,
+        ):
+            margins = group.contentsMargins()
+            self.assertEqual(
+                (0, 0, 0, 0),
+                (margins.left(), margins.top(), margins.right(), margins.bottom()),
+            )
+
     def test_diagnostics_toggle_preserves_hidden_log_content(self) -> None:
         panel, _ = self.make_panel()
         panel.show()
         self.app.processEvents()
         try:
             self.assertEqual("Diagnostics", panel.btn_diagnostics.text())
+            self.assertEqual(
+                "subtle",
+                panel.btn_diagnostics.property("fluentAppearance"),
+            )
             self.assertFalse(panel.btn_diagnostics.isChecked())
             self.assertEqual(
                 QtCore.Qt.ArrowType.RightArrow,
@@ -879,13 +935,59 @@ class CasesPanelTests(unittest.TestCase):
 
     def test_checkpoint_spinbox_defaults_and_accepts_zero(self) -> None:
         panel, _ = self.make_panel()
+        self.assertIsInstance(panel.spin_workers, QtWidgets.QSpinBox)
+        self.assertEqual(1, panel.spin_workers.minimum())
+        self.assertEqual(os.cpu_count() or 1, panel.spin_workers.maximum())
+        self.assertEqual(1, panel.spin_workers.value())
+        self.assertIsInstance(
+            panel.spin_checkpoint_every_cases,
+            QtWidgets.QSpinBox,
+        )
         self.assertEqual(
             DEFAULT_CHECKPOINT_CASES,
             panel.spin_checkpoint_every_cases.value(),
         )
         self.assertEqual(0, panel.spin_checkpoint_every_cases.minimum())
+        self.assertEqual(
+            2_147_483_647,
+            panel.spin_checkpoint_every_cases.maximum(),
+        )
+        self.assertEqual(" cases", panel.spin_checkpoint_every_cases.suffix())
         panel.spin_checkpoint_every_cases.setValue(0)
         self.assertEqual(0, panel.spin_checkpoint_every_cases.value())
+
+    def test_checkpoint_spinbox_reference_geometry_accommodates_maximum(self) -> None:
+        panel, _ = self.make_panel()
+        checkpoint = panel.spin_checkpoint_every_cases
+        checkpoint.ensurePolished()
+        checkpoint.setValue(checkpoint.maximum())
+
+        option = QtWidgets.QStyleOptionSpinBox()
+        checkpoint.initStyleOption(option)
+        edit_field = checkpoint.style().subControlRect(
+            QtWidgets.QStyle.ComplexControl.CC_SpinBox,
+            option,
+            QtWidgets.QStyle.SubControl.SC_SpinBoxEditField,
+            checkpoint,
+        )
+        displayed_text = checkpoint.text()
+        self.assertEqual("2147483647 cases", displayed_text)
+        self.assertGreaterEqual(
+            edit_field.width(),
+            checkpoint.fontMetrics().horizontalAdvance(displayed_text),
+        )
+
+    def test_table_and_log_keep_primary_secondary_stretch_contract(self) -> None:
+        panel, _ = self.make_panel()
+        root = panel.layout()
+        self.assertIs(panel.case_table, root.itemAt(2).widget())
+        self.assertEqual(4, root.stretch(2))
+        self.assertIs(panel.progress, root.itemAt(4).widget())
+        self.assertIs(panel.btn_diagnostics, root.itemAt(5).widget())
+        self.assertIs(panel.log, root.itemAt(6).widget())
+        self.assertEqual(2, root.stretch(6))
+        self.assertEqual(180, panel.log.minimumHeight())
+        self.assertFalse(panel.progress.isHidden())
 
     def test_run_cancel_and_output_rejection_do_not_emit(self) -> None:
         def reject(_out, _input, _rows):
