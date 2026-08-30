@@ -145,6 +145,7 @@ class CasesPanelTests(unittest.TestCase):
         self.assertEqual("primary", panel.btn_run.property("fluentAppearance"))
         self.assertEqual("danger", panel.btn_cancel.property("fluentAppearance"))
         self.assertTrue(panel.btn_pick_input.isEnabled())
+        self.assertEqual("Run Cases", panel.btn_run.text())
         self.assertFalse(panel.btn_run.isEnabled())
         self.assertFalse(panel.btn_cancel.isEnabled())
 
@@ -176,6 +177,53 @@ class CasesPanelTests(unittest.TestCase):
         ):
             panel.btn_run.click()
         self.assertEqual([False], runs)
+
+    def test_run_action_projects_case_and_selection_scope(self) -> None:
+        panel, _ = self.make_panel()
+        self.assertEqual("Run Cases", panel.btn_run.text())
+        self.assertFalse(panel.btn_run.isEnabled())
+
+        self.assertTrue(panel.load_input_file("/tmp/input.csv"))
+        self.assertEqual("Run All Cases", panel.btn_run.text())
+        self.assertTrue(panel.btn_run.isEnabled())
+        self.assertEqual(
+            ["case_b", "case_a"],
+            [row["case_id"] for row in panel.selected_or_all_case_rows()],
+        )
+
+        selection = panel.case_table.selectionModel()
+        selection.select(
+            panel.case_table.model().index(1, 0),
+            QtCore.QItemSelectionModel.SelectionFlag.Select
+            | QtCore.QItemSelectionModel.SelectionFlag.Rows,
+        )
+        self.assertEqual("Run Selected Cases", panel.btn_run.text())
+        self.assertEqual(
+            ["case_a"],
+            [row["case_id"] for row in panel.selected_or_all_case_rows()],
+        )
+
+        selection.select(
+            panel.case_table.model().index(0, 0),
+            QtCore.QItemSelectionModel.SelectionFlag.Select
+            | QtCore.QItemSelectionModel.SelectionFlag.Rows,
+        )
+        self.assertEqual("Run Selected Cases", panel.btn_run.text())
+        self.assertEqual(
+            ["case_b", "case_a"],
+            [row["case_id"] for row in panel.selected_or_all_case_rows()],
+        )
+
+        panel.case_table.clearSelection()
+        self.assertEqual("Run All Cases", panel.btn_run.text())
+        self.assertEqual(
+            ["case_b", "case_a"],
+            [row["case_id"] for row in panel.selected_or_all_case_rows()],
+        )
+
+        panel.clear_loaded_cases()
+        self.assertEqual("Run Cases", panel.btn_run.text())
+        self.assertFalse(panel.btn_run.isEnabled())
 
     def test_input_picker_offers_only_current_case_table_formats(self) -> None:
         panel, _ = self.make_panel()
@@ -447,7 +495,42 @@ class CasesPanelTests(unittest.TestCase):
         self.assertEqual((), panel.case_rows)
         self.assertIsNone(panel.input_path)
         self.assertEqual(0, panel.case_table.rowCount())
+        self.assertEqual("Run Cases", panel.btn_run.text())
         self.assertFalse(panel.btn_run.isEnabled())
+
+    def test_run_request_emits_all_or_selected_rows_without_semantic_change(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(prefix="run_scope_request_") as directory:
+            for selected_row, expected_label, expected_ids in (
+                (None, "Run All Cases", ["case_b", "case_a"]),
+                (1, "Run Selected Cases", ["case_a"]),
+            ):
+                with self.subTest(selected_row=selected_row):
+                    panel, _ = self.make_panel()
+                    panel.load_input_file(Path(directory) / "cases.csv")
+                    if selected_row is not None:
+                        panel.case_table.selectRow(selected_row)
+                    emitted: list[tuple] = []
+                    panel.run_requested.connect(
+                        lambda *args, sink=emitted: sink.append(args)
+                    )
+
+                    with patch.object(
+                        QtWidgets.QFileDialog,
+                        "getSaveFileName",
+                        return_value=(str(Path(directory) / "result.csv"), "CSV"),
+                    ):
+                        panel.request_run()
+                    self.wait_until(
+                        lambda active_panel=panel: not active_panel.is_running()
+                    )
+
+                    self.assertEqual(expected_label, panel.btn_run.text())
+                    self.assertEqual(
+                        expected_ids,
+                        [row["case_id"] for row in emitted[0][0]],
+                    )
 
     def test_run_request_default_side_effect_selection_and_validation(self) -> None:
         with tempfile.TemporaryDirectory(prefix="phase6_run_") as directory:

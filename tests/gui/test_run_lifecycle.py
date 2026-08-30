@@ -489,6 +489,41 @@ class RunLifecycleTests(unittest.TestCase):
         self.assertEqual("neutral", panel.progress.property("fluentStatus"))
         self.assertFalse(panel.progress.property("fluentBusy"))
 
+    def test_run_scope_wording_stays_disabled_during_run_and_restores(self) -> None:
+        for selected_row, expected_label in (
+            (None, "Run All Cases"),
+            (1, "Run Selected Cases"),
+        ):
+            with self.subTest(selected_row=selected_row):
+                entered = threading.Event()
+                release = threading.Event()
+
+                def runner(_request, *, started=entered, finish=release):
+                    started.set()
+                    finish.wait(timeout=3.0)
+                    return GuiRunResult()
+
+                panel, rows, _ = self.make_panel(runner)
+                panel._populate_case_table()
+                if selected_row is not None:
+                    panel.case_table.selectRow(selected_row)
+                run_rows = panel.selected_or_all_case_rows()
+                expected_rows = list(rows if selected_row is None else rows[1:2])
+                self.assertEqual(expected_rows, run_rows)
+                self.assertEqual(expected_label, panel.btn_run.text())
+
+                self.assertTrue(panel.start_run(run_rows, 1, 1, "results.csv"))
+                self.assertEqual(expected_label, panel.btn_run.text())
+                self.assertFalse(panel.btn_run.isEnabled())
+                self.wait_until(entered.is_set)
+                release.set()
+                self.wait_until(
+                    lambda active_panel=panel: not active_panel.is_running()
+                )
+
+                self.assertEqual(expected_label, panel.btn_run.text())
+                self.assertTrue(panel.btn_run.isEnabled())
+
     def test_both_products_defer_active_close_until_thread_cleanup(self) -> None:
         for spec_factory in (fmf_solver_spec, newt_solver_spec):
             with self.subTest(product=spec_factory.__module__):

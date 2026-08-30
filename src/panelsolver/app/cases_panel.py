@@ -132,6 +132,9 @@ class CasesPanel(QtWidgets.QWidget):
         set_semantic_property(self.btn_pick_input, "fluentAppearance", "secondary")
         set_semantic_property(self.btn_run, "fluentAppearance", "primary")
         set_semantic_property(self.btn_cancel, "fluentAppearance", "danger")
+        # Reserve the longest native size hint so scope wording does not move layout.
+        self.btn_run.setMinimumWidth(self.btn_run.sizeHint().width())
+        self.btn_run.setText("Run Cases")
         self.btn_cancel.setEnabled(False)
         self.btn_run.setEnabled(False)
         self.lbl_case_summary = QtWidgets.QLabel("No cases loaded")
@@ -655,6 +658,16 @@ class CasesPanel(QtWidgets.QWidget):
             "No cases loaded" if total == 0 else f"Loaded: {total} case(s)"
         )
         self.lbl_selection_summary.setText(f"Selected: {selected}")
+        self._refresh_run_action()
+
+    def _refresh_run_action(self) -> None:
+        if not self.case_rows:
+            text = "Run Cases"
+        elif self.selected_case_rows():
+            text = "Run Selected Cases"
+        else:
+            text = "Run All Cases"
+        self.btn_run.setText(text)
 
 
 __all__ = ("CasesPanel", "ValidationIssuesDialog")
