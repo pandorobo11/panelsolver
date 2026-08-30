@@ -13,7 +13,7 @@ from unittest.mock import patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore, QtTest, QtWidgets
 
 from fmfsolver._frontend import _legacy_gui_spec as fmf_solver_spec
 from newtsolver._frontend import _legacy_gui_spec as newt_solver_spec
@@ -341,6 +341,90 @@ class CasesPanelTests(unittest.TestCase):
         ):
             panel.btn_run.click()
         self.assertEqual([False], runs)
+
+    def test_diagnostics_toggle_preserves_hidden_log_content(self) -> None:
+        panel, _ = self.make_panel()
+        panel.show()
+        self.app.processEvents()
+        try:
+            self.assertEqual("Diagnostics", panel.btn_diagnostics.text())
+            self.assertFalse(panel.btn_diagnostics.isChecked())
+            self.assertEqual(
+                QtCore.Qt.ArrowType.RightArrow,
+                panel.btn_diagnostics.arrowType(),
+            )
+            self.assertEqual(
+                QtCore.Qt.ToolButtonStyle.ToolButtonTextBesideIcon,
+                panel.btn_diagnostics.toolButtonStyle(),
+            )
+            self.assertEqual("Diagnostics", panel.btn_diagnostics.accessibleName())
+            self.assertTrue(panel.btn_diagnostics.shortcut().isEmpty())
+            self.assertTrue(
+                panel.btn_diagnostics.focusPolicy() & QtCore.Qt.FocusPolicy.TabFocus
+            )
+            self.assertIsInstance(panel.log, QtWidgets.QPlainTextEdit)
+            self.assertTrue(panel.log.isReadOnly())
+            self.assertEqual(8000, panel.log.maximumBlockCount())
+            self.assertEqual(180, panel.log.minimumHeight())
+            self.assertTrue(panel.log.isHidden())
+            self.assertTrue(panel.progress.isVisible())
+
+            panel.logln("[TEST] hidden message")
+            self.assertIn("[TEST] hidden message", panel.log.toPlainText())
+
+            panel.btn_diagnostics.click()
+            self.app.processEvents()
+            self.assertTrue(panel.btn_diagnostics.isChecked())
+            self.assertEqual(
+                QtCore.Qt.ArrowType.DownArrow,
+                panel.btn_diagnostics.arrowType(),
+            )
+            self.assertTrue(panel.log.isVisible())
+            self.assertIn("[TEST] hidden message", panel.log.toPlainText())
+            self.assertIn("Hide", panel.btn_diagnostics.accessibleDescription())
+
+            panel.btn_diagnostics.click()
+            self.app.processEvents()
+            self.assertFalse(panel.btn_diagnostics.isChecked())
+            self.assertEqual(
+                QtCore.Qt.ArrowType.RightArrow,
+                panel.btn_diagnostics.arrowType(),
+            )
+            self.assertTrue(panel.log.isHidden())
+            self.assertIn("[TEST] hidden message", panel.log.toPlainText())
+            self.assertIn("Show", panel.btn_diagnostics.accessibleDescription())
+
+            panel.btn_diagnostics.setFocus(QtCore.Qt.FocusReason.TabFocusReason)
+            self.assertTrue(panel.btn_diagnostics.hasFocus())
+            QtTest.QTest.keyClick(
+                panel.btn_diagnostics,
+                QtCore.Qt.Key.Key_Space,
+            )
+            self.assertTrue(panel.btn_diagnostics.isChecked())
+            self.assertTrue(panel.log.isVisible())
+        finally:
+            panel.close()
+
+    def test_diagnostics_choice_survives_input_load_and_clear(self) -> None:
+        panel, _ = self.make_panel()
+        panel.btn_diagnostics.click()
+        self.assertTrue(panel.btn_diagnostics.isChecked())
+        self.assertFalse(panel.log.isHidden())
+
+        self.assertTrue(panel.load_input_file("/tmp/input.csv"))
+        self.assertTrue(panel.btn_diagnostics.isChecked())
+        self.assertFalse(panel.log.isHidden())
+        panel.clear_loaded_cases()
+        self.assertTrue(panel.btn_diagnostics.isChecked())
+        self.assertFalse(panel.log.isHidden())
+
+        panel.btn_diagnostics.click()
+        self.assertFalse(panel.btn_diagnostics.isChecked())
+        self.assertTrue(panel.log.isHidden())
+        self.assertTrue(panel.load_input_file("/tmp/other.csv"))
+        panel.clear_loaded_cases()
+        self.assertFalse(panel.btn_diagnostics.isChecked())
+        self.assertTrue(panel.log.isHidden())
 
     def test_run_action_projects_case_and_selection_scope(self) -> None:
         panel, _ = self.make_panel()
