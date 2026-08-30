@@ -23,9 +23,12 @@ from .path_resolution import (
 )
 from .solver_spec import CaseRow, SolverSpec
 from .viewer_data import (
+    ArtifactViewState,
+    ArtifactViewStatus,
     ScalarField,
     discover_scalar_fields,
     field_data_scalar,
+    manual_artifact_view_state,
     match_artifact_case,
     resolve_matching_case_row,
     scalar_color_limits,
@@ -86,6 +89,8 @@ class ViewerPanel(QtWidgets.QWidget):
         self._root_layout = QtWidgets.QVBoxLayout(self)
         self._root_layout.setSpacing(6)
         self._root_layout.setContentsMargins(0, 0, 0, 0)
+        self._artifact_view_state = ArtifactViewState(ArtifactViewStatus.EMPTY)
+        self._init_artifact_status()
 
         self.plotter = plotter_factory(self)
         self._enable_parallel_projection()
@@ -110,6 +115,7 @@ class ViewerPanel(QtWidgets.QWidget):
         self._overlay_actor = None
         self._default_view_vec = (-1, -1, 1)
         self._camera_initialized = False
+        self.set_artifact_view_state(self._artifact_view_state)
         self._update_export_controls()
 
     def _enable_parallel_projection(self) -> None:
@@ -161,6 +167,43 @@ class ViewerPanel(QtWidgets.QWidget):
             set_semantic_property(button, "fluentAppearance", "secondary")
         self.btn_save_image.setEnabled(False)
         self.btn_save_selected_images.setEnabled(False)
+
+    def _init_artifact_status(self) -> None:
+        self.artifact_status_row = QtWidgets.QWidget()
+        self.artifact_status_row.setObjectName("viewerArtifactStatusRow")
+        self.artifact_status_row.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+        self.artifact_status_row.setAccessibleName("Viewer artifact provenance")
+        self.artifact_status_row.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Preferred,
+            QtWidgets.QSizePolicy.Policy.Maximum,
+        )
+        row = QtWidgets.QHBoxLayout(self.artifact_status_row)
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(8)
+
+        self.lbl_artifact_state = QtWidgets.QLabel()
+        self.lbl_artifact_state.setObjectName("viewerArtifactStateLabel")
+        self.lbl_artifact_state.setTextFormat(QtCore.Qt.TextFormat.PlainText)
+        self.lbl_artifact_state.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+        self.lbl_artifact_state.setAccessibleName("Viewer result status")
+        state_font = self.lbl_artifact_state.font()
+        state_font.setBold(True)
+        self.lbl_artifact_state.setFont(state_font)
+
+        self.lbl_artifact_detail = QtWidgets.QLabel()
+        self.lbl_artifact_detail.setObjectName("viewerArtifactDetailLabel")
+        self.lbl_artifact_detail.setTextFormat(QtCore.Qt.TextFormat.PlainText)
+        self.lbl_artifact_detail.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+        self.lbl_artifact_detail.setAccessibleName("Viewer result details")
+        self.lbl_artifact_detail.setMinimumWidth(0)
+        self.lbl_artifact_detail.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Ignored,
+            QtWidgets.QSizePolicy.Policy.Preferred,
+        )
+
+        row.addWidget(self.lbl_artifact_state)
+        row.addWidget(self.lbl_artifact_detail, 1)
+        self._root_layout.addWidget(self.artifact_status_row)
 
     def _build_controls_layout(self) -> None:
         controls = QtWidgets.QVBoxLayout()
@@ -270,8 +313,84 @@ class ViewerPanel(QtWidgets.QWidget):
     def _input_path_context(self) -> Path:
         return self._input_path or (Path.cwd() / "input.csv")
 
-    @QtCore.Slot()
-    def clear_view(self) -> None:
+    @property
+    def artifact_view_state(self) -> ArtifactViewState:
+        return self._artifact_view_state
+
+    @staticmethod
+    def _artifact_state_presentation(
+        state: ArtifactViewState,
+    ) -> tuple[str, str, str]:
+        status = state.status
+        filename = state.path.name if state.path is not None else ""
+        case_id = state.case_id or ""
+        if status is ArtifactViewStatus.EMPTY:
+            return (
+                "No result displayed",
+                "Select a case or open a VTP.",
+                "neutral",
+            )
+        if status is ArtifactViewStatus.CURRENT:
+            return "Current result", f"{case_id} · {filename}", "info"
+        if status is ArtifactViewStatus.MISSING:
+            return "Result unavailable", f"{case_id} · VTP not found", "warning"
+        if status is ArtifactViewStatus.WRITE_FAILED:
+            identity = case_id or filename
+            return (
+                "Result unavailable",
+                f"{identity} · latest VTP write failed",
+                "warning",
+            )
+        if status is ArtifactViewStatus.STALE:
+            return (
+                "Stale result",
+                f"{case_id} · artifact signature does not match current case",
+                "warning",
+            )
+        if status is ArtifactViewStatus.MISMATCHED:
+            return (
+                "Result mismatch",
+                f"{case_id} · artifact metadata does not match the selected case",
+                "warning",
+            )
+        if status is ArtifactViewStatus.READ_ERROR:
+            return "VTP read error", f"{filename} · see log", "danger"
+        if status is ArtifactViewStatus.INVALID_DATA:
+            return "Invalid VTP data", f"{filename} · see log", "danger"
+        if status is ArtifactViewStatus.MANUAL_MATCHED:
+            return "Manual VTP", f"Matched to {case_id} · {filename}", "info"
+        return (
+            "Manual VTP",
+            f"Not matched to current input · {filename}",
+            "warning",
+        )
+
+    @QtCore.Slot(object)
+    def set_artifact_view_state(self, state: ArtifactViewState) -> None:
+        """Project trusted artifact facts onto the compact Viewer status row."""
+        if not isinstance(state, ArtifactViewState):
+            raise TypeError("state must be an ArtifactViewState")
+        self._artifact_view_state = state
+        label, detail, semantic_status = self._artifact_state_presentation(state)
+        self.lbl_artifact_state.setText(label)
+        self.lbl_artifact_detail.setText(detail)
+        set_semantic_property(
+            self.lbl_artifact_state,
+            "fluentStatus",
+            semantic_status,
+        )
+        description = f"{label}. {detail}"
+        if state.path is not None:
+            description = f"{description}\n{state.path}"
+        self.artifact_status_row.setAccessibleDescription(description)
+        self.lbl_artifact_state.setAccessibleDescription(description)
+        self.lbl_artifact_detail.setAccessibleDescription(description)
+        tooltip = description if state.path is not None else ""
+        self.lbl_artifact_state.setToolTip(tooltip)
+        self.lbl_artifact_detail.setToolTip(tooltip)
+
+    def _clear_rendered_artifact(self) -> None:
+        """Clear geometry and render controls without choosing a status reason."""
         self._poly = None
         self._loaded_vtp_path = None
         self._display_case_row = None
@@ -286,6 +405,11 @@ class ViewerPanel(QtWidgets.QWidget):
             pass
         self._update_export_controls()
 
+    @QtCore.Slot()
+    def clear_view(self) -> None:
+        self._clear_rendered_artifact()
+        self.set_artifact_view_state(ArtifactViewState(ArtifactViewStatus.EMPTY))
+
     @QtCore.Slot(str)
     def invalidate_vtp_artifact(self, path: str) -> None:
         """Clear a displayed artifact only when its exact output was invalidated."""
@@ -294,7 +418,17 @@ class ViewerPanel(QtWidgets.QWidget):
         invalidated = Path(path).expanduser().resolve(strict=False)
         loaded = self._loaded_vtp_path.expanduser().resolve(strict=False)
         if loaded == invalidated:
-            self.clear_view()
+            case_id = None
+            if self._display_case_row is not None:
+                case_id = str(self._display_case_row.get("case_id", "")).strip() or None
+            self._clear_rendered_artifact()
+            self.set_artifact_view_state(
+                ArtifactViewState(
+                    ArtifactViewStatus.WRITE_FAILED,
+                    invalidated,
+                    case_id,
+                )
+            )
 
     def clear_range(self) -> None:
         self.edit_vmin.clear()
@@ -322,7 +456,10 @@ class ViewerPanel(QtWidgets.QWidget):
             try:
                 loaded = self._artifact_reader(path)
             except Exception as exc:
-                self.clear_view()
+                self._clear_rendered_artifact()
+                self.set_artifact_view_state(
+                    ArtifactViewState(ArtifactViewStatus.READ_ERROR, Path(path))
+                )
                 self.logln(f"[ERROR] Failed to read VTP: {exc}")
                 return False
         else:
@@ -334,7 +471,10 @@ class ViewerPanel(QtWidgets.QWidget):
                 preferred=self.spec.preferred_scalars,
             )
         except Exception as exc:
-            self.clear_view()
+            self._clear_rendered_artifact()
+            self.set_artifact_view_state(
+                ArtifactViewState(ArtifactViewStatus.INVALID_DATA, Path(path))
+            )
             self.logln(f"[ERROR] Invalid VTP cell data: {exc}")
             return False
 
@@ -342,17 +482,25 @@ class ViewerPanel(QtWidgets.QWidget):
         self._poly = loaded
         if case_row is not None:
             self._display_case_row = dict(case_row)
+            state = ArtifactViewState(
+                ArtifactViewStatus.CURRENT,
+                Path(path),
+                str(case_row.get("case_id", "")).strip(),
+            )
         elif self.spec.adapters is not None:
             self._display_case_row = resolve_matching_case_row(
                 loaded,
                 self._case_rows,
                 self.spec.adapters.build_case_signatures,
             )
+            state = manual_artifact_view_state(path, self._display_case_row)
         else:
             self._display_case_row = None
+            state = manual_artifact_view_state(path, None)
         self._set_scalar_fields(fields)
         self.logln(f"[VIEW] Loaded VTP: {path}")
         self.update_view()
+        self.set_artifact_view_state(state)
         self._update_export_controls()
         return True
 

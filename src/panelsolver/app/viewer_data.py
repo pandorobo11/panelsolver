@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from enum import Enum
 from numbers import Integral
+from pathlib import Path
 
 import numpy as np
 
@@ -21,6 +23,63 @@ class ArtifactLoadMode(str, Enum):
     MANUAL = "manual"
 
 
+class ArtifactViewStatus(str, Enum):
+    """Model-neutral presentation status for one Viewer artifact surface."""
+
+    EMPTY = "empty"
+    CURRENT = "current"
+    MISSING = "missing"
+    WRITE_FAILED = "write_failed"
+    STALE = "stale"
+    MISMATCHED = "mismatched"
+    READ_ERROR = "read_error"
+    INVALID_DATA = "invalid_data"
+    MANUAL_MATCHED = "manual_matched"
+    MANUAL_UNMATCHED = "manual_unmatched"
+
+
+@dataclass(frozen=True, slots=True)
+class ArtifactViewState:
+    """Immutable trusted facts needed to present Viewer artifact provenance."""
+
+    status: ArtifactViewStatus
+    path: Path | None = None
+    case_id: str | None = None
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.status, ArtifactViewStatus):
+            raise TypeError("ArtifactViewState.status must be an ArtifactViewStatus")
+        path = None
+        if self.path is not None:
+            try:
+                path = Path(self.path).expanduser().resolve(strict=False)
+            except TypeError as exc:
+                raise TypeError("ArtifactViewState.path must be path-like") from exc
+        case_id = self.case_id
+        if case_id is not None:
+            if not isinstance(case_id, str) or not case_id.strip():
+                raise ValueError("ArtifactViewState.case_id must be non-empty")
+            case_id = case_id.strip()
+
+        if self.status is ArtifactViewStatus.EMPTY:
+            if path is not None or case_id is not None:
+                raise ValueError("empty artifact state cannot carry path or case_id")
+        elif path is None:
+            raise ValueError("non-empty artifact state requires a path")
+
+        case_required = {
+            ArtifactViewStatus.CURRENT,
+            ArtifactViewStatus.MISSING,
+            ArtifactViewStatus.STALE,
+            ArtifactViewStatus.MISMATCHED,
+            ArtifactViewStatus.MANUAL_MATCHED,
+        }
+        if self.status in case_required and case_id is None:
+            raise ValueError(f"{self.status.value} artifact state requires case_id")
+        object.__setattr__(self, "path", path)
+        object.__setattr__(self, "case_id", case_id)
+
+
 @dataclass(frozen=True, slots=True)
 class ArtifactCaseMatch:
     """Exact case-ID and primary/legacy signature comparison result."""
@@ -31,6 +90,9 @@ class ArtifactCaseMatch:
     @property
     def matched(self) -> bool:
         return self.case_id_matches and self.signature.matched
+
+
+_SHA256_DIGEST_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 
 
 @dataclass(frozen=True, slots=True)
@@ -106,6 +168,53 @@ def match_artifact_case(
     return ArtifactCaseMatch(
         bool(expected_case_id) and actual_case_id == expected_case_id,
         signature,
+    )
+
+
+def automatic_artifact_view_state(
+    artifact: object,
+    row: CaseRow,
+    candidates: ArtifactSignatureCandidates,
+    path: str | Path,
+) -> ArtifactViewState:
+    """Classify automatic eligibility without changing the matching contract."""
+    match = match_artifact_case(artifact, row, candidates)
+    case_id = str(row.get("case_id", "")).strip()
+    if not case_id:
+        raise ValueError("row case_id must be non-empty")
+    if match.matched:
+        status = ArtifactViewStatus.CURRENT
+    else:
+        stored_signature = field_data_scalar(artifact, "case_signature")
+        has_valid_stale_evidence = (
+            match.case_id_matches
+            and stored_signature is not None
+            and _SHA256_DIGEST_PATTERN.fullmatch(stored_signature) is not None
+        )
+        status = (
+            ArtifactViewStatus.STALE
+            if has_valid_stale_evidence
+            else ArtifactViewStatus.MISMATCHED
+        )
+    return ArtifactViewState(status, Path(path), case_id)
+
+
+def manual_artifact_view_state(
+    path: str | Path,
+    matched_row: CaseRow | None,
+) -> ArtifactViewState:
+    """Describe a manual artifact without making unmatched inspection ineligible."""
+    if matched_row is None:
+        return ArtifactViewState(ArtifactViewStatus.MANUAL_UNMATCHED, Path(path))
+    if not isinstance(matched_row, Mapping):
+        raise TypeError("matched_row must be a mapping or None")
+    case_id = str(matched_row.get("case_id", "")).strip()
+    if not case_id:
+        raise ValueError("matched_row case_id must be non-empty")
+    return ArtifactViewState(
+        ArtifactViewStatus.MANUAL_MATCHED,
+        Path(path),
+        case_id,
     )
 
 
@@ -214,10 +323,14 @@ def scalar_color_limits(field: ScalarField, values: object) -> tuple[float, floa
 __all__ = (
     "ArtifactCaseMatch",
     "ArtifactLoadMode",
+    "ArtifactViewState",
+    "ArtifactViewStatus",
     "ScalarField",
     "artifact_display_allowed",
+    "automatic_artifact_view_state",
     "discover_scalar_fields",
     "field_data_scalar",
+    "manual_artifact_view_state",
     "match_artifact_case",
     "resolve_matching_case_row",
     "scalar_color_limits",

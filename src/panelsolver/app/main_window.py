@@ -58,6 +58,9 @@ class MainWindow(QtWidgets.QMainWindow):
             self.viewer_panel.invalidate_vtp_artifact
         )
         self.cases_panel.viewer_clear_requested.connect(self.viewer_panel.clear_view)
+        self.cases_panel.viewer_artifact_state_changed.connect(
+            self.viewer_panel.set_artifact_view_state
+        )
         self.cases_panel.cases_updated.connect(self.viewer_panel.set_case_rows)
         self.cases_panel.selected_cases_changed.connect(
             self.viewer_panel.set_selected_case_rows

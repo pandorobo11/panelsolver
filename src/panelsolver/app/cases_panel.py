@@ -19,7 +19,11 @@ from .path_resolution import (
 from .run_lifecycle import CaseRunWorker
 from .runtime import DEFAULT_CHECKPOINT_CASES
 from .solver_spec import CaseColumnKind, CaseRow, GuiRunResult, SolverSpec
-from .viewer_data import match_artifact_case
+from .viewer_data import (
+    ArtifactViewState,
+    ArtifactViewStatus,
+    automatic_artifact_view_state,
+)
 
 
 def _issue_value(issue: object, name: str) -> object | None:
@@ -96,6 +100,7 @@ class CasesPanel(QtWidgets.QWidget):
     vtp_loaded = QtCore.Signal(str, object, object)
     vtp_artifact_invalidated = QtCore.Signal(str)
     viewer_clear_requested = QtCore.Signal()
+    viewer_artifact_state_changed = QtCore.Signal(object)
     cases_updated = QtCore.Signal(object)
     selected_cases_changed = QtCore.Signal(object)
     input_path_changed = QtCore.Signal(object)
@@ -366,36 +371,51 @@ class CasesPanel(QtWidgets.QWidget):
         selected = self.selected_case_rows()
         self.selected_cases_changed.emit(tuple(selected))
         if not selected:
-            self.viewer_clear_requested.emit()
+            self._clear_viewer_with_state(ArtifactViewState(ArtifactViewStatus.EMPTY))
             return
         self._auto_load_case_artifact(selected[0])
+
+    def _clear_viewer_with_state(self, state: ArtifactViewState) -> None:
+        """Preserve the clear signal, then project its reason synchronously."""
+        if not isinstance(state, ArtifactViewState):
+            raise TypeError("state must be an ArtifactViewState")
+        self.viewer_clear_requested.emit()
+        self.viewer_artifact_state_changed.emit(state)
 
     def _auto_load_case_artifact(self, row: CaseRow) -> None:
         case_id = str(row.get("case_id", "")).strip()
         if not case_id:
-            self.viewer_clear_requested.emit()
+            self._clear_viewer_with_state(ArtifactViewState(ArtifactViewStatus.EMPTY))
             return
         if self.input_path is None:
-            self.viewer_clear_requested.emit()
+            self._clear_viewer_with_state(ArtifactViewState(ArtifactViewStatus.EMPTY))
             return
         path = resolve_case_vtp_path(row, self.input_path)
         if self._vtp_artifact_key(case_id, path) in self._invalid_current_vtp_artifacts:
-            self.viewer_clear_requested.emit()
+            self._clear_viewer_with_state(
+                ArtifactViewState(ArtifactViewStatus.WRITE_FAILED, path, case_id)
+            )
             return
         if not path.exists():
-            self.viewer_clear_requested.emit()
+            self._clear_viewer_with_state(
+                ArtifactViewState(ArtifactViewStatus.MISSING, path, case_id)
+            )
             return
         try:
             artifact = self._artifact_reader(str(path))
         except Exception as exc:
-            self.viewer_clear_requested.emit()
+            self._clear_viewer_with_state(
+                ArtifactViewState(ArtifactViewStatus.READ_ERROR, path, case_id)
+            )
             self.logln(f"[ERROR] Failed to read VTP: {exc}")
             return
         candidates = self.spec.adapters.build_case_signatures(row)
-        if match_artifact_case(artifact, row, candidates).matched:
+        state = automatic_artifact_view_state(artifact, row, candidates, path)
+        if state.status is ArtifactViewStatus.CURRENT:
+            self.viewer_artifact_state_changed.emit(state)
             self.vtp_loaded.emit(str(path), artifact, row)
         else:
-            self.viewer_clear_requested.emit()
+            self._clear_viewer_with_state(state)
 
     def request_run(self) -> None:
         if self.input_path is None or not self.case_rows:
@@ -616,20 +636,25 @@ class CasesPanel(QtWidgets.QWidget):
             else (self._run_rows[0] if self._run_rows else None)
         )
         if row is None:
-            self.viewer_clear_requested.emit()
+            self._clear_viewer_with_state(ArtifactViewState(ArtifactViewStatus.EMPTY))
             return
         path = result.first_vtp_path
         try:
             artifact = self._artifact_reader(str(path))
         except Exception as exc:
-            self.viewer_clear_requested.emit()
+            case_id = str(row.get("case_id", "")).strip() or None
+            self._clear_viewer_with_state(
+                ArtifactViewState(ArtifactViewStatus.READ_ERROR, path, case_id)
+            )
             self.logln(f"[ERROR] Failed to read VTP: {exc}")
             return
         candidates = self.spec.adapters.build_case_signatures(row)
-        if match_artifact_case(artifact, row, candidates).matched:
+        state = automatic_artifact_view_state(artifact, row, candidates, path)
+        if state.status is ArtifactViewStatus.CURRENT:
+            self.viewer_artifact_state_changed.emit(state)
             self.vtp_loaded.emit(str(path), artifact, row)
         else:
-            self.viewer_clear_requested.emit()
+            self._clear_viewer_with_state(state)
 
     @QtCore.Slot(str)
     def _on_run_failed(self, message: str) -> None:
@@ -676,7 +701,7 @@ class CasesPanel(QtWidgets.QWidget):
         self.progress.setFormat("Idle")
         set_semantic_property(self.progress, "fluentStatus", "neutral")
         set_semantic_property(self.progress, "fluentBusy", False)
-        self.viewer_clear_requested.emit()
+        self._clear_viewer_with_state(ArtifactViewState(ArtifactViewStatus.EMPTY))
         self.input_path_changed.emit(None)
         self.cases_updated.emit(self.case_rows)
         self.selected_cases_changed.emit(())

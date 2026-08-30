@@ -197,6 +197,22 @@ QProgressBar[fluentStatus="danger"]::chunk {
     background-color: @{danger_background};
 }
 
+QLabel#viewerArtifactStateLabel {
+    color: @{text_secondary};
+}
+
+QLabel#viewerArtifactStateLabel[fluentStatus="info"] {
+    color: @{link};
+}
+
+QLabel#viewerArtifactStateLabel[fluentStatus="warning"] {
+    color: @{warning_foreground};
+}
+
+QLabel#viewerArtifactStateLabel[fluentStatus="danger"] {
+    color: @{danger_foreground};
+}
+
 QCheckBox, QRadioButton {
     color: @{text_primary};
     border: 1px solid transparent;

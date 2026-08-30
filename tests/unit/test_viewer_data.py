@@ -1,5 +1,7 @@
 import hashlib
 import unittest
+from dataclasses import FrozenInstanceError
+from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
@@ -8,9 +10,13 @@ import pyvista as pv
 from panelsolver.app import (
     ArtifactLoadMode,
     ArtifactSignatureCandidates,
+    ArtifactViewState,
+    ArtifactViewStatus,
     artifact_display_allowed,
+    automatic_artifact_view_state,
     discover_scalar_fields,
     field_data_scalar,
+    manual_artifact_view_state,
     match_artifact_case,
     resolve_matching_case_row,
     scalar_color_limits,
@@ -159,6 +165,85 @@ class ArtifactMatchingTests(unittest.TestCase):
             ArtifactSignatureCandidates(object())
         with self.assertRaises(ValueError):
             ArtifactSignatureCandidates(_signature("primary"), ("not-a-digest",))
+
+
+class ArtifactViewStateTests(unittest.TestCase):
+    def test_state_is_immutable_and_validates_required_context(self) -> None:
+        state = ArtifactViewState(
+            ArtifactViewStatus.MISSING,
+            Path("outputs/case.vtp"),
+            " case ",
+        )
+        self.assertEqual("case", state.case_id)
+        self.assertTrue(state.path.is_absolute())
+        with self.assertRaises(FrozenInstanceError):
+            state.status = ArtifactViewStatus.CURRENT
+        with self.assertRaises(TypeError):
+            ArtifactViewState("missing", "/tmp/case.vtp", "case")
+        with self.assertRaises(ValueError):
+            ArtifactViewState(ArtifactViewStatus.EMPTY, "/tmp/case.vtp")
+        with self.assertRaises(ValueError):
+            ArtifactViewState(ArtifactViewStatus.CURRENT, "/tmp/case.vtp")
+
+    def test_automatic_classification_preserves_primary_and_legacy_matches(
+        self,
+    ) -> None:
+        primary = _signature("primary")
+        legacy = _signature("legacy").digest
+        candidates = ArtifactSignatureCandidates(primary, (legacy,))
+        for signature in (primary.digest, legacy):
+            with self.subTest(signature=signature):
+                state = automatic_artifact_view_state(
+                    _artifact("case", signature),
+                    {"case_id": "case"},
+                    candidates,
+                    "/tmp/case.vtp",
+                )
+                self.assertEqual(ArtifactViewStatus.CURRENT, state.status)
+                self.assertEqual("case", state.case_id)
+
+    def test_stale_requires_matching_id_and_valid_nonmatching_digest(self) -> None:
+        primary = _signature("primary")
+        candidates = ArtifactSignatureCandidates(primary)
+        stale = automatic_artifact_view_state(
+            _artifact("case", _signature("stale").digest),
+            {"case_id": "case"},
+            candidates,
+            "/tmp/case.vtp",
+        )
+        self.assertEqual(ArtifactViewStatus.STALE, stale.status)
+
+        mismatches = (
+            _artifact("other", _signature("stale").digest),
+            SimpleNamespace(field_data={"case_id": ["case"]}),
+            _artifact("case", "corrupt-signature"),
+            SimpleNamespace(
+                field_data={
+                    "case_id": ["case"],
+                    "case_signature": [primary.digest, primary.digest],
+                }
+            ),
+        )
+        for artifact in mismatches:
+            with self.subTest(artifact=artifact):
+                state = automatic_artifact_view_state(
+                    artifact,
+                    {"case_id": "case"},
+                    candidates,
+                    "/tmp/case.vtp",
+                )
+                self.assertEqual(ArtifactViewStatus.MISMATCHED, state.status)
+
+    def test_manual_state_reports_strict_resolution_without_denial(self) -> None:
+        matched = manual_artifact_view_state(
+            "/tmp/matched.vtp",
+            {"case_id": "case"},
+        )
+        unmatched = manual_artifact_view_state("/tmp/unmatched.vtp", None)
+        self.assertEqual(ArtifactViewStatus.MANUAL_MATCHED, matched.status)
+        self.assertEqual("case", matched.case_id)
+        self.assertEqual(ArtifactViewStatus.MANUAL_UNMATCHED, unmatched.status)
+        self.assertIsNone(unmatched.case_id)
 
 
 class ScalarDiscoveryTests(unittest.TestCase):

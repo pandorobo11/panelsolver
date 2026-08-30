@@ -20,6 +20,7 @@ from newtsolver._frontend import _legacy_gui_spec as newt_solver_spec
 from panelsolver.app import (
     DEFAULT_CHECKPOINT_CASES,
     ArtifactSignatureCandidates,
+    ArtifactViewStatus,
     GuiRunResult,
     OutputIssue,
     OutputKind,
@@ -530,18 +531,57 @@ class CasesPanelTests(unittest.TestCase):
             panel._artifact_reader = lambda _path: current
             loaded: list[tuple] = []
             cleared: list[bool] = []
+            states = []
             panel.vtp_loaded.connect(lambda *args: loaded.append(args))
             panel.viewer_clear_requested.connect(lambda: cleared.append(True))
+            panel.viewer_artifact_state_changed.connect(states.append)
             panel.case_table.selectRow(0)
             self.assertEqual(1, len(loaded))
             self.assertEqual("case_b", loaded[0][2]["case_id"])
+            self.assertEqual(ArtifactViewStatus.CURRENT, states[-1].status)
+            self.assertEqual(Path(directory, "case_b.vtp").resolve(), states[-1].path)
 
             stale = _signature("stale")
             current.field_data["case_signature"] = [stale.digest]
             panel.on_case_selection_changed()
             self.assertTrue(cleared)
+            self.assertEqual(ArtifactViewStatus.STALE, states[-1].status)
+            self.assertEqual("case_b", states[-1].case_id)
+
+            current.field_data["case_id"] = ["other"]
+            panel.on_case_selection_changed()
+            self.assertEqual(ArtifactViewStatus.MISMATCHED, states[-1].status)
             panel.case_table.clearSelection()
             self.assertGreaterEqual(len(cleared), 2)
+            self.assertEqual(ArtifactViewStatus.EMPTY, states[-1].status)
+
+    def test_accepted_legacy_signature_remains_current_automatic_result(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="legacy_viewer_state_") as directory:
+            rows = _rows(directory)
+            primary = _signature("primary")
+            legacy = _signature("legacy")
+            signatures = {
+                "case_b": ArtifactSignatureCandidates(primary, (legacy.digest,)),
+                "case_a": ArtifactSignatureCandidates(_signature("case_a")),
+            }
+            panel = CasesPanel(
+                fmf_solver_spec(adapters=_adapters(rows, signatures)),
+                artifact_reader=lambda _path: SimpleNamespace(
+                    field_data={
+                        "case_id": ["case_b"],
+                        "case_signature": [legacy.digest],
+                    }
+                ),
+            )
+            panel.load_input_file(Path(directory) / "input.csv")
+            Path(directory, "case_b.vtp").write_text("fixture", encoding="utf-8")
+            states = []
+            loaded = []
+            panel.viewer_artifact_state_changed.connect(states.append)
+            panel.vtp_loaded.connect(lambda *args: loaded.append(args))
+            panel.case_table.selectRow(0)
+            self.assertEqual(1, len(loaded))
+            self.assertEqual(ArtifactViewStatus.CURRENT, states[-1].status)
 
     def test_automatic_artifact_resolves_relative_out_dir_from_input_parent(
         self,
@@ -574,14 +614,29 @@ class CasesPanelTests(unittest.TestCase):
             panel, _ = self.make_panel(rows)
             panel.load_input_file(Path(directory) / "input.csv")
             cleared: list[bool] = []
+            states = []
+            events = []
             panel.viewer_clear_requested.connect(lambda: cleared.append(True))
+            panel.viewer_artifact_state_changed.connect(states.append)
+            panel.viewer_clear_requested.connect(lambda: events.append("clear"))
+            panel.viewer_artifact_state_changed.connect(
+                lambda state: events.append(state.status)
+            )
             panel.case_table.selectRow(0)
             self.assertTrue(cleared)
+            self.assertEqual(ArtifactViewStatus.MISSING, states[-1].status)
+            self.assertEqual(
+                ["clear", ArtifactViewStatus.MISSING],
+                events[-2:],
+            )
+            self.assertEqual("case_b", states[-1].case_id)
+            self.assertEqual(Path(directory, "case_b.vtp").resolve(), states[-1].path)
             Path(directory, "case_b.vtp").write_text("fixture", encoding="utf-8")
             panel._artifact_reader = lambda _path: (_ for _ in ()).throw(
                 ValueError("broken")
             )
             panel.on_case_selection_changed()
+            self.assertEqual(ArtifactViewStatus.READ_ERROR, states[-1].status)
             self.assertIn("Failed to read VTP", panel.log.toPlainText())
 
     def test_vtp_suppression_uses_case_and_path_and_resets_with_input_state(
@@ -609,6 +664,8 @@ class CasesPanelTests(unittest.TestCase):
             )
             reads: list[Path] = []
             panel._artifact_reader = lambda path: reads.append(Path(path)) or artifact
+            states = []
+            panel.viewer_artifact_state_changed.connect(states.append)
             issue = OutputIssue(
                 OutputKind.VTP,
                 OutputPhase.WRITE,
@@ -622,8 +679,12 @@ class CasesPanelTests(unittest.TestCase):
 
             panel._auto_load_case_artifact(first_row)
             self.assertEqual([], reads)
+            self.assertEqual(ArtifactViewStatus.WRITE_FAILED, states[-1].status)
+            self.assertEqual("same", states[-1].case_id)
+            self.assertEqual(first_path.resolve(), states[-1].path)
             panel._auto_load_case_artifact(second_row)
             self.assertEqual([second_path.resolve()], reads)
+            self.assertEqual(ArtifactViewStatus.CURRENT, states[-1].status)
 
             panel._run_rows = ({**first_row, "save_vtp_on": 0},)
             panel._on_run_completed(GuiRunResult())
