@@ -13,6 +13,12 @@ QPushButton, QToolButton {
     padding: 4px 10px;
 }
 
+/* Viewer-local density; defer a shared size role until cross-panel reuse. */
+QPushButton[viewerCameraControl="true"] {
+    padding-left: 6px;
+    padding-right: 6px;
+}
+
 QPushButton:hover, QToolButton:hover {
     background-color: @{control_hover};
     border-color: @{border_hover};
