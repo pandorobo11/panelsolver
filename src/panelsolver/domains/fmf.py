@@ -100,7 +100,7 @@ _CASE_COLUMN_PRESENTATIONS = (
     CaseColumnPresentation("stl_path", "STL", CaseColumnKind.TEXT),
     CaseColumnPresentation(
         "stl_scale_m_per_unit",
-        "STL scale [m/unit]",
+        "STL scale [m/STL unit]",
         CaseColumnKind.NUMERIC,
     ),
     CaseColumnPresentation("S", "S", CaseColumnKind.NUMERIC),

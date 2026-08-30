@@ -148,7 +148,7 @@ class CasesPanelTests(unittest.TestCase):
                 {
                     "case_id": "Case ID",
                     "stl_path": "STL",
-                    "stl_scale_m_per_unit": "STL scale [m/unit]",
+                    "stl_scale_m_per_unit": "STL scale [m/STL unit]",
                     "Mach": "Mach",
                     "Altitude_km": "Altitude [km]",
                     "Tw_K": "Tw [K]",
@@ -161,7 +161,7 @@ class CasesPanelTests(unittest.TestCase):
                 {
                     "case_id": "Case ID",
                     "stl_path": "STL",
-                    "stl_scale_m_per_unit": "STL scale [m/unit]",
+                    "stl_scale_m_per_unit": "STL scale [m/STL unit]",
                     "Mach": "Mach",
                     "gamma": "Gamma",
                     "windward_eq": "Windward equation",
