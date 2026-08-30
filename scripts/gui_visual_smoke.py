@@ -5,12 +5,15 @@ from __future__ import annotations
 import argparse
 import sys
 import tempfile
+from collections.abc import Mapping
+from dataclasses import replace
 from pathlib import Path
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from panelsolver.app.gui_bootstrap import _configure_application, create_main_window
 from panelsolver.app.gui_theme import ThemeMode, apply_application_theme
+from panelsolver.app.solver_spec import SolverSpec
 from panelsolver.gui import canonical_gui_spec
 
 
@@ -97,6 +100,41 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return args
 
 
+def _is_noninteractive_capture(args: argparse.Namespace) -> bool:
+    return args.screenshot is not None and args.quit_after_screenshot
+
+
+def _preflight_noninteractive_spec(
+    spec: SolverSpec,
+    args: argparse.Namespace,
+) -> SolverSpec:
+    """Read non-interactive input once, before any modal GUI can be opened."""
+    if not _is_noninteractive_capture(args) or args.input is None:
+        return spec
+    if spec.adapters is None:
+        raise RuntimeError("GUI adapters are not configured")
+
+    rows = tuple(spec.adapters.read_cases(args.input))
+    if not rows:
+        raise ValueError("input contains no cases")
+    if any(not isinstance(row, Mapping) for row in rows):
+        raise TypeError("input reader must return mappings")
+    rows = tuple(dict(row) for row in rows)
+    _validate_requested_row(args.row, len(rows))
+
+    input_path = args.input.resolve(strict=False)
+    original_read_cases = spec.adapters.read_cases
+
+    def read_preflighted_cases(path: str | Path):
+        requested = Path(path).expanduser().resolve(strict=False)
+        if requested == input_path:
+            return rows
+        return original_read_cases(path)
+
+    adapters = replace(spec.adapters, read_cases=read_preflighted_cases)
+    return replace(spec, adapters=adapters)
+
+
 def capture_main_window(window: QtWidgets.QMainWindow, output_path: Path) -> None:
     """Capture the Qt client area and composite its native VTK viewport."""
     if not isinstance(window, QtWidgets.QMainWindow):
@@ -135,56 +173,109 @@ def capture_main_window(window: QtWidgets.QMainWindow, output_path: Path) -> Non
         raise RuntimeError(f"GUI screenshot could not be saved: {output_path}")
 
 
+def _prepare_representative_state(
+    window: QtWidgets.QMainWindow,
+    args: argparse.Namespace,
+) -> bool:
+    """Load and select the requested representative state."""
+    if args.input is None:
+        return True
+    loaded = window.cases_panel.load_input_file(
+        args.input,
+        remember_directory=False,
+    )
+    if not loaded:
+        return False
+    _validate_requested_row(
+        args.row,
+        window.cases_panel.case_table.rowCount(),
+    )
+    window.cases_panel.case_table.selectRow(args.row)
+    window.cases_panel.case_table.setCurrentCell(args.row, 0)
+    window.cases_panel.case_table.setFocus(QtCore.Qt.FocusReason.OtherFocusReason)
+    return True
+
+
+def _exit_with_error(
+    application: QtWidgets.QApplication,
+    message: str,
+) -> None:
+    print(f"GUI visual-smoke failed: {message}", file=sys.stderr)
+    application.exit(1)
+
+
+def _capture_representative_state(
+    application: QtWidgets.QApplication,
+    window: QtWidgets.QMainWindow,
+    args: argparse.Namespace,
+) -> None:
+    application.processEvents(
+        QtCore.QEventLoop.ProcessEventsFlag.AllEvents,
+        50,
+    )
+    try:
+        capture_main_window(window, args.screenshot)
+    except Exception as exc:
+        _exit_with_error(application, f"screenshot capture failed: {exc}")
+        return
+    print(f"Saved GUI screenshot: {args.screenshot}")
+    if args.quit_after_screenshot:
+        application.quit()
+
+
+def _prepare_and_schedule_capture(
+    application: QtWidgets.QApplication,
+    window: QtWidgets.QMainWindow,
+    args: argparse.Namespace,
+) -> None:
+    noninteractive = _is_noninteractive_capture(args)
+    try:
+        prepared = _prepare_representative_state(window, args)
+    except Exception as exc:
+        if noninteractive:
+            _exit_with_error(
+                application, f"representative state preparation failed: {exc}"
+            )
+            return
+        window.cases_panel.logln(f"[ERROR] {exc}")
+        prepared = False
+    finally:
+        window.raise_()
+        window.activateWindow()
+
+    if noninteractive and not prepared:
+        _exit_with_error(application, "representative input could not be loaded")
+        return
+    if args.screenshot is not None:
+        QtCore.QTimer.singleShot(
+            300,
+            lambda: _capture_representative_state(application, window, args),
+        )
+
+
 def main(argv: list[str] | None = None) -> int:
     """Show one real MainWindow on the normal platform display."""
     args = parse_args(argv)
+    spec = canonical_gui_spec(args.domain)
+    try:
+        spec = _preflight_noninteractive_spec(spec, args)
+    except Exception as exc:
+        print(
+            f"GUI visual-smoke input preparation failed: {exc}",
+            file=sys.stderr,
+        )
+        return 1
+
     application = QtWidgets.QApplication([sys.argv[0]])
     _configure_application(application)
     apply_application_theme(application, ThemeMode(args.theme))
-    window = create_main_window(canonical_gui_spec(args.domain))
-
-    def prepare_representative_state() -> None:
-        if args.input is not None:
-            loaded = window.cases_panel.load_input_file(
-                args.input,
-                remember_directory=False,
-            )
-            if loaded:
-                try:
-                    _validate_requested_row(
-                        args.row,
-                        window.cases_panel.case_table.rowCount(),
-                    )
-                except ValueError as exc:
-                    window.cases_panel.logln(f"[ERROR] {exc}")
-                else:
-                    window.cases_panel.case_table.selectRow(args.row)
-                    window.cases_panel.case_table.setCurrentCell(args.row, 0)
-                    window.cases_panel.case_table.setFocus(
-                        QtCore.Qt.FocusReason.OtherFocusReason
-                    )
-        window.raise_()
-        window.activateWindow()
-        if args.screenshot is not None:
-            QtCore.QTimer.singleShot(300, capture_representative_state)
-
-    def capture_representative_state() -> None:
-        application.processEvents(
-            QtCore.QEventLoop.ProcessEventsFlag.AllEvents,
-            50,
-        )
-        try:
-            capture_main_window(window, args.screenshot)
-        except Exception as exc:
-            print(f"GUI screenshot failed: {exc}", file=sys.stderr)
-            application.exit(1)
-            return
-        print(f"Saved GUI screenshot: {args.screenshot}")
-        if args.quit_after_screenshot:
-            application.quit()
+    window = create_main_window(spec)
 
     window.show()
-    QtCore.QTimer.singleShot(300, prepare_representative_state)
+    QtCore.QTimer.singleShot(
+        300,
+        lambda: _prepare_and_schedule_capture(application, window, args),
+    )
     return int(application.exec())
 
 
