@@ -84,6 +84,9 @@ class _FakeViewer(QtWidgets.QWidget):
         self.cleared += 1
         self.loaded_path = None
 
+    def set_artifact_view_state(self, state) -> None:
+        self.artifact_state = state
+
     def set_case_rows(self, rows) -> None:
         self.rows = tuple(rows)
 

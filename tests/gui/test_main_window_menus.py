@@ -11,6 +11,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PySide6 import QtCore, QtWidgets
 
 from panelsolver.app.main_window import MainWindow
+from panelsolver.app.viewer_data import ArtifactViewState, ArtifactViewStatus
 from panelsolver.docs_site import DocumentationSiteError
 from panelsolver.domains.fmf import gui_spec as canonical_fmf_spec
 from panelsolver.domains.hypersonic import gui_spec as canonical_hypersonic_spec
@@ -20,6 +21,7 @@ class _Cases(QtWidgets.QWidget):
     vtp_loaded = QtCore.Signal(object)
     vtp_artifact_invalidated = QtCore.Signal(str)
     viewer_clear_requested = QtCore.Signal()
+    viewer_artifact_state_changed = QtCore.Signal(object)
     cases_updated = QtCore.Signal(object)
     selected_cases_changed = QtCore.Signal(object)
     input_path_changed = QtCore.Signal(object)
@@ -52,11 +54,18 @@ class _Viewer(QtWidgets.QWidget):
     log_message = QtCore.Signal(str)
     save_selected_images_requested = QtCore.Signal()
 
+    def __init__(self) -> None:
+        super().__init__()
+        self.artifact_states = []
+
     def load_vtp(self, *_args) -> None:
         pass
 
     def clear_view(self) -> None:
         pass
+
+    def set_artifact_view_state(self, state) -> None:
+        self.artifact_states.append(state)
 
     def invalidate_vtp_artifact(self, _path: str) -> None:
         pass
@@ -127,6 +136,19 @@ class MainWindowMenuTests(unittest.TestCase):
         )
         window.open_input_action.trigger()
         self.assertEqual(1, cases.pick_count)
+        window.close()
+
+    def test_artifact_state_signal_is_projected_without_main_window_branching(
+        self,
+    ) -> None:
+        window, cases = self.make_window(canonical_fmf_spec())
+        state = ArtifactViewState(
+            ArtifactViewStatus.MISSING,
+            "/tmp/case.vtp",
+            "case",
+        )
+        cases.viewer_artifact_state_changed.emit(state)
+        self.assertEqual([state], window.viewer_panel.artifact_states)
         window.close()
 
     def test_each_domain_lists_only_its_examples(self) -> None:
