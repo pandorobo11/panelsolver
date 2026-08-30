@@ -55,6 +55,34 @@ already present beside the input, selecting the row also exercises the normal
 artifact-matching path and displays the real VTP. The helper does not generate
 or copy solver output.
 
+## Capture without Computer Use
+
+For a stable `MainWindow` state, the helper can save the Qt client area without
+using Computer Use or macOS Screen Recording permission:
+
+```bash
+open "$visual_app" --args \
+  --domain hypersonic \
+  --theme light \
+  --input examples/hypersonic/pressure_models.csv \
+  --row 0 \
+  --screenshot /tmp/panelsolver-hypersonic-light.png \
+  --quit-after-screenshot
+```
+
+The capture combines Qt's client-area image with the real `QtInteractor`
+viewport exported through PyVista. This avoids the blank native child surface
+that `QWidget.grab()` produces when used alone and preserves HiDPI output. The
+result includes the cases panel, selection and focus state, log, VTK viewport,
+viewer controls, and enabled/disabled state. It does not include the native
+title bar, window shadow, separate dialogs, open menus, or tooltips. Omit
+`--quit-after-screenshot` to keep the helper open after writing the PNG.
+
+This is still a normal-display workflow. Do not set `QT_QPA_PLATFORM=offscreen`
+or `PYVISTA_OFF_SCREEN`; those limitations remain unchanged. Use Computer Use
+when evidence must include native window chrome or interaction with transient or
+separate windows.
+
 ## Computer Use target
 
 Use the absolute path printed during launch as the Computer Use app target. For
