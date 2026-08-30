@@ -37,12 +37,13 @@ alive for the lifetime of the window.
    directory is not carried over after the GUI exits and restarts. If it is deleted
    during the session, the dialog falls back to the process current working
    directory.
-2. Select one or more table rows. With no selection, **Run Selected Cases** runs
-   every loaded row.
+2. Select one or more table rows to run only those cases. With no selected rows,
+   **Run All Cases** runs every loaded case.
 3. Set **Workers**. Use `1` for the simplest deterministic run.
 4. Set **Checkpoint every** in cases. The default is `2000`; use `0` to
    disable intermediate Summary CSV snapshots.
-5. Choose **Run Selected Cases** and select the summary CSV destination.
+5. Choose **Run All Cases** or **Run Selected Cases**, as shown for the current
+   selection, and select the summary CSV destination.
 6. Follow progress and diagnostics in the log panel.
 
 A successful calculation with one or more VTP, checkpoint, or final Summary CSV
