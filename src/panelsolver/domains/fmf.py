@@ -12,6 +12,8 @@ from panelsolver.app import (
     COMMON_SCALAR_LABELS,
     DEFAULT_CHECKPOINT_CASES,
     ArtifactSignatureCandidates,
+    CaseColumnKind,
+    CaseColumnPresentation,
     GuiRunRequest,
     GuiRunResult,
     ProductBatchRunResult,
@@ -92,6 +94,36 @@ INPUT_COLUMN_ORDER = (
     "ray_backend",
     "out_dir",
     "save_vtp_on",
+)
+_CASE_COLUMN_PRESENTATIONS = (
+    CaseColumnPresentation("case_id", "Case ID", CaseColumnKind.TEXT),
+    CaseColumnPresentation("stl_path", "STL", CaseColumnKind.TEXT),
+    CaseColumnPresentation(
+        "stl_scale_m_per_unit",
+        "STL scale [m/STL unit]",
+        CaseColumnKind.NUMERIC,
+    ),
+    CaseColumnPresentation("S", "S", CaseColumnKind.NUMERIC),
+    CaseColumnPresentation("Ti_K", "Ti [K]", CaseColumnKind.NUMERIC),
+    CaseColumnPresentation("Mach", "Mach", CaseColumnKind.NUMERIC),
+    CaseColumnPresentation("Altitude_km", "Altitude [km]", CaseColumnKind.NUMERIC),
+    CaseColumnPresentation("Tw_K", "Tw [K]", CaseColumnKind.NUMERIC),
+    CaseColumnPresentation("alpha_deg", "Alpha [deg]", CaseColumnKind.NUMERIC),
+    CaseColumnPresentation(
+        "beta_or_bank_deg", "Beta / bank [deg]", CaseColumnKind.NUMERIC
+    ),
+    CaseColumnPresentation("attitude_input", "Attitude input", CaseColumnKind.TEXT),
+    CaseColumnPresentation("ref_x_m", "Ref X [m]", CaseColumnKind.NUMERIC),
+    CaseColumnPresentation("ref_y_m", "Ref Y [m]", CaseColumnKind.NUMERIC),
+    CaseColumnPresentation("ref_z_m", "Ref Z [m]", CaseColumnKind.NUMERIC),
+    CaseColumnPresentation("Aref_m2", "Aref [m²]", CaseColumnKind.NUMERIC),
+    CaseColumnPresentation("Lref_Cl_m", "Lref Cl [m]", CaseColumnKind.NUMERIC),
+    CaseColumnPresentation("Lref_Cm_m", "Lref Cm [m]", CaseColumnKind.NUMERIC),
+    CaseColumnPresentation("Lref_Cn_m", "Lref Cn [m]", CaseColumnKind.NUMERIC),
+    CaseColumnPresentation("shielding_on", "Shielding", CaseColumnKind.FLAG),
+    CaseColumnPresentation("ray_backend", "Ray backend", CaseColumnKind.TEXT),
+    CaseColumnPresentation("out_dir", "Output dir", CaseColumnKind.TEXT),
+    CaseColumnPresentation("save_vtp_on", "Save VTP", CaseColumnKind.FLAG),
 )
 NUMERIC_REQUIRED = (
     "stl_scale_m_per_unit",
@@ -471,6 +503,7 @@ def gui_spec(
         window_title="Panel Solver — FMF",
         domain_name="FMF",
         case_columns=CSV_PROJECTION_POLICY.input_columns,
+        case_column_presentations=_CASE_COLUMN_PRESENTATIONS,
         preferred_scalars=_PREFERRED_SCALARS,
         scalar_labels=_SCALAR_LABELS,
         format_case=format_case,

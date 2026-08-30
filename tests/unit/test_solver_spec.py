@@ -4,6 +4,8 @@ from pathlib import Path
 from fmfsolver._frontend import _legacy_gui_spec as fmf_solver_spec
 from newtsolver._frontend import _legacy_gui_spec as newt_solver_spec
 from panelsolver.app import (
+    CaseColumnKind,
+    CaseColumnPresentation,
     GuiRunRequest,
     GuiRunResult,
     SolverGuiAdapters,
@@ -24,6 +26,10 @@ def _valid_spec(**changes) -> SolverSpec:
         "window_title": "Synthetic GUI",
         "domain_name": "Synthetic",
         "case_columns": ("case_id", "value"),
+        "case_column_presentations": (
+            CaseColumnPresentation("case_id", "Case ID", CaseColumnKind.TEXT),
+            CaseColumnPresentation("value", "Value", CaseColumnKind.NUMERIC),
+        ),
         "preferred_scalars": ("model_scalar", "area_m2"),
         "scalar_labels": {
             "model_scalar": "Model scalar",
@@ -75,6 +81,22 @@ class SolverSpecTests(unittest.TestCase):
             _valid_spec(case_columns=("value", "case_id"))
         with self.assertRaises(ValueError):
             _valid_spec(case_columns=("case_id", "case_id"))
+        with self.assertRaises(TypeError):
+            _valid_spec(case_column_presentations=("case_id", "value"))
+        with self.assertRaises(ValueError):
+            _valid_spec(
+                case_column_presentations=(
+                    CaseColumnPresentation("case_id", "Case ID", CaseColumnKind.TEXT),
+                    CaseColumnPresentation("case_id", "Duplicate", CaseColumnKind.TEXT),
+                )
+            )
+        with self.assertRaises(ValueError):
+            _valid_spec(
+                case_column_presentations=(
+                    CaseColumnPresentation("case_id", "Case ID", CaseColumnKind.TEXT),
+                    CaseColumnPresentation("other", "Other", CaseColumnKind.TEXT),
+                )
+            )
         with self.assertRaises(ValueError):
             _valid_spec(preferred_scalars=("model_scalar", "model_scalar"))
         with self.assertRaises(TypeError):
@@ -88,12 +110,21 @@ class SolverSpecTests(unittest.TestCase):
         with self.assertRaises(TypeError):
             _valid_spec(adapters=object())
 
+        with self.assertRaises(ValueError):
+            CaseColumnPresentation(" ", "Label", CaseColumnKind.TEXT)
+        with self.assertRaises(ValueError):
+            CaseColumnPresentation("name", " ", CaseColumnKind.TEXT)
+        with self.assertRaises(TypeError):
+            CaseColumnPresentation("name", "Label", "text")  # type: ignore[arg-type]
+
         labels = {"model_scalar": "Model scalar", "area_m2": "Area [m^2]"}
         spec = _valid_spec(scalar_labels=labels)
         labels["model_scalar"] = "Changed"
         self.assertEqual("Model scalar", spec.scalar_labels["model_scalar"])
         with self.assertRaises(TypeError):
             spec.scalar_labels["model_scalar"] = "Changed"
+        with self.assertRaises(AttributeError):
+            spec.case_column_presentations[0].label = "Changed"
 
     def test_adapter_bundle_requires_every_member_to_be_callable(self) -> None:
         adapters = SolverGuiAdapters(
@@ -126,6 +157,20 @@ class SolverSpecTests(unittest.TestCase):
         self.assertEqual("Hypersonic", newt.domain_name)
         self.assertIn("gamma", newt.case_columns)
         self.assertNotIn("S", newt.case_columns)
+        self.assertEqual(
+            fmf.case_columns, tuple(p.name for p in fmf.case_column_presentations)
+        )
+        self.assertEqual(
+            newt.case_columns, tuple(p.name for p in newt.case_column_presentations)
+        )
+        fmf_presentations = {p.name: p for p in fmf.case_column_presentations}
+        newt_presentations = {p.name: p for p in newt.case_column_presentations}
+        self.assertEqual("Ti [K]", fmf_presentations["Ti_K"].label)
+        self.assertEqual("Altitude [km]", fmf_presentations["Altitude_km"].label)
+        self.assertIs(CaseColumnKind.NUMERIC, fmf_presentations["Mach"].kind)
+        self.assertEqual("Windward equation", newt_presentations["windward_eq"].label)
+        self.assertEqual("Gamma", newt_presentations["gamma"].label)
+        self.assertIs(CaseColumnKind.NUMERIC, newt_presentations["Aref_m2"].kind)
         self.assertEqual(
             (
                 "normal_traction_coeff",
