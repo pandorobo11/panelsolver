@@ -45,6 +45,7 @@ class GuiThemeTests(unittest.TestCase):
         cls.app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
     def setUp(self) -> None:
+        self.app.setPalette(QtGui.QPalette(), "QComboBox")
         self._palette = QtGui.QPalette(self.app.palette())
         self._stylesheet = self.app.styleSheet()
         self._identity = (
@@ -56,6 +57,7 @@ class GuiThemeTests(unittest.TestCase):
 
     def tearDown(self) -> None:
         self.app.setPalette(self._palette)
+        self.app.setPalette(QtGui.QPalette(), "QComboBox")
         self.app.setStyleSheet(self._stylesheet)  # fluent-audit: allow test restore
         self.app.setApplicationName(self._identity[0])
         self.app.setApplicationDisplayName(self._identity[1])
@@ -420,6 +422,112 @@ class GuiThemeTests(unittest.TestCase):
                         ),
                     )
                 control.deleteLater()
+
+    def test_native_combo_label_pairs_with_system_button_surface(self) -> None:
+        role = QtGui.QPalette.ColorRole
+        group = QtGui.QPalette.ColorGroup
+        system_palette = QtGui.QPalette()
+        expected = {
+            group.Active: ("#ffffff", "#111111"),
+            group.Inactive: ("#f4f4f4", "#222222"),
+            group.Disabled: ("#e2e2e2", "#595959"),
+        }
+        for color_group, (surface, foreground) in expected.items():
+            system_palette.setColor(
+                color_group,
+                role.Button,
+                QtGui.QColor(surface),
+            )
+            system_palette.setColor(
+                color_group,
+                role.ButtonText,
+                QtGui.QColor(foreground),
+            )
+
+        manager = ApplicationThemeManager(self.app, mode=ThemeMode.DARK)
+        manager._system_palette = system_palette
+        theme = manager.apply()
+        combo = QtWidgets.QComboBox()
+        combo.addItem("Cp")
+        combo.ensurePolished()
+        spin = QtWidgets.QSpinBox()
+        spin.ensurePolished()
+        application_palette = self.app.palette()
+
+        self.assertEqual(
+            QtGui.QColor(theme.value("text_primary")),
+            application_palette.color(group.Active, role.Text),
+        )
+        self.assertNotEqual(
+            application_palette.color(group.Active, role.Text),
+            combo.palette().color(group.Active, role.Text),
+        )
+        for color_group, (surface, foreground) in expected.items():
+            with self.subTest(group=color_group):
+                self.assertEqual(
+                    QtGui.QColor(foreground),
+                    combo.palette().color(color_group, role.Text),
+                )
+                self.assertEqual(
+                    QtGui.QColor(surface),
+                    combo.palette().color(color_group, role.Button),
+                )
+                self.assertGreaterEqual(
+                    _contrast_ratio(foreground, surface),
+                    4.5,
+                )
+                self.assertEqual(
+                    application_palette.color(color_group, role.Text),
+                    spin.palette().color(color_group, role.Text),
+                )
+
+        combo.setEnabled(False)
+        self.assertEqual(group.Disabled, combo.palette().currentColorGroup())
+        self.assertEqual(
+            QtGui.QColor(expected[group.Disabled][1]),
+            combo.palette().color(role.Text),
+        )
+        combo.view().ensurePolished()
+        self.assertEqual(
+            application_palette.color(group.Active, role.Text),
+            combo.view().palette().color(group.Active, role.Text),
+        )
+        self.assertEqual("Cp", combo.currentText())
+        combo.deleteLater()
+        spin.deleteLater()
+        manager.deleteLater()
+
+    def test_native_combo_label_palette_refreshes_with_system_appearance(self) -> None:
+        role = QtGui.QPalette.ColorRole
+        group = QtGui.QPalette.ColorGroup
+        manager = ApplicationThemeManager(self.app, mode=ThemeMode.DARK)
+        combo = QtWidgets.QComboBox()
+        combo.addItem("jet")
+
+        light_system = QtGui.QPalette()
+        light_system.setColor(role.ButtonText, QtGui.QColor("#111111"))
+        manager._system_palette = light_system
+        for mode in (ThemeMode.LIGHT, ThemeMode.DARK, ThemeMode.SYSTEM):
+            manager.set_mode(mode)
+            combo.ensurePolished()
+            with self.subTest(mode=mode):
+                self.assertEqual(
+                    QtGui.QColor("#111111"),
+                    combo.palette().color(group.Active, role.Text),
+                )
+
+        dark_system = QtGui.QPalette()
+        dark_system.setColor(role.ButtonText, QtGui.QColor("#f5f5f5"))
+        manager._system_palette = dark_system
+        manager.set_mode(ThemeMode.DARK)
+        self.app.processEvents()
+        self.assertEqual(
+            QtGui.QColor("#f5f5f5"),
+            combo.palette().color(group.Active, role.Text),
+        )
+        self.assertEqual("jet", combo.currentText())
+        combo.deleteLater()
+        manager.deleteLater()
 
     def test_semantic_property_helper_preserves_behavior(self) -> None:
         self.assertEqual(
