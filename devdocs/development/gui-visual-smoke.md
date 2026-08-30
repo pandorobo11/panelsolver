@@ -55,6 +55,52 @@ already present beside the input, selecting the row also exercises the normal
 artifact-matching path and displays the real VTP. The helper does not generate
 or copy solver output.
 
+## Capture without Computer Use
+
+For a stable `MainWindow` state, the helper can save the Qt client area without
+using Computer Use or macOS Screen Recording permission. For non-interactive
+automation, remove any old image, launch a new helper instance with `open -W -n`
+so the command waits for that instance to exit, and verify that a nonempty image
+was written:
+
+```bash
+shot="/tmp/panelsolver-hypersonic-light.png"
+rm -f -- "$shot"
+open -W -n "$visual_app" --args \
+  --domain hypersonic \
+  --theme light \
+  --input examples/hypersonic/pressure_models.csv \
+  --row 0 \
+  --screenshot "$shot" \
+  --quit-after-screenshot
+test -s "$shot"
+```
+
+The non-interactive path validates the input and requested row before opening
+the GUI. Invalid input, an out-of-range row, state-preparation failure, or image
+capture failure exits nonzero and does not attempt the screenshot. Removing an
+old image first and checking it after `open -W -n` prevents a failed run from
+being mistaken for a fresh capture. Use `--stderr PATH` with `open` when an
+automation runner needs the helper's diagnostics in a file.
+
+The capture combines Qt's client-area image with the real `QtInteractor`
+viewport exported through PyVista. This avoids the blank native child surface
+that `QWidget.grab()` produces when used alone and preserves HiDPI output. The
+result includes the cases panel, selection and focus state, log, VTK viewport,
+viewer controls, and enabled/disabled state. It does not include the native
+title bar, window shadow, separate dialogs, open menus, or tooltips.
+
+The ordinary interactive workflow remains the earlier `open "$visual_app"`
+form without `--quit-after-screenshot`: it leaves the GUI open and retains the
+normal validation dialogs for a person to inspect. A screenshot may still be
+requested in that mode, but `open` is asynchronous and must not be used as a
+completion signal for downstream automation.
+
+This is still a normal-display workflow. Do not set `QT_QPA_PLATFORM=offscreen`
+or `PYVISTA_OFF_SCREEN`; those limitations remain unchanged. Use Computer Use
+when evidence must include native window chrome or interaction with transient or
+separate windows.
+
 ## Computer Use target
 
 Use the absolute path printed during launch as the Computer Use app target. For
