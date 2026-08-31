@@ -14,11 +14,8 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from fmfsolver._frontend import _legacy_gui_spec as fmf_solver_spec
-from newtsolver._frontend import _legacy_gui_spec as newt_solver_spec
 from panelsolver.app import (
     DEFAULT_CHECKPOINT_CASES,
-    ArtifactSignatureCandidates,
     GuiRunRequest,
     GuiRunResult,
     OutputIssue,
@@ -29,6 +26,8 @@ from panelsolver.app import (
 from panelsolver.app.cases_panel import CasesPanel
 from panelsolver.app.main_window import MainWindow
 from panelsolver.core import CaseSignature, SchedulerCancelled, canonical_json
+from panelsolver.domains.fmf import gui_spec as fmf_solver_spec
+from panelsolver.domains.hypersonic import gui_spec as newt_solver_spec
 
 
 def _signature(label: str) -> CaseSignature:
@@ -42,15 +41,10 @@ def _signature(label: str) -> CaseSignature:
 
 
 def _adapters(rows, run_cases):
-    signatures = {
-        str(row["case_id"]): ArtifactSignatureCandidates(
-            _signature(str(row["case_id"]))
-        )
-        for row in rows
-    }
+    signatures = {str(row["case_id"]): _signature(str(row["case_id"])) for row in rows}
     return SolverGuiAdapters(
         read_cases=lambda _path: rows,
-        build_case_signatures=lambda row: signatures[str(row["case_id"])],
+        build_case_signature=lambda row: signatures[str(row["case_id"])],
         run_cases=run_cases,
         validate_output_path=lambda out, _input, _rows: Path(out),
         resolve_velocity_hat_stl=lambda _row: (1.0, 0.0, 0.0),
@@ -159,7 +153,7 @@ class RunLifecycleTests(unittest.TestCase):
             artifact = SimpleNamespace(
                 field_data={
                     "case_id": ["one"],
-                    "case_signature": [signatures["one"].primary.digest],
+                    "case_signature": [signatures["one"].digest],
                 }
             )
             panel = CasesPanel(
@@ -296,7 +290,7 @@ class RunLifecycleTests(unittest.TestCase):
             artifact = SimpleNamespace(
                 field_data={
                     "case_id": ["one"],
-                    "case_signature": [signatures["one"].primary.digest],
+                    "case_signature": [signatures["one"].digest],
                 }
             )
             panel = CasesPanel(

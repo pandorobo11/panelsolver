@@ -7,6 +7,10 @@ The NPZ serialization portion of this decision is superseded by
 [ADR 0009](0009-remove-npz-output.md). Its CSV, VTP, numerical-signature, and
 artifact-matching decisions remain in force.
 
+The ordered legacy-hash fallback and migration-test requirements are superseded
+by [ADR 0015](0015-remove-legacy-product-identities.md). The canonical schema,
+construction, digest, and current-signature artifact matching remain in force.
+
 ## Context
 
 Both legacy applications used case signatures for cached results and VTP matching,

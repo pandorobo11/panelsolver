@@ -421,7 +421,7 @@ class ViewerPanel(QtWidgets.QWidget):
             matched_row = resolve_matching_case_row(
                 self._poly,
                 self._case_rows,
-                self.spec.adapters.build_case_signatures,
+                self.spec.adapters.build_case_signature,
             )
         self._display_case_row = matched_row
         self.set_artifact_view_state(
@@ -630,7 +630,7 @@ class ViewerPanel(QtWidgets.QWidget):
             self._display_case_row = resolve_matching_case_row(
                 loaded,
                 self._case_rows,
-                self.spec.adapters.build_case_signatures,
+                self.spec.adapters.build_case_signature,
             )
             state = manual_artifact_view_state(path, self._display_case_row)
         else:
@@ -815,8 +815,8 @@ class ViewerPanel(QtWidgets.QWidget):
             self.logln(f"[ERROR] No artifact matcher adapter for '{case_id}'.")
             return False
         try:
-            candidates = self.spec.adapters.build_case_signatures(row)
-            matched = match_artifact_case(artifact, row, candidates).matched
+            signature = self.spec.adapters.build_case_signature(row)
+            matched = match_artifact_case(artifact, row, signature).matched
         except Exception as exc:
             self.logln(f"[ERROR] Failed to match VTP for '{case_id}': {exc}")
             return False

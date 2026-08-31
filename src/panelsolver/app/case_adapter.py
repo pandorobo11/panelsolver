@@ -29,13 +29,10 @@ class ProductCasePolicy:
 
     product_id: str
     model_id: str
-    legacy_env_prefix: str
     mesh_validation_policy: MeshValidationPolicy
     model_payload: ModelPayloadBuilder
 
     def __post_init__(self) -> None:
-        if self.legacy_env_prefix not in {"FMFSOLVER", "NEWTSOLVER"}:
-            raise ValueError("legacy_env_prefix is invalid")
         if not isinstance(self.mesh_validation_policy, MeshValidationPolicy):
             raise TypeError("mesh_validation_policy must be MeshValidationPolicy")
         if not callable(self.model_payload):
@@ -110,8 +107,7 @@ def adapt_case_row(
             ShieldingConfig(
                 enabled=bool(int(row.get("shielding_on", 0))),
                 ray_backend=str(row.get("ray_backend", "auto")),
-            ),
-            legacy_env_prefix=policy.legacy_env_prefix,
+            )
         ),
         mesh_validation_policy=policy.mesh_validation_policy,
     )

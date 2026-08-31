@@ -6,8 +6,6 @@ The current supported product surface consists of:
   `panelsolver hypersonic`;
 - canonical GUI commands `panelsolver-gui fmf` and
   `panelsolver-gui hypersonic`;
-- all six legacy compatibility commands: `fmfsolver`, `fmfsolver-gui`,
-  `fmfsolver-cli`, `newtsolver`, `newtsolver-gui`, and `newtsolver-cli`;
 - normal launcher-driven GUI operation;
 - the stable package-root API described in [Python API support](python-api.md);
 - documented CSV, XLSX, and XLSM case files and their domain schemas/defaults;
@@ -15,15 +13,14 @@ The current supported product surface consists of:
 - documented numerical values, signs, frames, normalizations, and
   model-specific behavior.
 
-Python modules and attributes under `fmfsolver.*` and `newtsolver.*` are not
-supported direct-Python APIs. Invalid-input quirks, exact exceptions and
-tracebacks, object identity, pickle globals, cache internals, and other private
-implementation details are not compatibility contracts.
+Other package or command identities are not distributed. Invalid-input quirks,
+exact exceptions and tracebacks, object identity, pickle globals, cache
+internals, and other private implementation details are not compatibility
+contracts.
 
 The canonical `fmf` token selects the free-molecular-flow domain and its Sentman
 model. `hypersonic` selects the hypersonic panel-method domain and its
-Newtonian-family methods. The `fmfsolver` and `newtsolver` names identify only
-legacy compatibility commands, not canonical analysis domains.
+Newtonian-family methods.
 
 ## Distribution and artifact version
 
@@ -32,7 +29,8 @@ Panel Solver is distributed as `panelsolver`. Summary CSV and VTP
 that generated them. Both domains therefore record the same installed version
 when artifacts are produced by the same release.
 
-Do not install `panelsolver` in the same environment as the separate legacy
-`fmfsolver` or `newtsolver` distributions. They provide overlapping package and
-command names. Uninstall the legacy distributions before installing
-`panelsolver`, as shown in [Installation](../getting-started/installation.md).
+Automatic VTP loading requires both the current case ID and current canonical
+case signature. Artifacts produced by predecessor products are unsupported and
+should be regenerated with Panel Solver. **Open VTP...** remains a generic
+manual inspection path when an artifact satisfies the current viewer's data
+requirements, but that does not establish a historical compatibility contract.

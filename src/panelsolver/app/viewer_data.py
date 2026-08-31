@@ -11,9 +11,9 @@ from pathlib import Path
 
 import numpy as np
 
-from panelsolver.core import SignatureMatch, match_case_signature
+from panelsolver.core import CaseSignature, match_case_signature
 
-from .solver_spec import ArtifactSignatureCandidates, CaseRow
+from .solver_spec import CaseRow
 
 
 class ArtifactLoadMode(str, Enum):
@@ -82,14 +82,14 @@ class ArtifactViewState:
 
 @dataclass(frozen=True, slots=True)
 class ArtifactCaseMatch:
-    """Exact case-ID and primary/legacy signature comparison result."""
+    """Exact case-ID and current-signature comparison result."""
 
     case_id_matches: bool
-    signature: SignatureMatch
+    signature_matches: bool
 
     @property
     def matched(self) -> bool:
-        return self.case_id_matches and self.signature.matched
+        return self.case_id_matches and self.signature_matches
 
 
 _SHA256_DIGEST_PATTERN = re.compile(r"^[0-9a-f]{64}$")
@@ -150,35 +150,31 @@ def field_data_scalar(artifact: object, key: str) -> str | None:
 def match_artifact_case(
     artifact: object,
     row: CaseRow,
-    candidates: ArtifactSignatureCandidates,
+    current_signature: CaseSignature,
 ) -> ArtifactCaseMatch:
     """Match one artifact to one row without trusting case ID alone."""
     if not isinstance(row, Mapping):
         raise TypeError("row must be a mapping")
-    if not isinstance(candidates, ArtifactSignatureCandidates):
-        raise TypeError("candidates must be ArtifactSignatureCandidates")
+    if not isinstance(current_signature, CaseSignature):
+        raise TypeError("current_signature must be a CaseSignature")
     expected_case_id = str(row.get("case_id", "")).strip()
     actual_case_id = field_data_scalar(artifact, "case_id")
     stored_signature = field_data_scalar(artifact, "case_signature")
-    signature = match_case_signature(
-        stored_signature,
-        candidates.primary,
-        legacy_signatures=candidates.legacy_signatures,
-    )
+    signature_matches = match_case_signature(stored_signature, current_signature)
     return ArtifactCaseMatch(
         bool(expected_case_id) and actual_case_id == expected_case_id,
-        signature,
+        signature_matches,
     )
 
 
 def automatic_artifact_view_state(
     artifact: object,
     row: CaseRow,
-    candidates: ArtifactSignatureCandidates,
+    current_signature: CaseSignature,
     path: str | Path,
 ) -> ArtifactViewState:
     """Classify automatic eligibility without changing the matching contract."""
-    match = match_artifact_case(artifact, row, candidates)
+    match = match_artifact_case(artifact, row, current_signature)
     case_id = str(row.get("case_id", "")).strip()
     if not case_id:
         raise ValueError("row case_id must be non-empty")
@@ -233,11 +229,11 @@ def artifact_display_allowed(
 def resolve_matching_case_row(
     artifact: object,
     rows: Sequence[CaseRow],
-    build_candidates: Callable[[CaseRow], ArtifactSignatureCandidates],
+    build_signature: Callable[[CaseRow], CaseSignature],
 ) -> CaseRow | None:
     """Resolve a strict matching row, including duplicate case IDs, in input order."""
-    if not callable(build_candidates):
-        raise TypeError("build_candidates must be callable")
+    if not callable(build_signature):
+        raise TypeError("build_signature must be callable")
     actual_case_id = field_data_scalar(artifact, "case_id")
     if not actual_case_id:
         return None
@@ -246,7 +242,7 @@ def resolve_matching_case_row(
             raise TypeError("rows must contain mappings")
         if str(row.get("case_id", "")).strip() != actual_case_id:
             continue
-        if match_artifact_case(artifact, row, build_candidates(row)).matched:
+        if match_artifact_case(artifact, row, build_signature(row)).matched:
             return row
     return None
 

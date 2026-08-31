@@ -42,22 +42,9 @@ panelsolver hypersonic --help
 panelsolver-gui --help
 panelsolver-gui fmf --help
 panelsolver-gui hypersonic --help
-fmfsolver-cli --help
-newtsolver-cli --help
 python -c 'import importlib.metadata as m; print(m.version("panelsolver"))'
 ```
 
 The version printed by the final command is the installed `panelsolver`
 distribution version. Newly generated FMF and Hypersonic Summary CSV/VTP
 artifacts record that value as `solver_version`.
-
-## Legacy-distribution coexistence
-
-Do not install this distribution in the same environment as either legacy
-`fmfsolver` or `newtsolver` distribution. All of them provide overlapping
-top-level packages and console commands. Remove the legacy packages first:
-
-```bash
-python -m pip uninstall fmfsolver newtsolver
-python -m pip install panelsolver
-```

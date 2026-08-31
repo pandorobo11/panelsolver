@@ -6,6 +6,15 @@ migration baselines and runtime artifact version semantics are recorded in ADR
 
 ## [Unreleased]
 
+- **Breaking:** Remove the six predecessor-product commands, their two Python
+  package trees, compatibility-only tuning-variable aliases, and legacy VTP
+  signature reconstruction/fallback before the first Panel Solver release.
+  The only console scripts are now `panelsolver` and `panelsolver-gui`, the wheel
+  contains only the `panelsolver` package, and automatic VTP loading requires the
+  current case ID plus current canonical signature. Generic manual **Open VTP**
+  inspection remains available; historical artifacts are unsupported and can be
+  regenerated. Numerical results, canonical signature digests, current case-file
+  schemas, and current CSV/VTP schemas are unchanged.
 - Make manual VTP opening available from both the File menu and the existing
   Viewer control.
 - Reduce case-table input latency by deduplicating repeated STL and output path
@@ -18,12 +27,6 @@ migration baselines and runtime artifact version semantics are recorded in ADR
   `traction_coeff_stl`, pressure and Sentman equations, case-input semantics,
   model algorithm versions, case signatures, and whole-vehicle force and
   moment coefficients are unchanged.
-- **Breaking:** Remove unsupported direct-Python APIs under `fmfsolver.*` and
-  `newtsolver.*`, including legacy readers/writers/exporters, runners,
-  scheduler, mesh, shielding, and physics-helper import paths. Preserve all six
-  legacy commands, legacy GUI identities, legacy artifact-signature fallback,
-  the canonical `panelsolver` API, file/artifact contracts, and numerical
-  behavior.
 - Restore the offline documentation to the audited MkDocs 1.6.1 built-in
   Read the Docs theme, improving technical tables, navigation, and code
   readability. Add complete license texts and release-gate coverage for the
@@ -60,23 +63,19 @@ migration baselines and runtime artifact version semantics are recorded in ADR
   wheel, shared GUI Help/About, deterministic documentation and examples ZIPs,
   manifest schema v2, and build-once release verification.
 - Unify the canonical repository, distribution, package, and command namespace
-  as `panelsolver`; the human-readable product name is Panel Solver. Preserve
-  the `fmfsolver` and `newtsolver` packages and commands as legacy compatibility
-  identities.
+  as `panelsolver`; the human-readable product name is Panel Solver.
 - Adopt the Apache License 2.0 for project-owned code, documentation, examples,
   and generated material; record author, maintainer, project URLs, PEP 639
   license metadata, and US1976/PDAS/dependency rights boundaries.
 - Change Summary CSV and VTP `solver_version` provenance to the installed
-  `panelsolver` distribution version for both FMF and Hypersonic. The legacy
-  `fmfsolver 1.3.8` and `newtsolver 1.0.3` values remain migration baselines for
-  legacy signatures; numerical results and case signatures are unchanged.
+  `panelsolver` distribution version for both FMF and Hypersonic; numerical
+  results and case signatures are unchanged.
 - Add canonical `panelsolver fmf` and `panelsolver hypersonic` batch selectors
-  plus `panelsolver-gui fmf` and `panelsolver-gui hypersonic`, while retaining
-  all six legacy compatibility commands. Add the small domain-specific
-  `FMFCase`/`HypersonicCase` in-memory solve API at the package root; it writes
-  no artifacts. Stable API case IDs now share portable NFC validation with case
-  tables, and attitude resolution rejects non-text selectors and beta-sin
-  alpha values outside the open principal interval.
+  plus `panelsolver-gui fmf` and `panelsolver-gui hypersonic`. Add the small
+  domain-specific `FMFCase`/`HypersonicCase` in-memory solve API at the package
+  root; it writes no artifacts. Stable API case IDs now share portable NFC
+  validation with case tables, and attitude resolution rejects non-text
+  selectors and beta-sin alpha values outside the open principal interval.
 - **Breaking:** Remove legacy Excel 97–2003 BIFF `.xls` input support and the
   `xlrd` runtime dependency. Convert `.xls` case files to `.xlsx` or CSV before
   using the current release. CSV, XLSX, and XLSM behavior is unchanged, and

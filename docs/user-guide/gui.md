@@ -10,9 +10,6 @@ panelsolver-gui hypersonic
 These open `Panel Solver — FMF` and `Panel Solver — Hypersonic`. FMF currently
 uses the Sentman physical model; Hypersonic provides Newtonian-family methods.
 
-The legacy compatibility commands `fmfsolver`, `fmfsolver-gui`, `newtsolver`,
-and `newtsolver-gui` remain available with their existing titles and behavior.
-
 ## Offline help
 
 Every launcher uses the shared **Help** menu:
@@ -84,7 +81,7 @@ files.
 
 When a case saves VTP, the first selected case's result is loaded automatically. A
 selected row also loads an existing `<out_dir>/<case_id>.vtp` when its case ID
-and accepted primary or legacy signature match. Missing, stale-signature, and
+and current canonical signature match. Missing, stale-signature, and
 identity-mismatched artifacts are not rendered automatically. The compact status
 row above the Viewer explains what result is displayed or why the selected case's
 result is unavailable; the signature and field-data contract is documented in

@@ -4,10 +4,11 @@
 - Date: 2026-08-12
 - Refined by: ADR 0008 (supported-domain surface)
 
-The package-import and best-effort direct-Python portions of this decision are
-superseded by [ADR 0014](0014-remove-legacy-direct-python-api.md). Its command,
-GUI identity, file, artifact, and numerical compatibility decisions remain in
-force.
+The package-import and best-effort direct-Python portions of this decision were
+superseded by [ADR 0014](0014-remove-legacy-direct-python-api.md). Its remaining
+frontend, command, GUI-identity, and artifact-fallback portions are superseded by
+[ADR 0015](0015-remove-legacy-product-identities.md). Historical file and
+numerical evidence remains governed by the current supported-domain decisions.
 
 ## Context
 

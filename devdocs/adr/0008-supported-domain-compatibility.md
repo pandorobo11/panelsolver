@@ -15,6 +15,12 @@ The best-effort legacy direct-Python portion is superseded by
 [ADR 0014](0014-remove-legacy-direct-python-api.md). The command, GUI, file,
 artifact, and numerical supported-domain decisions remain in force.
 
+The predecessor command, GUI-identity, package, and historical-artifact
+compatibility portions are superseded by
+[ADR 0015](0015-remove-legacy-product-identities.md). Current documented case
+files, CSV/VTP schemas, numerical behavior, and canonical signatures remain in
+force.
+
 ## Context
 
 Phase 1 correctly recorded every observable difference between the pinned FMF

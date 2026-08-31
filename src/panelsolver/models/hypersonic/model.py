@@ -171,7 +171,7 @@ def _expand_for_components(
 
 
 class HypersonicModel:
-    """Thin adapter of the pinned newtsolver pressure-only panel model."""
+    """Hypersonic pressure-only panel-load model."""
 
     model_id = HYPERSONIC_MODEL_ID
     algorithm_version = HYPERSONIC_ALGORITHM_VERSION

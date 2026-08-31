@@ -8,7 +8,7 @@ from enum import Enum
 from pathlib import Path
 from types import MappingProxyType
 
-from panelsolver.core import CaseSignature, match_case_signature
+from panelsolver.core import CaseSignature
 
 from .examples import ExampleDefinition
 from .output_status import OutputIssue
@@ -148,33 +148,7 @@ def gui_run_result_from_batch(
     )
 
 
-@dataclass(frozen=True, slots=True)
-class ArtifactSignatureCandidates:
-    """Canonical primary signature plus opaque product-specific legacy fallbacks."""
-
-    primary: CaseSignature
-    legacy_signatures: tuple[str, ...] = ()
-
-    def __post_init__(self) -> None:
-        if not isinstance(self.primary, CaseSignature):
-            raise TypeError(
-                "ArtifactSignatureCandidates.primary must be a CaseSignature"
-            )
-        try:
-            legacy = tuple(self.legacy_signatures)
-        except TypeError as exc:
-            raise TypeError(
-                "ArtifactSignatureCandidates.legacy_signatures must be iterable"
-            ) from exc
-        match_case_signature(
-            None,
-            self.primary,
-            legacy_signatures=legacy,
-        )
-        object.__setattr__(self, "legacy_signatures", legacy)
-
-
-type BuildCaseSignaturesCallback = Callable[[CaseRow], ArtifactSignatureCandidates]
+type BuildCaseSignatureCallback = Callable[[CaseRow], CaseSignature]
 
 
 @dataclass(frozen=True, slots=True)
@@ -187,7 +161,7 @@ class SolverGuiAdapters:
     """
 
     read_cases: ReadCasesCallback
-    build_case_signatures: BuildCaseSignaturesCallback
+    build_case_signature: BuildCaseSignatureCallback
     run_cases: RunCasesCallback
     validate_output_path: ValidateOutputPathCallback
     resolve_velocity_hat_stl: ResolveVelocityCallback
@@ -195,7 +169,7 @@ class SolverGuiAdapters:
     def __post_init__(self) -> None:
         for field_name in (
             "read_cases",
-            "build_case_signatures",
+            "build_case_signature",
             "run_cases",
             "validate_output_path",
             "resolve_velocity_hat_stl",
@@ -424,8 +398,7 @@ class SolverSpec:
 
 __all__ = (
     "COMMON_SCALAR_LABELS",
-    "ArtifactSignatureCandidates",
-    "BuildCaseSignaturesCallback",
+    "BuildCaseSignatureCallback",
     "CancelRequestedCallback",
     "CaseColumnKind",
     "CaseColumnPresentation",

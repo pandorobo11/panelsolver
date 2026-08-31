@@ -7,7 +7,6 @@ from pathlib import Path
 import pytest
 
 SRC_ROOT = Path(__file__).parents[2] / "src"
-FRONTEND_ROOTS = ("fmfsolver", "newtsolver")
 
 
 def module_name(path: Path) -> str:
@@ -146,81 +145,26 @@ class DependencyBoundaryTests(unittest.TestCase):
     def test_every_shared_layer_obeys_documented_inward_direction(self) -> None:
         self.assert_edges_avoid(
             ("panelsolver.core",),
-            ("panelsolver.models", "panelsolver.app", *FRONTEND_ROOTS),
+            ("panelsolver.models", "panelsolver.app"),
         )
         self.assert_edges_avoid(
             ("panelsolver.models",),
-            ("panelsolver.app", *FRONTEND_ROOTS),
+            ("panelsolver.app",),
         )
-        self.assert_edges_avoid(("panelsolver.app",), FRONTEND_ROOTS)
-        self.assert_edges_avoid(("panelsolver",), FRONTEND_ROOTS)
-        self.assert_edges_avoid(
-            (
-                "panelsolver.core",
-                "panelsolver.models",
-                "panelsolver.app",
-                "panelsolver.domains",
-                "panelsolver.cli",
-                "panelsolver.gui",
-            ),
-            ("panelsolver._compat",),
-        )
-        self.assert_edges_avoid(("fmfsolver",), ("newtsolver",))
-        self.assert_edges_avoid(("newtsolver",), ("fmfsolver",))
-
-    def test_private_compatibility_dependencies_point_only_inward(self) -> None:
-        allowed = (
-            "panelsolver._compat",
-            "panelsolver.app",
-            "panelsolver.models",
-            "panelsolver.core",
-        )
-        violations = [
-            f"{source} -> {target}"
-            for source, targets in internal_dependency_graph().items()
-            if _matches(source, ("panelsolver._compat",))
-            for target in sorted(targets)
-            if not _matches(target, allowed)
-        ]
-        self.assertEqual([], violations)
 
     @pytest.mark.slow
-    def test_canonical_cli_import_does_not_load_private_compatibility(self) -> None:
+    def test_canonical_cli_import_has_no_removed_product_packages(self) -> None:
         code = (
-            "import sys; import panelsolver.cli; "
-            "loaded=sorted(name for name in sys.modules "
-            "if name.startswith(('fmfsolver', 'newtsolver', "
-            "'panelsolver._compat'))); "
-            "assert loaded == [], loaded"
+            "import importlib.util; import panelsolver.cli; "
+            "assert importlib.util.find_spec('fmfsolver') is None; "
+            "assert importlib.util.find_spec('newtsolver') is None; "
+            "assert importlib.util.find_spec('panelsolver._compat') is None"
         )
         subprocess.run([sys.executable, "-c", code], check=True)
 
     @pytest.mark.slow
-    def test_canonical_api_import_does_not_load_private_compatibility(self) -> None:
+    def test_canonical_domain_composition_uses_only_current_identities(self) -> None:
         code = (
-            "import sys; import panelsolver; "
-            "loaded=sorted(name for name in sys.modules "
-            "if name.startswith(('fmfsolver', 'newtsolver', "
-            "'panelsolver._compat'))); "
-            "assert loaded == [], loaded"
-        )
-        subprocess.run([sys.executable, "-c", code], check=True)
-
-    @pytest.mark.slow
-    def test_canonical_gui_import_does_not_load_private_compatibility(self) -> None:
-        code = (
-            "import sys; import panelsolver.gui; "
-            "loaded=sorted(name for name in sys.modules "
-            "if name.startswith(('fmfsolver', 'newtsolver', "
-            "'panelsolver._compat'))); "
-            "assert loaded == [], loaded"
-        )
-        subprocess.run([sys.executable, "-c", code], check=True)
-
-    @pytest.mark.slow
-    def test_canonical_domain_composition_does_not_load_legacy_packages(self) -> None:
-        code = (
-            "import sys; "
             "from panelsolver.domains.fmf import CANONICAL_CLI_POLICY as f_cli, "
             "gui_spec as f_gui; "
             "from panelsolver.domains.hypersonic import "
@@ -228,11 +172,7 @@ class DependencyBoundaryTests(unittest.TestCase):
             "assert f_cli.program == 'panelsolver fmf'; "
             "assert h_cli.program == 'panelsolver hypersonic'; "
             "assert f_gui().window_title == 'Panel Solver — FMF'; "
-            "assert h_gui().window_title == 'Panel Solver — Hypersonic'; "
-            "loaded=sorted(name for name in sys.modules "
-            "if name.startswith(('fmfsolver', 'newtsolver', "
-            "'panelsolver._compat'))); "
-            "assert loaded == [], loaded"
+            "assert h_gui().window_title == 'Panel Solver — Hypersonic'"
         )
         subprocess.run([sys.executable, "-c", code], check=True)
 

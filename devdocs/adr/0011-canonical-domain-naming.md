@@ -7,6 +7,10 @@ The distribution-name sentence in this record is superseded by
 [ADR 0013](0013-canonical-project-identity.md). Its domain, package, CLI, and
 legacy-identity decisions remain in force.
 
+The predecessor package, command, and identity-retention portions are superseded
+by [ADR 0015](0015-remove-legacy-product-identities.md). Its canonical FMF and
+Hypersonic domain naming remains in force.
+
 ## Context
 
 The distribution contains two physical-model families and two legacy product
