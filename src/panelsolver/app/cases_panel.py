@@ -216,7 +216,12 @@ class CasesPanel(QtWidgets.QWidget):
         self.btn_diagnostics.setToolButtonStyle(
             QtCore.Qt.ToolButtonStyle.ToolButtonTextBesideIcon
         )
+        self.btn_diagnostics.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Expanding,
+            QtWidgets.QSizePolicy.Policy.Fixed,
+        )
         self.btn_diagnostics.setAccessibleName("Diagnostics")
+        self.btn_diagnostics.setProperty("diagnosticsDisclosure", True)
         set_semantic_property(
             self.btn_diagnostics,
             "fluentAppearance",

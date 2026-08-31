@@ -421,6 +421,23 @@ class CasesPanelTests(unittest.TestCase):
                 "subtle",
                 panel.btn_diagnostics.property("fluentAppearance"),
             )
+            self.assertTrue(panel.btn_diagnostics.property("diagnosticsDisclosure"))
+            self.assertEqual(
+                QtWidgets.QSizePolicy.Policy.Expanding,
+                panel.btn_diagnostics.sizePolicy().horizontalPolicy(),
+            )
+            self.assertEqual(
+                QtWidgets.QSizePolicy.Policy.Fixed,
+                panel.btn_diagnostics.sizePolicy().verticalPolicy(),
+            )
+            self.assertEqual(
+                panel.layout().contentsRect().width(),
+                panel.btn_diagnostics.width(),
+            )
+            self.assertGreater(
+                panel.btn_diagnostics.width(),
+                panel.btn_diagnostics.sizeHint().width(),
+            )
             self.assertFalse(panel.btn_diagnostics.isChecked())
             self.assertEqual(
                 QtCore.Qt.ArrowType.RightArrow,
@@ -431,6 +448,11 @@ class CasesPanelTests(unittest.TestCase):
                 panel.btn_diagnostics.toolButtonStyle(),
             )
             self.assertEqual("Diagnostics", panel.btn_diagnostics.accessibleName())
+            self.assertEqual(
+                "Show diagnostic log",
+                panel.btn_diagnostics.accessibleDescription(),
+            )
+            self.assertEqual("Show diagnostic log", panel.btn_diagnostics.toolTip())
             self.assertTrue(panel.btn_diagnostics.shortcut().isEmpty())
             self.assertTrue(
                 panel.btn_diagnostics.focusPolicy() & QtCore.Qt.FocusPolicy.TabFocus
@@ -454,7 +476,11 @@ class CasesPanelTests(unittest.TestCase):
             )
             self.assertTrue(panel.log.isVisible())
             self.assertIn("[TEST] hidden message", panel.log.toPlainText())
-            self.assertIn("Hide", panel.btn_diagnostics.accessibleDescription())
+            self.assertEqual(
+                "Hide diagnostic log",
+                panel.btn_diagnostics.accessibleDescription(),
+            )
+            self.assertEqual("Hide diagnostic log", panel.btn_diagnostics.toolTip())
 
             panel.btn_diagnostics.click()
             self.app.processEvents()
@@ -465,7 +491,11 @@ class CasesPanelTests(unittest.TestCase):
             )
             self.assertTrue(panel.log.isHidden())
             self.assertIn("[TEST] hidden message", panel.log.toPlainText())
-            self.assertIn("Show", panel.btn_diagnostics.accessibleDescription())
+            self.assertEqual(
+                "Show diagnostic log",
+                panel.btn_diagnostics.accessibleDescription(),
+            )
+            self.assertEqual("Show diagnostic log", panel.btn_diagnostics.toolTip())
 
             panel.btn_diagnostics.setFocus(QtCore.Qt.FocusReason.TabFocusReason)
             self.assertTrue(panel.btn_diagnostics.hasFocus())
@@ -1035,6 +1065,10 @@ class CasesPanelTests(unittest.TestCase):
         self.assertIs(panel.progress, panel.execution_row.itemAt(0).widget())
         self.assertIs(panel.btn_diagnostics, root.itemAt(5).widget())
         self.assertIs(panel.log, root.itemAt(6).widget())
+        self.assertEqual(
+            QtWidgets.QSizePolicy.Policy.Expanding,
+            panel.btn_diagnostics.sizePolicy().horizontalPolicy(),
+        )
         self.assertEqual(2, root.stretch(6))
         self.assertEqual(180, panel.log.minimumHeight())
         self.assertFalse(panel.progress.isHidden())
