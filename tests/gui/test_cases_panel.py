@@ -342,21 +342,25 @@ class CasesPanelTests(unittest.TestCase):
             panel.btn_run.click()
         self.assertEqual([False], runs)
 
-    def test_run_row_groups_settings_and_trailing_actions_semantically(self) -> None:
+    def test_execution_controls_use_fixed_settings_and_status_action_rows(self) -> None:
         panel, _ = self.make_panel()
+        root = panel.layout()
 
-        self.assertEqual(5, panel.run_row.count())
-        self.assertIs(panel.workers_group, panel.run_row.itemAt(0).layout())
-        settings_gap = panel.run_row.itemAt(1).spacerItem()
+        self.assertIs(panel.settings_row, root.itemAt(3).layout())
+        self.assertIs(panel.execution_row, root.itemAt(4).layout())
+        self.assertIsNone(root.itemAt(4).widget())
+
+        self.assertEqual(4, panel.settings_row.count())
+        self.assertIs(panel.workers_group, panel.settings_row.itemAt(0).layout())
+        settings_gap = panel.settings_row.itemAt(1).spacerItem()
         self.assertIsNotNone(settings_gap)
-        self.assertIs(panel.checkpoint_group, panel.run_row.itemAt(2).layout())
-        action_stretch = panel.run_row.itemAt(3).spacerItem()
-        self.assertIsNotNone(action_stretch)
+        self.assertIs(panel.checkpoint_group, panel.settings_row.itemAt(2).layout())
+        settings_stretch = panel.settings_row.itemAt(3).spacerItem()
+        self.assertIsNotNone(settings_stretch)
         self.assertEqual(
             QtWidgets.QSizePolicy.Policy.Expanding,
-            action_stretch.sizePolicy().horizontalPolicy(),
+            settings_stretch.sizePolicy().horizontalPolicy(),
         )
-        self.assertIs(panel.run_actions_group, panel.run_row.itemAt(4).layout())
 
         self.assertEqual(
             [panel.lbl_workers, panel.spin_workers],
@@ -366,8 +370,20 @@ class CasesPanelTests(unittest.TestCase):
             [
                 panel.lbl_checkpoint_every_cases,
                 panel.spin_checkpoint_every_cases,
+                panel.lbl_checkpoint_unit,
             ],
-            [panel.checkpoint_group.itemAt(index).widget() for index in range(2)],
+            [panel.checkpoint_group.itemAt(index).widget() for index in range(3)],
+        )
+        self.assertEqual(2, panel.execution_row.count())
+        self.assertIs(panel.progress, panel.execution_row.itemAt(0).widget())
+        self.assertEqual(1, panel.execution_row.stretch(0))
+        self.assertTrue(
+            panel.execution_row.itemAt(0).alignment()
+            & QtCore.Qt.AlignmentFlag.AlignVCenter
+        )
+        self.assertIs(
+            panel.run_actions_group,
+            panel.execution_row.itemAt(1).layout(),
         )
         self.assertEqual(
             [panel.btn_run, panel.btn_cancel],
@@ -382,6 +398,7 @@ class CasesPanelTests(unittest.TestCase):
             settings_gap.sizeHint().width(),
         )
         self.assertEqual(8, panel.run_actions_group.spacing())
+        self.assertEqual(8, panel.execution_row.spacing())
 
         for group in (
             panel.workers_group,
@@ -952,15 +969,36 @@ class CasesPanelTests(unittest.TestCase):
             2_147_483_647,
             panel.spin_checkpoint_every_cases.maximum(),
         )
-        self.assertEqual(" cases", panel.spin_checkpoint_every_cases.suffix())
+        self.assertEqual("", panel.spin_checkpoint_every_cases.suffix())
+        self.assertEqual("cases", panel.lbl_checkpoint_unit.text())
+        self.assertIs(
+            panel.spin_checkpoint_every_cases,
+            panel.lbl_checkpoint_every_cases.buddy(),
+        )
+        self.assertEqual(
+            QtCore.Qt.FocusPolicy.NoFocus,
+            panel.lbl_checkpoint_unit.focusPolicy(),
+        )
+        self.assertIn(
+            "cases",
+            panel.spin_checkpoint_every_cases.accessibleDescription(),
+        )
+        self.assertIn(
+            "2147483647",
+            panel.spin_checkpoint_every_cases.accessibleDescription(),
+        )
+        self.assertIn("2,147,483,647", panel.spin_checkpoint_every_cases.toolTip())
         panel.spin_checkpoint_every_cases.setValue(0)
         self.assertEqual(0, panel.spin_checkpoint_every_cases.value())
 
-    def test_checkpoint_spinbox_reference_geometry_accommodates_maximum(self) -> None:
+    def test_checkpoint_spinbox_bounds_ordinary_width_and_keeps_maximum_editable(
+        self,
+    ) -> None:
         panel, _ = self.make_panel()
         checkpoint = panel.spin_checkpoint_every_cases
+        panel.show()
+        self.app.processEvents()
         checkpoint.ensurePolished()
-        checkpoint.setValue(checkpoint.maximum())
 
         option = QtWidgets.QStyleOptionSpinBox()
         checkpoint.initStyleOption(option)
@@ -970,19 +1008,31 @@ class CasesPanelTests(unittest.TestCase):
             QtWidgets.QStyle.SubControl.SC_SpinBoxEditField,
             checkpoint,
         )
-        displayed_text = checkpoint.text()
-        self.assertEqual("2147483647 cases", displayed_text)
+        default_text = checkpoint.text()
+        self.assertEqual(str(DEFAULT_CHECKPOINT_CASES), default_text)
+        self.assertTrue(panel.lbl_checkpoint_unit.isVisible())
         self.assertGreaterEqual(
             edit_field.width(),
-            checkpoint.fontMetrics().horizontalAdvance(displayed_text),
+            checkpoint.fontMetrics().horizontalAdvance(default_text),
         )
+        self.assertLess(checkpoint.width(), checkpoint.sizeHint().width())
+
+        checkpoint.setFocus(QtCore.Qt.FocusReason.TabFocusReason)
+        checkpoint.lineEdit().selectAll()
+        QtTest.QTest.keyClicks(checkpoint, "2147483647")
+        QtTest.QTest.keyClick(checkpoint, QtCore.Qt.Key.Key_Return)
+        self.assertEqual(2_147_483_647, checkpoint.value())
+        self.assertEqual("2147483647", checkpoint.text())
+        self.assertEqual("2147483647", checkpoint.lineEdit().text())
+        panel.close()
 
     def test_table_and_log_keep_primary_secondary_stretch_contract(self) -> None:
         panel, _ = self.make_panel()
         root = panel.layout()
         self.assertIs(panel.case_table, root.itemAt(2).widget())
         self.assertEqual(4, root.stretch(2))
-        self.assertIs(panel.progress, root.itemAt(4).widget())
+        self.assertIs(panel.execution_row, root.itemAt(4).layout())
+        self.assertIs(panel.progress, panel.execution_row.itemAt(0).widget())
         self.assertIs(panel.btn_diagnostics, root.itemAt(5).widget())
         self.assertIs(panel.log, root.itemAt(6).widget())
         self.assertEqual(2, root.stretch(6))
