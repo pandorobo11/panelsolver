@@ -283,6 +283,213 @@ class CasesPanelTests(unittest.TestCase):
             panel.case_table.item(0, 0).data(QtCore.Qt.ItemDataRole.UserRole),
         )
 
+    def test_semantic_initial_widths_fit_headers_and_preserve_native_resize(
+        self,
+    ) -> None:
+        rows = (
+            {
+                "case_id": "case-000001",
+                "stl_path": "geometry/vehicle.stl",
+                "stl_scale_m_per_unit": "1.234567e-12",
+                "Mach": "12.5",
+                "gamma": "1.4",
+                "windward_eq": "modified_newtonian",
+                "leeward_eq": "prandtl_meyer",
+                "alpha_deg": "-12.5",
+                "beta_or_bank_deg": "2.5",
+                "attitude_input": "beta_sin",
+                "ref_x_m": "-1.234567e+12",
+                "ref_y_m": "0.0",
+                "ref_z_m": "1.234567e-12",
+                "Aref_m2": "1.234567e+12",
+                "Lref_Cl_m": "1.234567e+12",
+                "Lref_Cm_m": "1.234567e+12",
+                "Lref_Cn_m": "1.234567e+12",
+                "shielding_on": 1,
+                "ray_backend": "embree",
+                "out_dir": "outputs/engineering-results",
+                "save_vtp_on": 1,
+                "custom": "sample value",
+            },
+        )
+        panel, _ = self.make_panel(rows, spec_factory=newt_solver_spec)
+        with patch.object(
+            QtWidgets.QTableWidget,
+            "resizeColumnsToContents",
+            side_effect=AssertionError("content autosizing must not be used"),
+        ):
+            self.assertTrue(panel.load_input_file("/tmp/input.csv"))
+
+        def width(name: str) -> int:
+            return panel.case_table.columnWidth(panel._table_columns.index(name))
+
+        header = panel.case_table.horizontalHeader()
+        for column, name in enumerate(panel._table_columns):
+            with self.subTest(header=name):
+                self.assertGreaterEqual(
+                    panel.case_table.columnWidth(column),
+                    header.sectionSizeHint(column),
+                )
+
+        self.assertEqual(width("Mach"), width("gamma"))
+        self.assertEqual(width("ref_x_m"), width("ref_y_m"))
+        self.assertEqual(width("ref_y_m"), width("ref_z_m"))
+        self.assertEqual(width("ref_z_m"), width("Aref_m2"))
+        self.assertEqual(width("stl_path"), width("out_dir"))
+        self.assertLess(width("shielding_on"), width("stl_path"))
+        self.assertLess(width("save_vtp_on"), width("windward_eq"))
+        self.assertLess(width("ray_backend"), width("windward_eq"))
+
+        mach_column = panel._table_columns.index("Mach")
+        self.assertEqual(
+            QtWidgets.QHeaderView.ResizeMode.Interactive,
+            header.sectionResizeMode(mach_column),
+        )
+        initial = width("Mach")
+        panel.case_table.setColumnWidth(mach_column, initial + 37)
+        self.assertEqual(initial + 37, width("Mach"))
+
+        panel.resize(400, 500)
+        panel.show()
+        self.app.processEvents()
+        self.assertGreater(panel.case_table.horizontalScrollBar().maximum(), 0)
+        panel.close()
+
+    def test_declared_and_fallback_widths_are_stable_against_outliers(self) -> None:
+        ordinary = (
+            {
+                "case_id": f"case-{index}",
+                "stl_path": f"geometry/body-{index}.stl",
+                "windward_eq": "newtonian",
+                "out_dir": "outputs/results",
+                "custom": "ordinary",
+            }
+            for index in range(3)
+        )
+        ordinary_rows = tuple(ordinary)
+        outlier_rows = (
+            *ordinary_rows[:2],
+            {
+                "case_id": "case-" + "identifier-" * 30,
+                "stl_path": "/volume/" + "nested-component/" * 30 + "body.stl",
+                "windward_eq": "unexpected_model_selector_" * 20,
+                "out_dir": "results/" + "long-output-directory/" * 30,
+                "custom": "unexpected-extra-value-" * 30,
+            },
+        )
+        ordinary_panel, _ = self.make_panel(
+            ordinary_rows,
+            spec_factory=newt_solver_spec,
+        )
+        outlier_panel, _ = self.make_panel(
+            outlier_rows,
+            spec_factory=newt_solver_spec,
+        )
+        self.assertTrue(ordinary_panel.load_input_file("/tmp/ordinary.csv"))
+        self.assertTrue(outlier_panel.load_input_file("/tmp/outlier.csv"))
+
+        for name in (
+            "case_id",
+            "stl_path",
+            "windward_eq",
+            "out_dir",
+            "custom",
+        ):
+            with self.subTest(name=name):
+                ordinary_column = ordinary_panel._table_columns.index(name)
+                outlier_column = outlier_panel._table_columns.index(name)
+                self.assertEqual(
+                    ordinary_panel.case_table.columnWidth(ordinary_column),
+                    outlier_panel.case_table.columnWidth(outlier_column),
+                )
+
+        long_row = outlier_rows[-1]
+        tooltip_columns = ("case_id", "windward_eq", "out_dir", "custom")
+        for name in tooltip_columns:
+            with self.subTest(tooltip=name):
+                column = outlier_panel._table_columns.index(name)
+                item = outlier_panel.case_table.item(2, column)
+                self.assertEqual(str(long_row[name]), item.text())
+                self.assertEqual(str(long_row[name]), item.toolTip())
+
+        stl_column = outlier_panel._table_columns.index("stl_path")
+        stl_item = outlier_panel.case_table.item(2, stl_column)
+        self.assertEqual("body.stl", stl_item.text())
+        self.assertEqual(long_row["stl_path"], stl_item.toolTip())
+
+    def test_bounded_numeric_width_preserves_extreme_exact_text_without_tooltip(
+        self,
+    ) -> None:
+        extreme = Decimal("1.23456789012345678901234567890123456789")
+        row = {
+            "case_id": "numeric-outlier",
+            "stl_path": "body.stl",
+            "Mach": extreme,
+            "gamma": "1.234567e+123",
+            "alpha_deg": "-9.876543210987654321e-123",
+        }
+        panel, _ = self.make_panel((row,), spec_factory=newt_solver_spec)
+        self.assertTrue(panel.load_input_file("/tmp/input.csv"))
+        for name in ("Mach", "gamma", "alpha_deg"):
+            with self.subTest(name=name):
+                column = panel._table_columns.index(name)
+                item = panel.case_table.item(0, column)
+                self.assertEqual(str(row[name]), item.text())
+                self.assertEqual("", item.toolTip())
+
+    def test_short_wide_text_uses_rendered_width_for_tooltip(self) -> None:
+        short_text = "界"
+        row = {
+            "case_id": "short-wide-text",
+            "stl_path": "body.stl",
+            "custom": short_text,
+        }
+        panel, _ = self.make_panel((row,))
+        original_text_width = panel._column_text_width
+
+        def controlled_text_width(text: str) -> int:
+            if text == short_text:
+                return 10_000
+            return original_text_width(text)
+
+        self.assertLessEqual(len(short_text), len("sample value"))
+        with patch.object(
+            panel,
+            "_column_text_width",
+            side_effect=controlled_text_width,
+        ) as text_width:
+            self.assertTrue(panel.load_input_file("/tmp/input.csv"))
+
+        text_width.assert_any_call(short_text)
+        column = panel._table_columns.index("custom")
+        item = panel.case_table.item(0, column)
+        self.assertEqual(short_text, item.text())
+        self.assertEqual(short_text, item.toolTip())
+
+    def test_long_unknown_header_uses_bounded_fallback_and_exact_tooltips(
+        self,
+    ) -> None:
+        extra_name = "custom_engineering_metadata_" * 12
+        extra_value = "exact-extra-value-" * 30
+        row = {
+            "case_id": "fallback",
+            "stl_path": "body.stl",
+            extra_name: extra_value,
+        }
+        panel, _ = self.make_panel((row,))
+        self.assertTrue(panel.load_input_file("/tmp/input.csv"))
+        column = panel._table_columns.index(extra_name)
+        header_item = panel.case_table.horizontalHeaderItem(column)
+        item = panel.case_table.item(0, column)
+        self.assertEqual(extra_name, header_item.text())
+        self.assertEqual(extra_name, header_item.toolTip())
+        self.assertLess(
+            panel.case_table.columnWidth(column),
+            panel._column_text_width(extra_name),
+        )
+        self.assertEqual(extra_value, item.text())
+        self.assertEqual(extra_value, item.toolTip())
+
     def test_shared_panel_uses_spec_metadata_without_product_branching(self) -> None:
         def renamed_spec(*, adapters):
             return replace(

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from pathlib import Path
 
 import pyvista as pv
@@ -18,7 +19,13 @@ from .path_resolution import (
 )
 from .run_lifecycle import CaseRunWorker
 from .runtime import DEFAULT_CHECKPOINT_CASES
-from .solver_spec import CaseColumnKind, CaseRow, GuiRunResult, SolverSpec
+from .solver_spec import (
+    CaseColumnKind,
+    CaseColumnWidthRole,
+    CaseRow,
+    GuiRunResult,
+    SolverSpec,
+)
 from .viewer_data import (
     ArtifactViewState,
     ArtifactViewStatus,
@@ -30,6 +37,67 @@ _RUN_SETTINGS_GROUP_SPACING = 12
 _RUN_ACTION_SPACING = 8
 _DIAGNOSTICS_DISCLOSURE_ICON_SIZE = 12
 _CHECKPOINT_ORDINARY_DIGITS = 6
+
+
+@dataclass(frozen=True, slots=True)
+class _ColumnWidthPolicy:
+    minimum_text: str
+    representative_text: str
+    maximum_text: str
+
+
+_COLUMN_WIDTH_POLICIES = {
+    CaseColumnWidthRole.IDENTIFIER: _ColumnWidthPolicy(
+        "case_000",
+        "case_identifier_000",
+        "case_identifier_000000",
+    ),
+    CaseColumnWidthRole.PATH: _ColumnWidthPolicy(
+        "outputs/result",
+        "outputs/analysis-results",
+        "outputs/engineering-results/archive",
+    ),
+    CaseColumnWidthRole.COMPACT_NUMERIC: _ColumnWidthPolicy(
+        "-0.0",
+        "-1.234e+03",
+        "-1.234567890e+123",
+    ),
+    CaseColumnWidthRole.ENGINEERING_NUMERIC: _ColumnWidthPolicy(
+        "-0.000000",
+        "-1.2345e+12",
+        "-1.234567890123456e+12345",
+    ),
+    CaseColumnWidthRole.MODEL_TEXT: _ColumnWidthPolicy(
+        "newtonian",
+        "modified_newtonian",
+        "unexpected_model_selector",
+    ),
+    CaseColumnWidthRole.ENUM_TEXT: _ColumnWidthPolicy(
+        "auto",
+        "beta_sin",
+        "unexpected_enum_value",
+    ),
+    CaseColumnWidthRole.FLAG: _ColumnWidthPolicy(
+        "0",
+        "1",
+        "Boolean flag",
+    ),
+    CaseColumnWidthRole.FALLBACK: _ColumnWidthPolicy(
+        "value",
+        "sample value",
+        "unexpected extra value",
+    ),
+}
+
+_FULL_VALUE_TOOLTIP_ROLES = frozenset(
+    {
+        CaseColumnWidthRole.IDENTIFIER,
+        CaseColumnWidthRole.PATH,
+        CaseColumnWidthRole.MODEL_TEXT,
+        CaseColumnWidthRole.ENUM_TEXT,
+        CaseColumnWidthRole.FALLBACK,
+    }
+)
 
 
 def _bounded_spin_box_width(spin_box: QtWidgets.QSpinBox) -> int:
@@ -420,6 +488,23 @@ class CasesPanel(QtWidgets.QWidget):
             for name in self._table_columns
         ]
         self.case_table.setHorizontalHeaderLabels(headers)
+        width_roles = [
+            (
+                presentations[name].width_role
+                if name in presentations
+                else CaseColumnWidthRole.FALLBACK
+            )
+            for name in self._table_columns
+        ]
+        column_widths = [
+            self._initial_column_width(column, role)
+            for column, role in enumerate(width_roles)
+        ]
+        for column, width in enumerate(column_widths):
+            self.case_table.setColumnWidth(column, width)
+            if self._header_width(column) > width:
+                header_item = self.case_table.horizontalHeaderItem(column)
+                header_item.setToolTip(header_item.text())
         for row_index, row in enumerate(self.case_rows):
             for column, name in enumerate(self._table_columns):
                 value = row.get(name)
@@ -434,24 +519,74 @@ class CasesPanel(QtWidgets.QWidget):
                 item.setTextAlignment(self._column_alignment(kind))
                 if name == "stl_path" and text:
                     item.setToolTip(text)
+                elif (
+                    display
+                    and width_roles[column] in _FULL_VALUE_TOOLTIP_ROLES
+                    and self._needs_full_value_tooltip(
+                        display,
+                        column_widths[column],
+                    )
+                ):
+                    item.setToolTip(display)
                 if column == 0:
                     item.setData(QtCore.Qt.ItemDataRole.UserRole, row_index)
                 self.case_table.setItem(row_index, column, item)
-        self.case_table.resizeColumnsToContents()
+        self._refresh_summary()
+
+    def _column_horizontal_padding(self) -> int:
+        style = self.case_table.style()
+        header = self.case_table.horizontalHeader()
+        return 2 * (
+            style.pixelMetric(
+                QtWidgets.QStyle.PixelMetric.PM_HeaderMargin,
+                None,
+                header,
+            )
+            + style.pixelMetric(
+                QtWidgets.QStyle.PixelMetric.PM_FocusFrameHMargin,
+                None,
+                self.case_table,
+            )
+        )
+
+    def _column_text_width(self, text: str) -> int:
+        return (
+            self.case_table.fontMetrics().horizontalAdvance(text)
+            + self._column_horizontal_padding()
+        )
+
+    def _needs_full_value_tooltip(
+        self,
+        text: str,
+        width: int,
+    ) -> bool:
+        return self._column_text_width(text) > width
+
+    def _header_width(self, column: int) -> int:
         header = self.case_table.horizontalHeader()
         header_padding = 2 * self.case_table.style().pixelMetric(
             QtWidgets.QStyle.PixelMetric.PM_HeaderMargin,
             None,
             header,
         )
-        for column in range(len(self._table_columns)):
-            self.case_table.setColumnWidth(
-                column,
-                self.case_table.columnWidth(column) + header_padding,
-            )
-        if "stl_path" in self._table_columns:
-            self.case_table.setColumnWidth(self._table_columns.index("stl_path"), 220)
-        self._refresh_summary()
+        return header.sectionSizeHint(column) + header_padding
+
+    def _initial_column_width(
+        self,
+        column: int,
+        role: CaseColumnWidthRole,
+    ) -> int:
+        policy = _COLUMN_WIDTH_POLICIES[role]
+        minimum = self._column_text_width(policy.minimum_text)
+        preferred = self._column_text_width(policy.representative_text)
+        maximum = self._column_text_width(policy.maximum_text)
+        header = self.case_table.horizontalHeader()
+        minimum = max(minimum, header.minimumSectionSize())
+        maximum = max(maximum, minimum)
+        return min(
+            max(preferred, minimum, self._header_width(column)),
+            maximum,
+        )
 
     @staticmethod
     def _column_alignment(kind: CaseColumnKind) -> QtCore.Qt.AlignmentFlag:

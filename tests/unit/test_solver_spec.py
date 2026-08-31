@@ -6,6 +6,7 @@ from newtsolver._frontend import _legacy_gui_spec as newt_solver_spec
 from panelsolver.app import (
     CaseColumnKind,
     CaseColumnPresentation,
+    CaseColumnWidthRole,
     GuiRunRequest,
     GuiRunResult,
     SolverGuiAdapters,
@@ -27,8 +28,18 @@ def _valid_spec(**changes) -> SolverSpec:
         "domain_name": "Synthetic",
         "case_columns": ("case_id", "value"),
         "case_column_presentations": (
-            CaseColumnPresentation("case_id", "Case ID", CaseColumnKind.TEXT),
-            CaseColumnPresentation("value", "Value", CaseColumnKind.NUMERIC),
+            CaseColumnPresentation(
+                "case_id",
+                "Case ID",
+                CaseColumnKind.TEXT,
+                CaseColumnWidthRole.IDENTIFIER,
+            ),
+            CaseColumnPresentation(
+                "value",
+                "Value",
+                CaseColumnKind.NUMERIC,
+                CaseColumnWidthRole.COMPACT_NUMERIC,
+            ),
         ),
         "preferred_scalars": ("model_scalar", "area_m2"),
         "scalar_labels": {
@@ -86,15 +97,35 @@ class SolverSpecTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             _valid_spec(
                 case_column_presentations=(
-                    CaseColumnPresentation("case_id", "Case ID", CaseColumnKind.TEXT),
-                    CaseColumnPresentation("case_id", "Duplicate", CaseColumnKind.TEXT),
+                    CaseColumnPresentation(
+                        "case_id",
+                        "Case ID",
+                        CaseColumnKind.TEXT,
+                        CaseColumnWidthRole.IDENTIFIER,
+                    ),
+                    CaseColumnPresentation(
+                        "case_id",
+                        "Duplicate",
+                        CaseColumnKind.TEXT,
+                        CaseColumnWidthRole.IDENTIFIER,
+                    ),
                 )
             )
         with self.assertRaises(ValueError):
             _valid_spec(
                 case_column_presentations=(
-                    CaseColumnPresentation("case_id", "Case ID", CaseColumnKind.TEXT),
-                    CaseColumnPresentation("other", "Other", CaseColumnKind.TEXT),
+                    CaseColumnPresentation(
+                        "case_id",
+                        "Case ID",
+                        CaseColumnKind.TEXT,
+                        CaseColumnWidthRole.IDENTIFIER,
+                    ),
+                    CaseColumnPresentation(
+                        "other",
+                        "Other",
+                        CaseColumnKind.TEXT,
+                        CaseColumnWidthRole.FALLBACK,
+                    ),
                 )
             )
         with self.assertRaises(ValueError):
@@ -111,11 +142,33 @@ class SolverSpecTests(unittest.TestCase):
             _valid_spec(adapters=object())
 
         with self.assertRaises(ValueError):
-            CaseColumnPresentation(" ", "Label", CaseColumnKind.TEXT)
+            CaseColumnPresentation(
+                " ",
+                "Label",
+                CaseColumnKind.TEXT,
+                CaseColumnWidthRole.IDENTIFIER,
+            )
         with self.assertRaises(ValueError):
-            CaseColumnPresentation("name", " ", CaseColumnKind.TEXT)
+            CaseColumnPresentation(
+                "name",
+                " ",
+                CaseColumnKind.TEXT,
+                CaseColumnWidthRole.IDENTIFIER,
+            )
         with self.assertRaises(TypeError):
-            CaseColumnPresentation("name", "Label", "text")  # type: ignore[arg-type]
+            CaseColumnPresentation(
+                "name",
+                "Label",
+                "text",  # type: ignore[arg-type]
+                CaseColumnWidthRole.IDENTIFIER,
+            )
+        with self.assertRaises(TypeError):
+            CaseColumnPresentation(
+                "name",
+                "Label",
+                CaseColumnKind.TEXT,
+                "identifier",  # type: ignore[arg-type]
+            )
 
         labels = {"model_scalar": "Model scalar", "area_m2": "Area [m^2]"}
         spec = _valid_spec(scalar_labels=labels)
@@ -125,6 +178,8 @@ class SolverSpecTests(unittest.TestCase):
             spec.scalar_labels["model_scalar"] = "Changed"
         with self.assertRaises(AttributeError):
             spec.case_column_presentations[0].label = "Changed"
+        with self.assertRaises(AttributeError):
+            spec.case_column_presentations[0].width_role = CaseColumnWidthRole.PATH
 
     def test_adapter_bundle_requires_every_member_to_be_callable(self) -> None:
         adapters = SolverGuiAdapters(
@@ -171,6 +226,59 @@ class SolverSpecTests(unittest.TestCase):
         self.assertEqual("Windward equation", newt_presentations["windward_eq"].label)
         self.assertEqual("Gamma", newt_presentations["gamma"].label)
         self.assertIs(CaseColumnKind.NUMERIC, newt_presentations["Aref_m2"].kind)
+        self.assertEqual(
+            {
+                "case_id": CaseColumnWidthRole.IDENTIFIER,
+                "stl_path": CaseColumnWidthRole.PATH,
+                "stl_scale_m_per_unit": CaseColumnWidthRole.ENGINEERING_NUMERIC,
+                "S": CaseColumnWidthRole.COMPACT_NUMERIC,
+                "Ti_K": CaseColumnWidthRole.ENGINEERING_NUMERIC,
+                "Mach": CaseColumnWidthRole.COMPACT_NUMERIC,
+                "Altitude_km": CaseColumnWidthRole.ENGINEERING_NUMERIC,
+                "Tw_K": CaseColumnWidthRole.ENGINEERING_NUMERIC,
+                "alpha_deg": CaseColumnWidthRole.COMPACT_NUMERIC,
+                "beta_or_bank_deg": CaseColumnWidthRole.COMPACT_NUMERIC,
+                "attitude_input": CaseColumnWidthRole.ENUM_TEXT,
+                "ref_x_m": CaseColumnWidthRole.ENGINEERING_NUMERIC,
+                "ref_y_m": CaseColumnWidthRole.ENGINEERING_NUMERIC,
+                "ref_z_m": CaseColumnWidthRole.ENGINEERING_NUMERIC,
+                "Aref_m2": CaseColumnWidthRole.ENGINEERING_NUMERIC,
+                "Lref_Cl_m": CaseColumnWidthRole.ENGINEERING_NUMERIC,
+                "Lref_Cm_m": CaseColumnWidthRole.ENGINEERING_NUMERIC,
+                "Lref_Cn_m": CaseColumnWidthRole.ENGINEERING_NUMERIC,
+                "shielding_on": CaseColumnWidthRole.FLAG,
+                "ray_backend": CaseColumnWidthRole.ENUM_TEXT,
+                "out_dir": CaseColumnWidthRole.PATH,
+                "save_vtp_on": CaseColumnWidthRole.FLAG,
+            },
+            {name: value.width_role for name, value in fmf_presentations.items()},
+        )
+        self.assertEqual(
+            {
+                "case_id": CaseColumnWidthRole.IDENTIFIER,
+                "stl_path": CaseColumnWidthRole.PATH,
+                "stl_scale_m_per_unit": CaseColumnWidthRole.ENGINEERING_NUMERIC,
+                "Mach": CaseColumnWidthRole.COMPACT_NUMERIC,
+                "gamma": CaseColumnWidthRole.COMPACT_NUMERIC,
+                "windward_eq": CaseColumnWidthRole.MODEL_TEXT,
+                "leeward_eq": CaseColumnWidthRole.MODEL_TEXT,
+                "alpha_deg": CaseColumnWidthRole.COMPACT_NUMERIC,
+                "beta_or_bank_deg": CaseColumnWidthRole.COMPACT_NUMERIC,
+                "attitude_input": CaseColumnWidthRole.ENUM_TEXT,
+                "ref_x_m": CaseColumnWidthRole.ENGINEERING_NUMERIC,
+                "ref_y_m": CaseColumnWidthRole.ENGINEERING_NUMERIC,
+                "ref_z_m": CaseColumnWidthRole.ENGINEERING_NUMERIC,
+                "Aref_m2": CaseColumnWidthRole.ENGINEERING_NUMERIC,
+                "Lref_Cl_m": CaseColumnWidthRole.ENGINEERING_NUMERIC,
+                "Lref_Cm_m": CaseColumnWidthRole.ENGINEERING_NUMERIC,
+                "Lref_Cn_m": CaseColumnWidthRole.ENGINEERING_NUMERIC,
+                "shielding_on": CaseColumnWidthRole.FLAG,
+                "ray_backend": CaseColumnWidthRole.ENUM_TEXT,
+                "out_dir": CaseColumnWidthRole.PATH,
+                "save_vtp_on": CaseColumnWidthRole.FLAG,
+            },
+            {name: value.width_role for name, value in newt_presentations.items()},
+        )
         self.assertEqual(
             (
                 "normal_traction_coeff",

@@ -13,6 +13,7 @@ from panelsolver.app import (
     ArtifactSignatureCandidates,
     CaseColumnKind,
     CaseColumnPresentation,
+    CaseColumnWidthRole,
     GuiRunRequest,
     GuiRunResult,
     ProductBatchRunResult,
@@ -101,33 +102,117 @@ INPUT_COLUMN_ORDER = (
     "save_vtp_on",
 )
 _CASE_COLUMN_PRESENTATIONS = (
-    CaseColumnPresentation("case_id", "Case ID", CaseColumnKind.TEXT),
-    CaseColumnPresentation("stl_path", "STL", CaseColumnKind.TEXT),
+    CaseColumnPresentation(
+        "case_id", "Case ID", CaseColumnKind.TEXT, CaseColumnWidthRole.IDENTIFIER
+    ),
+    CaseColumnPresentation(
+        "stl_path", "STL", CaseColumnKind.TEXT, CaseColumnWidthRole.PATH
+    ),
     CaseColumnPresentation(
         "stl_scale_m_per_unit",
         "STL scale [m/STL unit]",
         CaseColumnKind.NUMERIC,
+        CaseColumnWidthRole.ENGINEERING_NUMERIC,
     ),
-    CaseColumnPresentation("Mach", "Mach", CaseColumnKind.NUMERIC),
-    CaseColumnPresentation("gamma", "Gamma", CaseColumnKind.NUMERIC),
-    CaseColumnPresentation("windward_eq", "Windward equation", CaseColumnKind.TEXT),
-    CaseColumnPresentation("leeward_eq", "Leeward equation", CaseColumnKind.TEXT),
-    CaseColumnPresentation("alpha_deg", "Alpha [deg]", CaseColumnKind.NUMERIC),
     CaseColumnPresentation(
-        "beta_or_bank_deg", "Beta / bank [deg]", CaseColumnKind.NUMERIC
+        "Mach", "Mach", CaseColumnKind.NUMERIC, CaseColumnWidthRole.COMPACT_NUMERIC
     ),
-    CaseColumnPresentation("attitude_input", "Attitude input", CaseColumnKind.TEXT),
-    CaseColumnPresentation("ref_x_m", "Ref X [m]", CaseColumnKind.NUMERIC),
-    CaseColumnPresentation("ref_y_m", "Ref Y [m]", CaseColumnKind.NUMERIC),
-    CaseColumnPresentation("ref_z_m", "Ref Z [m]", CaseColumnKind.NUMERIC),
-    CaseColumnPresentation("Aref_m2", "Aref [m²]", CaseColumnKind.NUMERIC),
-    CaseColumnPresentation("Lref_Cl_m", "Lref Cl [m]", CaseColumnKind.NUMERIC),
-    CaseColumnPresentation("Lref_Cm_m", "Lref Cm [m]", CaseColumnKind.NUMERIC),
-    CaseColumnPresentation("Lref_Cn_m", "Lref Cn [m]", CaseColumnKind.NUMERIC),
-    CaseColumnPresentation("shielding_on", "Shielding", CaseColumnKind.FLAG),
-    CaseColumnPresentation("ray_backend", "Ray backend", CaseColumnKind.TEXT),
-    CaseColumnPresentation("out_dir", "Output dir", CaseColumnKind.TEXT),
-    CaseColumnPresentation("save_vtp_on", "Save VTP", CaseColumnKind.FLAG),
+    CaseColumnPresentation(
+        "gamma",
+        "Gamma",
+        CaseColumnKind.NUMERIC,
+        CaseColumnWidthRole.COMPACT_NUMERIC,
+    ),
+    CaseColumnPresentation(
+        "windward_eq",
+        "Windward equation",
+        CaseColumnKind.TEXT,
+        CaseColumnWidthRole.MODEL_TEXT,
+    ),
+    CaseColumnPresentation(
+        "leeward_eq",
+        "Leeward equation",
+        CaseColumnKind.TEXT,
+        CaseColumnWidthRole.MODEL_TEXT,
+    ),
+    CaseColumnPresentation(
+        "alpha_deg",
+        "Alpha [deg]",
+        CaseColumnKind.NUMERIC,
+        CaseColumnWidthRole.COMPACT_NUMERIC,
+    ),
+    CaseColumnPresentation(
+        "beta_or_bank_deg",
+        "Beta / bank [deg]",
+        CaseColumnKind.NUMERIC,
+        CaseColumnWidthRole.COMPACT_NUMERIC,
+    ),
+    CaseColumnPresentation(
+        "attitude_input",
+        "Attitude input",
+        CaseColumnKind.TEXT,
+        CaseColumnWidthRole.ENUM_TEXT,
+    ),
+    CaseColumnPresentation(
+        "ref_x_m",
+        "Ref X [m]",
+        CaseColumnKind.NUMERIC,
+        CaseColumnWidthRole.ENGINEERING_NUMERIC,
+    ),
+    CaseColumnPresentation(
+        "ref_y_m",
+        "Ref Y [m]",
+        CaseColumnKind.NUMERIC,
+        CaseColumnWidthRole.ENGINEERING_NUMERIC,
+    ),
+    CaseColumnPresentation(
+        "ref_z_m",
+        "Ref Z [m]",
+        CaseColumnKind.NUMERIC,
+        CaseColumnWidthRole.ENGINEERING_NUMERIC,
+    ),
+    CaseColumnPresentation(
+        "Aref_m2",
+        "Aref [m²]",
+        CaseColumnKind.NUMERIC,
+        CaseColumnWidthRole.ENGINEERING_NUMERIC,
+    ),
+    CaseColumnPresentation(
+        "Lref_Cl_m",
+        "Lref Cl [m]",
+        CaseColumnKind.NUMERIC,
+        CaseColumnWidthRole.ENGINEERING_NUMERIC,
+    ),
+    CaseColumnPresentation(
+        "Lref_Cm_m",
+        "Lref Cm [m]",
+        CaseColumnKind.NUMERIC,
+        CaseColumnWidthRole.ENGINEERING_NUMERIC,
+    ),
+    CaseColumnPresentation(
+        "Lref_Cn_m",
+        "Lref Cn [m]",
+        CaseColumnKind.NUMERIC,
+        CaseColumnWidthRole.ENGINEERING_NUMERIC,
+    ),
+    CaseColumnPresentation(
+        "shielding_on",
+        "Shielding",
+        CaseColumnKind.FLAG,
+        CaseColumnWidthRole.FLAG,
+    ),
+    CaseColumnPresentation(
+        "ray_backend",
+        "Ray backend",
+        CaseColumnKind.TEXT,
+        CaseColumnWidthRole.ENUM_TEXT,
+    ),
+    CaseColumnPresentation(
+        "out_dir", "Output dir", CaseColumnKind.TEXT, CaseColumnWidthRole.PATH
+    ),
+    CaseColumnPresentation(
+        "save_vtp_on", "Save VTP", CaseColumnKind.FLAG, CaseColumnWidthRole.FLAG
+    ),
 )
 NUMERIC_REQUIRED = (
     "stl_scale_m_per_unit",
