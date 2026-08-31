@@ -443,6 +443,7 @@ class CasesPanelTests(unittest.TestCase):
                 QtCore.Qt.ArrowType.RightArrow,
                 panel.btn_diagnostics.arrowType(),
             )
+            self.assertEqual(QtCore.QSize(12, 12), panel.btn_diagnostics.iconSize())
             self.assertEqual(
                 QtCore.Qt.ToolButtonStyle.ToolButtonTextBesideIcon,
                 panel.btn_diagnostics.toolButtonStyle(),
