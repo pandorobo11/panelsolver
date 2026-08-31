@@ -77,6 +77,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.open_input_action.triggered.connect(self.cases_panel.pick_input_file)
         self.file_menu.addAction(self.open_input_action)
 
+        self.open_vtp_action = QtGui.QAction("Open VTP...", self)
+        self.open_vtp_action.triggered.connect(self.viewer_panel.open_vtp)
+        self.file_menu.addAction(self.open_vtp_action)
+
         self.new_from_example_menu = self.file_menu.addMenu("New from Example")
         self.example_actions: tuple[QtGui.QAction, ...] = tuple(
             self._add_example_action(example) for example in self.spec.examples
