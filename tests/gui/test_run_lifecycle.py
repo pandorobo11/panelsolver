@@ -71,6 +71,9 @@ class _FakeViewer(QtWidgets.QWidget):
         self.saved_rows = []
         self.loaded_path = None
 
+    def open_vtp(self) -> None:
+        pass
+
     def load_vtp(self, *args) -> None:
         self.loaded.append(args)
         self.loaded_path = Path(args[0]).expanduser().resolve(strict=False)

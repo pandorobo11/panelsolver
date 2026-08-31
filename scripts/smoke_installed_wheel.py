@@ -134,6 +134,9 @@ def _smoke_canonical_gui_entrypoint() -> None:
         log_message = QtCore.Signal(str)
         save_selected_images_requested = QtCore.Signal()
 
+        def open_vtp(self) -> None:
+            pass
+
         def load_vtp(self, *_args) -> None:
             pass
 

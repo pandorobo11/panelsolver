@@ -6,6 +6,8 @@ migration baselines and runtime artifact version semantics are recorded in ADR
 
 ## [Unreleased]
 
+- Make manual VTP opening available from both the File menu and the existing
+  Viewer control.
 - Reduce case-table input latency by deduplicating repeated STL and output path
   resolution within each read, without changing validation or normalized paths.
 - **Breaking:** Replace the Hypersonic VTP cell scalar `Cp_n` with `cp`, and

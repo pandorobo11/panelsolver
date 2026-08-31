@@ -57,6 +57,10 @@ class _Viewer(QtWidgets.QWidget):
     def __init__(self) -> None:
         super().__init__()
         self.artifact_states = []
+        self.open_vtp_count = 0
+
+    def open_vtp(self) -> None:
+        self.open_vtp_count += 1
 
     def load_vtp(self, *_args) -> None:
         pass
@@ -131,11 +135,24 @@ class MainWindowMenuTests(unittest.TestCase):
     def test_open_action_uses_the_same_picker_as_the_screen_button(self) -> None:
         window, cases = self.make_window(canonical_fmf_spec())
         self.assertEqual(
-            ["Open Input File...", "New from Example", "", "Exit"],
+            [
+                "Open Input File...",
+                "Open VTP...",
+                "New from Example",
+                "",
+                "Exit",
+            ],
             [action.text() for action in window.file_menu.actions()],
         )
         window.open_input_action.trigger()
         self.assertEqual(1, cases.pick_count)
+        window.close()
+
+    def test_open_vtp_action_uses_the_existing_viewer_entry_point(self) -> None:
+        window, _cases = self.make_window(canonical_fmf_spec())
+        self.assertTrue(window.open_vtp_action.shortcut().isEmpty())
+        window.open_vtp_action.trigger()
+        self.assertEqual(1, window.viewer_panel.open_vtp_count)
         window.close()
 
     def test_artifact_state_signal_is_projected_without_main_window_branching(
