@@ -47,6 +47,20 @@ display; do not set `QT_QPA_PLATFORM=offscreen` or `PYVISTA_OFF_SCREEN`. See
 [`devdocs/development/gui-visual-smoke.md`](devdocs/development/gui-visual-smoke.md)
 for representative loaded-state and light/dark capture commands.
 
+### GUI evidence privacy
+
+Before uploading a GUI screenshot or recording to GitHub, remove developer- and
+machine-specific paths from every path-bearing surface, including visible
+widgets, table cells, expanded or hidden logs, tooltips, status/What's This
+text, and accessible names/descriptions. Prefer a runtime-only sanitized
+capture from the real GUI over editing pixels after capture.
+
+Inspect each upload candidate visually and scan OCR text, embedded image
+strings, and metadata for local roots such as `/Users`, `/home`, `/private`,
+and `/tmp`, as well as the local username, checkout/worktree names, and
+temporary output paths. Upload only the verified sanitized files; never upload
+a raw Computer Use capture first and attempt to redact it afterward.
+
 ## Legacy references
 
 The legacy implementations are read-only references. Their authoritative URLs
