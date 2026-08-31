@@ -11,7 +11,6 @@ import pandas as pd
 from panelsolver.app import (
     COMMON_SCALAR_LABELS,
     DEFAULT_CHECKPOINT_CASES,
-    ArtifactSignatureCandidates,
     CaseColumnKind,
     CaseColumnPresentation,
     CaseColumnWidthRole,
@@ -44,6 +43,7 @@ from panelsolver.app.csv_writer import (
 from panelsolver.app.examples import ExampleDefinition
 from panelsolver.core import (
     CaseExecutionResult,
+    CaseSignature,
     CommonResults,
     CsvCell,
     CsvProjection,
@@ -321,7 +321,6 @@ def _model_payload(row: Mapping[str, object]) -> Mapping[str, object]:
 CASE_POLICY = ProductCasePolicy(
     product_id="fmf",
     model_id="sentman",
-    legacy_env_prefix="FMFSOLVER",
     mesh_validation_policy=MeshValidationPolicy.STRICT,
     model_payload=_model_payload,
 )
@@ -336,14 +335,13 @@ def adapt_row(
     return adapt_case_row(row, CASE_POLICY, registry=registry)
 
 
-def build_primary_signatures(
+def build_case_signature(
     row: Mapping[str, object],
     *,
     registry: ModelRegistry | None = None,
-) -> ArtifactSignatureCandidates:
-    """Build only the current panelsolver.case v1 artifact identity."""
-    primary = prepare_case_signature(adapt_row(row, registry=registry).request)
-    return ArtifactSignatureCandidates(primary)
+) -> CaseSignature:
+    """Build the current panelsolver.case v1 artifact identity."""
+    return prepare_case_signature(adapt_row(row, registry=registry).request)
 
 
 CSV_PROJECTION_POLICY = CsvProjectionPolicy(
@@ -488,7 +486,7 @@ def _run_gui_cases(request: GuiRunRequest) -> GuiRunResult:
 
 GUI_ADAPTERS = SolverGuiAdapters(
     read_cases=_read_gui_cases,
-    build_case_signatures=build_primary_signatures,
+    build_case_signature=build_case_signature,
     run_cases=_run_gui_cases,
     validate_output_path=_validate_gui_output,
     resolve_velocity_hat_stl=_resolve_velocity,
@@ -621,7 +619,7 @@ __all__ = (
     "InputValidationError",
     "ValidationIssue",
     "adapt_row",
-    "build_primary_signatures",
+    "build_case_signature",
     "format_case",
     "gui_spec",
     "project_csv",

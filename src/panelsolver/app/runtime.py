@@ -446,9 +446,7 @@ def run_product_cases(
             execution_order=order,
             bucket_keys=case_execution_bucket_keys(requests),
             affinity_hints=case_execution_affinity_hints(requests),
-            chunk_cases=resolve_parallel_chunk_environment(
-                legacy_env_prefix=policy.case_policy.legacy_env_prefix,
-            ),
+            chunk_cases=resolve_parallel_chunk_environment(),
             cancel_cb=cancel_cb,
             logfn=logger,
         )

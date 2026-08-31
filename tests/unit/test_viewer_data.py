@@ -9,7 +9,6 @@ import pyvista as pv
 
 from panelsolver.app import (
     ArtifactLoadMode,
-    ArtifactSignatureCandidates,
     ArtifactViewState,
     ArtifactViewStatus,
     artifact_display_allowed,
@@ -21,11 +20,7 @@ from panelsolver.app import (
     resolve_matching_case_row,
     scalar_color_limits,
 )
-from panelsolver.core import (
-    CaseSignature,
-    SignatureMatchKind,
-    canonical_json,
-)
+from panelsolver.core import CaseSignature, canonical_json
 
 
 def _signature(label: str) -> CaseSignature:
@@ -43,58 +38,47 @@ def _artifact(case_id: object, signature: object, **cell_data):
 
 
 class ArtifactMatchingTests(unittest.TestCase):
-    def test_primary_precedes_legacy_and_case_id_is_also_required(self) -> None:
-        primary = _signature("primary")
-        legacy = _signature("legacy").digest
-        candidates = ArtifactSignatureCandidates(primary, (legacy,))
-        primary_match = match_artifact_case(
-            _artifact("case", primary.digest),
+    def test_current_signature_and_case_id_are_both_required(self) -> None:
+        current = _signature("current")
+        current_match = match_artifact_case(
+            _artifact("case", current.digest),
             {"case_id": "case"},
-            candidates,
+            current,
         )
-        self.assertTrue(primary_match.matched)
-        self.assertEqual(SignatureMatchKind.PRIMARY, primary_match.signature.kind)
+        self.assertTrue(current_match.matched)
+        self.assertTrue(current_match.signature_matches)
 
-        legacy_match = match_artifact_case(
-            _artifact("case", legacy),
+        stale_match = match_artifact_case(
+            _artifact("case", _signature("stale").digest),
             {"case_id": "case"},
-            candidates,
+            current,
         )
-        self.assertTrue(legacy_match.matched)
-        self.assertEqual(SignatureMatchKind.LEGACY, legacy_match.signature.kind)
-        self.assertEqual(0, legacy_match.signature.legacy_index)
+        self.assertFalse(stale_match.matched)
+        self.assertFalse(stale_match.signature_matches)
 
         wrong_id = match_artifact_case(
-            _artifact("other", primary.digest),
+            _artifact("other", current.digest),
             {"case_id": "case"},
-            candidates,
+            current,
         )
         self.assertFalse(wrong_id.matched)
-        self.assertTrue(wrong_id.signature.matched)
+        self.assertTrue(wrong_id.signature_matches)
 
-    def test_legacy_solver_version_metadata_does_not_control_matching(self) -> None:
-        primary = _signature("primary")
-        candidates = ArtifactSignatureCandidates(primary)
-        for legacy_version in ("1.3.8", "1.0.3"):
-            with self.subTest(legacy_version=legacy_version):
-                artifact = SimpleNamespace(
-                    field_data={
-                        "case_id": ["case"],
-                        "case_signature": [primary.digest],
-                        "solver_version": [legacy_version],
-                    }
-                )
-                self.assertTrue(
-                    match_artifact_case(
-                        artifact,
-                        {"case_id": "case"},
-                        candidates,
-                    ).matched
-                )
+    def test_solver_version_metadata_does_not_control_matching(self) -> None:
+        current = _signature("current")
+        artifact = SimpleNamespace(
+            field_data={
+                "case_id": ["case"],
+                "case_signature": [current.digest],
+                "solver_version": ["unrelated-provenance"],
+            }
+        )
+        self.assertTrue(
+            match_artifact_case(artifact, {"case_id": "case"}, current).matched
+        )
 
     def test_missing_corrupt_or_multivalued_field_data_never_auto_matches(self) -> None:
         primary = _signature("primary")
-        candidates = ArtifactSignatureCandidates(primary)
         artifacts = (
             SimpleNamespace(),
             SimpleNamespace(field_data=[]),
@@ -108,7 +92,7 @@ class ArtifactMatchingTests(unittest.TestCase):
         )
         for artifact in artifacts:
             with self.subTest(artifact=artifact):
-                match = match_artifact_case(artifact, {"case_id": "case"}, candidates)
+                match = match_artifact_case(artifact, {"case_id": "case"}, primary)
                 self.assertFalse(match.matched)
                 self.assertFalse(
                     artifact_display_allowed(match, ArtifactLoadMode.AUTOMATIC)
@@ -124,7 +108,7 @@ class ArtifactMatchingTests(unittest.TestCase):
         match = match_artifact_case(
             poly,
             {"case_id": "case"},
-            ArtifactSignatureCandidates(primary),
+            primary,
         )
         self.assertTrue(match.matched)
         self.assertEqual("case", field_data_scalar(poly, "case_id"))
@@ -141,10 +125,10 @@ class ArtifactMatchingTests(unittest.TestCase):
         first = {"case_id": "duplicate", "variant": "first"}
         second = {"case_id": "duplicate", "variant": "second"}
         signatures = {
-            "first": ArtifactSignatureCandidates(_signature("first")),
-            "second": ArtifactSignatureCandidates(_signature("second")),
+            "first": _signature("first"),
+            "second": _signature("second"),
         }
-        artifact = _artifact("duplicate", signatures["second"].primary.digest)
+        artifact = _artifact("duplicate", signatures["second"].digest)
         resolved = resolve_matching_case_row(
             artifact,
             (first, second),
@@ -160,11 +144,9 @@ class ArtifactMatchingTests(unittest.TestCase):
             )
         )
 
-    def test_candidates_validate_primary_and_opaque_legacy_digests(self) -> None:
+    def test_matcher_requires_a_case_signature(self) -> None:
         with self.assertRaises(TypeError):
-            ArtifactSignatureCandidates(object())
-        with self.assertRaises(ValueError):
-            ArtifactSignatureCandidates(_signature("primary"), ("not-a-digest",))
+            match_artifact_case(_artifact("case", "x"), {"case_id": "case"}, object())
 
 
 class ArtifactViewStateTests(unittest.TestCase):
@@ -185,30 +167,23 @@ class ArtifactViewStateTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             ArtifactViewState(ArtifactViewStatus.CURRENT, "/tmp/case.vtp")
 
-    def test_automatic_classification_preserves_primary_and_legacy_matches(
-        self,
-    ) -> None:
-        primary = _signature("primary")
-        legacy = _signature("legacy").digest
-        candidates = ArtifactSignatureCandidates(primary, (legacy,))
-        for signature in (primary.digest, legacy):
-            with self.subTest(signature=signature):
-                state = automatic_artifact_view_state(
-                    _artifact("case", signature),
-                    {"case_id": "case"},
-                    candidates,
-                    "/tmp/case.vtp",
-                )
-                self.assertEqual(ArtifactViewStatus.CURRENT, state.status)
-                self.assertEqual("case", state.case_id)
+    def test_automatic_classification_accepts_current_signature(self) -> None:
+        current = _signature("current")
+        state = automatic_artifact_view_state(
+            _artifact("case", current.digest),
+            {"case_id": "case"},
+            current,
+            "/tmp/case.vtp",
+        )
+        self.assertEqual(ArtifactViewStatus.CURRENT, state.status)
+        self.assertEqual("case", state.case_id)
 
     def test_stale_requires_matching_id_and_valid_nonmatching_digest(self) -> None:
         primary = _signature("primary")
-        candidates = ArtifactSignatureCandidates(primary)
         stale = automatic_artifact_view_state(
             _artifact("case", _signature("stale").digest),
             {"case_id": "case"},
-            candidates,
+            primary,
             "/tmp/case.vtp",
         )
         self.assertEqual(ArtifactViewStatus.STALE, stale.status)
@@ -229,7 +204,7 @@ class ArtifactViewStateTests(unittest.TestCase):
                 state = automatic_artifact_view_state(
                     artifact,
                     {"case_id": "case"},
-                    candidates,
+                    primary,
                     "/tmp/case.vtp",
                 )
                 self.assertEqual(ArtifactViewStatus.MISMATCHED, state.status)

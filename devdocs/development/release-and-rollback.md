@@ -1,7 +1,7 @@
-# Release and rollback
+# Release
 
-One Panel Solver release contains the shared engine, both physical models, both
-compatibility packages, the canonical commands, and all six legacy commands.
+One Panel Solver release contains the shared engine, both physical models, the
+`panelsolver` package, and the two canonical command entry points.
 
 ## Version and release identity
 
@@ -10,9 +10,7 @@ truth. The `panelsolver` entry in `uv.lock` must match it. `CHANGELOG.md` is the
 release-note source. A release tag is exactly `v<project.version>`, must be an
 annotated tag, and must target the exact latest protected `origin/main` commit.
 
-FMF `1.3.8` and newtsolver `1.0.3` remain historical compatibility baselines;
-they are not distribution versions. Runtime lookup uses
-`importlib.metadata.version("panelsolver")`.
+Runtime lookup uses `importlib.metadata.version("panelsolver")`.
 
 ## Build-once artifact contract
 
@@ -80,7 +78,7 @@ Before publishing, CI verifies:
 - generated US1976 and documentation-plot sources;
 - strict offline docs, local assets, links, and MathML rendering;
 - the original wheel in a fresh dependency-installed environment outside the
-  checkout, including canonical/legacy commands, stable Python API, actual FMF
+  checkout, including canonical commands, stable Python API, actual FMF
   and Hypersonic solves, all representative release examples, packaged docs,
   and offscreen GUI construction;
 - an isolated wheel rebuild from the sdist, followed by install, resource,
@@ -123,35 +121,3 @@ documentation are the exception and carry their own license texts under
 by pip. Before publishing a standalone bundle that embeds Qt or another
 dependency, perform a separate audit for those exact files. The root `LICENSE`,
 `THIRD_PARTY_NOTICES.md`, and third-party license directory remain authoritative.
-
-## Roll back to pinned legacy implementations
-
-The shared distribution and legacy distributions must not coexist. Pinned source
-commits are recorded in
-[Migration sources](../history/migration/MIGRATION_SOURCES.md). The repository's
-`scripts/probe_legacy_rollback.py` verifies those commits and can build recorded
-rollback wheels from clean local sources or official HTTPS URLs.
-
-Operational order:
-
-```bash
-python -m pip uninstall panelsolver
-python -m pip install /path/to/fmfsolver-1.3.8-*.whl /path/to/newtsolver-1.0.3-*.whl
-```
-
-Return to Panel Solver in the opposite order:
-
-```bash
-python -m pip uninstall fmfsolver newtsolver
-python -m pip install /path/to/panelsolver-<version>-py3-none-any.whl
-panelsolver --help
-panelsolver fmf --help
-panelsolver hypersonic --help
-fmfsolver-cli --help
-newtsolver-cli --help
-```
-
-Pinned legacy releases expose their historical `.xls` input and NPZ output
-again. Before returning an old case to Panel Solver, convert `.xls` to `.xlsx`
-or CSV and remove `save_npz_on`. Current Summary CSV has no `save_npz_on` or
-`npz_path`, and Panel Solver does not create NPZ. Existing files are not deleted.

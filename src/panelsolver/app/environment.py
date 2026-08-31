@@ -1,4 +1,4 @@
-"""Application-boundary resolution of neutral and compatibility settings."""
+"""Application-boundary resolution of Panel Solver settings."""
 
 from __future__ import annotations
 
@@ -12,39 +12,26 @@ from panelsolver.core import (
     resolve_parallel_chunk_cases,
 )
 
-_LEGACY_ENV_PREFIXES = frozenset({"FMFSOLVER", "NEWTSOLVER"})
-
-
-def _validated_legacy_prefix(value: str) -> str:
-    if value not in _LEGACY_ENV_PREFIXES:
-        raise ValueError("legacy_env_prefix is invalid")
-    return value
-
 
 def _environment_value(
     suffix: str,
-    legacy_env_prefix: str,
     environment: Mapping[str, str] | None,
 ) -> tuple[str, str] | None:
     values = os.environ if environment is None else environment
-    for name in (
-        f"PANELSOLVER_{suffix}",
-        f"{legacy_env_prefix}_{suffix}",
-    ):
-        raw = str(values.get(name, "")).strip()
-        if raw:
-            return name, raw
+    name = f"PANELSOLVER_{suffix}"
+    raw = str(values.get(name, "")).strip()
+    if raw:
+        return name, raw
     return None
 
 
 def _shielding_environment_integer(
     suffix: str,
-    legacy_env_prefix: str,
     environment: Mapping[str, str] | None,
     *,
     minimum: int,
 ) -> int | None:
-    found = _environment_value(suffix, legacy_env_prefix, environment)
+    found = _environment_value(suffix, environment)
     if found is None:
         return None
     name, raw = found
@@ -60,20 +47,17 @@ def _shielding_environment_integer(
 def resolve_shielding_environment(
     config: ShieldingConfig,
     *,
-    legacy_env_prefix: str,
     environment: Mapping[str, str] | None = None,
 ) -> ShieldingConfig:
-    """Resolve explicit > neutral > selected compatibility environment values."""
+    """Resolve explicit values before the canonical environment variable."""
     if not isinstance(config, ShieldingConfig):
         raise TypeError("config must be a ShieldingConfig instance")
-    prefix = _validated_legacy_prefix(legacy_env_prefix)
     if not config.enabled:
         return config
     batch_size = config.batch_size
     if batch_size is None:
         batch_size = _shielding_environment_integer(
             "SHIELD_BATCH_SIZE",
-            prefix,
             environment,
             minimum=1,
         )
@@ -87,16 +71,13 @@ def resolve_shielding_environment(
 def resolve_parallel_chunk_environment(
     chunk_cases: int | None = None,
     *,
-    legacy_env_prefix: str,
     environment: Mapping[str, str] | None = None,
 ) -> int:
-    """Resolve one product's chunk setting before entering the core scheduler."""
-    prefix = _validated_legacy_prefix(legacy_env_prefix)
+    """Resolve the chunk setting before entering the core scheduler."""
     if chunk_cases is not None:
         return resolve_parallel_chunk_cases(chunk_cases)
     found = _environment_value(
         "PARALLEL_CHUNK_CASES",
-        prefix,
         environment,
     )
     if found is None:

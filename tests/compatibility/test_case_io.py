@@ -8,23 +8,17 @@ from unittest.mock import patch
 
 import pandas as pd
 
-from fmfsolver._frontend import (
-    _build_artifact_signatures as build_fmf_signatures,
-)
-from newtsolver._frontend import (
-    _build_artifact_signatures as build_newt_signatures,
-)
-from panelsolver._compat.versions import (
-    FMFSOLVER_COMPATIBILITY_VERSION,
-    NEWTSOLVER_COMPATIBILITY_VERSION,
-)
 from panelsolver.app.csv_writer import CSV_ENCODING
 from panelsolver.core import MeshValidationPolicy, execute_case
 from panelsolver.domains import fmf as fmf_case_module
 from panelsolver.domains import hypersonic as newt_case_module
 from panelsolver.domains.fmf import adapt_row as adapt_fmf_row
+from panelsolver.domains.fmf import build_case_signature as build_fmf_signature
 from panelsolver.domains.fmf import read_cases as read_fmf_cases
 from panelsolver.domains.hypersonic import adapt_row as adapt_newt_row
+from panelsolver.domains.hypersonic import (
+    build_case_signature as build_newt_signature,
+)
 from panelsolver.domains.hypersonic import read_cases as read_newt_cases
 from tests.current_case_fixtures import read_current_cases
 
@@ -388,9 +382,7 @@ class CaseReaderCompatibilityTests(unittest.TestCase):
 
 
 class ProductCaseAdapterTests(unittest.TestCase):
-    def test_rows_bind_independent_models_mesh_policies_and_environment_prefixes(
-        self,
-    ) -> None:
+    def test_rows_bind_independent_models_and_mesh_policies(self) -> None:
         fmf_row = (
             read_current_cases(read_fmf_cases, _INPUTS / "fmfsolver_cases.csv")
             .iloc[0]
@@ -407,58 +399,33 @@ class ProductCaseAdapterTests(unittest.TestCase):
         self.assertEqual(
             MeshValidationPolicy.STRICT, fmf.request.mesh_validation_policy
         )
-        self.assertFalse(hasattr(fmf.request.shielding, "legacy_env_prefix"))
         self.assertEqual("hypersonic", newt.request.model_case.model_id)
         self.assertEqual(
             MeshValidationPolicy.STRICT, newt.request.mesh_validation_policy
         )
-        self.assertFalse(hasattr(newt.request.shielding, "legacy_env_prefix"))
-        self.assertEqual("1.3.8", FMFSOLVER_COMPATIBILITY_VERSION)
-        self.assertEqual("1.0.3", NEWTSOLVER_COMPATIBILITY_VERSION)
 
-    def test_prepared_primary_signature_is_exactly_the_execution_signature(
-        self,
-    ) -> None:
+    def test_built_case_signature_is_exactly_the_execution_signature(self) -> None:
         cases = (
             (
                 read_current_cases(read_fmf_cases, _INPUTS / "fmfsolver_cases.csv")
                 .iloc[0]
                 .to_dict(),
                 adapt_fmf_row,
-                build_fmf_signatures,
+                build_fmf_signature,
             ),
             (
                 read_current_cases(read_newt_cases, _INPUTS / "newtsolver_cases.csv")
                 .iloc[0]
                 .to_dict(),
                 adapt_newt_row,
-                build_newt_signatures,
+                build_newt_signature,
             ),
         )
         for row, adapter, signature_builder in cases:
             with self.subTest(case_id=row["case_id"]):
-                candidates = signature_builder(row)
+                signature = signature_builder(row)
                 result = execute_case(adapter(row).request)
-                self.assertEqual(result.signature, candidates.primary)
-                self.assertGreaterEqual(len(candidates.legacy_signatures), 1)
-
-    def test_direct_and_default_normalized_legacy_candidates_stay_ordered(self) -> None:
-        for frame, builder in (
-            (
-                read_current_cases(read_fmf_cases, _INPUTS / "fmfsolver_cases.csv"),
-                build_fmf_signatures,
-            ),
-            (
-                read_current_cases(read_newt_cases, _INPUTS / "newtsolver_cases.csv"),
-                build_newt_signatures,
-            ),
-        ):
-            row = frame.iloc[0].to_dict()
-            row.pop("attitude_input")
-            with self.subTest(case_id=row["case_id"]):
-                candidates = builder(row)
-                self.assertEqual(2, len(candidates.legacy_signatures))
-                self.assertNotEqual(*candidates.legacy_signatures)
+                self.assertEqual(result.signature, signature)
 
     def test_beta_sin_endpoint_does_not_escape_beta_tan_principal_domain(self) -> None:
         frame = read_current_cases(read_newt_cases, _INPUTS / "newtsolver_cases.csv")

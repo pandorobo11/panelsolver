@@ -13,8 +13,6 @@ contains the extracted `examples/` folder.
 panelsolver fmf --input examples/fmf/basic.csv --workers 1 --checkpoint-every-cases 0
 ```
 
-The legacy compatibility form remains `fmfsolver-cli` with the same options.
-
 This is a Sentman Mode A case using `S=5`, `Ti_K=300 K`, and `Tw_K=300 K`.
 Its summary and VTP output are written to `examples/fmf/outputs/`.
 
@@ -23,8 +21,6 @@ Its summary and VTP output are written to `examples/fmf/outputs/`.
 ```bash
 panelsolver hypersonic --input examples/hypersonic/basic.csv --workers 1 --checkpoint-every-cases 0
 ```
-
-The legacy compatibility form remains `newtsolver-cli` with the same options.
 
 This is a `Mach=6`, `gamma=1.4` case. Omitted equation columns select the
 defaults: Newtonian on windward panels and zero pressure (`shield`) on leeward
@@ -42,9 +38,7 @@ panelsolver-gui hypersonic
 Use **File > New from Example > Basic** to copy the matching table and geometry
 to a workspace, or select the corresponding `basic.csv` directly. Select its
 row and choose **Run Selected Cases**. The GUI displays the generated VTP when
-one is saved. The legacy
-`fmfsolver`, `fmfsolver-gui`, `newtsolver`, and `newtsolver-gui` commands remain
-compatibility launchers with their existing titles.
+one is saved.
 
 ## What was written
 

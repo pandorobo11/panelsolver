@@ -8,17 +8,17 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from fmfsolver.app.cli_app import _CLI_POLICY as FMF_CLI_POLICY
-from fmfsolver.app.cli_app import main as fmf_main
-from newtsolver.app.cli_app import _CLI_POLICY as NEWT_CLI_POLICY
-from newtsolver.app.cli_app import main as newt_main
 from panelsolver.app.cli import build_parser as build_product_parser
 from panelsolver.app.cli import parse_case_ids
 from panelsolver.app.csv_writer import CSV_ENCODING
 from panelsolver.app.runtime import DEFAULT_CHECKPOINT_CASES
 from panelsolver.cli import build_parser as build_canonical_parser
 from panelsolver.cli import main as canonical_main
+from panelsolver.domains.fmf import CANONICAL_CLI_POLICY as FMF_CLI_POLICY
 from panelsolver.domains.fmf import read_cases as read_fmf_cases
+from panelsolver.domains.hypersonic import (
+    CANONICAL_CLI_POLICY as NEWT_CLI_POLICY,
+)
 from panelsolver.domains.hypersonic import read_cases as read_newt_cases
 from tests.current_case_fixtures import read_current_cases
 
@@ -33,7 +33,15 @@ def build_newt_parser():
     return build_product_parser(NEWT_CLI_POLICY)
 
 
-class CliCompatibilityTests(unittest.TestCase):
+def fmf_main(argv: list[str]) -> int:
+    return canonical_main(["fmf", *argv])
+
+
+def newt_main(argv: list[str]) -> int:
+    return canonical_main(["hypersonic", *argv])
+
+
+class CanonicalCliTests(unittest.TestCase):
     def test_canonical_help_names_flow_domains_and_delegated_program(self) -> None:
         with patch.dict(os.environ, {"COLUMNS": "80"}):
             help_text = build_canonical_parser().format_help()
@@ -60,13 +68,13 @@ class CliCompatibilityTests(unittest.TestCase):
         with patch.dict(os.environ, {"COLUMNS": "80"}):
             for program, description, builder in (
                 (
-                    "fmfsolver-cli",
-                    "Run FMF solver from CSV/XLSX/XLSM input without GUI.",
+                    "panelsolver fmf",
+                    "Run the Sentman free-molecular-flow model from CSV/XLSX/XLSM input.",
                     build_fmf_parser,
                 ),
                 (
-                    "newtsolver-cli",
-                    "Run newtsolver from CSV/XLSX/XLSM input without GUI.",
+                    "panelsolver hypersonic",
+                    "Run hypersonic panel models from CSV/XLSX/XLSM input.",
                     build_newt_parser,
                 ),
             ):

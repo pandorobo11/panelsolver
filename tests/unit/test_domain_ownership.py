@@ -8,8 +8,6 @@ from pathlib import Path
 
 import pytest
 
-from fmfsolver.app.cli_app import _CLI_POLICY as LEGACY_FMF_CLI_POLICY
-from newtsolver.app.cli_app import _CLI_POLICY as LEGACY_HYPERSONIC_CLI_POLICY
 from panelsolver.domains import fmf, hypersonic
 
 REPOSITORY_ROOT = Path(__file__).parents[2]
@@ -22,16 +20,6 @@ class DomainOwnershipTests(unittest.TestCase):
         self.assertEqual("fmf", fmf.RUNTIME_POLICY.product_id)
         self.assertEqual("hypersonic", hypersonic.CASE_POLICY.product_id)
         self.assertEqual("hypersonic", hypersonic.RUNTIME_POLICY.product_id)
-
-    def test_legacy_cli_frontends_delegate_to_canonical_domain_objects(self) -> None:
-        self.assertIs(
-            fmf.RUNTIME_POLICY,
-            LEGACY_FMF_CLI_POLICY.runtime_policy,
-        )
-        self.assertIs(
-            hypersonic.RUNTIME_POLICY,
-            LEGACY_HYPERSONIC_CLI_POLICY.runtime_policy,
-        )
 
     @pytest.mark.slow
     def test_canonical_domain_execution_does_not_load_legacy_or_compat(self) -> None:
@@ -53,8 +41,8 @@ with tempfile.TemporaryDirectory() as temp_dir:
         result = domain.run_cases((row,))
         assert len(result.cases) == 1
         assert result.cases[0].csv.rows[0]['solver_version'] == {INSTALLED_VERSION!r}
-        candidates = domain.build_primary_signatures(row)
-        assert candidates.legacy_signatures == ()
+        signature = domain.build_case_signature(row)
+        assert len(signature.digest) == 64
 
 loaded = sorted(
     name for name in sys.modules

@@ -189,15 +189,6 @@ jobs:
         run: >-
           uv run --no-sync python scripts/release_tools.py dry-run .
 
-      - name: Probe exact pinned legacy rollback and return
-        timeout-minutes: 15
-        shell: bash
-        run: |
-          PANEL_WHEEL="$(uv run --no-sync python scripts/release_tools.py verify-wheel .)"
-          uv run --no-sync python scripts/probe_legacy_rollback.py . \
-            --artifact-dir "${RUNNER_TEMP}/rollback-artifacts" \
-            --panel-wheel "$PANEL_WHEEL"
-
       - name: Reinstall built wheel
         run: >-
           uv run --no-sync python scripts/release_tools.py reinstall-wheel .

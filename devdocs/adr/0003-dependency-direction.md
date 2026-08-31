@@ -3,6 +3,10 @@
 - Status: Accepted
 - Date: 2026-08-12
 
+The compatibility-frontend dependency direction is superseded by
+[ADR 0015](0015-remove-legacy-product-identities.md). The inward dependency
+rules for the canonical core, models, app, domains, and GUI remain in force.
+
 ## Context
 
 The current applications couple solver-specific imports into duplicated CLI and

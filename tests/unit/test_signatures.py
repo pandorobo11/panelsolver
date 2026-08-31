@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import pickle
 import unittest
 
@@ -8,7 +7,6 @@ from panelsolver.core import (
     CommonCasePayload,
     ResolvedShieldingConfig,
     SignatureError,
-    SignatureMatchKind,
     build_case_signature,
     match_case_signature,
 )
@@ -107,50 +105,13 @@ class SignatureTests(unittest.TestCase):
         with self.assertRaises(SignatureError):
             _signature(model_algorithm_version=" version ")
 
-    def test_primary_precedes_opaque_legacy_fallbacks(self) -> None:
-        primary = _signature()
-        legacy = hashlib.sha256(b"legacy").hexdigest()
-        duplicate = primary.digest
-
-        match = match_case_signature(
-            primary.digest,
-            primary,
-            legacy_signatures=(duplicate, legacy),
-        )
-        self.assertEqual(SignatureMatchKind.PRIMARY, match.kind)
-        fallback = match_case_signature(
-            legacy,
-            primary,
-            legacy_signatures=(duplicate, legacy),
-        )
-        self.assertEqual(SignatureMatchKind.LEGACY, fallback.kind)
-        self.assertEqual(1, fallback.legacy_index)
-        self.assertEqual(
-            SignatureMatchKind.NONE,
-            match_case_signature("<invalid-stored>", primary).kind,
-        )
-
-    def test_direct_and_file_legacy_variants_remain_distinct(self) -> None:
-        primary = _signature()
-        direct = hashlib.sha256(b"direct-defaults").hexdigest()
-        normalized_file = hashlib.sha256(b"file-defaults").hexdigest()
-        self.assertNotEqual(direct, normalized_file)
-        self.assertEqual(
-            0,
-            match_case_signature(
-                direct,
-                primary,
-                legacy_signatures=(direct, normalized_file),
-            ).legacy_index,
-        )
-        self.assertEqual(
-            1,
-            match_case_signature(
-                normalized_file,
-                primary,
-                legacy_signatures=(direct, normalized_file),
-            ).legacy_index,
-        )
+    def test_artifact_matching_accepts_only_the_current_signature(self) -> None:
+        current = _signature()
+        self.assertTrue(match_case_signature(current.digest, current))
+        self.assertFalse(match_case_signature("<invalid-stored>", current))
+        self.assertFalse(match_case_signature("0" * 64, current))
+        with self.assertRaises(TypeError):
+            match_case_signature(current.digest, object())
 
 
 if __name__ == "__main__":

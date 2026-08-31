@@ -5,6 +5,10 @@
 - Supersedes: the direct-Python compatibility portions of ADR 0004, ADR 0007,
   ADR 0008, and ADR 0012
 
+The command-only packages, six command entry points, GUI identities, compatibility
+versions, and artifact-signature fallback retained by this decision are
+superseded by [ADR 0015](0015-remove-legacy-product-identities.md).
+
 ## Context
 
 The migration retained most modules and functions from the pinned `fmfsolver`

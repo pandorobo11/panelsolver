@@ -690,10 +690,8 @@ class RuntimeTests(unittest.TestCase):
             self.assertEqual([(1, 1)], progress)
             self.assertTrue(any("[SAVE] final" in message for message in logs))
             self.assertEqual(
-                FMF_GUI_ADAPTERS.build_case_signatures(row).primary.digest,
-                FMF_GUI_ADAPTERS.build_case_signatures(
-                    result.first_case_row
-                ).primary.digest,
+                FMF_GUI_ADAPTERS.build_case_signature(row).digest,
+                FMF_GUI_ADAPTERS.build_case_signature(result.first_case_row).digest,
             )
 
     def test_gui_checkpoint_value_reaches_domain_runtime(self) -> None:

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import configparser
 import email.parser
 import hashlib
 import importlib.metadata
@@ -29,6 +30,10 @@ _ARTIFACT_KINDS = ("wheel", "sdist", "docs", "examples")
 _ZIP_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
 _CI_WORKFLOW = "ci.yml"
 _PROTECTED_BRANCH = "main"
+_EXPECTED_CONSOLE_SCRIPTS = {
+    "panelsolver": "panelsolver.cli:main",
+    "panelsolver-gui": "panelsolver.gui:main",
+}
 _DOCS_LICENSE_DIRECTORY = "THIRD_PARTY_LICENSES"
 _RTD_CSS_LICENSES = (
     "MKDOCS-BSD-2-CLAUSE.txt",
@@ -823,6 +828,21 @@ def verify_wheel_contents(repository: Path, wheel: Path) -> None:
     """Verify packaged docs, legal files, identity, and publication metadata."""
     with zipfile.ZipFile(wheel) as archive:
         names = set(archive.namelist())
+        if any(
+            name.startswith(("fmfsolver/", "newtsolver/", "panelsolver/_compat/"))
+            for name in names
+        ):
+            raise RuntimeError("wheel contains removed product or compatibility code")
+        entry_point_files = [
+            name for name in names if name.endswith(".dist-info/entry_points.txt")
+        ]
+        if len(entry_point_files) != 1:
+            raise RuntimeError("wheel must contain exactly one entry_points.txt")
+        entry_points = configparser.ConfigParser()
+        entry_points.read_string(archive.read(entry_point_files[0]).decode("utf-8"))
+        scripts = dict(entry_points.items("console_scripts"))
+        if scripts != _EXPECTED_CONSOLE_SCRIPTS:
+            raise RuntimeError(f"wheel console scripts changed: {scripts!r}")
         required_docs = {
             "panelsolver/_docs_site/index.html",
             "panelsolver/_docs_site/solvers/fmf.html",
@@ -854,6 +874,16 @@ def verify_wheel_contents(repository: Path, wheel: Path) -> None:
         _verify_documentation_exclusions(docs_names, artifact="wheel documentation")
         if any("devdocs" in PurePosixPath(name).parts for name in names):
             raise RuntimeError("wheel contains developer documentation")
+        source_roots = {
+            PurePosixPath(name).parts[0]
+            for name in names
+            if PurePosixPath(name).parts
+            and ".dist-info" not in PurePosixPath(name).parts[0]
+        }
+        if source_roots != {"panelsolver"}:
+            raise RuntimeError(
+                f"wheel production package roots changed: {sorted(source_roots)}"
+            )
         verify_offline_documentation_licenses(
             docs_names,
             lambda name: archive.read(f"{docs_prefix}{name}"),
@@ -911,6 +941,13 @@ def verify_sdist_contents(repository: Path, sdist: Path) -> None:
     if len(roots) != 1:
         raise RuntimeError(f"sdist must have one archive root, found {sorted(roots)}")
     root = next(iter(roots))
+    removed_prefixes = (
+        f"{root}/src/fmfsolver/",
+        f"{root}/src/newtsolver/",
+        f"{root}/src/panelsolver/_compat/",
+    )
+    if any(name.startswith(removed_prefixes) for name in names):
+        raise RuntimeError("sdist contains removed product or compatibility code")
     required = {
         f"{root}/pyproject.toml",
         f"{root}/LICENSE",

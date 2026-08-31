@@ -58,7 +58,6 @@ from .runtime import (
 )
 from .solver_spec import (
     COMMON_SCALAR_LABELS,
-    ArtifactSignatureCandidates,
     CaseColumnKind,
     CaseColumnPresentation,
     CaseColumnWidthRole,
@@ -94,7 +93,6 @@ __all__ = (
     "AdaptedCase",
     "ArtifactCaseMatch",
     "ArtifactLoadMode",
-    "ArtifactSignatureCandidates",
     "ArtifactViewState",
     "ArtifactViewStatus",
     "AtomicCsvWritePolicy",

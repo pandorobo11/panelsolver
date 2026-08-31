@@ -11,10 +11,6 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6 import QtCore, QtWidgets
 
-from fmfsolver._frontend import _legacy_gui_spec as fmf_solver_spec
-from fmfsolver.app import gui_app as fmf_gui_app
-from newtsolver._frontend import _legacy_gui_spec as newt_solver_spec
-from newtsolver.app import gui_app as newt_gui_app
 from panelsolver import gui as canonical_gui
 from panelsolver.app import GuiRunResult, SolverGuiAdapters
 from panelsolver.app.gui_bootstrap import (
@@ -26,6 +22,8 @@ from panelsolver.app.gui_bootstrap import (
     prepare_gui_spec,
     run_gui,
 )
+from panelsolver.domains.fmf import gui_spec as fmf_solver_spec
+from panelsolver.domains.hypersonic import gui_spec as newt_solver_spec
 
 
 class _FakeCases:
@@ -49,7 +47,7 @@ class _FakeWindow:
 def _adapters() -> SolverGuiAdapters:
     return SolverGuiAdapters(
         read_cases=lambda _path: (),
-        build_case_signatures=lambda _row: (),
+        build_case_signature=lambda _row: (),
         run_cases=lambda _request: GuiRunResult(),
         validate_output_path=lambda out, _input, _rows: Path(out),
         resolve_velocity_hat_stl=lambda _row: (1.0, 0.0, 0.0),
@@ -88,7 +86,7 @@ class GuiBootstrapTests(unittest.TestCase):
             fmf_solver_spec(adapters=None),
             window_factory=_FakeWindow,
         )
-        self.assertEqual("fmfsolver", window.spec.product_id)
+        self.assertEqual("fmf", window.spec.product_id)
         self.assertIsNotNone(window.spec.adapters)
         self.assertIn("not configured", window.cases_panel.messages[-1])
 
@@ -197,37 +195,6 @@ class GuiBootstrapTests(unittest.TestCase):
         ):
             _set_windows_app_user_model_id()
         set_app_id.assert_called_once_with(_WINDOWS_APP_USER_MODEL_ID)
-
-    def test_compatibility_launchers_select_independent_specs_only(self) -> None:
-        captured = []
-
-        def fake_run(spec):
-            captured.append(spec)
-            return len(captured)
-
-        with patch(
-            "panelsolver.app.gui_bootstrap.run_gui",
-            side_effect=fake_run,
-        ):
-            with self.assertRaises(SystemExit) as fmf_exit:
-                fmf_gui_app.main()
-            with self.assertRaises(SystemExit) as newt_exit:
-                newt_gui_app.main()
-        self.assertEqual(1, fmf_exit.exception.code)
-        self.assertEqual(2, newt_exit.exception.code)
-        fmf, newt = captured
-        self.assertEqual("Sentman FMF Solver (GUI)", fmf.window_title)
-        self.assertIsNotNone(fmf.adapters)
-        self.assertEqual("sentman", fmf.model_id)
-        self.assertIn("S", fmf.case_columns)
-        self.assertNotIn("gamma", fmf.case_columns)
-        self.assertEqual("newtsolver (GUI)", newt.window_title)
-        self.assertIsNotNone(newt.adapters)
-        self.assertEqual("hypersonic", newt.model_id)
-        self.assertIn("gamma", newt.case_columns)
-        self.assertNotIn("S", newt.case_columns)
-        self.assertNotEqual(fmf.preferred_scalars, newt.preferred_scalars)
-        self.assertIsNot(fmf.format_case, newt.format_case)
 
     def test_canonical_launcher_reuses_specs_with_domain_visible_identity(self) -> None:
         fmf = canonical_gui.canonical_gui_spec("fmf")

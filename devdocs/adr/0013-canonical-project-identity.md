@@ -4,6 +4,11 @@
 - Date: 2026-08-16
 - Supersedes: distribution-name wording in ADR 0007, ADR 0011, and ADR 0012
 
+The legacy-package and legacy-command rows of this identity table, plus related
+rollback wording, are superseded by
+[ADR 0015](0015-remove-legacy-product-identities.md). All canonical identity rows
+remain in force.
+
 ## Context
 
 The canonical Python package and commands already use `panelsolver`, while the

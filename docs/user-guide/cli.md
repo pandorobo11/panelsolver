@@ -11,9 +11,9 @@ panelsolver hypersonic --input PATH [--output PATH] [--workers N]
                        [--verbose] [--plain] [--debug]
 ```
 
-Here `fmf` means the free-molecular-flow domain selector. It is not the legacy
-`fmfsolver` distribution or product identity. The selected physical model is
-Sentman; the stable Python API names the domain as `FMFCase` and `solve_fmf()`.
+Here `fmf` means the free-molecular-flow domain selector. The selected physical
+model is Sentman; the stable Python API names the domain as `FMFCase` and
+`solve_fmf()`.
 
 | Selector | Flow-domain identity | Physical model identity | Reused case schema |
 |---|---|---|---|
@@ -23,21 +23,9 @@ Sentman; the stable Python API names the domain as `FMFCase` and `solve_fmf()`.
 The final column is a schema/application-service reuse choice, not the identity
 of the canonical command.
 
-The existing legacy compatibility batch commands remain and share the same
-options:
-
-```text
-fmfsolver-cli --input PATH [--output PATH] [--workers N]
-              [--cases ID [ID ...]] [--checkpoint-every-cases N]
-              [--verbose] [--plain] [--debug]
-newtsolver-cli --input PATH [--output PATH] [--workers N]
-               [--cases ID [ID ...]] [--checkpoint-every-cases N]
-               [--verbose] [--plain] [--debug]
-```
-
-All four batch forms use the same case-table reader and application service.
-They accept CSV, XLSX, and XLSM. Summary CSV and optional per-case VTP are the
-only formal outputs; legacy BIFF `.xls` and NPZ are not supported.
+Both batch forms use the same case-table reader and application service. They
+accept CSV, XLSX, and XLSM. Summary CSV and optional per-case VTP are the only
+formal outputs; Excel 97–2003 BIFF `.xls` and NPZ are not supported.
 
 | Option | Meaning | Default |
 |---|---|---|
@@ -53,8 +41,8 @@ only formal outputs; legacy BIFF `.xls` and NPZ are not supported.
 Examples:
 
 ```bash
-fmfsolver-cli -i cases.csv --cases mode_a,mode_b -j 2
-newtsolver-cli -i cases.xlsx -o results.csv --cases baseline -j 1
+panelsolver fmf -i cases.csv --cases mode_a,mode_b -j 2
+panelsolver hypersonic -i cases.xlsx -o results.csv --cases baseline -j 1
 ```
 
 Selected rows retain input-table order. Unknown case IDs reject the request.
