@@ -24,6 +24,10 @@ from panelsolver.app import (
 )
 from panelsolver.app.csv_writer import CSV_ENCODING, write_csv_atomic
 from panelsolver.app.runtime import (
+    _RAY_ACCEL_HINTED_PRODUCTS,
+    _maybe_log_ray_accel_hint,
+)
+from panelsolver.app.runtime import (
     _run_prepared_product_case as _real_run_prepared_product_case,
 )
 from panelsolver.core import (
@@ -74,6 +78,23 @@ def _assert_artifact_semantics_equal(
 
 
 class RuntimeTests(unittest.TestCase):
+    def test_ray_accel_hint_uses_checkout_or_github_release_installation(self) -> None:
+        logs: list[str] = []
+        product_id = FMF_POLICY.product_id
+        was_hinted = product_id in _RAY_ACCEL_HINTED_PRODUCTS
+        _RAY_ACCEL_HINTED_PRODUCTS.discard(product_id)
+        try:
+            with mock.patch("panelsolver.app.runtime.trimesh_ray.has_embree", False):
+                _maybe_log_ray_accel_hint(FMF_POLICY, logs.append)
+        finally:
+            if not was_hinted:
+                _RAY_ACCEL_HINTED_PRODUCTS.discard(product_id)
+
+        self.assertEqual(1, len(logs))
+        self.assertIn("uv sync --extra rayaccel", logs[0])
+        self.assertIn("GitHub Release wheel", logs[0])
+        self.assertNotIn("pip install", logs[0])
+
     def _fmf_rows(self, root: Path, count: int) -> tuple[dict[str, object], ...]:
         base = (
             read_current_cases(read_fmf_cases, INPUTS / "fmfsolver_cases.csv")

@@ -7,19 +7,25 @@
   PyVista/VTK, Trimesh, SciPy, pandas, and rtree
 - An STL mesh and a CSV, XLSX, or XLSM case table
 
-## Install
+## Install a release
 
-For normal use, install the canonical distribution:
-
-```bash
-python -m pip install panelsolver
-```
-
-To add the platform-specific Embree binding used by the accelerated ray backend:
+Panel Solver v0.1.0 is published through the
+[GitHub Releases page](https://github.com/pandorobo11/panelsolver/releases),
+not PyPI. Download `panelsolver-<version>-py3-none-any.whl` from the selected
+release, change to the download directory, and install that local wheel:
 
 ```bash
-python -m pip install 'panelsolver[rayaccel]'
+python -m pip install ./panelsolver-<version>-py3-none-any.whl
 ```
+
+To install or reinstall the same downloaded wheel with the platform-specific
+Embree binding used by the accelerated ray backend:
+
+```bash
+python -m pip install "./panelsolver-<version>-py3-none-any.whl[rayaccel]"
+```
+
+## Install from a checkout
 
 From a checkout:
 
@@ -59,5 +65,5 @@ top-level packages and console commands. Remove the legacy packages first:
 
 ```bash
 python -m pip uninstall fmfsolver newtsolver
-python -m pip install panelsolver
+python -m pip install ./panelsolver-<version>-py3-none-any.whl
 ```

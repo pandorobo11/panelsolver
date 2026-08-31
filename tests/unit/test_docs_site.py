@@ -90,6 +90,8 @@ class DocumentationSiteTests(unittest.TestCase):
             "reference/hypersonic-input.html",
             "reference/output-formats.html",
             "user-guide/outputs.html",
+            "assets/screenshots/gui-overview.png",
+            "assets/screenshots/gui-result.png",
             "LICENSE",
             "THIRD_PARTY_NOTICES.md",
         ):

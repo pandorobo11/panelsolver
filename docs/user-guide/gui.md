@@ -28,6 +28,11 @@ local URL, the GUI reports an error. An editable checkout may build a temporary
 site with the docs dependency group installed; that temporary resource remains
 alive for the lifetime of the window.
 
+![Panel Solver Hypersonic GUI with a loaded multi-case table and empty Viewer](../assets/screenshots/gui-overview.png)
+
+*A loaded Hypersonic multi-case table with run controls visible and the Viewer
+ready for result inspection.*
+
 ## Run cases
 
 1. Choose **Select Input File** or **File > Open Input File...** and open a CSV,
@@ -89,6 +94,11 @@ identity-mismatched artifacts are not rendered automatically. The compact status
 row above the Viewer explains what result is displayed or why the selected case's
 result is unavailable; the signature and field-data contract is documented in
 [Output formats](../reference/output-formats.md).
+
+![Panel Solver Viewer showing the newt_pm cube result colored by Cp](../assets/screenshots/gui-result.png)
+
+*The `newt_pm` case with its current VTP matched automatically and the cube
+geometry displayed using `Cp`.*
 
 **Open VTP...** remains an inspection path: it can display an artifact that does
 not strictly match any current input row. The status identifies that artifact as

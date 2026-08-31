@@ -150,6 +150,10 @@ def capture_main_window(window: QtWidgets.QMainWindow, output_path: Path) -> Non
     if interactor.width() <= 0 or interactor.height() <= 0:
         raise RuntimeError("VTK interactor has no drawable area")
 
+    # Grab Qt-owned widgets before asking VTK to render its native child surface.
+    # Some platform backends invalidate sibling backing-store regions during the
+    # VTK export; the earlier client grab preserves a complete table and chrome.
+    client = window.grab()
     with tempfile.TemporaryDirectory(prefix="panelsolver-gui-capture-") as temp_dir:
         viewport_path = Path(temp_dir) / "viewport.png"
         plotter.screenshot(str(viewport_path))
@@ -157,7 +161,6 @@ def capture_main_window(window: QtWidgets.QMainWindow, output_path: Path) -> Non
         if viewport.isNull():
             raise RuntimeError("VTK viewport screenshot could not be read")
 
-        client = window.grab()
         viewport_origin = interactor.mapTo(window, QtCore.QPoint(0, 0))
         viewport_rect = QtCore.QRect(viewport_origin, interactor.size())
         painter = QtGui.QPainter(client)

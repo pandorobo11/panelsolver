@@ -249,7 +249,7 @@ jobs:
           CLEAN_VENV="${RUNNER_TEMP}/panelsolver-clean"
           WHEEL="$(python scripts/release_tools.py verify-wheel . --dist-dir dist)"
           uv venv --python 3.12 "${CLEAN_VENV}"
-          uv pip install --python "${CLEAN_VENV}/bin/python" "${WHEEL}"
+          uv pip install --python "${CLEAN_VENV}/bin/python" "${WHEEL}[rayaccel]"
           cd "${RUNNER_TEMP}"
           QT_QPA_PLATFORM=offscreen "${CLEAN_VENV}/bin/python" \
             "${GITHUB_WORKSPACE}/scripts/smoke_installed_wheel.py" \

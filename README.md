@@ -15,11 +15,14 @@ modified Newtonian, tangent-wedge, tangent-cone, or Prandtl–Meyer methods. See
 
 ## Requirements and installation
 
-Python 3.12 or newer is required. Install the published distribution with:
+Python 3.12 or newer is required. Panel Solver v0.1.0 is distributed through
+[GitHub Releases](https://github.com/pandorobo11/panelsolver/releases), not
+PyPI. Download `panelsolver-<version>-py3-none-any.whl` from the release, then
+install that local wheel:
 
 ```bash
-python -m pip install panelsolver
-python -m pip install 'panelsolver[rayaccel]'  # optional Embree backend
+python -m pip install ./panelsolver-<version>-py3-none-any.whl
+python -m pip install "./panelsolver-<version>-py3-none-any.whl[rayaccel]"  # optional Embree backend
 ```
 
 From a checkout:

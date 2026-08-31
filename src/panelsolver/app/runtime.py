@@ -49,7 +49,6 @@ type ProjectionAdditionsBuilder = Callable[
 ]
 
 _RAY_ACCEL_HINTED_PRODUCTS: set[str] = set()
-_RAY_ACCEL_INSTALL_TARGET = "panelsolver[rayaccel]"
 DEFAULT_CHECKPOINT_CASES = 2000
 
 
@@ -352,8 +351,9 @@ def _maybe_log_ray_accel_hint(policy: ProductRuntimePolicy, logfn: LogCallback) 
     else:
         logfn(
             "[INFO] Ray backend: rtree (ray_triangle). Optional acceleration is "
-            "available: uv sync --extra rayaccel (or pip install "
-            f'"{_RAY_ACCEL_INSTALL_TARGET}").'
+            "available: checkout users can run uv sync --extra rayaccel; "
+            "release users should reinstall the current GitHub Release wheel "
+            "with the rayaccel extra (see Installation)."
         )
     _RAY_ACCEL_HINTED_PRODUCTS.add(policy.product_id)
 
