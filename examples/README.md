@@ -14,12 +14,11 @@ schema; Summary CSV and VTP are the supported outputs.
 The examples use a 1 m scale, an origin moment reference, `Aref_m2=1`, and 1 m
 moment reference lengths. These simple global references make component rows
 add directly to the total row for all eight coefficients. The four meshes in
-`geometry/` are simple geometric fixtures created by the maintainer for the
-legacy projects and carried forward byte-identically from the small Phase 1
-inputs. The current example CSVs were created for Panel Solver; they do not
-copy the legacy sample matrices. These files are project material distributed
-under Apache-2.0. Examples exercise the current canonical readers, defaults,
-validation, and output semantics.
+`geometry/` are simple geometric fixtures carried forward byte-identically from
+the small Phase 1 inputs. The current example CSVs were created for Panel Solver;
+they do not copy the historical sample matrices. These files are project
+material distributed under Apache-2.0. Examples exercise the current canonical
+readers, defaults, validation, and output semantics.
 
 The first-release examples archive is named
 `panelsolver-examples-v<version>.zip`. It preserves this `examples/` layout and
@@ -28,8 +27,7 @@ outputs, caches, NPZ, legacy `.xls`, test fixtures, and migration inputs are not
 release examples.
 
 The current example directories use the canonical flow-domain names
-`examples/fmf/` and `examples/hypersonic/`. Legacy compatibility commands can
-read the same tables without changing their paths.
+`examples/fmf/` and `examples/hypersonic/`.
 
 For the complete schemas, see the
 [FMF input reference](../docs/reference/fmf-input.md) and
@@ -135,8 +133,7 @@ remain directly under `outputs/`.
   region. The fifth case uses a cube, nonzero alpha/beta, Newtonian windward,
   and Prandtl–Meyer leeward behavior.
 - Naming: the `newt_*` case IDs here denote Newtonian-family or
-  Newtonian/Prandtl–Meyer physical-method combinations, not the legacy
-  `newtsolver` product identity.
+  Newtonian/Prandtl–Meyer physical-method combinations.
 - Observe: Newtonian, Modified Newtonian, Tangent Wedge, and Tangent Cone all
   return finite but distinct `Cp_n` values. The `newt_pm.vtp` cube has negative
   `Cp_n` on at least one leeward panel.
@@ -182,10 +179,3 @@ regardless of its windward/leeward pressure selector.
 - Observe: the resolved freestream direction and all eight coefficients agree
   within the algebraic hypersonic tolerance (`1e-10`).
 - Output: `examples/hypersonic/outputs/attitude_modes/`.
-
-## Legacy compatibility
-
-The same tables remain usable through `fmfsolver-cli` and `newtsolver-cli`, and
-the legacy GUI launchers `fmfsolver`, `fmfsolver-gui`, `newtsolver`, and
-`newtsolver-gui` retain their existing identities. New instructions should use
-the canonical domain commands above.

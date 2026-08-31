@@ -46,11 +46,6 @@ Both case types apply the portable `case_id` rules documented in
 therefore produce the same canonical signature identity when all other inputs
 match.
 
-## Unsupported legacy Python imports
-
-Modules, functions, classes, attributes, and version names under `fmfsolver.*`
-and `newtsolver.*` are not supported public Python APIs. Those package names are
-present only to implement the supported legacy console commands. Migrate Python
-integrations to the package-root API above, or use a documented command for
-case-table execution and artifact generation. The supported product surface is
-summarized in [Compatibility](compatibility.md).
+No other Python package identity is distributed. Use the package-root API above,
+or a documented command for case-table execution and artifact generation. The
+supported product surface is summarized in [Compatibility](compatibility.md).

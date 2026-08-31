@@ -1,8 +1,6 @@
 import unittest
 from pathlib import Path
 
-from fmfsolver._frontend import _legacy_gui_spec as fmf_solver_spec
-from newtsolver._frontend import _legacy_gui_spec as newt_solver_spec
 from panelsolver.app import (
     CaseColumnKind,
     CaseColumnPresentation,
@@ -13,7 +11,9 @@ from panelsolver.app import (
     SolverSpec,
 )
 from panelsolver.domains.fmf import format_case as format_fmf_case
+from panelsolver.domains.fmf import gui_spec as fmf_solver_spec
 from panelsolver.domains.hypersonic import format_case as format_newt_case
+from panelsolver.domains.hypersonic import gui_spec as newt_solver_spec
 
 
 def _format(row):
@@ -184,7 +184,7 @@ class SolverSpecTests(unittest.TestCase):
     def test_adapter_bundle_requires_every_member_to_be_callable(self) -> None:
         adapters = SolverGuiAdapters(
             read_cases=lambda _path: (),
-            build_case_signatures=lambda _row: (),
+            build_case_signature=lambda _row: (),
             run_cases=lambda _request: None,
             validate_output_path=lambda out, _input, _rows: Path(out),
             resolve_velocity_hat_stl=lambda _row: (1.0, 0.0, 0.0),
@@ -193,7 +193,7 @@ class SolverSpecTests(unittest.TestCase):
         with self.assertRaises(TypeError):
             SolverGuiAdapters(
                 read_cases=None,
-                build_case_signatures=lambda _row: (),
+                build_case_signature=lambda _row: (),
                 run_cases=lambda _request: None,
                 validate_output_path=lambda out, _input, _rows: Path(out),
                 resolve_velocity_hat_stl=lambda _row: (1.0, 0.0, 0.0),
@@ -202,12 +202,12 @@ class SolverSpecTests(unittest.TestCase):
     def test_product_specs_retain_titles_models_and_schemas(self) -> None:
         fmf = fmf_solver_spec()
         newt = newt_solver_spec()
-        self.assertEqual("Sentman FMF Solver (GUI)", fmf.window_title)
+        self.assertEqual("Panel Solver — FMF", fmf.window_title)
         self.assertEqual("sentman", fmf.model_id)
         self.assertEqual("FMF", fmf.domain_name)
         self.assertIn("S", fmf.case_columns)
         self.assertNotIn("gamma", fmf.case_columns)
-        self.assertEqual("newtsolver (GUI)", newt.window_title)
+        self.assertEqual("Panel Solver — Hypersonic", newt.window_title)
         self.assertEqual("hypersonic", newt.model_id)
         self.assertEqual("Hypersonic", newt.domain_name)
         self.assertIn("gamma", newt.case_columns)

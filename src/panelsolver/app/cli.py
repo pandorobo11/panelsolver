@@ -29,7 +29,7 @@ type ValidateOutputCallback = Callable[
 
 @dataclass(frozen=True, slots=True)
 class ProductCliPolicy:
-    """Exact parser text and product callbacks for one legacy command."""
+    """Exact parser text and domain callbacks for one canonical command."""
 
     program: str
     description: str

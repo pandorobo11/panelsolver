@@ -34,7 +34,8 @@ portable across case-insensitive Windows and common macOS filesystems.
 
 Confirm that `save_vtp_on=1`, that the file is under the resolved `out_dir`, and
 that it was generated for the selected case. Automatic loading requires the case
-ID and an accepted current or legacy signature to match.
+ID and current canonical signature to match. Regenerate predecessor-product VTPs
+with Panel Solver when automatic loading is required; they are unsupported.
 
 ## A canceled run does not stop immediately
 
@@ -42,10 +43,9 @@ Cancellation is observed between cases. A currently executing ray query or
 physical-model solve is allowed to finish. Treat artifacts from failed or
 canceled runs as partial state.
 
-## A legacy Python import fails
+## A Python import fails
 
-The installed distribution is `panelsolver`; its version appears in newly
-generated FMF and Hypersonic Summary CSV/VTP artifacts. Direct-Python APIs under
-`fmfsolver.*` and `newtsolver.*`, including `__version__` attributes, are not
-supported public APIs. Use the documented `panelsolver` package-root API or a
-supported command. Do not install the shared and legacy distributions together.
+The installed distribution and Python package are both `panelsolver`; its
+version appears in newly generated FMF and Hypersonic Summary CSV/VTP artifacts.
+Use the documented package-root API rather than predecessor-product package
+names.

@@ -12,6 +12,10 @@ The best-effort direct-Python version exposure is superseded by
 [ADR 0014](0014-remove-legacy-direct-python-api.md). The historical values remain
 private inputs to legacy signature reconstruction.
 
+The historical-value signature inputs and legacy-signature matching portions are
+superseded by [ADR 0015](0015-remove-legacy-product-identities.md). The current
+`solver_version` provenance and canonical signature decisions remain in force.
+
 ## Context
 
 During integration of the legacy products, the `fmfsolver` `1.3.8` and

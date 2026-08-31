@@ -79,8 +79,8 @@ with its dependencies, invokes the existing installed-wheel helper outside the
 checkout, and removes the temporary environment even after failure.
 
 GitHub Actions remains responsible for the multi-OS matrix, protected-main and
-release-tag state, exact legacy rollback, release archive/manifest orchestration,
-artifact transfer, and GitHub Release publication. The local runner does not
+release-tag state, release archive/manifest orchestration, artifact transfer,
+and GitHub Release publication. The local runner does not
 attempt to reproduce those CI/release-only operations.
 
 For targeted troubleshooting, use the individual checks directly:
@@ -100,8 +100,7 @@ uv build
 The mypy invocation deliberately names the initial coherent six-file typing
 boundary: the shared model contract, registry-to-execution wiring, and stable
 in-memory solve API. It does not check all of `panelsolver.core`, model
-implementations, the GUI, or compatibility frontends, and it is not a
-repository-wide typing claim.
+implementations, or the GUI, and it is not a repository-wide typing claim.
 
 Most existing tests remain written with `unittest`; pytest is the standard test
 runner and collects that suite without requiring a test-style rewrite.
@@ -114,8 +113,8 @@ every supported operating system.
 
 For installed-interface or packaging changes, install the built wheel into a
 clean environment and test imports, canonical `panelsolver` and subcommand help,
-canonical `panelsolver-gui` dispatch and construction, plus both compatibility
-CLI `--help` commands outside the checkout. For GUI
+canonical `panelsolver-gui` dispatch and construction, plus both canonical
+domain selectors outside the checkout. For GUI
 changes, add headless-safe tests where practical and record a manual smoke test.
 For shielding or numerical work, run the applicable golden cases with both
 supported ray paths.
@@ -142,7 +141,5 @@ change, evidence, effect, and accepted compatibility decision first.
 
 `pyproject.toml` owns the single distribution version.
 Summary CSV and VTP retrieve that installed `panelsolver` version from
-distribution metadata for both domains. FMF `1.3.8` and newtsolver `1.0.3` are
-historical migration baselines retained only for legacy signature
-reconstruction. Release and rollback procedures are in
-[Release and rollback](release-and-rollback.md).
+distribution metadata for both domains. Release procedures are in
+[Release](release-and-rollback.md).

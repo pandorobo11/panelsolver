@@ -20,6 +20,8 @@ Accepted ADRs are retained as the rationale for architectural decisions:
     identity](0013-canonical-project-identity.md)
 14. [Remove the legacy direct-Python compatibility
     surface](0014-remove-legacy-direct-python-api.md)
+15. [Remove legacy product identities and artifact
+    fallback](0015-remove-legacy-product-identities.md)
 
 ADRs describe why the current contracts exist. Migration execution records and
 phase evidence are indexed separately in [History](../history/README.md).

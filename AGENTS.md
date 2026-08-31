@@ -3,8 +3,7 @@
 ## Purpose and priorities
 
 This repository contains the current Panel Solver product: one neutral platform
-for the FMF and Hypersonic domains plus thin `fmfsolver` and `newtsolver`
-compatibility frontends. Apply these priorities in order:
+for the FMF and Hypersonic domains. Apply these priorities in order:
 
 1. numerical correctness;
 2. existing user compatibility;
@@ -87,16 +86,13 @@ Allowed high-level dependencies are:
 
 - `app -> models -> core`;
 - `app -> core`;
-- compatibility frontends (`fmfsolver`, `newtsolver`) -> `app/models/core`.
 
 Prohibited:
 
-- `core` importing `models`, `app`, GUI, or a compatibility frontend;
-- `models` importing `app`, GUI, or a compatibility frontend;
+- `core` importing `models`, `app`, or GUI;
+- `models` importing `app` or GUI;
 - physical equations in GUI code;
-- new business or numerical logic in a compatibility frontend.
-
-Keep `src/fmfsolver` and `src/newtsolver` as thin compatibility frontends.
+- new business or numerical logic in command dispatchers.
 
 ## Model boundary
 

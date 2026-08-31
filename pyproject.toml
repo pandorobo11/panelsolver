@@ -41,12 +41,6 @@ rayaccel = [
 [project.scripts]
 panelsolver = "panelsolver.cli:main"
 panelsolver-gui = "panelsolver.gui:main"
-fmfsolver = "fmfsolver.app.gui_app:main"
-fmfsolver-gui = "fmfsolver.app.gui_app:main"
-fmfsolver-cli = "fmfsolver.app.cli_app:main"
-newtsolver = "newtsolver.app.gui_app:main"
-newtsolver-gui = "newtsolver.app.gui_app:main"
-newtsolver-cli = "newtsolver.app.cli_app:main"
 
 [dependency-groups]
 dev = [
@@ -90,7 +84,7 @@ include = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/panelsolver", "src/fmfsolver", "src/newtsolver"]
+packages = ["src/panelsolver"]
 
 [tool.ruff]
 target-version = "py312"

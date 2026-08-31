@@ -42,7 +42,6 @@ from scripts.release_tools import (
 )
 from scripts.smoke_installed_wheel import (
     _smoke_subprocess_environment,
-    _validate_cli_help,
 )
 
 
@@ -186,6 +185,12 @@ class ReleaseToolTests(unittest.TestCase):
         )
         with zipfile.ZipFile(wheel, "w") as archive:
             archive.writestr(f"{dist_info}/METADATA", metadata)
+            archive.writestr(
+                f"{dist_info}/entry_points.txt",
+                "[console_scripts]\n"
+                "panelsolver = panelsolver.cli:main\n"
+                "panelsolver-gui = panelsolver.gui:main\n",
+            )
             archive.writestr(f"{dist_info}/licenses/LICENSE", b"license\n")
             archive.writestr(
                 f"{dist_info}/licenses/THIRD_PARTY_NOTICES.md",
@@ -1010,8 +1015,6 @@ class ReleaseToolTests(unittest.TestCase):
             "COLUMNS": "140",
             "LINES": "60",
             "PANELSOLVER_SHIELD_BATCH_SIZE": "invalid",
-            "FMFSOLVER_PARALLEL_CHUNK_CASES": "99",
-            "NEWTSOLVER_SHIELD_CACHE_MAX": "4",
             "UNRELATED_SETTING": "preserved",
         }
         with (
@@ -1027,29 +1030,8 @@ class ReleaseToolTests(unittest.TestCase):
             self.assertEqual("24", environment["LINES"])
             self.assertEqual("preserved", environment["UNRELATED_SETTING"])
             self.assertFalse(
-                any(
-                    name.startswith(("PANELSOLVER_", "FMFSOLVER_", "NEWTSOLVER_"))
-                    for name in environment
-                )
+                any(name.startswith("PANELSOLVER_") for name in environment)
             )
-
-    def test_installed_cli_help_ignores_usage_case_but_keeps_contract(self) -> None:
-        help_text = (
-            "Usage: fmfsolver-cli [-h] -i INPUT [-o OUTPUT] -j WORKERS\n"
-            "Run FMF solver from CSV/XLSX/XLSM input without GUI.\n"
-            "-i, --input INPUT\n"
-            "-o, --output OUTPUT\n"
-            "-j, --workers WORKERS\n"
-            "--cases CASES [CASES ...]\n"
-            "--checkpoint-every-cases CHECKPOINT_EVERY_CASES\n"
-            "--verbose\n"
-            "--plain\n"
-            "--debug\n"
-        )
-
-        _validate_cli_help("fmfsolver", help_text)
-        with self.assertRaisesRegex(RuntimeError, "--debug"):
-            _validate_cli_help("fmfsolver", help_text.replace("--debug", ""))
 
 
 if __name__ == "__main__":

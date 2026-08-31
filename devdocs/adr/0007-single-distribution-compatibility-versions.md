@@ -15,6 +15,11 @@ The best-effort direct-Python and legacy Python version-name portions are
 superseded by [ADR 0014](0014-remove-legacy-direct-python-api.md). The historical
 versions remain private legacy-signature inputs.
 
+The compatibility-package, command, compatibility-version, legacy-signature,
+and rollback portions are superseded by
+[ADR 0015](0015-remove-legacy-product-identities.md). The one-distribution and
+release-tag decisions remain in force.
+
 ## Context
 
 ADR 0001 places the shared engine, application, models, and compatibility

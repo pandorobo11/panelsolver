@@ -10,9 +10,6 @@ panelsolver-gui hypersonic
 These open `Panel Solver — FMF` and `Panel Solver — Hypersonic`. FMF currently
 uses the Sentman physical model; Hypersonic provides Newtonian-family methods.
 
-The legacy compatibility commands `fmfsolver`, `fmfsolver-gui`, `newtsolver`,
-and `newtsolver-gui` remain available with their existing titles and behavior.
-
 ## Offline help
 
 Every launcher uses the shared **Help** menu:
@@ -89,7 +86,7 @@ files.
 
 When a case saves VTP, the first selected case's result is loaded automatically. A
 selected row also loads an existing `<out_dir>/<case_id>.vtp` when its case ID
-and accepted primary or legacy signature match. Missing, stale-signature, and
+and current canonical signature match. Missing, stale-signature, and
 identity-mismatched artifacts are not rendered automatically. The compact status
 row above the Viewer explains what result is displayed or why the selected case's
 result is unavailable; the signature and field-data contract is documented in
@@ -100,12 +97,13 @@ result is unavailable; the signature and field-data contract is documented in
 *The `newt_pm` case with its current VTP matched automatically and the cube
 geometry displayed using `Cp`.*
 
-**Open VTP...** remains an inspection path: it can display an artifact that does
-not strictly match any current input row. The status identifies that artifact as
-**Manual VTP** and explicitly says whether it matched a current case. A manually
-opened unmatched artifact is not the current selected-case result, even though
-its geometry remains visible. The viewer can switch among available cell
-scalars, adjust the camera and coloring, open another VTP, and save images.
+VTP files can be opened from **File > Open VTP...** or the Viewer
+**Open VTP...** button. This manual inspection path can display an artifact that
+does not strictly match any current input row. The status identifies that
+artifact as **Manual VTP** and explicitly says whether it matched a current case.
+A manually opened unmatched artifact is not the current selected-case result,
+even though its geometry remains visible. The viewer can switch among available
+cell scalars, adjust the camera and coloring, open another VTP, and save images.
 Scalar controls and color bars use human-readable labels such as `Cp`,
 `Normal traction coeff.`, and `Tangential traction coeff.` while VTP retains
 explicit machine-oriented field names.

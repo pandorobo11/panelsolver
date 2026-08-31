@@ -3,6 +3,10 @@
 - Status: Accepted
 - Date: 2026-08-12
 
+The compatibility-frontend portion of this decision is superseded by
+[ADR 0015](0015-remove-legacy-product-identities.md). Its single-repository and
+read-only historical-evidence decisions remain in force.
+
 ## Context
 
 `fmfsolver` and `newtsolver` share the mesh-to-load-to-integration-to-artifact and

@@ -12,7 +12,6 @@ import importlib.util
 import inspect
 import json
 import os
-import pkgutil
 import shutil
 import subprocess
 import sys
@@ -25,27 +24,16 @@ import numpy as np
 import pandas as pd
 import pyvista as pv
 
+from panelsolver.app import match_artifact_case
 from panelsolver.app.csv_writer import CSV_ENCODING
+from panelsolver.domains import fmf, hypersonic
 
-EXPECTED_COMPATIBILITY_ENTRY_POINTS = {
-    "fmfsolver": "fmfsolver.app.gui_app:main",
-    "fmfsolver-gui": "fmfsolver.app.gui_app:main",
-    "fmfsolver-cli": "fmfsolver.app.cli_app:main",
-    "newtsolver": "newtsolver.app.gui_app:main",
-    "newtsolver-gui": "newtsolver.app.gui_app:main",
-    "newtsolver-cli": "newtsolver.app.cli_app:main",
-}
 EXPECTED_ENTRY_POINTS = {
     "panelsolver": "panelsolver.cli:main",
     "panelsolver-gui": "panelsolver.gui:main",
-    **EXPECTED_COMPATIBILITY_ENTRY_POINTS,
 }
 
-EXPECTED_CLI_DESCRIPTIONS = {
-    "fmfsolver": "Run FMF solver from CSV/XLSX/XLSM input without GUI.",
-    "newtsolver": "Run newtsolver from CSV/XLSX/XLSM input without GUI.",
-}
-_TUNING_PREFIXES = ("PANELSOLVER_", "FMFSOLVER_", "NEWTSOLVER_")
+_TUNING_PREFIXES = ("PANELSOLVER_",)
 _EXPECTED_GUI_HELP_MENU = ("Documentation", "", "About")
 
 
@@ -123,16 +111,16 @@ def _smoke_high_level_api(staging: Path, inputs: Path) -> None:
 def _smoke_canonical_gui_entrypoint() -> None:
     from PySide6 import QtCore, QtWidgets
 
-    from fmfsolver._frontend import _legacy_gui_spec as legacy_fmf_spec
-    from newtsolver._frontend import _legacy_gui_spec as legacy_hypersonic_spec
     from panelsolver import gui as canonical_gui
-    from panelsolver.app import gui_bootstrap
     from panelsolver.app.gui_bootstrap import _application_icon, create_main_window
     from panelsolver.app.main_window import MainWindow
 
     class OffscreenViewer(QtWidgets.QWidget):
         log_message = QtCore.Signal(str)
         save_selected_images_requested = QtCore.Signal()
+
+        def open_vtp(self) -> None:
+            pass
 
         def load_vtp(self, *_args) -> None:
             pass
@@ -207,60 +195,6 @@ def _smoke_canonical_gui_entrypoint() -> None:
         canonical_gui.run_gui = original
     if constructed != list(expected.values()):
         raise RuntimeError(f"canonical GUI identity changed: {constructed!r}")
-
-    legacy_expected = (
-        ("fmfsolver", "sentman", "Sentman FMF Solver (GUI)"),
-        ("newtsolver", "hypersonic", "newtsolver (GUI)"),
-    )
-    legacy_constructed: list[tuple[str, str, str]] = []
-    for spec in (legacy_fmf_spec(), legacy_hypersonic_spec()):
-        window = create_main_window(
-            spec,
-            window_factory=lambda selected: MainWindow(
-                selected,
-                viewer_panel=OffscreenViewer(),
-            ),
-        )
-        legacy_constructed.append(
-            (spec.product_id, spec.model_id, window.windowTitle())
-        )
-        verify_help_menu(window, identity="legacy")
-        window.close()
-    if tuple(legacy_constructed) != legacy_expected:
-        raise RuntimeError(f"legacy GUI identity changed: {legacy_constructed!r}")
-
-    legacy_commands = {
-        "fmfsolver": legacy_expected[0],
-        "fmfsolver-gui": legacy_expected[0],
-        "newtsolver": legacy_expected[1],
-        "newtsolver-gui": legacy_expected[1],
-    }
-    legacy_dispatched: list[tuple[str, str, str]] = []
-
-    def capture_legacy(spec) -> int:
-        legacy_dispatched.append((spec.product_id, spec.model_id, spec.window_title))
-        return 0
-
-    entry_points = {
-        item.name: item
-        for item in importlib.metadata.distribution("panelsolver").entry_points
-        if item.group == "console_scripts"
-    }
-    original_run_gui = gui_bootstrap.run_gui
-    gui_bootstrap.run_gui = capture_legacy
-    try:
-        for command in legacy_commands:
-            try:
-                entry_points[command].load()()
-            except SystemExit as exc:
-                if exc.code != 0:
-                    raise RuntimeError(f"legacy GUI command failed: {command}") from exc
-            else:
-                raise RuntimeError(f"legacy GUI command did not exit: {command}")
-    finally:
-        gui_bootstrap.run_gui = original_run_gui
-    if legacy_dispatched != list(legacy_commands.values()):
-        raise RuntimeError(f"legacy GUI dispatch changed: {legacy_dispatched!r}")
 
 
 def _smoke_subprocess_environment(staging: Path) -> dict[str, str]:
@@ -383,25 +317,6 @@ def _current_expected_vtp(product: str, golden: dict[str, object]) -> dict[str, 
         tangential_traction_coeff
     )
     return expected
-
-
-def _validate_cli_help(product: str, help_text: str) -> None:
-    required = (
-        EXPECTED_CLI_DESCRIPTIONS[product],
-        "--input INPUT",
-        "--output OUTPUT",
-        "--workers WORKERS",
-        "--cases CASES [CASES ...]",
-        "--checkpoint-every-cases CHECKPOINT_EVERY_CASES",
-        "--verbose",
-        "--plain",
-        "--debug",
-    )
-    missing = [fragment for fragment in required if fragment not in help_text]
-    if f"usage: {product}-cli" not in help_text.casefold():
-        missing.insert(0, f"usage: {product}-cli")
-    if missing:
-        raise RuntimeError(f"{product} help is missing Phase 8 contract: {missing}")
 
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -552,15 +467,29 @@ def main(argv: list[str] | None = None) -> int:
     dist_dir = args.dist_dir.resolve() if args.dist_dir is not None else None
     contracts = repository / "tests" / "fixtures" / "phase1" / "golden"
     installed_version = importlib.metadata.version("panelsolver")
-    legacy_artifact_versions = {"1.3.8", "1.0.3"}
+    distribution = importlib.metadata.distribution("panelsolver")
     installed = {
         entry.name: entry.value
-        for entry in importlib.metadata.distribution("panelsolver").entry_points
+        for entry in distribution.entry_points
         if entry.group == "console_scripts"
     }
     if installed != EXPECTED_ENTRY_POINTS:
         raise RuntimeError(f"Unexpected console scripts: {installed}")
-    requirements = importlib.metadata.distribution("panelsolver").requires or ()
+    packaged_files = {
+        str(path).replace("\\", "/") for path in (distribution.files or ())
+    }
+    for removed_package in ("fmfsolver", "newtsolver"):
+        if importlib.util.find_spec(removed_package) is not None:
+            raise RuntimeError(f"removed package remains importable: {removed_package}")
+        if any(
+            path == removed_package or path.startswith(f"{removed_package}/")
+            for path in packaged_files
+        ):
+            raise RuntimeError(f"removed package remains in wheel: {removed_package}")
+    if importlib.util.find_spec("panelsolver._compat") is not None:
+        raise RuntimeError("removed panelsolver._compat package remains importable")
+
+    requirements = distribution.requires or ()
     if any("xlrd" in requirement.casefold() for requirement in requirements):
         raise RuntimeError("installed wheel still requires removed xlrd dependency")
     if any(
@@ -581,34 +510,6 @@ def main(argv: list[str] | None = None) -> int:
             encoding="utf-8"
         )
     )
-    expected_frontend_modules = {
-        "fmfsolver": {
-            "fmfsolver._frontend",
-            "fmfsolver.app",
-            "fmfsolver.app.cli_app",
-            "fmfsolver.app.gui_app",
-        },
-        "newtsolver": {
-            "newtsolver._frontend",
-            "newtsolver.app",
-            "newtsolver.app.cli_app",
-            "newtsolver.app.gui_app",
-        },
-    }
-    for product in ("fmfsolver", "newtsolver"):
-        package = importlib.import_module(product)
-        if hasattr(package, "__all__") or hasattr(package, "__version__"):
-            raise RuntimeError(f"{product} still advertises a direct-Python API")
-        modules = {
-            module.name
-            for module in pkgutil.walk_packages(
-                package.__path__,
-                prefix=f"{product}.",
-            )
-        }
-        if modules != expected_frontend_modules[product]:
-            raise RuntimeError(f"unexpected {product} module inventory: {modules!r}")
-
     neutral_core = importlib.import_module("panelsolver.core")
     neutral_app = importlib.import_module("panelsolver.app")
     for name in (
@@ -620,10 +521,6 @@ def main(argv: list[str] | None = None) -> int:
     ):
         if importlib.util.find_spec(f"panelsolver.app.{name}") is not None:
             raise RuntimeError(f"compatibility implementation remains in app: {name}")
-        if importlib.util.find_spec(f"panelsolver._compat.{name}") is not None:
-            raise RuntimeError(f"removed private compat module remains: {name}")
-    if importlib.util.find_spec("panelsolver._compat.legacy_signatures") is None:
-        raise RuntimeError("legacy artifact signature fallback is missing")
     for module, names in (
         (neutral_core, ("NpzProjection", "project_npz_artifact")),
         (neutral_app, ("write_npz_projection",)),
@@ -709,14 +606,21 @@ def main(argv: list[str] | None = None) -> int:
                 "fmfsolver",
                 "fmf_zero_plate",
                 "Run the Sentman free-molecular-flow model from CSV/XLSX/XLSM input.",
+                fmf,
             ),
             "hypersonic": (
                 "newtsolver",
                 "newt_zero_newtonian",
                 "Run hypersonic panel models from CSV/XLSX/XLSM input.",
+                hypersonic,
             ),
         }
-        for domain, (product, case_id, description) in canonical_cases.items():
+        for domain, (
+            product,
+            case_id,
+            description,
+            domain_module,
+        ) in canonical_cases.items():
             domain_help = subprocess.run(
                 [canonical, domain, "--help"],
                 cwd=staging,
@@ -785,6 +689,18 @@ def main(argv: list[str] | None = None) -> int:
             canonical_vtp = pv.read(canonical_total["vtp_path"])
             if str(canonical_vtp.field_data["solver_version"][0]) != installed_version:
                 raise RuntimeError(f"canonical {domain} CSV/VTP versions differ")
+            current_frame = domain_module.read_cases(inputs / f"{product}_cases.csv")
+            current_row = (
+                current_frame.loc[current_frame["case_id"] == case_id].iloc[0].to_dict()
+            )
+            if not match_artifact_case(
+                canonical_vtp,
+                current_row,
+                domain_module.build_case_signature(current_row),
+            ).matched:
+                raise RuntimeError(
+                    f"canonical {domain} VTP did not match its current signature"
+                )
             for suffix, input_path in excel_inputs[product].items():
                 format_output = (
                     staging / "canonical-format-smoke" / domain / f"{suffix[1:]}.csv"
@@ -815,31 +731,14 @@ def main(argv: list[str] | None = None) -> int:
                         f"stdout={format_run.stdout!r}\n"
                         f"stderr={format_run.stderr!r}"
                     )
-        for product in ("fmfsolver", "newtsolver"):
-            command = _command_path(f"{product}-cli")
+        historical_groups = {"fmfsolver": "fmf", "newtsolver": "hypersonic"}
+        for product, domain in historical_groups.items():
             cli_input, excluded_cases = _cli_input_for_available_backends(
                 inputs / f"{product}_cases.csv",
                 product=product,
             )
-            help_result = subprocess.run(
-                [command, "--help"],
-                cwd=staging,
-                capture_output=True,
-                text=True,
-                check=False,
-                env=subprocess_environment,
-            )
-            if help_result.returncode != 0:
-                raise RuntimeError(
-                    f"{product} help failed: {help_result.returncode}\n"
-                    f"stdout={help_result.stdout!r}\nstderr={help_result.stderr!r}"
-                )
-            _validate_cli_help(product, help_result.stdout)
-            if "Input cases file (.csv/.xlsx/.xlsm)" not in help_result.stdout:
-                raise RuntimeError(f"{product} help advertises stale input formats")
-
             empty_cases = subprocess.run(
-                [command, "--input", "cases.csv", "--cases"],
+                [canonical, domain, "--input", "cases.csv", "--cases"],
                 cwd=staging,
                 capture_output=True,
                 text=True,
@@ -858,7 +757,8 @@ def main(argv: list[str] | None = None) -> int:
             output = staging / f"{product}_results.csv"
             run_result = subprocess.run(
                 [
-                    command,
+                    canonical,
+                    domain,
                     "--input",
                     cli_input,
                     "--output",
@@ -897,8 +797,6 @@ def main(argv: list[str] | None = None) -> int:
                 raise RuntimeError(
                     f"{product} artifact version changed: {current_versions!r}"
                 )
-            if not legacy_artifact_versions.isdisjoint(current_versions):
-                raise RuntimeError(f"{product} emitted a legacy artifact version")
             case_order = [row["case_id"] for row in rows if row["scope"] == "total"]
             expected_case_order = [
                 case_id
@@ -985,7 +883,8 @@ def main(argv: list[str] | None = None) -> int:
                 format_output.parent.mkdir(parents=True, exist_ok=True)
                 format_result = subprocess.run(
                     [
-                        command,
+                        canonical,
+                        domain,
                         "--input",
                         input_path,
                         "--output",
@@ -1010,7 +909,8 @@ def main(argv: list[str] | None = None) -> int:
             rejected_output = staging / "format-smoke" / product / "xls.csv"
             rejected = subprocess.run(
                 [
-                    command,
+                    canonical,
+                    domain,
                     "--input",
                     inputs / f"{product}_cases.xls",
                     "--output",

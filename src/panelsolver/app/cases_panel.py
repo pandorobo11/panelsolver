@@ -661,8 +661,8 @@ class CasesPanel(QtWidgets.QWidget):
             )
             self.logln(f"[ERROR] Failed to read VTP: {exc}")
             return
-        candidates = self.spec.adapters.build_case_signatures(row)
-        state = automatic_artifact_view_state(artifact, row, candidates, path)
+        signature = self.spec.adapters.build_case_signature(row)
+        state = automatic_artifact_view_state(artifact, row, signature, path)
         if state.status is ArtifactViewStatus.CURRENT:
             self.viewer_artifact_state_changed.emit(state)
             self.vtp_loaded.emit(str(path), artifact, row)
@@ -900,8 +900,8 @@ class CasesPanel(QtWidgets.QWidget):
             )
             self.logln(f"[ERROR] Failed to read VTP: {exc}")
             return
-        candidates = self.spec.adapters.build_case_signatures(row)
-        state = automatic_artifact_view_state(artifact, row, candidates, path)
+        signature = self.spec.adapters.build_case_signature(row)
+        state = automatic_artifact_view_state(artifact, row, signature, path)
         if state.status is ArtifactViewStatus.CURRENT:
             self.viewer_artifact_state_changed.emit(state)
             self.vtp_loaded.emit(str(path), artifact, row)

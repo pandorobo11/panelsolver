@@ -14,16 +14,15 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6 import QtCore, QtWidgets
 
-from fmfsolver._frontend import _legacy_gui_spec as fmf_solver_spec
-from newtsolver._frontend import _legacy_gui_spec as newt_solver_spec
 from panelsolver.app import (
-    ArtifactSignatureCandidates,
     ArtifactViewState,
     ArtifactViewStatus,
     SolverGuiAdapters,
 )
 from panelsolver.app.viewer import ViewerPanel
 from panelsolver.core import CaseSignature, canonical_json
+from panelsolver.domains.fmf import gui_spec as fmf_solver_spec
+from panelsolver.domains.hypersonic import gui_spec as newt_solver_spec
 from tests.path_assertions import assert_paths_equivalent, paths_equivalent
 
 
@@ -113,7 +112,7 @@ def _signature(label: str) -> CaseSignature:
 def _adapters(signature: CaseSignature, velocity=(1.0, 0.0, 0.0)):
     return SolverGuiAdapters(
         read_cases=lambda _path: (),
-        build_case_signatures=lambda _row: ArtifactSignatureCandidates(signature),
+        build_case_signature=lambda _row: signature,
         run_cases=lambda _request: None,
         validate_output_path=lambda out, _input, _rows: Path(out),
         resolve_velocity_hat_stl=lambda _row: velocity,

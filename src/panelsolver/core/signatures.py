@@ -1,13 +1,12 @@
-"""Canonical numerical case signatures and legacy-match precedence."""
+"""Canonical numerical case signatures and artifact matching."""
 
 from __future__ import annotations
 
 import hashlib
 import json
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from dataclasses import dataclass
-from enum import Enum
 
 from ._validation import freeze_payload, nonempty_text
 from .contracts import CommonCasePayload
@@ -151,49 +150,14 @@ def build_case_signature(
     return CaseSignature(digest, payload, envelope)
 
 
-class SignatureMatchKind(str, Enum):
-    """Source that matched a stored artifact signature."""
-
-    PRIMARY = "primary"
-    LEGACY = "legacy"
-    NONE = "none"
-
-
-@dataclass(frozen=True, slots=True)
-class SignatureMatch:
-    """Result of primary-first artifact signature matching."""
-
-    kind: SignatureMatchKind
-    legacy_index: int | None = None
-
-    @property
-    def matched(self) -> bool:
-        return self.kind is not SignatureMatchKind.NONE
-
-
 def match_case_signature(
     stored_signature: object,
-    primary: CaseSignature,
-    *,
-    legacy_signatures: Sequence[str] = (),
-) -> SignatureMatch:
-    """Match a stored signature, preferring the canonical primary identity.
-
-    Legacy signatures are opaque caller-supplied values. Core neither rebuilds
-    nor normalizes product-specific legacy signature payloads.
-    """
-    if not isinstance(primary, CaseSignature):
-        raise TypeError("primary must be a CaseSignature instance")
-    validated_legacy = tuple(
-        _validate_digest(value, field=f"legacy_signatures[{index}]")
-        for index, value in enumerate(legacy_signatures)
-    )
-    if stored_signature == primary.digest:
-        return SignatureMatch(SignatureMatchKind.PRIMARY)
-    for index, candidate in enumerate(validated_legacy):
-        if stored_signature == candidate:
-            return SignatureMatch(SignatureMatchKind.LEGACY, index)
-    return SignatureMatch(SignatureMatchKind.NONE)
+    current: CaseSignature,
+) -> bool:
+    """Return whether an artifact stores the current canonical signature."""
+    if not isinstance(current, CaseSignature):
+        raise TypeError("current must be a CaseSignature instance")
+    return stored_signature == current.digest
 
 
 __all__ = (
@@ -201,8 +165,6 @@ __all__ = (
     "CASE_SIGNATURE_SCHEMA_VERSION",
     "CaseSignature",
     "SignatureError",
-    "SignatureMatch",
-    "SignatureMatchKind",
     "build_case_signature",
     "canonical_json",
     "match_case_signature",

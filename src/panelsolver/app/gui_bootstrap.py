@@ -71,7 +71,7 @@ def _unavailable_adapters(product_id: str) -> SolverGuiAdapters:
 
     return SolverGuiAdapters(
         read_cases=unavailable,
-        build_case_signatures=unavailable,
+        build_case_signature=unavailable,
         run_cases=unavailable,
         validate_output_path=unavailable,
         resolve_velocity_hat_stl=unavailable,

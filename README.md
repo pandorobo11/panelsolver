@@ -37,9 +37,8 @@ For the optional accelerated Embree ray backend:
 python -m pip install '.[rayaccel]'
 ```
 
-The built-in `rtree` backend remains supported. Do not install `panelsolver`
-beside the legacy `fmfsolver` or `newtsolver` distributions because their package
-and command names overlap. See the [installation guide](docs/getting-started/installation.md).
+The built-in `rtree` backend remains supported. See the
+[installation guide](docs/getting-started/installation.md).
 
 ## Run
 
@@ -55,30 +54,23 @@ Run the same examples without the GUI:
 ```bash
 panelsolver fmf --input examples/fmf/basic.csv --workers 1 --checkpoint-every-cases 0
 panelsolver hypersonic --input examples/hypersonic/basic.csv --workers 1 --checkpoint-every-cases 0
-
-# Legacy compatibility commands remain available:
-fmfsolver-cli --input examples/fmf/basic.csv --workers 1 --checkpoint-every-cases 0
-newtsolver-cli --input examples/hypersonic/basic.csv --workers 1 --checkpoint-every-cases 0
 ```
 
-`fmf` is the free-molecular-flow domain selector; it is not the legacy
-`fmfsolver` product identity. The selected physical model is Sentman.
+`fmf` is the free-molecular-flow domain selector. The selected physical model is
+Sentman.
 
 Case tables may be CSV, XLSX, or XLSM files. CSV input and Summary CSV output
 use UTF-8 with BOM (`utf-8-sig`); BOM-less UTF-8 CSV files remain accepted on
 input for compatibility.
 
-The six `fmfsolver` / `newtsolver` commands remain supported legacy
-compatibility entry points. The exact supported surface is defined in the
-[compatibility policy](docs/reference/compatibility.md).
 Results are written below each example's `outputs/` directory. The
 [quickstart](docs/getting-started/quickstart.md) explains the files and the main
 CLI options.
 
 ## Documentation
 
-Every wheel includes a self-contained offline HTML site. In either canonical or
-legacy GUI, use **Help → Documentation**. Release attachments also include
+Every wheel includes a self-contained offline HTML site. In the GUI, use
+**Help → Documentation**. Release attachments also include
 `panelsolver-docs-v<version>.zip`; open its root `index.html` directly with no
 server or network access.
 
@@ -94,10 +86,9 @@ server or network access.
 
 ## Compatibility
 
-One `panelsolver` distribution provides the canonical commands and all six
-legacy compatibility command names. Summary CSV and VTP artifacts record the
-installed distribution version. The package-root Python API is stable; direct
-Python modules under the legacy package names are not public APIs. See the
+One `panelsolver` distribution provides the two canonical command entry points.
+Summary CSV and VTP artifacts record the installed distribution version. The
+package-root Python API is stable. See the
 [compatibility policy](docs/reference/compatibility.md) and
 [CHANGELOG.md](CHANGELOG.md) for the supported surface and release changes.
 

@@ -15,11 +15,8 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6 import QtCore, QtTest, QtWidgets
 
-from fmfsolver._frontend import _legacy_gui_spec as fmf_solver_spec
-from newtsolver._frontend import _legacy_gui_spec as newt_solver_spec
 from panelsolver.app import (
     DEFAULT_CHECKPOINT_CASES,
-    ArtifactSignatureCandidates,
     ArtifactViewStatus,
     GuiRunResult,
     OutputIssue,
@@ -29,6 +26,8 @@ from panelsolver.app import (
 )
 from panelsolver.app.cases_panel import CasesPanel, ValidationIssuesDialog
 from panelsolver.core import CaseSignature, canonical_json
+from panelsolver.domains.fmf import gui_spec as fmf_solver_spec
+from panelsolver.domains.hypersonic import gui_spec as newt_solver_spec
 from tests.path_assertions import assert_paths_equivalent
 
 
@@ -47,7 +46,7 @@ def _adapters(rows, signatures, *, validator=None, reader=None):
 
     return SolverGuiAdapters(
         read_cases=read_cases,
-        build_case_signatures=lambda row: signatures[str(row["case_id"])],
+        build_case_signature=lambda row: signatures[str(row["case_id"])],
         run_cases=lambda _request: GuiRunResult(),
         validate_output_path=(
             validator if validator is not None else lambda out, _input, _rows: Path(out)
@@ -102,10 +101,7 @@ class CasesPanelTests(unittest.TestCase):
     ):
         rows = _rows() if rows is None else rows
         signatures = {
-            str(row["case_id"]): ArtifactSignatureCandidates(
-                _signature(str(row["case_id"]))
-            )
-            for row in rows
+            str(row["case_id"]): _signature(str(row["case_id"])) for row in rows
         }
         spec = spec_factory(adapters=_adapters(rows, signatures, **kwargs))
         return CasesPanel(spec), signatures
@@ -920,7 +916,7 @@ class CasesPanelTests(unittest.TestCase):
             current = SimpleNamespace(
                 field_data={
                     "case_id": ["case_b"],
-                    "case_signature": [signatures["case_b"].primary.digest],
+                    "case_signature": [signatures["case_b"].digest],
                 }
             )
             panel._artifact_reader = lambda _path: current
@@ -950,34 +946,6 @@ class CasesPanelTests(unittest.TestCase):
             self.assertGreaterEqual(len(cleared), 2)
             self.assertEqual(ArtifactViewStatus.EMPTY, states[-1].status)
 
-    def test_accepted_legacy_signature_remains_current_automatic_result(self) -> None:
-        with tempfile.TemporaryDirectory(prefix="legacy_viewer_state_") as directory:
-            rows = _rows(directory)
-            primary = _signature("primary")
-            legacy = _signature("legacy")
-            signatures = {
-                "case_b": ArtifactSignatureCandidates(primary, (legacy.digest,)),
-                "case_a": ArtifactSignatureCandidates(_signature("case_a")),
-            }
-            panel = CasesPanel(
-                fmf_solver_spec(adapters=_adapters(rows, signatures)),
-                artifact_reader=lambda _path: SimpleNamespace(
-                    field_data={
-                        "case_id": ["case_b"],
-                        "case_signature": [legacy.digest],
-                    }
-                ),
-            )
-            panel.load_input_file(Path(directory) / "input.csv")
-            Path(directory, "case_b.vtp").write_text("fixture", encoding="utf-8")
-            states = []
-            loaded = []
-            panel.viewer_artifact_state_changed.connect(states.append)
-            panel.vtp_loaded.connect(lambda *args: loaded.append(args))
-            panel.case_table.selectRow(0)
-            self.assertEqual(1, len(loaded))
-            self.assertEqual(ArtifactViewStatus.CURRENT, states[-1].status)
-
     def test_automatic_artifact_resolves_relative_out_dir_from_input_parent(
         self,
     ) -> None:
@@ -995,7 +963,7 @@ class CasesPanelTests(unittest.TestCase):
                 or SimpleNamespace(
                     field_data={
                         "case_id": ["case_b"],
-                        "case_signature": [signatures["case_b"].primary.digest],
+                        "case_signature": [signatures["case_b"].digest],
                     }
                 )
             )
@@ -1054,7 +1022,7 @@ class CasesPanelTests(unittest.TestCase):
             artifact = SimpleNamespace(
                 field_data={
                     "case_id": ["same"],
-                    "case_signature": [signatures["same"].primary.digest],
+                    "case_signature": [signatures["same"].digest],
                 }
             )
             reads: list[Path] = []

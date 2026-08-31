@@ -13,17 +13,15 @@ from pathlib import Path
 import numpy as np
 import pyvista as pv
 
-from fmfsolver._frontend import (
-    _build_artifact_signatures as build_fmf_signatures,
-)
-from newtsolver._frontend import (
-    _build_artifact_signatures as build_newt_signatures,
-)
 from panelsolver.app import run_and_write_product_cases
 from panelsolver.app.csv_writer import CSV_ENCODING
 from panelsolver.domains.fmf import RUNTIME_POLICY as FMF_POLICY
+from panelsolver.domains.fmf import build_case_signature as build_fmf_signature
 from panelsolver.domains.fmf import read_cases as read_fmf_cases
 from panelsolver.domains.hypersonic import RUNTIME_POLICY as NEWT_POLICY
+from panelsolver.domains.hypersonic import (
+    build_case_signature as build_hypersonic_signature,
+)
 from panelsolver.domains.hypersonic import read_cases as read_newt_cases
 from tests.current_case_fixtures import read_current_cases
 
@@ -31,7 +29,6 @@ REPOSITORY_ROOT = Path(__file__).parents[2]
 FIXTURE_ROOT = REPOSITORY_ROOT / "tests" / "fixtures" / "phase1"
 GOLDEN_ROOT = FIXTURE_ROOT / "golden"
 MANIFEST = json.loads((FIXTURE_ROOT / "manifest.json").read_text(encoding="utf-8"))
-LEGACY_ARTIFACT_VERSIONS = {"1.3.8", "1.0.3"}
 
 
 def _record_array(record: dict) -> np.ndarray:
@@ -73,7 +70,7 @@ class LegacyRuntimeGoldenTests(unittest.TestCase):
                 "fmfsolver",
                 "fmfsolver_cases.csv",
                 read_fmf_cases,
-                build_fmf_signatures,
+                build_fmf_signature,
                 FMF_POLICY,
                 6,
             ),
@@ -81,7 +78,7 @@ class LegacyRuntimeGoldenTests(unittest.TestCase):
                 "newtsolver",
                 "newtsolver_cases.csv",
                 read_newt_cases,
-                build_newt_signatures,
+                build_hypersonic_signature,
                 NEWT_POLICY,
                 9,
             ),
@@ -212,11 +209,6 @@ class LegacyRuntimeGoldenTests(unittest.TestCase):
                             {installed_version},
                             {csv_row["solver_version"] for csv_row in raw_case_rows},
                         )
-                        self.assertTrue(
-                            LEGACY_ARTIFACT_VERSIONS.isdisjoint(
-                                csv_row["solver_version"] for csv_row in raw_case_rows
-                            )
-                        )
                         raw_total = next(
                             csv_row
                             for csv_row in raw_case_rows
@@ -227,11 +219,10 @@ class LegacyRuntimeGoldenTests(unittest.TestCase):
                         vtp_version = str(poly.field_data["solver_version"][0])
                         self.assertEqual(installed_version, vtp_version)
                         self.assertEqual(raw_total["solver_version"], vtp_version)
-                        self.assertNotIn(vtp_version, LEGACY_ARTIFACT_VERSIONS)
-                        primary = signatures(row).primary.digest
-                        self.assertEqual(primary, raw_total["case_signature"])
+                        current_signature = signatures(row).digest
+                        self.assertEqual(current_signature, raw_total["case_signature"])
                         self.assertEqual(
-                            primary,
+                            current_signature,
                             str(poly.field_data["case_signature"][0]),
                         )
 
