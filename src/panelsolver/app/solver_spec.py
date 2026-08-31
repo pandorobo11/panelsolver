@@ -256,13 +256,27 @@ class CaseColumnKind(str, Enum):
     FLAG = "flag"
 
 
+class CaseColumnWidthRole(str, Enum):
+    """Model-neutral initial-width intent for one case-table column."""
+
+    IDENTIFIER = "identifier"
+    PATH = "path"
+    COMPACT_NUMERIC = "compact_numeric"
+    ENGINEERING_NUMERIC = "engineering_numeric"
+    MODEL_TEXT = "model_text"
+    ENUM_TEXT = "enum_text"
+    FLAG = "flag"
+    FALLBACK = "fallback"
+
+
 @dataclass(frozen=True, slots=True)
 class CaseColumnPresentation:
-    """Immutable UI label and comparison category for one internal column."""
+    """Immutable UI presentation intent for one internal column."""
 
     name: str
     label: str
     kind: CaseColumnKind
+    width_role: CaseColumnWidthRole
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -277,6 +291,10 @@ class CaseColumnPresentation:
         )
         if not isinstance(self.kind, CaseColumnKind):
             raise TypeError("CaseColumnPresentation.kind must be a CaseColumnKind")
+        if not isinstance(self.width_role, CaseColumnWidthRole):
+            raise TypeError(
+                "CaseColumnPresentation.width_role must be a CaseColumnWidthRole"
+            )
 
 
 def _case_column_presentations(value: object) -> tuple[CaseColumnPresentation, ...]:
@@ -411,6 +429,7 @@ __all__ = (
     "CancelRequestedCallback",
     "CaseColumnKind",
     "CaseColumnPresentation",
+    "CaseColumnWidthRole",
     "CaseRow",
     "ExampleDefinition",
     "FormatCaseCallback",
