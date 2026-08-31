@@ -1091,14 +1091,14 @@ def _solver_imports(solver: str) -> dict[str, Any]:
         from fmfsolver.io.csv_out import write_results_csv
         from fmfsolver.io.io_cases import read_cases
 
-        from fmfsolver.app import cli_app
+        from fmfsolver.app import cli_app  # isort: skip
     else:
         from newtsolver.core import parallel_scheduler, shielding
         from newtsolver.core import solver as solver_module
         from newtsolver.io.csv_out import write_results_csv
         from newtsolver.io.io_cases import read_cases
 
-        from newtsolver.app import cli_app
+        from newtsolver.app import cli_app  # isort: skip
 
     return {
         "cli_app": cli_app,
