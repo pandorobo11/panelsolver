@@ -28,6 +28,37 @@ from .viewer_data import (
 _INLINE_LABEL_CONTROL_SPACING = 4
 _RUN_SETTINGS_GROUP_SPACING = 12
 _RUN_ACTION_SPACING = 8
+_CHECKPOINT_ORDINARY_DIGITS = 6
+
+
+def _bounded_spin_box_width(spin_box: QtWidgets.QSpinBox) -> int:
+    """Fit ordinary checkpoint values without reserving the full integer range."""
+    spin_box.ensurePolished()
+    option = QtWidgets.QStyleOptionSpinBox()
+    spin_box.initStyleOption(option)
+    natural_size = spin_box.sizeHint()
+    option.rect = QtCore.QRect(QtCore.QPoint(), natural_size)
+    edit_field = spin_box.style().subControlRect(
+        QtWidgets.QStyle.ComplexControl.CC_SpinBox,
+        option,
+        QtWidgets.QStyle.SubControl.SC_SpinBoxEditField,
+        spin_box,
+    )
+    native_chrome_width = max(natural_size.width() - edit_field.width(), 0)
+    focus_margin = spin_box.style().pixelMetric(
+        QtWidgets.QStyle.PixelMetric.PM_FocusFrameHMargin,
+        option,
+        spin_box,
+    )
+    metrics = spin_box.fontMetrics()
+    representative_width = max(
+        metrics.horizontalAdvance(str(DEFAULT_CHECKPOINT_CASES)),
+        *(
+            metrics.horizontalAdvance(digit * _CHECKPOINT_ORDINARY_DIGITS)
+            for digit in "0123456789"
+        ),
+    )
+    return native_chrome_width + representative_width + 2 * focus_margin
 
 
 def _issue_value(issue: object, name: str) -> object | None:
@@ -154,7 +185,16 @@ class CasesPanel(QtWidgets.QWidget):
         self.spin_checkpoint_every_cases = QtWidgets.QSpinBox()
         self.spin_checkpoint_every_cases.setRange(0, 2_147_483_647)
         self.spin_checkpoint_every_cases.setValue(DEFAULT_CHECKPOINT_CASES)
-        self.spin_checkpoint_every_cases.setSuffix(" cases")
+        self.spin_checkpoint_every_cases.setAccessibleName("Checkpoint every")
+        self.spin_checkpoint_every_cases.setAccessibleDescription(
+            "Checkpoint interval in cases. Range 0 to 2147483647 cases."
+        )
+        self.spin_checkpoint_every_cases.setToolTip(
+            "Checkpoint interval in cases (0 to 2,147,483,647)."
+        )
+        self.spin_checkpoint_every_cases.setMaximumWidth(
+            _bounded_spin_box_width(self.spin_checkpoint_every_cases)
+        )
         self.case_table = QtWidgets.QTableWidget()
         self.case_table.setSelectionMode(
             QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection
@@ -221,6 +261,9 @@ class CasesPanel(QtWidgets.QWidget):
         layout.addWidget(self.case_table, 4)
         self.lbl_workers = QtWidgets.QLabel("Workers:")
         self.lbl_checkpoint_every_cases = QtWidgets.QLabel("Checkpoint every:")
+        self.lbl_checkpoint_unit = QtWidgets.QLabel("cases")
+        self.lbl_workers.setBuddy(self.spin_workers)
+        self.lbl_checkpoint_every_cases.setBuddy(self.spin_checkpoint_every_cases)
 
         self.workers_group = QtWidgets.QHBoxLayout()
         self.workers_group.setContentsMargins(0, 0, 0, 0)
@@ -233,6 +276,7 @@ class CasesPanel(QtWidgets.QWidget):
         self.checkpoint_group.setSpacing(_INLINE_LABEL_CONTROL_SPACING)
         self.checkpoint_group.addWidget(self.lbl_checkpoint_every_cases)
         self.checkpoint_group.addWidget(self.spin_checkpoint_every_cases)
+        self.checkpoint_group.addWidget(self.lbl_checkpoint_unit)
 
         self.run_actions_group = QtWidgets.QHBoxLayout()
         self.run_actions_group.setContentsMargins(0, 0, 0, 0)
@@ -240,15 +284,23 @@ class CasesPanel(QtWidgets.QWidget):
         self.run_actions_group.addWidget(self.btn_run)
         self.run_actions_group.addWidget(self.btn_cancel)
 
-        self.run_row = QtWidgets.QHBoxLayout()
-        self.run_row.setSpacing(0)
-        self.run_row.addLayout(self.workers_group)
-        self.run_row.addSpacing(_RUN_SETTINGS_GROUP_SPACING)
-        self.run_row.addLayout(self.checkpoint_group)
-        self.run_row.addStretch(1)
-        self.run_row.addLayout(self.run_actions_group)
-        layout.addLayout(self.run_row)
-        layout.addWidget(self.progress)
+        self.settings_row = QtWidgets.QHBoxLayout()
+        self.settings_row.setSpacing(0)
+        self.settings_row.addLayout(self.workers_group)
+        self.settings_row.addSpacing(_RUN_SETTINGS_GROUP_SPACING)
+        self.settings_row.addLayout(self.checkpoint_group)
+        self.settings_row.addStretch(1)
+        layout.addLayout(self.settings_row)
+
+        self.execution_row = QtWidgets.QHBoxLayout()
+        self.execution_row.setSpacing(_RUN_ACTION_SPACING)
+        self.execution_row.addWidget(
+            self.progress,
+            1,
+            QtCore.Qt.AlignmentFlag.AlignVCenter,
+        )
+        self.execution_row.addLayout(self.run_actions_group)
+        layout.addLayout(self.execution_row)
         layout.addWidget(self.btn_diagnostics)
         layout.addWidget(self.log, 2)
 
