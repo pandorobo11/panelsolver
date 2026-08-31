@@ -65,7 +65,7 @@ _COLUMN_WIDTH_POLICIES = {
     CaseColumnWidthRole.ENGINEERING_NUMERIC: _ColumnWidthPolicy(
         "-0.000000",
         "-1.2345e+12",
-        "-1.234567890123e+123",
+        "-1.234567890123456e+12345",
     ),
     CaseColumnWidthRole.MODEL_TEXT: _ColumnWidthPolicy(
         "newtonian",
