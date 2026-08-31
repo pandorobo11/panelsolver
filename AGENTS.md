@@ -47,6 +47,30 @@ display; do not set `QT_QPA_PLATFORM=offscreen` or `PYVISTA_OFF_SCREEN`. See
 [`devdocs/development/gui-visual-smoke.md`](devdocs/development/gui-visual-smoke.md)
 for representative loaded-state and light/dark capture commands.
 
+### GUI evidence privacy
+
+Before uploading a GUI screenshot, recording, or companion evidence to GitHub,
+remove developer- and machine-specific paths from every value the artifact or
+capture tooling can emit. For a pixel screenshot, sanitize rendered widgets,
+table cells, visible logs, and captured tooltip or status text. When uploading
+an accessibility/UI-tree or text dump, also sanitize emitted accessible text,
+hidden serialized text, What's This content, and other captured metadata.
+Prefer a runtime-only sanitized capture from the real GUI, and never upload a
+raw Computer Use capture first and attempt to redact it afterward.
+
+Sanitization must preserve the geometry and state being evaluated. Do not let
+redaction trigger autosizing, column resizing, reflow, wrapping, minimum-size
+changes, control repositioning or visibility changes, or changes to focus,
+checked, or running state. Preserve representative text width, or sanitize
+after layout and width calculation without retriggering autosizing or reflow.
+
+Inspect each upload candidate visually and, where available and practical, use
+text and metadata checks such as OCR, embedded-string scanning, and metadata
+inspection. Cover macOS, Linux, and Windows user-profile, checkout/worktree,
+and temporary paths, including drive-letter and environment-based Windows
+forms, as well as local usernames and temporary output paths. Upload only the
+verified sanitized files.
+
 ## Legacy references
 
 The legacy implementations are read-only references. Their authoritative URLs
