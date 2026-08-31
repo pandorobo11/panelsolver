@@ -255,6 +255,57 @@ class GuiThemeTests(unittest.TestCase):
         self.assertNotIn("min-height", rule)
         self.assertNotIn("fluentSize", qss)
 
+    def test_diagnostics_disclosure_states_are_bounded_and_subtle_stays_global(
+        self,
+    ) -> None:
+        disclosure_selector = 'QToolButton[diagnosticsDisclosure="true"]'
+        subtle_selector = (
+            'QPushButton[fluentAppearance="subtle"],\n'
+            'QToolButton[fluentAppearance="subtle"]'
+        )
+        for mode in (ThemeMode.LIGHT, ThemeMode.DARK):
+            theme = resolve_theme(mode)
+            qss = render_application_qss(theme)
+            rest = qss.split(f"{disclosure_selector} {{", 1)[1].split("}", 1)[0]
+            checked = qss.split(f"{disclosure_selector}:checked {{", 1)[1].split(
+                "}", 1
+            )[0]
+            hover = qss.split(f"{disclosure_selector}:hover {{", 1)[1].split("}", 1)[0]
+            pressed = qss.split(f"{disclosure_selector}:pressed {{", 1)[1].split(
+                "}", 1
+            )[0]
+            subtle = qss.split(f"{subtle_selector} {{", 1)[1].split("}", 1)[0]
+
+            with self.subTest(mode=mode):
+                self.assertIn(
+                    f"background-color: {theme.value('control_background')}",
+                    rest,
+                )
+                self.assertIn(
+                    f"border-color: {theme.value('border_subtle')}",
+                    rest,
+                )
+                self.assertIn("text-align: left", rest)
+                self.assertIn(
+                    f"background-color: {theme.value('inactive_selection_background')}",
+                    checked,
+                )
+                self.assertIn(
+                    f"border-color: {theme.value('border_control')}",
+                    checked,
+                )
+                self.assertIn(
+                    f"background-color: {theme.value('control_hover')}",
+                    hover,
+                )
+                self.assertIn(
+                    f"background-color: {theme.value('control_pressed')}",
+                    pressed,
+                )
+                self.assertIn("background-color: transparent", subtle)
+                self.assertIn("border-color: transparent", subtle)
+                self.assertNotIn("fluentSize", qss)
+
     def test_palette_populates_active_inactive_and_disabled_groups(self) -> None:
         theme = resolve_theme(ThemeMode.LIGHT)
         palette = build_application_palette(theme)

@@ -199,6 +199,8 @@ class RunLifecycleTests(unittest.TestCase):
             self.assertIsNone(panel._run_worker)
             self.assertTrue(panel.btn_pick_input.isEnabled())
             self.assertFalse(panel.btn_cancel.isEnabled())
+            self.assertTrue(panel.btn_diagnostics.isChecked())
+            self.assertFalse(panel.log.isHidden())
 
     def test_vtp_output_failures_complete_once_with_bounded_summary_and_recover_ui(
         self,

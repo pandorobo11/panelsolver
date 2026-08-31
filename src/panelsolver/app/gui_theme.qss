@@ -78,6 +78,30 @@ QToolButton[fluentAppearance="subtle"]:pressed {
     background-color: @{control_pressed};
 }
 
+/* CasesPanel-local disclosure affordance; global subtle actions stay transparent. */
+QToolButton[diagnosticsDisclosure="true"] {
+    background-color: @{control_background};
+    color: @{text_primary};
+    border-color: @{border_subtle};
+    text-align: left;
+}
+
+QToolButton[diagnosticsDisclosure="true"]:checked {
+    background-color: @{inactive_selection_background};
+    color: @{inactive_selection_text};
+    border-color: @{border_control};
+}
+
+QToolButton[diagnosticsDisclosure="true"]:hover {
+    background-color: @{control_hover};
+    border-color: @{border_hover};
+}
+
+QToolButton[diagnosticsDisclosure="true"]:pressed {
+    background-color: @{control_pressed};
+    border-color: @{border_hover};
+}
+
 QPushButton[fluentAppearance="danger"],
 QToolButton[fluentAppearance="danger"] {
     background-color: @{danger_action_background};

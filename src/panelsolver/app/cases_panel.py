@@ -28,6 +28,7 @@ from .viewer_data import (
 _INLINE_LABEL_CONTROL_SPACING = 4
 _RUN_SETTINGS_GROUP_SPACING = 12
 _RUN_ACTION_SPACING = 8
+_DIAGNOSTICS_DISCLOSURE_ICON_SIZE = 12
 _CHECKPOINT_ORDINARY_DIGITS = 6
 
 
@@ -213,10 +214,21 @@ class CasesPanel(QtWidgets.QWidget):
         self.btn_diagnostics.setCheckable(True)
         self.btn_diagnostics.setChecked(False)
         self.btn_diagnostics.setArrowType(QtCore.Qt.ArrowType.RightArrow)
+        self.btn_diagnostics.setIconSize(
+            QtCore.QSize(
+                _DIAGNOSTICS_DISCLOSURE_ICON_SIZE,
+                _DIAGNOSTICS_DISCLOSURE_ICON_SIZE,
+            )
+        )
         self.btn_diagnostics.setToolButtonStyle(
             QtCore.Qt.ToolButtonStyle.ToolButtonTextBesideIcon
         )
+        self.btn_diagnostics.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Expanding,
+            QtWidgets.QSizePolicy.Policy.Fixed,
+        )
         self.btn_diagnostics.setAccessibleName("Diagnostics")
+        self.btn_diagnostics.setProperty("diagnosticsDisclosure", True)
         set_semantic_property(
             self.btn_diagnostics,
             "fluentAppearance",
