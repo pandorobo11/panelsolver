@@ -437,6 +437,35 @@ class CasesPanelTests(unittest.TestCase):
                 self.assertEqual(str(row[name]), item.text())
                 self.assertEqual("", item.toolTip())
 
+    def test_short_wide_text_uses_rendered_width_for_tooltip(self) -> None:
+        short_text = "界"
+        row = {
+            "case_id": "short-wide-text",
+            "stl_path": "body.stl",
+            "custom": short_text,
+        }
+        panel, _ = self.make_panel((row,))
+        original_text_width = panel._column_text_width
+
+        def controlled_text_width(text: str) -> int:
+            if text == short_text:
+                return 10_000
+            return original_text_width(text)
+
+        self.assertLessEqual(len(short_text), len("sample value"))
+        with patch.object(
+            panel,
+            "_column_text_width",
+            side_effect=controlled_text_width,
+        ) as text_width:
+            self.assertTrue(panel.load_input_file("/tmp/input.csv"))
+
+        text_width.assert_any_call(short_text)
+        column = panel._table_columns.index("custom")
+        item = panel.case_table.item(0, column)
+        self.assertEqual(short_text, item.text())
+        self.assertEqual(short_text, item.toolTip())
+
     def test_long_unknown_header_uses_bounded_fallback_and_exact_tooltips(
         self,
     ) -> None:

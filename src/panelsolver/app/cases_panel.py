@@ -524,7 +524,6 @@ class CasesPanel(QtWidgets.QWidget):
                     and width_roles[column] in _FULL_VALUE_TOOLTIP_ROLES
                     and self._needs_full_value_tooltip(
                         display,
-                        width_roles[column],
                         column_widths[column],
                     )
                 ):
@@ -559,12 +558,8 @@ class CasesPanel(QtWidgets.QWidget):
     def _needs_full_value_tooltip(
         self,
         text: str,
-        role: CaseColumnWidthRole,
         width: int,
     ) -> bool:
-        policy = _COLUMN_WIDTH_POLICIES[role]
-        if len(text) <= len(policy.representative_text):
-            return False
         return self._column_text_width(text) > width
 
     def _header_width(self, column: int) -> int:
