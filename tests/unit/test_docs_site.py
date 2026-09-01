@@ -114,6 +114,16 @@ class DocumentationSiteTests(unittest.TestCase):
         self.assertFalse((self.site / "devdocs").exists())
         self.assertFalse((self.site / "history").exists())
 
+    def test_normal_user_documentation_does_not_expose_repository_owner(self) -> None:
+        sources = [ROOT / "README.md", *sorted((ROOT / "docs").rglob("*.md"))]
+        built_pages = sorted(self.site.rglob("*.html"))
+        for path in (*sources, *built_pages):
+            with self.subTest(path=path):
+                self.assertNotIn(
+                    "pandorobo11",
+                    path.read_text(encoding="utf-8").casefold(),
+                )
+
     def test_audited_build_dependency_versions_are_exact_and_current(self) -> None:
         with (ROOT / "pyproject.toml").open("rb") as stream:
             project = tomllib.load(stream)

@@ -17,12 +17,12 @@ as `.xlsx` in Excel or another spreadsheet application, or export it as CSV.
 
 ## Embree is unavailable
 
-For a release installation, install or reinstall the downloaded GitHub Release
-wheel with the `rayaccel` extra as shown in the
-[Installation guide](../getting-started/installation.md). From a checkout, use
-`uv sync --extra rayaccel` or `python -m pip install ".[rayaccel]"`. Alternatively,
-set the case's `ray_backend` to `rtree`. An explicit `embree` request
-intentionally does not fall back.
+For a wheel installation, reinstall the Panel Solver wheel with the `rayaccel`
+extra as shown in the [Installation guide](../getting-started/installation.md).
+From a checkout, use `uv sync --extra rayaccel` or
+`python -m pip install ".[rayaccel]"`. Alternatively, set the case's
+`ray_backend` to `rtree`. An explicit `embree` request intentionally does not
+fall back.
 
 ## The result path is rejected
 

@@ -78,7 +78,7 @@ def _assert_artifact_semantics_equal(
 
 
 class RuntimeTests(unittest.TestCase):
-    def test_ray_accel_hint_uses_checkout_or_github_release_installation(self) -> None:
+    def test_ray_accel_hint_is_distribution_channel_neutral(self) -> None:
         logs: list[str] = []
         product_id = FMF_POLICY.product_id
         was_hinted = product_id in _RAY_ACCEL_HINTED_PRODUCTS
@@ -91,9 +91,13 @@ class RuntimeTests(unittest.TestCase):
                 _RAY_ACCEL_HINTED_PRODUCTS.discard(product_id)
 
         self.assertEqual(1, len(logs))
-        self.assertIn("uv sync --extra rayaccel", logs[0])
-        self.assertIn("GitHub Release wheel", logs[0])
-        self.assertNotIn("pip install", logs[0])
+        message = logs[0]
+        self.assertIn("rayaccel", message)
+        self.assertIn("Panel Solver wheel", message)
+        self.assertIn("uv sync --extra rayaccel", message)
+        for forbidden in ("GitHub", "PyPI", "pandorobo11", "pip install"):
+            with self.subTest(forbidden=forbidden):
+                self.assertNotIn(forbidden, message)
 
     def _fmf_rows(self, root: Path, count: int) -> tuple[dict[str, object], ...]:
         base = (

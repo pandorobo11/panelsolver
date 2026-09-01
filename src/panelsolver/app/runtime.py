@@ -351,9 +351,9 @@ def _maybe_log_ray_accel_hint(policy: ProductRuntimePolicy, logfn: LogCallback) 
     else:
         logfn(
             "[INFO] Ray backend: rtree (ray_triangle). Optional acceleration is "
-            "available: checkout users can run uv sync --extra rayaccel; "
-            "release users should reinstall the current GitHub Release wheel "
-            "with the rayaccel extra (see Installation)."
+            "available through the rayaccel extra; reinstall the current Panel "
+            "Solver wheel with that extra, or use uv sync --extra rayaccel from "
+            "a checkout (see Installation)."
         )
     _RAY_ACCEL_HINTED_PRODUCTS.add(policy.product_id)
 
