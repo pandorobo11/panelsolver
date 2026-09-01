@@ -16,8 +16,8 @@ Panel Solver Apache License 2.0. It is informational and is not an Apache
 Panel Solver uses a generated 201-row table of geometric altitude,
 temperature, speed of sound, and mean molecular speed for the FMF/Sentman Mode
 B atmosphere calculation. The underlying U.S. Government report and physical
-data are not claimed as copyright of pandorobo11. Scientific and model-facing
-provenance is documented in
+data are not claimed as copyright by the Panel Solver project. Scientific and
+model-facing provenance is documented in
 [US1976 Sentman atmosphere data provenance](docs/reference/us1976-data-provenance.md).
 Maintainer regeneration steps and audit records are stored in repository and
 source-distribution path `devdocs/data/us1976-generation-and-audit.md`; that
@@ -48,8 +48,8 @@ redistributes only the minimal calculation snapshot needed for deterministic
 regeneration. It does not vendor the PDAS Web site, `bigtables.html`, or the
 PDAS collection as a whole.
 
-The underlying PDAS program is not claimed as copyright of pandorobo11 and is
-not relicensed under Apache-2.0.
+The underlying PDAS program is not claimed as copyright by the Panel Solver
+project and is not relicensed under Apache-2.0.
 
 ## Scientific methods and citations
 
