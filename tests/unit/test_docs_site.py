@@ -115,8 +115,15 @@ class DocumentationSiteTests(unittest.TestCase):
         self.assertFalse((self.site / "history").exists())
 
     def test_normal_user_documentation_does_not_expose_repository_owner(self) -> None:
-        sources = [ROOT / "README.md", *sorted((ROOT / "docs").rglob("*.md"))]
-        built_pages = sorted(self.site.rglob("*.html"))
+        sources = [
+            ROOT / "README.md",
+            ROOT / "THIRD_PARTY_NOTICES.md",
+            *sorted((ROOT / "docs").rglob("*.md")),
+        ]
+        built_pages = [
+            self.site / "THIRD_PARTY_NOTICES.md",
+            *sorted(self.site.rglob("*.html")),
+        ]
         for path in (*sources, *built_pages):
             with self.subTest(path=path):
                 self.assertNotIn(
