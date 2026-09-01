@@ -35,6 +35,12 @@ _EXPECTED_CONSOLE_SCRIPTS = {
     "panelsolver-gui": "panelsolver.gui:main",
 }
 _DOCS_LICENSE_DIRECTORY = "THIRD_PARTY_LICENSES"
+_DOCS_SCREENSHOTS = frozenset(
+    {
+        "assets/screenshots/gui-overview.png",
+        "assets/screenshots/gui-result.png",
+    }
+)
 _RTD_CSS_LICENSES = (
     "MKDOCS-BSD-2-CLAUSE.txt",
     "SPHINX-RTD-THEME-1.2.0-MIT.txt",
@@ -424,6 +430,7 @@ def _verify_release_zip(kind: str, archive_path: Path) -> None:
                 "solvers/hypersonic.html",
                 "LICENSE",
                 "THIRD_PARTY_NOTICES.md",
+                *_DOCS_SCREENSHOTS,
             }
             _verify_documentation_exclusions(set(names), artifact="docs ZIP")
         elif kind == "examples":
@@ -849,6 +856,7 @@ def verify_wheel_contents(repository: Path, wheel: Path) -> None:
             "panelsolver/_docs_site/solvers/hypersonic.html",
             "panelsolver/_docs_site/LICENSE",
             "panelsolver/_docs_site/THIRD_PARTY_NOTICES.md",
+            *(f"panelsolver/_docs_site/{path}" for path in _DOCS_SCREENSHOTS),
         }
         missing = required_docs - names
         if missing:

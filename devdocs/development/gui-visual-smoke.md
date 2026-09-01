@@ -142,6 +142,23 @@ Keep incidental screenshots outside the repository and attach them to the
 relevant issue or pull request. Commit screenshots only when they are an
 intentional part of durable documentation.
 
+## Maintained GUI-guide screenshots
+
+Regenerate both committed light-theme screenshots in `docs/assets/screenshots/`
+from a prepared development environment with one normal-display command:
+
+```bash
+python scripts/generate_docs_gui_screenshots.py
+```
+
+The generator copies the Hypersonic pressure-model input and its geometry to a
+temporary workspace, calculates `newt_pm` through the current GUI adapter/runtime
+path, loads the temporary input into the real `MainWindow`, and reuses this
+helper's Qt/VTK compositor. It validates the empty and current-result Viewer
+states before capture and replaces the visible input path with its stable example
+path after layout. It writes only `gui-overview.png` and `gui-result.png` to the
+repository; calculation outputs remain temporary.
+
 ## Why normal display is required
 
 Do not set either of these variables for this workflow:

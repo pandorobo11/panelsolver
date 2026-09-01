@@ -41,7 +41,7 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertIn("uv venv", clean_install)
         self.assertIn("uv pip install", clean_install)
         self.assertIn('--python "${CLEAN_VENV}/bin/python"', clean_install)
-        self.assertIn('"${WHEEL}"', clean_install)
+        self.assertIn('"${WHEEL}[rayaccel]"', clean_install)
         self.assertRegex(
             clean_install,
             r'"\$\{CLEAN_VENV\}/bin/python"\s*\\?\s*'

@@ -17,6 +17,7 @@ import pytest
 from scripts.release_tools import (
     _DOCS_NOTICE_MARKERS,
     _DOCS_REQUIRED_LICENSES,
+    _DOCS_SCREENSHOTS,
     _DOCS_THEME_ASSET_LICENSES,
     _DOCS_THEME_ASSET_SHA256,
     _github_api_json,
@@ -171,6 +172,7 @@ class ReleaseToolTests(unittest.TestCase):
             "THIRD_PARTY_NOTICES.md": (
                 repository / "THIRD_PARTY_NOTICES.md"
             ).read_bytes(),
+            **{path: b"documentation screenshot\n" for path in _DOCS_SCREENSHOTS},
         }
         docs.update(self.theme_asset_payloads())
         docs.update(

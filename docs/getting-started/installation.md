@@ -7,19 +7,21 @@
   PyVista/VTK, Trimesh, SciPy, pandas, and rtree
 - An STL mesh and a CSV, XLSX, or XLSM case table
 
-## Install
+## Install a wheel
 
-For normal use, install the canonical distribution:
-
-```bash
-python -m pip install panelsolver
-```
-
-To add the platform-specific Embree binding used by the accelerated ray backend:
+Install the Panel Solver v0.1.0 wheel from the directory containing the file:
 
 ```bash
-python -m pip install 'panelsolver[rayaccel]'
+python -m pip install ./panelsolver-0.1.0-py3-none-any.whl
 ```
+
+To include the optional accelerated Embree ray backend:
+
+```bash
+python -m pip install "./panelsolver-0.1.0-py3-none-any.whl[rayaccel]"
+```
+
+## Install from a checkout
 
 From a checkout:
 
@@ -30,7 +32,7 @@ python -m pip install .
 The equivalent checkout install with Embree is:
 
 ```bash
-python -m pip install '.[rayaccel]'
+python -m pip install ".[rayaccel]"
 ```
 
 ## Verify the installation
