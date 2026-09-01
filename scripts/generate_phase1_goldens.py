@@ -1086,19 +1086,17 @@ def _module_paths(solver: str, source_root: Path) -> list[str]:
 
 def _solver_imports(solver: str) -> dict[str, Any]:
     if solver == "fmfsolver":
+        from fmfsolver.app import cli_app
         from fmfsolver.core import parallel_scheduler, shielding
         from fmfsolver.core import solver as solver_module
         from fmfsolver.io.csv_out import write_results_csv
         from fmfsolver.io.io_cases import read_cases
-
-        from fmfsolver.app import cli_app  # isort: skip
     else:
+        from newtsolver.app import cli_app
         from newtsolver.core import parallel_scheduler, shielding
         from newtsolver.core import solver as solver_module
         from newtsolver.io.csv_out import write_results_csv
         from newtsolver.io.io_cases import read_cases
-
-        from newtsolver.app import cli_app  # isort: skip
 
     return {
         "cli_app": cli_app,
