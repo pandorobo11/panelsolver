@@ -366,6 +366,26 @@ class ReleaseToolTests(unittest.TestCase):
                 self.assertIn("examples/hypersonic/pressure_models.csv", names)
                 self.assertFalse(any(name.endswith((".npz", ".xls")) for name in names))
 
+    def test_packaged_examples_readme_uses_current_hypersonic_scalar(self) -> None:
+        source_readme = (
+            Path(__file__).resolve().parents[2] / "examples" / "README.md"
+        ).read_bytes()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repository = self.make_repository(Path(temp_dir))
+            (repository / "examples" / "README.md").write_bytes(source_readme)
+            wheel = self.write_wheel(repository)
+            _docs_zip, examples_zip = create_release_archives(repository)
+
+            with zipfile.ZipFile(wheel) as archive:
+                wheel_readme = archive.read("panelsolver/_examples/README.md").decode(
+                    "utf-8"
+                )
+            with zipfile.ZipFile(examples_zip) as archive:
+                examples_readme = archive.read("examples/README.md").decode("utf-8")
+
+            self.assertNotIn("Cp_n", wheel_readme)
+            self.assertNotIn("Cp_n", examples_readme)
+
     def test_wheel_and_docs_zip_preserve_audited_theme_licenses(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             repository = self.make_repository(Path(temp_dir))
