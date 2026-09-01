@@ -135,8 +135,8 @@ remain directly under `outputs/`.
 - Naming: the `newt_*` case IDs here denote Newtonian-family or
   Newtonian/Prandtl–Meyer physical-method combinations.
 - Observe: Newtonian, Modified Newtonian, Tangent Wedge, and Tangent Cone all
-  return finite but distinct `Cp_n` values. The `newt_pm.vtp` cube has negative
-  `Cp_n` on at least one leeward panel.
+  return finite but distinct `cp` values. The `newt_pm.vtp` cube has negative
+  `cp` on at least one leeward panel.
 - Output: `examples/hypersonic/outputs/pressure_models/`.
 
 ### `hypersonic/shielding.csv`
@@ -151,7 +151,7 @@ remain directly under `outputs/`.
 - Output: `examples/hypersonic/outputs/shielding/`.
 
 `leeward_eq=shield` and `shielding_on=1` are different features. The former is
-a pressure-model choice that assigns zero `Cp_n` to active leeward panels. The
+a pressure-model choice that assigns zero `cp` to active leeward panels. The
 latter performs geometric ray-occlusion testing and zeros any hidden panel,
 regardless of its windward/leeward pressure selector.
 
