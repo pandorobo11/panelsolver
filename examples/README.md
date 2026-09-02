@@ -30,8 +30,10 @@ The current example directories use the canonical flow-domain names
 `examples/fmf/` and `examples/hypersonic/`.
 
 For the complete schemas, see the
-[FMF input reference](../docs/reference/fmf-input.md) and
-[Hypersonic input reference](../docs/reference/hypersonic-input.md).
+[FMF input reference](../docs/reference/fmf-input.md),
+[Hypersonic input reference](../docs/reference/hypersonic-input.md),
+[Summary CSV reference](../docs/results/summary-csv.md), and
+[VTP reference](../docs/results/vtp.md).
 
 ## Running and opening results
 

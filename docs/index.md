@@ -24,15 +24,19 @@ geometry before interpreting coefficients.
 - [GUI](user-guide/gui.md)
 - [CLI](user-guide/cli.md)
 - [Case files, attitude, and STL components](user-guide/case-files.md)
-- [Outputs](user-guide/outputs.md)
+- [Output paths, writes, and recovery](user-guide/outputs.md)
 - [Shielding and parallel execution](user-guide/shielding-and-parallel.md)
 - [Troubleshooting](user-guide/troubleshooting.md)
+
+## Result reference
+
+- [Summary CSV](results/summary-csv.md)
+- [VTP](results/vtp.md)
 
 ## Reference
 
 - [FMF input columns](reference/fmf-input.md)
 - [Hypersonic input columns](reference/hypersonic-input.md)
-- [Output formats](reference/output-formats.md)
 - [Environment variables](reference/environment-variables.md)
 - [Numerical conventions](reference/numerical-conventions.md)
 - [Compatibility policy](reference/compatibility.md)

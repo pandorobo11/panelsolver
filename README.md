@@ -81,9 +81,10 @@ server or network access.
 - [Case-file guide](docs/user-guide/case-files.md)
 - [FMF](docs/solvers/fmf.md) and
   [Hypersonic](docs/solvers/hypersonic.md)
-- [FMF input](docs/reference/fmf-input.md),
-  [Hypersonic input](docs/reference/hypersonic-input.md), and
-  [output reference](docs/reference/output-formats.md)
+- [FMF input](docs/reference/fmf-input.md) and
+  [Hypersonic input](docs/reference/hypersonic-input.md)
+- [Summary CSV reference](docs/results/summary-csv.md) and
+  [VTP reference](docs/results/vtp.md)
 - [Developer documentation](devdocs/README.md)
 
 ## Compatibility

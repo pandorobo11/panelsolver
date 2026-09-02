@@ -1,7 +1,9 @@
 # Outputs
 
-Each run produces a Summary CSV and can produce per-case VTP files. The canonical
-column and array inventory is in [Output formats](../reference/output-formats.md).
+Each run produces a Summary CSV and can produce per-case VTP files. This page
+covers artifact locations, naming, write behavior, and recovery. The canonical
+result definitions are the [Summary CSV reference](../results/summary-csv.md)
+and [VTP reference](../results/vtp.md).
 
 ## Paths and switches
 
@@ -61,7 +63,9 @@ out of order.
 
 VTP is intended for visualization and panel-level data. It contains mesh-aligned
 cell data plus case metadata. Summary CSV is the aggregate output and the only
-output with component summary rows.
+output with component summary rows. Use the
+[Summary CSV reference](../results/summary-csv.md) and
+[VTP reference](../results/vtp.md) for complete field definitions.
 
 Compare VTP artifacts semantically by field name, shape, dtype, metadata, and
 appropriate numeric tolerance—not by file bytes.
