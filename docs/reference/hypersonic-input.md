@@ -38,8 +38,9 @@ cone, and Prandtl–Meyer require `Mach > 1`.
 
 Every required numeric field must be finite, and numeric booleans are rejected.
 Hypersonic uses the common attitude resolver also used by FMF. See
-[Case files](../user-guide/case-files.md#attitude-modes) to select a mode and
-[Numerical conventions](numerical-conventions.md#attitude-conventions) for the
-canonical axes, signs, input ranges, and geometric definitions. Other common
-rules are in Case files; physical interpretation is in the Hypersonic
+[Case files](../user-guide/case-files.md#attitude-modes) for mode selection and
+accepted ranges, and
+[Coordinate and attitude conventions](coordinate-and-attitude-conventions.md)
+for the canonical axes, signs, and geometric definitions. Other common rules
+are in Case files; physical interpretation is in the Hypersonic
 [pressure-model equations](../solvers/hypersonic.md#pressure-model-equations).

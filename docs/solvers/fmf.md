@@ -36,7 +36,8 @@ For each panel, the Sentman model computes a local nondimensional traction
 vector. The model returns this vector without panel-area or reference-area
 scaling; the shared engine applies those factors and performs force, moment, and
 component integration. General frame transformations and moment conventions are
-described in [Numerical conventions](../reference/numerical-conventions.md).
+defined in
+[Load and coefficient conventions](../reference/load-and-coefficient-conventions.md).
 
 ### Geometry and symbols
 
@@ -122,19 +123,9 @@ momentum cancels statistically, so the reflected term appears only in the
 normal direction. The error-function and exponential terms retain random
 thermal motion, so this is not a simple windward-only pressure law.
 
-For panel $j$, the common integrator forms
-
-```math
-\Delta\boldsymbol C_j
-=
-\boldsymbol{\tau}_j
-\frac{A_j}{A_{\mathrm{ref}}}.
-```
-
-This is algebraically the same as the original report's $dC/dA$ form. The
-current model returns the local traction numerator, and the common integrator
-applies $A_j/A_{\mathrm{ref}}$ exactly once before summing whole-vehicle forces
-and moments.
+The current model returns this local traction numerator. The model-neutral
+`area / Aref` weighting and whole-vehicle force/moment integration are defined
+once in [Load and coefficient conventions](../reference/load-and-coefficient-conventions.md#local-traction-and-panel-contributions).
 
 ### Representative angular response
 
@@ -226,8 +217,9 @@ pinned atmosphere table and does not accept extrapolation beyond its altitude
 range. It does not become a continuum-flow model merely because Mach is used to
 derive speed ratio.
 
-See the [FMF input reference](../reference/fmf-input.md) and
-[numerical conventions](../reference/numerical-conventions.md).
+See the [FMF input reference](../reference/fmf-input.md),
+[Coordinate and attitude conventions](../reference/coordinate-and-attitude-conventions.md),
+and [Load and coefficient conventions](../reference/load-and-coefficient-conventions.md).
 
 ## Reference
 
