@@ -7,11 +7,12 @@ Use the [Summary CSV reference](../results/summary-csv.md) and
 
 ## Workers and visible ordering
 
-`workers=1` is the simplest deterministic execution setting. With multiple
-workers, calculations may finish in a different order from the selected input
-rows. Progress and diagnostics can therefore mention cases out of order, but
-every checkpoint and final Summary CSV presents the completed cases in input-
-table order.
+Case execution order is not guaranteed to match input-table order, regardless
+of the worker count. `workers=1` is the simplest non-parallel execution setting.
+With multiple workers, execution and completion can be further asynchronous.
+Progress and diagnostics can therefore mention cases out of order, but every
+checkpoint and final Summary CSV presents the completed cases in input-table
+order.
 
 The CLI exposes this setting as `--workers`; the GUI exposes it as **Workers**.
 

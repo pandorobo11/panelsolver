@@ -24,7 +24,7 @@ model. `hypersonic` selects the hypersonic panel-method domain and its
 Newtonian-family methods.
 
 Summary CSV and VTP are the only formal filesystem result artifacts. Current
-runs do not create NPZ output and do not delete pre-existing NPZ files.
+runs do not generate NPZ output.
 
 ## Distribution and artifact version
 
