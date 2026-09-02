@@ -75,7 +75,7 @@ contributions have been formed. See
 [Numerical conventions](../reference/numerical-conventions.md) for coordinate
 transforms, coefficient signs, and moment normalization.
 
-These are local, invisccid panel approximations for a calorically perfect gas
+These are local, inviscid panel approximations for a calorically perfect gas
 with constant $\gamma$; they are not general CFD. They omit boundary layers,
 viscosity, heat transfer, real-gas chemistry, shock--shock and
 shock--boundary-layer interactions, and coupled flow between neighboring
