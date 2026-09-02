@@ -35,7 +35,8 @@ still need results.
 ## Cancellation and calculation failures
 
 Cancellation is cooperative. Panel Solver observes it between cases; an active
-ray query or physical-model solve may finish before the request is observed.
+[ray-shielding query](../reference/ray-shielding.md) or physical-model solve may
+finish before the request is observed.
 Artifacts already saved are not rolled back. If cancellation prevents normal
 completion, a new final aggregate Summary CSV is not guaranteed, so use the
 latest successfully written checkpoint and any successfully written VTP files.

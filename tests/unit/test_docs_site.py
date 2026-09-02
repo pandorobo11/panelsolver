@@ -90,6 +90,7 @@ class DocumentationSiteTests(unittest.TestCase):
             "reference/hypersonic-input.html",
             "reference/coordinate-and-attitude-conventions.html",
             "reference/load-and-coefficient-conventions.html",
+            "reference/ray-shielding.html",
             "reference/output-formats.html",
             "user-guide/batch-execution-and-recovery.html",
             "assets/screenshots/gui-overview.png",
@@ -100,6 +101,9 @@ class DocumentationSiteTests(unittest.TestCase):
             with self.subTest(relative=relative):
                 self.assertTrue((self.site / relative).is_file())
         self.assertFalse((self.site / "reference/numerical-conventions.html").exists())
+        self.assertFalse(
+            (self.site / "user-guide/shielding-and-parallel.html").exists()
+        )
         self.assertEqual(
             (ROOT / "LICENSE").read_bytes(), (self.site / "LICENSE").read_bytes()
         )

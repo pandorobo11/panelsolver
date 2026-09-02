@@ -25,7 +25,6 @@ geometry before interpreting coefficients.
 - [CLI](user-guide/cli.md)
 - [Case files, attitude, and STL components](user-guide/case-files.md)
 - [Batch execution and recovery](user-guide/batch-execution-and-recovery.md)
-- [Shielding and parallel execution](user-guide/shielding-and-parallel.md)
 - [Troubleshooting](user-guide/troubleshooting.md)
 
 ## Result reference
@@ -40,6 +39,7 @@ geometry before interpreting coefficients.
 - [Environment variables](reference/environment-variables.md)
 - [Coordinate and attitude conventions](reference/coordinate-and-attitude-conventions.md)
 - [Load and coefficient conventions](reference/load-and-coefficient-conventions.md)
+- [Ray shielding](reference/ray-shielding.md)
 - [Compatibility policy](reference/compatibility.md)
 - [Python API policy](reference/python-api.md)
 - [License and third-party notices](reference/license-and-third-party-notices.md)

@@ -107,9 +107,9 @@ The exact axes and angle transformations are defined in
 
 | Column | Domain | Type / format | Unit / values | Rows | Blank when | Meaning |
 |---|---|---|---|---|---|---|
-| `ray_backend_used` | common | text | `not_used`, `rtree`, or `embree` | all | never | Effective ray backend for the evaluated case. It is `not_used` when ray shielding is disabled; for input `auto`, it records the backend actually selected. |
+| `ray_backend_used` | common | text | `not_used`, `rtree`, or `embree` | all | never | Effective backend for the [ray-shielding method](../reference/ray-shielding.md). It is `not_used` when ray shielding is disabled; for input `auto`, it records the backend actually selected. |
 | `faces` | common | non-negative integer | panel count | all | never | Number of triangular panels represented by the row's scope. |
-| `shielded_faces` | common | non-negative integer | panel count | all | never | Number of panels in the row's scope marked geometrically occluded by ray shielding. A Hypersonic leeward `shield` pressure selector does not increment this count. |
+| `shielded_faces` | common | non-negative integer | panel count | all | never | Number of panels in the row's scope marked geometrically occluded by [ray shielding](../reference/ray-shielding.md). A Hypersonic leeward `shield` pressure selector does not increment this count. |
 | `vtp_path` | common | absolute path text | — | total | VTP saving was disabled, output-directory preparation failed, or the current VTP write failed | VTP successfully written for this case during the current run. Component rows are always blank because one case VTP contains every component. |
 
 A blank `vtp_path` never claims that an older file at the planned path represents

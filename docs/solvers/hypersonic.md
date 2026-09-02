@@ -248,7 +248,7 @@ C_p=0.
 This is a leeward surface-pressure equation. It is separate from
 `shielding_on=1`, which performs ray-occlusion geometry processing and forces a
 panel hidden by another face to zero load regardless of its pressure equation.
-See [Shielding and parallel execution](../user-guide/shielding-and-parallel.md).
+See [Ray shielding](../reference/ray-shielding.md#ray-shielding-versus-leeward_eqshield).
 
 ### Prandtl–Meyer expansion
 

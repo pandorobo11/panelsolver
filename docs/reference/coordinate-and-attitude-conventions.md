@@ -14,7 +14,9 @@ The resolved unit freestream-velocity direction is written as
 $\hat{\boldsymbol V}_{\mathrm{STL}}=(V_x,V_y,V_z)$, or `Vhat_stl` /
 `velocity_hat_stl` in field and API names. It points in the direction in which
 the freestream travels, expressed in STL axes; it does not point upstream. At
-zero attitude it is $+X_{\mathrm{STL}}$.
+zero attitude it is $+X_{\mathrm{STL}}$. The model-neutral
+[ray-shielding method](ray-shielding.md#geometry-occlusion-method) traces in the
+opposite, upstream direction.
 
 The frozen STL-to-body axis mapping is
 

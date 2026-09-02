@@ -84,6 +84,7 @@ server or network access.
   [Hypersonic](docs/solvers/hypersonic.md)
 - [FMF input](docs/reference/fmf-input.md) and
   [Hypersonic input](docs/reference/hypersonic-input.md)
+- [Ray shielding](docs/reference/ray-shielding.md)
 - [Summary CSV reference](docs/results/summary-csv.md) and
   [VTP reference](docs/results/vtp.md)
 - [Developer documentation](devdocs/README.md)

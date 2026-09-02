@@ -25,8 +25,8 @@ defined in [Case files](../user-guide/case-files.md).
 | `Lref_Cl_m` | yes | — | m, > 0 | Roll-moment reference length |
 | `Lref_Cm_m` | yes | — | m, > 0 | Pitch-moment reference length |
 | `Lref_Cn_m` | yes | — | m, > 0 | Yaw-moment reference length |
-| `shielding_on` | no | `0` | `0` or `1` | Ray-occlusion shielding |
-| `ray_backend` | no | `auto` | `auto`, `rtree`, `embree` | Shielding backend |
+| `shielding_on` | no | `0` | `0` or `1` | Enable the common [ray-occlusion shielding method](ray-shielding.md) |
+| `ray_backend` | no | `auto` | `auto`, `rtree`, `embree` | [Ray-shielding backend](ray-shielding.md#backend-behavior) |
 | `out_dir` | no | `outputs` | path | Per-case VTP directory; resolution and path rules are in [Case files](../user-guide/case-files.md#paths-artifact-destinations-and-components) |
 | `save_vtp_on` | no | `1` | `0` or `1` | `1` writes the case VTP; `0` skips it |
 

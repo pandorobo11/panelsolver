@@ -155,7 +155,9 @@ remain directly under `outputs/`.
 `leeward_eq=shield` and `shielding_on=1` are different features. The former is
 a pressure-model choice that assigns zero `cp` to active leeward panels. The
 latter performs geometric ray-occlusion testing and zeros any hidden panel,
-regardless of its windward/leeward pressure selector.
+regardless of its windward/leeward pressure selector. See the
+[Ray shielding reference](../docs/reference/ray-shielding.md) for the common
+method and its exact-zero load consequence.
 
 ### `hypersonic/components.csv`
 
