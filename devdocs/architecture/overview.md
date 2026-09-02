@@ -46,8 +46,10 @@ hypersonic model returns pressure-only normal traction. Core applies panel area
 and reference normalization and integrates forces and moments.
 
 The exact contract and immutability rules are in
-[ADR 0002](../adr/0002-panel-load-vector-contract.md). Units, frames, and signs
-are in [Numerical conventions](../../docs/reference/numerical-conventions.md).
+[ADR 0002](../adr/0002-panel-load-vector-contract.md). Frames, attitude, signs,
+and normalization are in
+[Coordinate and attitude conventions](../../docs/reference/coordinate-and-attitude-conventions.md)
+and [Load and coefficient conventions](../../docs/reference/load-and-coefficient-conventions.md).
 
 ## Public and lower-level Python boundaries
 

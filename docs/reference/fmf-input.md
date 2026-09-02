@@ -51,8 +51,9 @@ no separate reflected-gas temperature or accommodation coefficient, the model
 uses `Tw_K` as the diffusely reflected molecular temperature (`T_r = T_w`).
 
 FMF uses the common attitude resolver also used by Hypersonic. See
-[Case files](../user-guide/case-files.md#attitude-modes) to select a mode and
-[Numerical conventions](numerical-conventions.md#attitude-conventions) for the
-canonical axes, signs, input ranges, and geometric definitions. Common path,
-case-ID, flag, and mesh rules are also in Case files. Model interpretation is in
+[Case files](../user-guide/case-files.md#attitude-modes) for mode selection and
+accepted ranges, and
+[Coordinate and attitude conventions](coordinate-and-attitude-conventions.md)
+for the canonical axes, signs, and geometric definitions. Common path, case-ID,
+flag, and mesh rules are also in Case files. Model interpretation is in
 [Sentman local-load equation](../solvers/fmf.md#sentman-local-load-equation).

@@ -36,7 +36,8 @@ nav:
       - Summary CSV reference: results/summary-csv.md
       - VTP reference: results/vtp.md
   - Reference:
-      - Numerical conventions: reference/numerical-conventions.md
+      - Coordinate and attitude conventions: reference/coordinate-and-attitude-conventions.md
+      - Load and coefficient conventions: reference/load-and-coefficient-conventions.md
       - Environment variables: reference/environment-variables.md
       - Compatibility: reference/compatibility.md
       - US1976 atmosphere provenance: reference/us1976-data-provenance.md

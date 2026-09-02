@@ -25,7 +25,7 @@ independently. Empty entries and mismatched counts are invalid.
 
 ## Pressure-model equations
 
-### Common panel geometry and normalization
+### Common panel geometry and local pressure convention
 
 For each panel, define:
 
@@ -60,20 +60,15 @@ the Hypersonic domain's local panel pressure-coefficient output. The model
 returns local pressure-only traction
 
 ```math
-\boldsymbol{\tau}_j=-C_{p,j}\boldsymbol n_{\mathrm{out},j},
-\qquad
-\Delta\boldsymbol C_j
-=
-\boldsymbol{\tau}_j\frac{A_j}{A_{\mathrm{ref}}}.
+\boldsymbol{\tau}_j=-C_{p,j}\boldsymbol n_{\mathrm{out},j}.
 ```
 
-The shared integrator, not the model, applies $A_j/A_{\mathrm{ref}}$ exactly
-once, sums $\boldsymbol C_{\mathrm{total,STL}}=\sum_j
-\Delta\boldsymbol C_j$, and forms whole-vehicle force and moment coefficients.
-Frame transformations and lever-arm moments occur only after these local panel
-contributions have been formed. See
-[Numerical conventions](../reference/numerical-conventions.md) for coordinate
-transforms, coefficient signs, and moment normalization.
+The shared integrator, not the model, applies `area / Aref` exactly once and
+forms whole-vehicle force and moment coefficients. See
+[Load and coefficient conventions](../reference/load-and-coefficient-conventions.md)
+for common integration, coefficient signs, and moment normalization, and
+[Coordinate and attitude conventions](../reference/coordinate-and-attitude-conventions.md)
+for the coordinate and attitude transforms.
 
 These are local, inviscid panel approximations for a calorically perfect gas
 with constant $\gamma$; they are not general CFD. They omit boundary layers,
@@ -407,7 +402,8 @@ three-dimensional CFD physics. Select them only within a justified engineering
 approximation regime.
 
 See the [Hypersonic input reference](../reference/hypersonic-input.md),
-[numerical conventions](../reference/numerical-conventions.md),
+[Coordinate and attitude conventions](../reference/coordinate-and-attitude-conventions.md),
+[Load and coefficient conventions](../reference/load-and-coefficient-conventions.md),
 [Summary CSV reference](../results/summary-csv.md), and
 [VTP reference](../results/vtp.md#hypersonic).
 

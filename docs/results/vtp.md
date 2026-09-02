@@ -48,7 +48,7 @@ content as triangle cells.
 
 The relationship between `C_face_stl`, whole-case coefficients, frames, signs,
 and moments is defined in
-[Numerical conventions](../reference/numerical-conventions.md#loads-and-normalization).
+[Load and coefficient conventions](../reference/load-and-coefficient-conventions.md).
 
 ## Model-specific cell data
 

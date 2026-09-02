@@ -100,9 +100,8 @@ needed for provenance.
 | `component_id` | common | non-negative integer | zero-based STL index | component | `scope=total` | Component identifier in input `stl_path` order. |
 | `component_stl_path` | common | absolute path text | — | component | `scope=total` | Resolved STL source path used to load this component. |
 
-The exact axes, angle transformations, coefficient signs, and moment reference
-conventions are defined in
-[Numerical conventions](../reference/numerical-conventions.md).
+The exact axes and angle transformations are defined in
+[Coordinate and attitude conventions](../reference/coordinate-and-attitude-conventions.md).
 
 ## Execution and artifact fields
 
@@ -135,6 +134,6 @@ All coefficient columns are floating-point, dimensionless, present on both
 
 Panel-area/reference-area normalization, the STL-to-body mapping, the
 body-to-stability rotation, signs, and moment calculation are canonical in
-[Numerical conventions](../reference/numerical-conventions.md#loads-and-normalization).
+[Load and coefficient conventions](../reference/load-and-coefficient-conventions.md).
 Per-panel contributions from which these coefficients are integrated are stored
 as `C_face_stl` in the [VTP reference](vtp.md).
