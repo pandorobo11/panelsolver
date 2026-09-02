@@ -24,7 +24,7 @@ geometry before interpreting coefficients.
 - [GUI](user-guide/gui.md)
 - [CLI](user-guide/cli.md)
 - [Case files, attitude, and STL components](user-guide/case-files.md)
-- [Output paths, writes, and recovery](user-guide/outputs.md)
+- [Batch execution and recovery](user-guide/batch-execution-and-recovery.md)
 - [Shielding and parallel execution](user-guide/shielding-and-parallel.md)
 - [Troubleshooting](user-guide/troubleshooting.md)
 

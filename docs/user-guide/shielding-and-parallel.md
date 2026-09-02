@@ -18,32 +18,9 @@ When shielding is off, outputs record `ray_backend_used=not_used`. Ray batch
 controls are listed in
 [Environment variables](../reference/environment-variables.md).
 
-## Workers and checkpoints
+## Parallel runs
 
-`--workers N` uses spawn-based processes when `N > 1`. Cases may execute out of
-order, while progress snapshots and final summary rows are rebuilt in input
-order. The scheduler groups reusable shielding work as an optimization, but
-geometry, backend, flow direction, algorithm, and model identities remain part
-of cache safety.
-
-Shielding locality remains the first scheduling priority so workers avoid
-repeating expensive ray tracing. Within that constraint, Hypersonic runs use
-secondary hints to keep reusable tangent-cone and tangent-wedge `(Mach, gamma)`
-work in the same worker process when practical; tangent-cone reuse is preferred
-because its table construction is more expensive. The scheduler also groups
-these secondary hints when constructing chunks inside a reusable shielding
-bucket and preserves an affinity-group boundary when practical; chunks may be
-smaller than the configured maximum, but only when that does not increase the
-bucket's baseline chunk count. The primary shielding bucket is never split or
-changed, and secondary locality does not increase the chunk-count bound on
-workers that may need to rebuild its ray cache. These hints can further change
-execution order, but checkpoint and final output order remains the input order.
-
-Both products forward worker logs and retain successful cases completed before a
-later case in the same chunk fails. `--checkpoint-every-cases N` controls
-complete Summary CSV checkpoint snapshots; the default is `2000` and `0`
-disables intermediate snapshots. The final Summary CSV is still written.
-
-Cancellation is cooperative between cases. It does not interrupt an active ray
-query, root solve, or ODE integration, and existing per-case artifacts are not
-rolled back.
+Ray shielding uses the same generic worker, checkpoint, cancellation, and
+recovery behavior as every batch. See
+[Batch execution and recovery](batch-execution-and-recovery.md). Shielding-
+specific backend selection and controls remain on this page.

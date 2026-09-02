@@ -4,8 +4,9 @@ This page is the canonical semantic contract for Panel Solver VTP artifacts.
 Each saved `.vtp` is VTK XML PolyData containing the validated case mesh,
 face-aligned result arrays, and case-level provenance. The
 [Summary CSV reference](summary-csv.md) defines integrated and component rows;
-artifact paths, naming, and write-failure behavior remain in
-[Outputs](../user-guide/outputs.md).
+per-case path rules are in [Case files](../user-guide/case-files.md), and write-
+failure behavior is in
+[Batch execution and recovery](../user-guide/batch-execution-and-recovery.md).
 
 ## What is contractual
 

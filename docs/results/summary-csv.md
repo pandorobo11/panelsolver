@@ -4,9 +4,10 @@ This page is the canonical contract for the result portion of Panel Solver
 Summary CSV files. The case-table columns that precede these results are defined
 in the [FMF input reference](../reference/fmf-input.md), the
 [Hypersonic input reference](../reference/hypersonic-input.md), and
-[Case files](../user-guide/case-files.md). Artifact locations, naming, write
-failure handling, and checkpoint behavior remain in
-[Outputs](../user-guide/outputs.md).
+[Case files](../user-guide/case-files.md). The [CLI guide](../user-guide/cli.md)
+defines the CLI Summary destination, while
+[Batch execution and recovery](../user-guide/batch-execution-and-recovery.md)
+defines checkpoint and write-failure behavior.
 
 ## Serialization and column order
 

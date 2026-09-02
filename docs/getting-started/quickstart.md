@@ -51,9 +51,9 @@ By default, the CLI writes:
 
 Use the [Summary CSV reference](../results/summary-csv.md) and
 [VTP reference](../results/vtp.md) to interpret every field. See
-[Outputs](../user-guide/outputs.md) for artifact paths, write behavior, and
-recovery, and [Case files](../user-guide/case-files.md) before editing the
-examples.
+[Case files](../user-guide/case-files.md) for per-case VTP paths and input rules,
+and [Batch execution and recovery](../user-guide/batch-execution-and-recovery.md)
+for checkpoints, cancellation, and partial-write recovery.
 
 ## Try the feature examples next
 
