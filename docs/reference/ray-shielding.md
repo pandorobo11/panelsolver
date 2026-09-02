@@ -59,8 +59,10 @@ case.
 The effective backend and mask/count are represented in results as
 `ray_backend_used`, `shielded`, and `shielded_faces`. Their complete
 serialization contracts remain in the
-[Summary CSV reference](../results/summary-csv.md#execution-and-artifact-fields)
-and [VTP reference](../results/vtp.md#common-cell-data).
+[Summary CSV reference](../results/summary-csv.md#execution-and-artifact-fields),
+the VTP [common cell data](../results/vtp.md#common-cell-data) for `shielded`,
+and the VTP [common field data](../results/vtp.md#common-field-data) for
+`ray_backend_used`.
 
 Ray-query batching can be tuned as described in the
 [Environment-variable reference](environment-variables.md). Generic workers,
