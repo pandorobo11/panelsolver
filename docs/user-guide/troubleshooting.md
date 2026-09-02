@@ -39,9 +39,8 @@ with Panel Solver when automatic loading is required; they are unsupported.
 
 ## A canceled run does not stop immediately
 
-Cancellation is observed between cases. A currently executing ray query or
-physical-model solve is allowed to finish. Treat artifacts from failed or
-canceled runs as partial state.
+See [Cancellation and calculation failures](batch-execution-and-recovery.md#cancellation-and-calculation-failures)
+for the cooperative boundary and how to recover completed artifacts.
 
 ## A Python import fails
 

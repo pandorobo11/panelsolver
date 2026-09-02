@@ -43,9 +43,12 @@ ready for result inspection.*
    **Run All Cases** runs every loaded case.
 3. Set **Workers**. Use `1` for the simplest deterministic run.
 4. Set **Checkpoint every** in cases. The default is `2000`; use `0` to
-   disable intermediate Summary CSV snapshots.
+   disable intermediate Summary CSV snapshots. See
+   [Batch execution and recovery](batch-execution-and-recovery.md) for snapshot
+   and recovery behavior.
 5. Choose **Run All Cases** or **Run Selected Cases**, as shown for the current
-   selection, and select the summary CSV destination.
+   selection, and select the Summary CSV destination. The dialog defaults to
+   `<input_dir>/outputs/<input_stem>_result.csv`.
 6. Follow the always-visible progress state. Select **Diagnostics** when detailed
    operational messages are useful.
 
@@ -60,11 +63,12 @@ aligned; identifiers and text remain left-aligned, and 0/1 flags are centered.
 This presentation layer does not round values, normalize scientific notation,
 or convert units.
 
-A successful calculation with one or more VTP, checkpoint, or final Summary CSV
-write failures finishes as **Completed with output errors**, not **Failed**. The
-run continues after per-case VTP failures and shows one bounded summary at the
-end; complete details remain in the log. **Failed** is reserved for case
-computation failures such as geometry loading or model execution errors.
+A run whose calculations complete with one or more artifact write failures
+finishes as **Completed with output errors**, not **Failed**, and shows one
+bounded summary at the end; complete details remain in the log. **Failed** is
+reserved for case-computation failures such as geometry loading or model
+execution errors. The shared continuation and recovery behavior is in
+[Batch execution and recovery](batch-execution-and-recovery.md).
 After a VTP failure, an older file at that case's planned path is not auto-loaded
 as the current result. It remains available for explicit **Open VTP...**
 inspection.
@@ -144,30 +148,23 @@ independent of row order. Batch filenames use the same
 batch export: Panel Solver adds `_2`, `_3`, and so on before `.png`, including
 when names would collide within the current batch.
 
-For **Save Image...**, the required image directory and missing parents are
-created after the save dialog is confirmed. For **Save Selected...**, the
-standard or remembered directory is created before the folder chooser opens so
-it can be selected on the first export; canceling that chooser may therefore
-leave an empty `images` directory. A creation failure is logged, the chooser is
-not opened, and no screenshot is attempted. Calculations themselves do not
-create image directories.
-
 If another image directory is selected, it is reused as the starting directory
 for later case-associated image saves while the same input file remains loaded.
 This session-only choice is reset after a different input file loads
-successfully; if the remembered directory is deleted, the standard directory is
-created if needed and used again. An unmatched manually opened VTP always uses
-its own parent-based standard location. Export buttons remain disabled until a
-viewport or explicitly selected loaded cases, respectively, are available.
+successfully. If the remembered directory is unavailable, the standard
+directory is used again. An unmatched manually opened VTP always uses its own
+parent-based standard location. Export buttons remain disabled until a viewport
+or explicitly selected loaded cases, respectively, are available.
 
-Relative `out_dir` values, automatic VTP loading, and case-associated default
-image directories are all resolved from the loaded input table's directory.
+Automatic VTP loading and case-associated default image directories follow the
+`out_dir` resolution defined in
+[Case files](case-files.md#paths-artifact-destinations-and-components).
 
-Closing the window during a run requests cooperative cancellation and waits for
-worker cleanup. An active ray query or model solve may finish before cancellation
-is observed; files already written are not rolled back.
+Closing the window during a run requests cancellation and waits for worker
+cleanup. Cancellation boundaries and retained artifacts are described in
+[Batch execution and recovery](batch-execution-and-recovery.md#cancellation-and-calculation-failures).
 
 See [Case files](case-files.md), the
 [Summary CSV reference](../results/summary-csv.md), the
-[VTP reference](../results/vtp.md), [Outputs](outputs.md), and
+[VTP reference](../results/vtp.md), and
 [Troubleshooting](troubleshooting.md).

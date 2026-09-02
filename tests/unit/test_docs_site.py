@@ -89,7 +89,7 @@ class DocumentationSiteTests(unittest.TestCase):
             "reference/fmf-input.html",
             "reference/hypersonic-input.html",
             "reference/output-formats.html",
-            "user-guide/outputs.html",
+            "user-guide/batch-execution-and-recovery.html",
             "assets/screenshots/gui-overview.png",
             "assets/screenshots/gui-result.png",
             "LICENSE",

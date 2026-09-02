@@ -9,11 +9,18 @@ Excel 97–2003 BIFF `.xls` is not a supported input format; resave the workbook
 CSV case tables use UTF-8 with BOM (`utf-8-sig`). The reader also accepts
 BOM-less UTF-8 CSV files, so existing UTF-8 inputs remain compatible.
 
-## Paths and components
+## Paths, artifact destinations, and components
 
 Relative `stl_path` and `out_dir` values are resolved from the case table's
-directory, not the process working directory. `~` is expanded. Use semicolons to
-list multiple STL components in input order:
+directory, not the process working directory. Absolute paths are used as
+specified, and `~` is expanded. When VTP saving is enabled, the per-case path is
+`<resolved_out_dir>/<case_id>.vtp`. The domain input references define the
+`out_dir` and `save_vtp_on` defaults and accepted values; the
+[VTP reference](../results/vtp.md) defines the saved content, and
+[Batch execution and recovery](batch-execution-and-recovery.md) explains write
+failures.
+
+Use semicolons to list multiple STL components in input order:
 
 ```text
 geometry/body.stl;geometry/fin.stl

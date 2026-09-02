@@ -77,7 +77,8 @@ Every wheel includes a self-contained offline HTML site. In the GUI, use
 server or network access.
 
 - [Documentation home](docs/index.md)
-- [GUI guide](docs/user-guide/gui.md) and [CLI guide](docs/user-guide/cli.md)
+- [GUI guide](docs/user-guide/gui.md), [CLI guide](docs/user-guide/cli.md), and
+  [Batch execution and recovery](docs/user-guide/batch-execution-and-recovery.md)
 - [Case-file guide](docs/user-guide/case-files.md)
 - [FMF](docs/solvers/fmf.md) and
   [Hypersonic](docs/solvers/hypersonic.md)

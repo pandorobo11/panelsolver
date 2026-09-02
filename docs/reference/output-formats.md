@@ -8,7 +8,9 @@ The complete result contracts are now split by artifact:
   shapes, stored types, units, and integration roles.
 
 This page is retained so existing documentation links continue to resolve. It is
-not a second schema definition. Artifact locations, naming, checkpointing, and
-write-failure behavior remain in [Outputs](../user-guide/outputs.md), while
-frames, signs, normalization, and equations remain in
+not a second schema definition. Per-case artifact paths are defined with
+[Case files](../user-guide/case-files.md), generic checkpoints and recovery in
+[Batch execution and recovery](../user-guide/batch-execution-and-recovery.md),
+and image export in the [GUI guide](../user-guide/gui.md). Frames, signs,
+normalization, and equations remain in
 [Numerical conventions](numerical-conventions.md) and the solver pages.

@@ -23,6 +23,9 @@ The canonical `fmf` token selects the free-molecular-flow domain and its Sentman
 model. `hypersonic` selects the hypersonic panel-method domain and its
 Newtonian-family methods.
 
+Summary CSV and VTP are the only formal filesystem result artifacts. Current
+runs do not generate NPZ output.
+
 ## Distribution and artifact version
 
 Panel Solver is distributed as `panelsolver`. Summary CSV and VTP
