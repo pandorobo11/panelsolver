@@ -134,6 +134,6 @@ All coefficient columns are floating-point, dimensionless, present on both
 
 Panel-area/reference-area normalization, the STL-to-body mapping, the
 body-to-stability rotation, signs, and moment calculation are canonical in
-[Numerical conventions](../reference/numerical-conventions.md#panel-loads-integration-and-outputs).
+[Numerical conventions](../reference/numerical-conventions.md#loads-and-normalization).
 Per-panel contributions from which these coefficients are integrated are stored
 as `C_face_stl` in the [VTP reference](vtp.md).
