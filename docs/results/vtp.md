@@ -64,8 +64,8 @@ equation and its limits.
 
 | Array | Shape | Stored dtype | Unit | Meaning | Role in integration |
 |---|---:|---|---|---|---|
-| `normal_traction_coeff` | `(n_faces,)` | `float64` | dimensionless | Component of the local Sentman traction opposite the outward normal, `-tau · n_out_stl`, before multiplying by panel area or dividing by reference area. | Visualization/diagnostic scalar derived from the integrated traction vector. It is not independently integrated. |
-| `tangential_traction_coeff` | `(n_faces,)` | `float64` | dimensionless | Component of local Sentman traction along the resolved flow direction projected into the panel plane, before area/reference-area scaling. It is exactly zero where that in-plane direction is undefined at normal incidence. | Visualization/diagnostic scalar derived from the integrated traction vector. It is not independently integrated. |
+| `normal_traction_coeff` | `(n_faces,)` | `float64` | dimensionless | Component of the local Sentman traction opposite the outward normal, `-tau · n_out_stl`, before multiplying by panel area or dividing by reference area. | Visualization/diagnostic scalar derived from the local `traction_coeff_stl` before area/reference-area weighting. It is not independently integrated. |
+| `tangential_traction_coeff` | `(n_faces,)` | `float64` | dimensionless | Component of local Sentman traction along the resolved flow direction projected into the panel plane, before area/reference-area scaling. It is exactly zero where that in-plane direction is undefined at normal incidence. | Visualization/diagnostic scalar derived from the local `traction_coeff_stl` before area/reference-area weighting. It is not independently integrated. |
 
 See [Free Molecular Flow](../solvers/fmf.md) for the Sentman equation and the
 exact normal and tangential projections.
