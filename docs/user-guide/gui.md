@@ -90,7 +90,7 @@ and current canonical signature match. Missing, stale-signature, and
 identity-mismatched artifacts are not rendered automatically. The compact status
 row above the Viewer explains what result is displayed or why the selected case's
 result is unavailable; the signature and field-data contract is documented in
-[Output formats](../reference/output-formats.md).
+[VTP reference](../results/vtp.md).
 
 ![Panel Solver Viewer showing the newt_pm cube result colored by Cp](../assets/screenshots/gui-result.png)
 
@@ -167,5 +167,7 @@ Closing the window during a run requests cooperative cancellation and waits for
 worker cleanup. An active ray query or model solve may finish before cancellation
 is observed; files already written are not rolled back.
 
-See [Case files](case-files.md), [Outputs](outputs.md), and
+See [Case files](case-files.md), the
+[Summary CSV reference](../results/summary-csv.md), the
+[VTP reference](../results/vtp.md), [Outputs](outputs.md), and
 [Troubleshooting](troubleshooting.md).

@@ -9,7 +9,8 @@ The current supported product surface consists of:
 - normal launcher-driven GUI operation;
 - the stable package-root API described in [Python API support](python-api.md);
 - documented CSV, XLSX, and XLSM case files and their domain schemas/defaults;
-- documented Summary CSV and VTP semantics;
+- documented [Summary CSV](../results/summary-csv.md) and
+  [VTP](../results/vtp.md) semantics;
 - documented numerical values, signs, frames, normalizations, and
   model-specific behavior.
 
@@ -25,9 +26,10 @@ Newtonian-family methods.
 ## Distribution and artifact version
 
 Panel Solver is distributed as `panelsolver`. Summary CSV and VTP
-`solver_version` fields record the installed `panelsolver` distribution version
-that generated them. Both domains therefore record the same installed version
-when artifacts are produced by the same release.
+`solver_version` fields, defined in their result references, record the
+installed `panelsolver` distribution version that generated them. Both domains
+therefore record the same installed version when artifacts are produced by the
+same release.
 
 Automatic VTP loading requires both the current case ID and current canonical
 case signature. Artifacts produced by predecessor products are unsupported and

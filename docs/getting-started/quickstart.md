@@ -44,11 +44,16 @@ one is saved.
 
 By default, the CLI writes:
 
-- `outputs/basic_result.csv`: summary coefficient rows;
-- `outputs/<case_id>.vtp`: mesh, panel scalars, and case metadata.
+- `outputs/basic_result.csv`: one integrated result row for the case, plus
+  component rows when the case contains multiple STL files;
+- `outputs/<case_id>.vtp`: the calculated triangle mesh, per-panel load data,
+  and case provenance.
 
-See [Outputs](../user-guide/outputs.md) for semantics and
-[Case files](../user-guide/case-files.md) before editing the examples.
+Use the [Summary CSV reference](../results/summary-csv.md) and
+[VTP reference](../results/vtp.md) to interpret every field. See
+[Outputs](../user-guide/outputs.md) for artifact paths, write behavior, and
+recovery, and [Case files](../user-guide/case-files.md) before editing the
+examples.
 
 ## Try the feature examples next
 

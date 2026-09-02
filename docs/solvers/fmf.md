@@ -216,7 +216,9 @@ FMF VTP data includes `normal_traction_coeff`,
 `tangential_traction_coeff`, and `theta_deg`. Summary CSV includes resolved
 `mode`, `out_S`, and `out_Ti_K`; `Tw_K` remains an input column. Both displayed
 traction scalars are derived from the model's `traction_coeff_stl`; they do not
-participate in whole-vehicle integration.
+participate in whole-vehicle integration. See the
+[Summary CSV reference](../results/summary-csv.md#fmf-resolved-state-fields)
+and [VTP reference](../results/vtp.md#fmf) for complete field contracts.
 
 Use this model only when the free-molecular/Sentman assumptions are appropriate
 for the intended regime and surface interaction. Mode B is tied to the bundled,

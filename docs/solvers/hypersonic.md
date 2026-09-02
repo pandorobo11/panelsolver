@@ -406,8 +406,10 @@ approximations do not model viscous effects, full shock interaction, or general
 three-dimensional CFD physics. Select them only within a justified engineering
 approximation regime.
 
-See the [Hypersonic input reference](../reference/hypersonic-input.md) and
-[numerical conventions](../reference/numerical-conventions.md).
+See the [Hypersonic input reference](../reference/hypersonic-input.md),
+[numerical conventions](../reference/numerical-conventions.md),
+[Summary CSV reference](../results/summary-csv.md), and
+[VTP reference](../results/vtp.md#hypersonic).
 
 ## References
 

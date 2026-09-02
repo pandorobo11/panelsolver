@@ -25,7 +25,10 @@ of the canonical command.
 
 Both batch forms use the same case-table reader and application service. They
 accept CSV, XLSX, and XLSM. Summary CSV and optional per-case VTP are the only
-formal outputs; Excel 97–2003 BIFF `.xls` and NPZ are not supported.
+formal outputs; Excel 97–2003 BIFF `.xls` and NPZ are not supported. Their
+complete field contracts are in the
+[Summary CSV reference](../results/summary-csv.md) and
+[VTP reference](../results/vtp.md).
 
 | Option | Meaning | Default |
 |---|---|---|
@@ -59,5 +62,7 @@ finishes. Final Summary CSV output failure is likewise reported as an output
 failure rather than a calculation failure.
 
 Output-path validation rejects collisions with the input table, any STL, and
-any planned VTP before execution. See [Outputs](outputs.md) and
-[Shielding and parallel execution](shielding-and-parallel.md).
+any planned VTP before execution. See [Outputs](outputs.md) for artifact
+lifecycle behavior and
+[Shielding and parallel execution](shielding-and-parallel.md) for execution
+details.
