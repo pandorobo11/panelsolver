@@ -25,8 +25,8 @@ Common formats, paths, case IDs, and reserved-field rejection are defined in
 | `Lref_Cl_m` | yes | — | m, > 0 | Roll-moment reference length |
 | `Lref_Cm_m` | yes | — | m, > 0 | Pitch-moment reference length |
 | `Lref_Cn_m` | yes | — | m, > 0 | Yaw-moment reference length |
-| `shielding_on` | no | `0` | `0` or `1` | Ray-occlusion shielding |
-| `ray_backend` | no | `auto` | `auto`, `rtree`, `embree` | Shielding backend |
+| `shielding_on` | no | `0` | `0` or `1` | Enable the common [ray-occlusion shielding method](ray-shielding.md) |
+| `ray_backend` | no | `auto` | `auto`, `rtree`, `embree` | [Ray-shielding backend](ray-shielding.md#backend-behavior) |
 | `out_dir` | no | `outputs` | path | Per-case VTP directory; resolution and path rules are in [Case files](../user-guide/case-files.md#paths-artifact-destinations-and-components) |
 | `save_vtp_on` | no | `1` | `0` or `1` | `1` writes the case VTP; `0` skips it |
 
@@ -35,6 +35,10 @@ Windward values are `newtonian`, `modified_newtonian`, `tangent_wedge`, and
 broadcast to all STL components; otherwise the number of semicolon-separated
 entries must equal the STL count. Modified Newtonian, tangent wedge, tangent
 cone, and Prandtl–Meyer require `Mach > 1`.
+
+The leeward `shield` pressure selector and geometry-based ray shielding are
+different operations. See
+[Ray shielding versus `leeward_eq=shield`](ray-shielding.md#ray-shielding-versus-leeward_eqshield).
 
 Every required numeric field must be finite, and numeric booleans are rejected.
 Hypersonic uses the common attitude resolver also used by FMF. See

@@ -199,7 +199,7 @@ This equation does not model specular reflection, mixed reflection, an arbitrary
 thermal accommodation coefficient, or multiple reflections between surfaces.
 Ray shielding is a separate geometric approximation that sets an occluded
 panel's load to zero; see
-[Shielding and parallel execution](../user-guide/shielding-and-parallel.md).
+[Ray shielding](../reference/ray-shielding.md).
 
 ## Outputs and scope
 

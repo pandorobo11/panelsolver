@@ -63,4 +63,6 @@ examples under `examples/hypersonic/` provide `pressure_models.csv`,
 `shielding.csv`, `components.csv`,
 and `attitude_modes.csv`. Run each with the same CLI command pattern, replacing
 the input path. Commands, expected relationships, GUI files, and output
-locations are collected in the repository-level `examples/README.md`.
+locations are collected in the repository-level `examples/README.md`. The
+[Ray shielding reference](../reference/ray-shielding.md) explains the common
+geometry method used by both shielding examples.

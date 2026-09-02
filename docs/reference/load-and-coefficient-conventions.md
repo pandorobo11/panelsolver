@@ -46,7 +46,7 @@ substitutes for the common vector.
 
 Ray shielding may set a panel's complete local traction, and therefore its
 `C_face_stl`, to exact zero. See
-[Shielding and parallel execution](../user-guide/shielding-and-parallel.md#ray-shielding).
+[Ray shielding](ray-shielding.md).
 
 ## Body-axis force coefficients
 

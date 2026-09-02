@@ -22,7 +22,8 @@ extra as shown in the [Installation guide](../getting-started/installation.md).
 From a checkout, use `uv sync --extra rayaccel` or
 `python -m pip install ".[rayaccel]"`. Alternatively, set the case's
 `ray_backend` to `rtree`. An explicit `embree` request intentionally does not
-fall back.
+fall back. See
+[Ray-shielding backend behavior](../reference/ray-shielding.md#backend-behavior).
 
 ## The result path is rejected
 

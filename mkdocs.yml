@@ -31,13 +31,13 @@ nav:
       - GUI: user-guide/gui.md
       - Python API: reference/python-api.md
       - Batch execution and recovery: user-guide/batch-execution-and-recovery.md
-      - Shielding / parallel execution: user-guide/shielding-and-parallel.md
   - Results:
       - Summary CSV reference: results/summary-csv.md
       - VTP reference: results/vtp.md
   - Reference:
       - Coordinate and attitude conventions: reference/coordinate-and-attitude-conventions.md
       - Load and coefficient conventions: reference/load-and-coefficient-conventions.md
+      - Ray shielding: reference/ray-shielding.md
       - Environment variables: reference/environment-variables.md
       - Compatibility: reference/compatibility.md
       - US1976 atmosphere provenance: reference/us1976-data-provenance.md

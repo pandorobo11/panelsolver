@@ -42,7 +42,7 @@ content as triangle cells.
 | `center_x_stl_m` | `(n_faces,)` | `float64` | m | Face-centroid X coordinate in the STL frame. | Geometry/provenance; the three center arrays define the moment lever arm with the configured reference point. |
 | `center_y_stl_m` | `(n_faces,)` | `float64` | m | Face-centroid Y coordinate in the STL frame. | Geometry/provenance; used with the other center coordinates for moments. |
 | `center_z_stl_m` | `(n_faces,)` | `float64` | m | Face-centroid Z coordinate in the STL frame. | Geometry/provenance; used with the other center coordinates for moments. |
-| `shielded` | `(n_faces,)` | `uint8` | `0` or `1` | Ray-occlusion mask. `1` means the panel was geometrically shielded for this case. | Shielded panels have exact-zero local traction and therefore exact-zero `C_face_stl`. A Hypersonic leeward `shield` selector is a different pressure rule and does not set this mask. |
+| `shielded` | `(n_faces,)` | `uint8` | `0` or `1` | [Ray-occlusion](../reference/ray-shielding.md) mask. `1` means the panel was geometrically shielded for this case. | Shielded panels have exact-zero local traction and therefore exact-zero `C_face_stl`. A Hypersonic leeward `shield` selector is a different pressure rule and does not set this mask. |
 | `stl_index` | `(n_faces,)` | `int32` | zero-based component ID | Input-STL/component assignment in ordered `stl_path` order. | Selects the faces used for each component row in the Summary CSV. |
 | `theta_deg` | `(n_faces,)` | `float64` | degrees | Angle `acos(n_out_stl · Vhat_stl)` between the outward panel normal and the resolved flow direction, in the range 0–180 degrees. | Diagnostic/model geometry scalar. It is not summed or separately integrated. |
 
@@ -84,7 +84,7 @@ Every common field-data array has semantic shape `(1,)`.
 | `beta_t_deg_resolved` | `float64` | degrees | Resolved tangent sideslip angle used for this calculation. It matches the Summary CSV field of the same name. |
 | `case_id` | string | portable case text | Case identifier and planned artifact basename. |
 | `case_signature` | string; 64-character lowercase hexadecimal SHA-256 | — | Canonical current case/artifact identity. It corresponds to the Summary CSV value, and the GUI compares it with the currently loaded case for automatic display. |
-| `ray_backend_used` | string | `not_used`, `rtree`, or `embree` | Effective ray backend. `not_used` means ray shielding was disabled. |
+| `ray_backend_used` | string | `not_used`, `rtree`, or `embree` | Effective [ray-shielding backend](../reference/ray-shielding.md#backend-behavior). `not_used` means ray shielding was disabled. |
 | `solver_version` | string | installed version | `panelsolver` distribution version that generated the artifact. |
 | `stl_count` | `int64` | positive component count | Number of ordered STL sources represented in the artifact. |
 | `stl_paths_json` | JSON string containing a list of strings | resolved absolute paths | Ordered STL source paths corresponding to `stl_index=0,1,...`. JSON non-ASCII characters are escaped for VTK portability; parse the JSON to recover the original Unicode paths. |
