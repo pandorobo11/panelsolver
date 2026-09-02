@@ -75,7 +75,7 @@ contributions have been formed. See
 [Numerical conventions](../reference/numerical-conventions.md) for coordinate
 transforms, coefficient signs, and moment normalization.
 
-These are local, inviscid panel approximations for a calorically perfect gas
+These are local, invisccid panel approximations for a calorically perfect gas
 with constant $\gamma$; they are not general CFD. They omit boundary layers,
 viscosity, heat transfer, real-gas chemistry, shock--shock and
 shock--boundary-layer interactions, and coupled flow between neighboring
@@ -406,8 +406,10 @@ approximations do not model viscous effects, full shock interaction, or general
 three-dimensional CFD physics. Select them only within a justified engineering
 approximation regime.
 
-See the [Hypersonic input reference](../reference/hypersonic-input.md) and
-[numerical conventions](../reference/numerical-conventions.md).
+See the [Hypersonic input reference](../reference/hypersonic-input.md),
+[numerical conventions](../reference/numerical-conventions.md),
+[Summary CSV reference](../results/summary-csv.md), and
+[VTP reference](../results/vtp.md#hypersonic).
 
 ## References
 
