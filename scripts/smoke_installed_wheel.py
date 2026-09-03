@@ -586,7 +586,7 @@ def main(argv: list[str] | None = None) -> int:
             env=subprocess_environment,
         )
         canonical_help_required = (
-            "Run Panel Solver using a canonical flow-domain selector.",
+            "Run Panel Solver for an FMF or Hypersonic flow domain.",
             "{fmf,hypersonic}",
         )
         if (
