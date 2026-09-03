@@ -1,6 +1,6 @@
 # Load and coefficient conventions
 
-This page is the canonical model-neutral contract for local panel loads, common
+This page defines the model-neutral conventions for local panel loads, common
 force/moment integration, and aggregate coefficients. The
 [FMF solver page](../solvers/fmf.md) owns Sentman physics, and the
 [Hypersonic solver page](../solvers/hypersonic.md) owns pressure-model physics.

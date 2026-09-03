@@ -50,7 +50,7 @@ checkpoints, cancellation, or partial failures, use
 
 Use the [Summary CSV reference](results/summary-csv.md) for integrated total
 and component rows, and the [VTP reference](results/vtp.md) for mesh,
-per-panel, and provenance data. Those result pages link back to the canonical
+per-panel, and provenance data. Those result pages link to the applicable
 method and convention definitions when a field requires its equation, frame,
 sign, or normalization.
 

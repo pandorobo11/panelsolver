@@ -3,13 +3,13 @@
 Ray shielding is the model-neutral geometry-occlusion method shared by FMF and
 Hypersonic. Setting `shielding_on=1` enables this method for a case. The
 [FMF input reference](fmf-input.md) and
-[Hypersonic input reference](hypersonic-input.md) remain the canonical sources
-for the accepted `shielding_on` and `ray_backend` values and their defaults.
+[Hypersonic input reference](hypersonic-input.md) define the accepted
+`shielding_on` and `ray_backend` values and their defaults.
 
 ## Geometry-occlusion method
 
 The resolved unit freestream direction points in the direction in which the
-freestream travels. Its canonical definition is in
+freestream travels. This direction is defined in
 [Coordinate and attitude conventions](coordinate-and-attitude-conventions.md#frames-direction-and-angle-units).
 Ray shielding tests the opposite, upstream direction.
 

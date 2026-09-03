@@ -1,6 +1,6 @@
 # CLI guide
 
-The canonical batch entry point selects a physical flow domain:
+Select a physical flow domain with:
 
 ```text
 panelsolver fmf --input PATH [--output PATH] [--workers N]
@@ -20,8 +20,8 @@ model is Sentman; the stable Python API names the domain as `FMFCase` and
 | `fmf` | free molecular flow | Sentman | FMF case table |
 | `hypersonic` | hypersonic pressure approximation | Newtonian-family methods | Hypersonic case table |
 
-The final column is a schema/application-service reuse choice, not the identity
-of the canonical command.
+The final column describes schema/application-service reuse; it does not change
+the command identity.
 
 Both batch forms use the same case-table reader and application service. They
 accept CSV, XLSX, and XLSM. Summary CSV and optional per-case VTP are the only

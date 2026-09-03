@@ -1,8 +1,8 @@
 # Coordinate and attitude conventions
 
-This page is the canonical coordinate and attitude contract shared by FMF and
-Hypersonic. It defines what each attitude representation means geometrically and
-how all representations resolve to one freestream direction. The
+This page defines the coordinate and attitude conventions shared by FMF and
+Hypersonic. It explains what each attitude representation means geometrically
+and how all representations resolve to one freestream direction. The
 [Case files guide](../user-guide/case-files.md#attitude-modes) owns accepted
 input values and ranges; the domain input references own required/default
 behavior.

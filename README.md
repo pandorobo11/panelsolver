@@ -3,7 +3,7 @@
 `panelsolver` is a single Python distribution for two STL panel-method flow
 domains:
 
-| Canonical domain | Use it for | Physical model or methods |
+| Domain | Use it for | Physical model or methods |
 |---|---|---|
 | `fmf` | Free-molecular and rarefied-flow surface loads | Sentman |
 | `hypersonic` | Hypersonic pressure loads | Newtonian-family methods |
@@ -44,7 +44,7 @@ The built-in `rtree` backend remains supported. See the
 
 ## Run
 
-Launch either canonical GUI, then select its example case file:
+Launch either GUI, then select its example case file:
 
 ```bash
 panelsolver-gui fmf
@@ -90,9 +90,9 @@ server or network access.
 
 ## Compatibility
 
-One `panelsolver` distribution provides the two canonical command entry points.
-Summary CSV and VTP artifacts record the installed distribution version. The
-package-root Python API is stable. See the
+One `panelsolver` distribution provides command entry points for both flow
+domains. Summary CSV and VTP artifacts record the installed distribution
+version. The package-root Python API is stable. See the
 [compatibility policy](docs/reference/compatibility.md) and
 [CHANGELOG.md](CHANGELOG.md) for the supported surface and release changes.
 

@@ -1,8 +1,8 @@
 # VTP reference
 
-This page is the canonical semantic contract for Panel Solver VTP artifacts.
-Each saved `.vtp` is VTK XML PolyData containing the validated case mesh,
-face-aligned result arrays, and case-level provenance. The
+This page defines the supported content and semantics of Panel Solver VTP
+artifacts. Each saved `.vtp` is VTK XML PolyData containing the validated case
+mesh, face-aligned result arrays, and case-level provenance. The
 [Summary CSV reference](summary-csv.md) defines integrated and component rows;
 per-case path rules are in [Case files](../user-guide/case-files.md), and write-
 failure behavior is in
@@ -83,10 +83,10 @@ Every common field-data array has semantic shape `(1,)`.
 | Field | Stored dtype / format | Unit / values | Meaning |
 |---|---|---|---|
 | `alpha_t_deg_resolved` | `float64` | degrees | Resolved tangent angle of attack used for this calculation. It matches the Summary CSV field of the same name. |
-| `attitude_input_used` | string | `beta_tan`, `beta_sin`, or `bank` | Canonical attitude representation used to interpret the two input angles. The corresponding Summary CSV field is `out_attitude_input`. |
+| `attitude_input_used` | string | `beta_tan`, `beta_sin`, or `bank` | Normalized attitude representation used to interpret the two input angles. The corresponding Summary CSV field is `out_attitude_input`. |
 | `beta_t_deg_resolved` | `float64` | degrees | Resolved tangent sideslip angle used for this calculation. It matches the Summary CSV field of the same name. |
 | `case_id` | string | portable case text | Case identifier and planned artifact basename. |
-| `case_signature` | string; 64-character lowercase hexadecimal SHA-256 | — | Canonical current case/artifact identity. It corresponds to the Summary CSV value, and the GUI compares it with the currently loaded case for automatic display. |
+| `case_signature` | string; 64-character lowercase hexadecimal SHA-256 | — | SHA-256 identity for the current case and its artifacts. It corresponds to the Summary CSV value, and the GUI compares it with the currently loaded case for automatic display. |
 | `ray_backend_used` | string | `not_used`, `rtree`, or `embree` | Effective [ray-shielding backend](../reference/ray-shielding.md#backend-behavior). `not_used` means ray shielding was disabled. |
 | `solver_version` | string | installed version | `panelsolver` distribution version that generated the artifact. |
 | `stl_count` | `int64` | positive component count | Number of ordered STL sources represented in the artifact. |
@@ -102,8 +102,8 @@ Each Hypersonic-only field has semantic shape `(1,)` and string storage.
 
 | Field | Values | Meaning |
 |---|---|---|
-| `windward_eq_used` | canonical selector or semicolon-separated selectors | Normalized windward pressure-method specification used by the model. One selector applies to all components; otherwise entries correspond to components in `stl_index` order. |
-| `leeward_eq_used` | canonical selector or semicolon-separated selectors | Normalized leeward pressure-method specification used by the model, with the same one-or-per-component rule. |
+| `windward_eq_used` | normalized selector or semicolon-separated selectors | Normalized windward pressure-method specification used by the model. One selector applies to all components; otherwise entries correspond to components in `stl_index` order. |
+| `leeward_eq_used` | normalized selector or semicolon-separated selectors | Normalized leeward pressure-method specification used by the model, with the same one-or-per-component rule. |
 
 FMF does not add model-specific VTP field data. Its resolved `mode`, `out_S`,
 and `out_Ti_K` are recorded in the

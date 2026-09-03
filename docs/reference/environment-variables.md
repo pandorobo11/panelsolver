@@ -1,7 +1,7 @@
 # Environment-variable reference
 
 An explicit API/configuration argument has highest precedence. The application
-resolves the canonical variable and passes product-neutral values into core.
+resolves these variables and passes product-neutral values into core.
 
 | Variable | Domain | Default |
 |---|---|---:|
