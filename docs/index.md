@@ -19,27 +19,45 @@ These are engineering panel methods, not general-purpose CFD. Confirm that the
 assumptions documented on the solver page match the intended flow regime and
 geometry before interpreting coefficients.
 
-## User guides
+## Choose a path by task
 
-- [GUI](user-guide/gui.md)
-- [CLI](user-guide/cli.md)
-- [Case files, attitude, and STL components](user-guide/case-files.md)
-- [Batch execution and recovery](user-guide/batch-execution-and-recovery.md)
-- [Troubleshooting](user-guide/troubleshooting.md)
+### Understand the method
 
-## Result reference
+Use **Methods and conventions** for the definitions that govern both domains:
+[coordinate and attitude](reference/coordinate-and-attitude-conventions.md),
+[panel loads and coefficients](reference/load-and-coefficient-conventions.md),
+and [ray shielding](reference/ray-shielding.md). Then read the
+[FMF / Sentman model](solvers/fmf.md) or
+[Hypersonic pressure methods](solvers/hypersonic.md) for domain-specific
+equations, assumptions, and limits.
 
-- [Summary CSV](results/summary-csv.md)
-- [VTP](results/vtp.md)
+### Prepare inputs
 
-## Reference
+Start with [Case tables and geometry](user-guide/case-files.md) for file,
+path, component, attitude-input, and common validation rules. Continue with the
+[FMF input reference](reference/fmf-input.md) or
+[Hypersonic input reference](reference/hypersonic-input.md) for the selected
+domain's accepted columns, defaults, and validation.
 
-- [FMF input columns](reference/fmf-input.md)
-- [Hypersonic input columns](reference/hypersonic-input.md)
-- [Environment variables](reference/environment-variables.md)
-- [Coordinate and attitude conventions](reference/coordinate-and-attitude-conventions.md)
-- [Load and coefficient conventions](reference/load-and-coefficient-conventions.md)
-- [Ray shielding](reference/ray-shielding.md)
-- [Compatibility policy](reference/compatibility.md)
-- [Python API policy](reference/python-api.md)
-- [License and third-party notices](reference/license-and-third-party-notices.md)
+### Run calculations
+
+Choose the [GUI](user-guide/gui.md), [CLI](user-guide/cli.md), or stable
+[Python API](reference/python-api.md) workflow. For multiple cases, workers,
+checkpoints, cancellation, or partial failures, use
+[Batch execution and recovery](user-guide/batch-execution-and-recovery.md).
+
+### Interpret results
+
+Use the [Summary CSV reference](results/summary-csv.md) for integrated total
+and component rows, and the [VTP reference](results/vtp.md) for mesh,
+per-panel, and provenance data. Those result pages link back to the canonical
+method and convention definitions when a field requires its equation, frame,
+sign, or normalization.
+
+### Diagnose a problem or check support
+
+Start with [Troubleshooting](user-guide/troubleshooting.md) for operational
+problems. Use **Product reference** for
+[environment variables](reference/environment-variables.md) and the
+[compatibility and versioning policy](reference/compatibility.md), including
+the supported commands, files, artifacts, and Python surface.

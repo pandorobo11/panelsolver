@@ -15,30 +15,31 @@ markdown_extensions:
   - panelsolver_docs_math
 nav:
   - Panel Solver: index.md
-  - Getting Started:
+  - Getting started:
       - Installation: getting-started/installation.md
       - Quickstart: getting-started/quickstart.md
-      - Case files: user-guide/case-files.md
-      - Troubleshooting: user-guide/troubleshooting.md
-  - FMF:
-      - Input: reference/fmf-input.md
-      - Sentman model: solvers/fmf.md
-  - Hypersonic:
-      - Input: reference/hypersonic-input.md
-      - Pressure models: solvers/hypersonic.md
-  - Usage:
-      - CLI: user-guide/cli.md
+  - Methods and conventions:
+      - Coordinate and attitude conventions: reference/coordinate-and-attitude-conventions.md
+      - Load and coefficient conventions: reference/load-and-coefficient-conventions.md
+      - FMF / Sentman model: solvers/fmf.md
+      - Hypersonic pressure methods: solvers/hypersonic.md
+      - Ray shielding: reference/ray-shielding.md
+  - Inputs:
+      - Case tables and geometry: user-guide/case-files.md
+      - FMF input reference: reference/fmf-input.md
+      - Hypersonic input reference: reference/hypersonic-input.md
+  - Running calculations:
       - GUI: user-guide/gui.md
+      - CLI: user-guide/cli.md
       - Python API: reference/python-api.md
       - Batch execution and recovery: user-guide/batch-execution-and-recovery.md
+      - Troubleshooting: user-guide/troubleshooting.md
   - Results:
       - Summary CSV reference: results/summary-csv.md
       - VTP reference: results/vtp.md
-  - Reference:
-      - Coordinate and attitude conventions: reference/coordinate-and-attitude-conventions.md
-      - Load and coefficient conventions: reference/load-and-coefficient-conventions.md
-      - Ray shielding: reference/ray-shielding.md
+  - Product reference:
       - Environment variables: reference/environment-variables.md
-      - Compatibility: reference/compatibility.md
-      - US1976 atmosphere provenance: reference/us1976-data-provenance.md
-      - License / third-party notices: reference/license-and-third-party-notices.md
+      - Compatibility and versioning: reference/compatibility.md
+  - Appendix:
+      - US1976 data provenance: reference/us1976-data-provenance.md
+      - License and third-party notices: reference/license-and-third-party-notices.md
