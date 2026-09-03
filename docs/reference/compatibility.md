@@ -34,7 +34,7 @@ therefore record the same installed version when those files are produced by
 the same release.
 
 Automatic VTP loading requires both the current case ID and current case
-signature. Files produced by predecessor products are unsupported and should be
-regenerated with Panel Solver. **Open VTP...** remains a generic manual
+signature. VTP files produced by predecessor products are unsupported and
+should be regenerated with Panel Solver. **Open VTP...** remains a generic manual
 inspection path when a file contains the data required by the viewer. This does
 not make predecessor VTP formats part of the compatibility guarantee.

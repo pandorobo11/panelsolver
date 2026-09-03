@@ -14,9 +14,10 @@ distinguishes the in-memory local traction from the area-weighted
 ## Guaranteed VTP contents
 
 Panel Solver's compatibility guarantee covers the mesh, cell-data arrays, and
-field-data arrays described below, including their names and meanings. Numeric
-values are compared with the tolerance appropriate to the selected physical
-model. The guarantee does not cover XML element order, binary encoding details,
+field-data arrays described below, including their names, associations, shapes,
+stored dtypes, units, meanings, and roles in integration. Numeric values are
+compared with the tolerance appropriate to the selected physical model. The
+guarantee does not cover XML element order, binary encoding details,
 compression, temporary files, or byte-for-byte equality.
 
 There are no Panel Solver-defined point-data arrays. Every cell-data array is

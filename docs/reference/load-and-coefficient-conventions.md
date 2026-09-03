@@ -1,7 +1,8 @@
 # Load and coefficient conventions
 
-This page defines how both domains calculate local panel loads, integrate forces
-and moments, and form aggregate coefficients. See the
+This page defines how local panel loads are represented, how they are integrated
+into forces and moments, and how aggregate coefficients are formed for both
+domains. See the
 [FMF solver page](../solvers/fmf.md) for the Sentman equations and assumptions,
 and the [Hypersonic solver page](../solvers/hypersonic.md) for pressure-model
 equations and assumptions. The [VTP reference](../results/vtp.md) lists each
@@ -76,9 +77,9 @@ fixed signs.
 ## Stability-axis force coefficients
 
 Drag and lift use the resolved tangent angle of attack $\alpha_t$, not
-necessarily the original `alpha_deg` input. The attitude transformation is
-defined in
-[Coordinate and attitude conventions](coordinate-and-attitude-conventions.md#resolved-tangent-angles).
+necessarily the original `alpha_deg` input. See
+[Coordinate and attitude conventions](coordinate-and-attitude-conventions.md#resolved-tangent-angles)
+for how the resolved freestream direction determines $\alpha_t$.
 
 The body-to-stability transformation is the right-handed rotation about
 $+Y_{\mathrm{body}}$:
@@ -179,6 +180,6 @@ STL-frame panel normal and the resolved freestream direction:
 ```
 
 reported in degrees from 0 through 180. It is not a force contribution and is
-not summed. Its VTP field is defined in the
+not summed. Its VTP cell-data array is defined in the
 [VTP reference](../results/vtp.md#common-cell-data); model-specific use is
 explained on the solver pages.
