@@ -8,14 +8,14 @@ CSV files. The case-table columns that precede these results are defined in the
 defines the CLI Summary destination, while
 [Batch execution and recovery](../user-guide/batch-execution-and-recovery.md)
 defines checkpoint and write-failure behavior. The
-[Python API reference](../reference/python-api.md)
-maps these serialized results to the in-memory result surface.
+[Python API reference](../reference/python-api.md) shows which in-memory fields
+correspond to these CSV columns.
 
 ## Serialization and column order
 
-Summary CSV uses UTF-8 with a byte-order mark (`utf-8-sig`). Treat the parsed
-columns and values as the contract; temporary-file and replacement mechanics are
-not part of this result reference.
+Summary CSV uses UTF-8 with a byte-order mark (`utf-8-sig`). Panel Solver
+guarantees the parsed columns and values described here. Temporary-file and
+replacement mechanics are not part of the supported file format.
 
 Columns are written in this order:
 
@@ -69,7 +69,7 @@ number.
 | Column | Domain | Type / format | Unit | Rows | Blank when | Meaning |
 |---|---|---|---|---|---|---|
 | `solver_version` | common | text | — | all | never | Installed `panelsolver` distribution version that generated the result. |
-| `case_signature` | common | 64-character lowercase hexadecimal SHA-256 | — | all | never | SHA-256 identity for the current case and its artifacts. It incorporates the numerical geometry, normalized common and model case, model algorithm version, and shielding configuration including the effective backend. The GUI uses it with `case_id` to match a VTP to a current case. It is not a complete-result cache key. |
+| `case_signature` | common | 64-character lowercase hexadecimal SHA-256 | — | all | never | SHA-256 value that identifies the current case and associates its output files. It incorporates the numerical geometry, normalized common and model case, model algorithm version, and shielding configuration including the effective backend. The GUI uses it with `case_id` to match a VTP to a current case. It is not a complete-result cache key. |
 | `run_started_at_utc` | common | ISO 8601 UTC timestamp ending in `Z` | — | all | never | Time at which this case began execution. It is a per-case timestamp, not the batch start. |
 | `run_finished_at_utc` | common | ISO 8601 UTC timestamp ending in `Z` | — | all | never | Time after calculation and the case's optional VTP write attempt completed. It is a per-case timestamp, not the final Summary CSV write time. |
 | `run_elapsed_s` | common | floating-point number | s | all | never | Monotonic elapsed time over the same per-case interval, including optional VTP handling and excluding final batch Summary CSV serialization. |
@@ -91,11 +91,11 @@ These columns exist only in FMF Summary CSV.
 temperature are not stored in VTP field data; use the Summary CSV when they are
 needed for provenance.
 
-## Attitude and row-identity fields
+## Attitude and row fields
 
 | Column | Domain | Type / format | Unit / values | Rows | Blank when | Meaning |
 |---|---|---|---|---|---|---|
-| `out_attitude_input` | common | text | `beta_tan`, `beta_sin`, or `bank` | all | never | Normalized attitude representation used to interpret the two input angles. The corresponding VTP field is `attitude_input_used`. |
+| `out_attitude_input` | common | text | `beta_tan`, `beta_sin`, or `bank` | all | never | Normalized attitude input mode used to interpret the two input angles. The corresponding VTP field is `attitude_input_used`. |
 | `alpha_t_deg_resolved` | common | floating-point number | degrees | all | never | Resolved tangent angle of attack used by integration and stability-frame conversion. |
 | `beta_t_deg_resolved` | common | floating-point number | degrees | all | never | Resolved tangent sideslip angle associated with the evaluated flow direction. |
 | `scope` | common | text | `total` or `component` | all | never | Identifies whether the row covers the complete case geometry or one STL component. |
@@ -105,7 +105,7 @@ needed for provenance.
 The exact axes and angle transformations are defined in
 [Coordinate and attitude conventions](../reference/coordinate-and-attitude-conventions.md).
 
-## Execution and artifact fields
+## Execution and output fields
 
 | Column | Domain | Type / format | Unit / values | Rows | Blank when | Meaning |
 |---|---|---|---|---|---|---|
@@ -115,8 +115,8 @@ The exact axes and angle transformations are defined in
 | `vtp_path` | common | absolute path text | — | total | VTP saving was disabled, output-directory preparation failed, or the current VTP write failed | VTP successfully written for this case during the current run. Component rows are always blank because one case VTP contains every component. |
 
 A blank `vtp_path` never claims that an older file at the planned path represents
-the current result. See the [VTP reference](vtp.md) for that file's complete
-semantic contract.
+the current result. See the [VTP reference](vtp.md) for the VTP field names,
+types, shapes, units, and meanings.
 
 ## Force and moment coefficient fields
 

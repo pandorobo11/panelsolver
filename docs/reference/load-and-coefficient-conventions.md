@@ -1,11 +1,11 @@
 # Load and coefficient conventions
 
-This page defines the model-neutral conventions for local panel loads, common
-force/moment integration, and aggregate coefficients. The
-[FMF solver page](../solvers/fmf.md) owns Sentman physics, and the
-[Hypersonic solver page](../solvers/hypersonic.md) owns pressure-model physics.
-Result association, shape, and stored dtype remain in the
-[VTP reference](../results/vtp.md).
+This page defines how both domains calculate local panel loads, integrate forces
+and moments, and form aggregate coefficients. See the
+[FMF solver page](../solvers/fmf.md) for the Sentman equations and assumptions,
+and the [Hypersonic solver page](../solvers/hypersonic.md) for pressure-model
+equations and assumptions. The [VTP reference](../results/vtp.md) lists each
+result array's association, shape, and stored dtype.
 
 ## Local traction and panel contributions
 
@@ -14,7 +14,7 @@ coefficient vector $\boldsymbol\tau_{j,\mathrm{STL}}$, named
 `traction_coeff_stl`. It is expressed in STL axes and does not yet include the
 panel area or reference-area weighting.
 
-The common integrator forms the per-panel force-coefficient contribution
+The integrator forms the per-panel force-coefficient contribution
 `C_face_stl` as
 
 ```math
@@ -36,15 +36,15 @@ is the model's local traction coefficient; the latter already contains exactly
 one factor of `area_m2 / Aref_m2` and is the value summed for force and used for
 moment integration. Do not multiply `C_face_stl` by panel area again.
 
-A scalar pressure coefficient is not the universal computation contract.
+A scalar pressure coefficient cannot represent every model's local load.
 Hypersonic local traction is pressure-only, but Sentman can also contribute
-tangential load. The shared boundary therefore retains the complete traction
+tangential load. The model/core interface therefore retains the full traction
 vector. Model-specific `cp`, `normal_traction_coeff`, and
 `tangential_traction_coeff` are interpreted on their solver pages and in the
 [VTP reference](../results/vtp.md#model-specific-cell-data); they are not
-substitutes for the common vector.
+substitutes for `traction_coeff_stl`.
 
-Ray shielding may set a panel's complete local traction, and therefore its
+Ray shielding may set a panel's local traction, and therefore its
 `C_face_stl`, to exact zero. See
 [Ray shielding](ray-shielding.md).
 
@@ -76,7 +76,7 @@ fixed signs.
 ## Stability-axis force coefficients
 
 Drag and lift use the resolved tangent angle of attack $\alpha_t$, not
-necessarily the original `alpha_deg` input. The complete attitude resolution is
+necessarily the original `alpha_deg` input. The attitude transformation is
 defined in
 [Coordinate and attitude conventions](coordinate-and-attitude-conventions.md#resolved-tangent-angles).
 
@@ -148,7 +148,7 @@ C_n=\frac{\overline C_{M,Z,\mathrm{body}}}{L_{\mathrm{ref},Cn}}.
 
 These are the public `Cl`, `Cm`, and `Cn` roll-, pitch-, and yaw-moment
 coefficients. Input units and validity for the reference point, `Aref_m2`, and
-the three reference lengths are owned by the
+the three reference lengths are listed in the
 [FMF input reference](fmf-input.md) and
 [Hypersonic input reference](hypersonic-input.md).
 
@@ -179,6 +179,6 @@ STL-frame panel normal and the resolved freestream direction:
 ```
 
 reported in degrees from 0 through 180. It is not a force contribution and is
-not summed. Its VTP representation is defined in the
+not summed. Its VTP field is defined in the
 [VTP reference](../results/vtp.md#common-cell-data); model-specific use is
 explained on the solver pages.
