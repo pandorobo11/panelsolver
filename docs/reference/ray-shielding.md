@@ -1,10 +1,10 @@
 # Ray shielding
 
-Ray shielding is the model-neutral geometry-occlusion method shared by FMF and
-Hypersonic. Setting `shielding_on=1` enables this method for a case. The
+FMF and Hypersonic use the same ray-shielding method to detect geometry
+occlusion. Setting `shielding_on=1` enables this method for a case. The
 [FMF input reference](fmf-input.md) and
-[Hypersonic input reference](hypersonic-input.md) define the accepted
-`shielding_on` and `ray_backend` values and their defaults.
+[Hypersonic input reference](hypersonic-input.md) list the accepted
+`shielding_on` and `ray_backend` values and defaults.
 
 ## Geometry-occlusion method
 
@@ -14,21 +14,21 @@ freestream travels. This direction is defined in
 Ray shielding tests the opposite, upstream direction.
 
 For each panel, the method starts one upstream ray in the neighborhood of that
-panel's face center and tests it against the complete case mesh, including every
+panel's face center and tests it against the entire case mesh, including every
 ordered STL component. The first hit determines the result: when that hit is a
 face other than the source panel, the source panel is marked ray-shielded. This
 is the supported face-center first-hit model; it is not a general illumination,
 multiple-reflection, or flow-interaction calculation.
 
-The shielding mask therefore depends on both the complete case geometry and the
+The shielding mask therefore depends on both the entire case geometry and the
 resolved flow direction. It is separate from classifying a panel as windward or
 leeward for a pressure model.
 
-For a ray-shielded panel, the physical model must return an exact-zero complete
-local traction vector. The common area/reference-area weighting consequently
+For a ray-shielded panel, the physical model must return an exact-zero local
+traction vector. Area/reference-area weighting consequently
 produces exact-zero `C_face_stl` for that panel, so it contributes no force or
 moment. See [Load and coefficient conventions](load-and-coefficient-conventions.md#local-traction-and-panel-contributions)
-for the common integration contract.
+for force and moment integration.
 
 ## Ray shielding versus `leeward_eq=shield`
 
@@ -36,15 +36,15 @@ These are different operations:
 
 - **Ray shielding (`shielding_on=1`)** is available to both FMF and Hypersonic.
   It performs the upstream geometry-occlusion test and sets a hidden panel's
-  complete traction to exact zero.
+  traction vector to exact zero.
 - **Hypersonic `leeward_eq=shield`** is a Hypersonic-only pressure-model
   selector. It assigns zero local pressure to an active leeward panel and does
   not trace rays or determine geometry occlusion. FMF has no `leeward_eq`
   selector.
 
 Ray shielding can zero an occluded panel regardless of which windward or
-leeward pressure equation would otherwise apply to that panel. The
-[Hypersonic solver page](../solvers/hypersonic.md#leeward-shield) owns the
+leeward pressure equation would otherwise apply to that panel. See the
+[Hypersonic solver page](../solvers/hypersonic.md#leeward-shield) for the
 pressure-model definition and equations.
 
 ## Backend behavior
@@ -56,16 +56,16 @@ explicitly but unavailable, the case fails with an error; it does not silently
 fall back to `rtree`. When shielding is disabled, no ray backend is used for the
 case.
 
-The effective backend and mask/count are represented in results as
-`ray_backend_used`, `shielded`, and `shielded_faces`. Their complete
-serialization contracts remain in the
-[Summary CSV reference](../results/summary-csv.md#execution-and-artifact-fields),
-the VTP [common cell data](../results/vtp.md#common-cell-data) for `shielded`,
-and the VTP [common field data](../results/vtp.md#common-field-data) for
+Results record the effective backend and mask/count in `ray_backend_used`,
+`shielded`, and `shielded_faces`. The
+[Summary CSV reference](../results/summary-csv.md#execution-and-output-fields)
+describes `ray_backend_used` and `shielded_faces`. The VTP
+[common cell data](../results/vtp.md#common-cell-data) describes `shielded`, and
+the VTP [common field data](../results/vtp.md#common-field-data) describes
 `ray_backend_used`.
 
 Ray-query batching can be tuned as described in the
-[Environment-variable reference](environment-variables.md). Generic workers,
-execution ordering, checkpoints, cancellation, artifact failures, and recovery
+[Environment-variable reference](environment-variables.md). Worker behavior,
+execution ordering, checkpoints, cancellation, output-file failures, and recovery
 are covered separately in
 [Batch execution and recovery](../user-guide/batch-execution-and-recovery.md).

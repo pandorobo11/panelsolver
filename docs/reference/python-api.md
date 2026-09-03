@@ -23,10 +23,10 @@ from panelsolver import (
 
 `panelsolver.api`, `panelsolver.core`, `panelsolver.app`,
 `panelsolver.models`, domain adapters, registries, execution requests,
-lower-level solvers and helpers, and predecessor-product modules are not stable
-import surfaces. Objects nested inside `SolveResult` are documented below so
-callers can use the returned values; their defining module paths and direct
-constructors are not part of the supported API.
+lower-level solvers and helpers, and predecessor-product modules are not covered
+by the package-root compatibility guarantee. Objects nested inside `SolveResult`
+are documented below so callers can use the returned values; their defining
+module paths and direct constructors are not part of the supported API.
 
 ## Attitude resolution
 
@@ -48,8 +48,8 @@ trimmed and normalized case-insensitively. `None` and blank text select
 | `beta_sin` | tangent angle of attack | sine-definition sideslip | first strictly between -90° and 90°; second any finite angle |
 | `bank` | included angle | bank angle | both any finite angle |
 
-The resolver converts every mode to the common tangent-angle representation
-used by both solve functions. The complete equations, axes, signs, and periodic
+The resolver converts every mode to the tangent-angle values used by both solve
+functions. The equations, axes, signs, and periodic
 behavior are in [Coordinate and attitude conventions](coordinate-and-attitude-conventions.md);
 the concise accepted-input rules are also listed in
 [Case files](../user-guide/case-files.md#attitude-modes).
@@ -108,7 +108,7 @@ is required.
 
 | Field | Type | Default | Unit / values | Meaning |
 |---|---|---|---|---|
-| `case_id` | `str` | — | portable text | Case identity. It is normalized to Unicode NFC and must satisfy the portable filename rules described under [Shared case requirements](#shared-case-requirements). |
+| `case_id` | `str` | — | portable text | Case ID. It is normalized to Unicode NFC and must satisfy the portable filename rules described under [Shared case requirements](#shared-case-requirements). |
 | `stl_paths` | non-empty sequence of `str` or `Path` | — | ordered paths | STL components in component-ID order. A single string or `Path` is not a sequence-of-components value; wrap it in a tuple or list. |
 | `stl_scale_m_per_unit` | real number | — | m / STL unit, > 0 | Scale applied to every input STL coordinate. |
 | `attitude` | `ResolvedAttitude` | — | — | Resolved flow direction and tangent angles used by the calculation. |
@@ -158,7 +158,7 @@ HypersonicCase(
 
 | Field | Type | Default | Unit / values | Meaning |
 |---|---|---|---|---|
-| `case_id` | `str` | — | portable text | Case identity, normalized to Unicode NFC. |
+| `case_id` | `str` | — | portable text | Case ID, normalized to Unicode NFC. |
 | `stl_paths` | non-empty sequence of `str` or `Path` | — | ordered paths | STL components in component-ID order. |
 | `stl_scale_m_per_unit` | real number | — | m / STL unit, > 0 | Scale applied to every input STL coordinate. |
 | `attitude` | `ResolvedAttitude` | — | — | Resolved flow direction and tangent angles used by the calculation. |
@@ -212,7 +212,7 @@ As with `FMFCase`, `stl_paths` corresponds to ordered `stl_path`, while
 The case constructors normalize and validate the portable ID, require a
 non-empty path sequence, require a three-value moment reference, and require a
 `ResolvedAttitude`. Common numerical, model, backend, and mesh validation can
-occur while solving. Treat the validity requirements as the contract; do not
+occur while solving. Callers must satisfy all validity requirements; do not
 depend on more specific validation timing.
 
 ## Solve functions
@@ -233,8 +233,7 @@ These functions do not expose registry, request, or cache controls.
 
 ## `SolveResult`
 
-`SolveResult` contains the complete in-memory result surface returned by either
-solve function:
+Either solve function returns a `SolveResult` with the following fields:
 
 | Field | Type / shape | Unit / values | Meaning |
 |---|---|---|---|
@@ -243,7 +242,7 @@ solve function:
 | `geometry` | nested per-face geometry | `n_faces` rows | SI-scaled geometry used by the calculation. |
 | `flow_state` | nested flow state | `n_faces` mask | Resolved flow direction and geometric shielding mask. |
 | `local_loads` | nested model result | `n_faces` rows | Local traction plus model visualization/diagnostic scalars and resolved model metadata. |
-| `case_signature` | `str` | 64 lowercase hexadecimal characters | SHA-256 identity for the evaluated geometry, normalized case, model algorithm, and resolved shielding configuration. |
+| `case_signature` | `str` | 64 lowercase hexadecimal characters | SHA-256 value that identifies the evaluated geometry, normalized case, model algorithm, and resolved shielding configuration. |
 | `ray_backend_used` | `str` | `not_used`, `rtree`, or `embree` | Effective ray backend. `not_used` means shielding was disabled. |
 | `warnings` | tuple of `str` | possibly empty | User-visible warnings produced while loading/executing the case. Exact warning text is not a stable taxonomy, and warnings are not fields in Summary CSV or VTP. |
 
@@ -277,7 +276,7 @@ exposes:
 
 | Field | Type | Meaning |
 |---|---|---|
-| `component_id` | non-negative `int` | Zero-based input-STL identity. |
+| `component_id` | non-negative `int` | Zero-based input-STL ID. |
 | `integrated` | nested coefficient result | Coefficients for only this component's faces, using the same global reference area, moment reference, and reference lengths as the total. |
 | `face_count` | non-negative `int` | Number of triangular faces in the component. |
 | `shielded_face_count` | non-negative `int` | Number of its faces geometrically ray-shielded. |
@@ -294,10 +293,9 @@ implementation field is not a separately supported user schema.
 | `areas_m2` | NumPy `float64` array `(n_faces,)` | m², positive | Triangle areas used by integration. |
 | `component_ids` | NumPy `int64` array `(n_faces,)` | non-negative IDs | Per-face input-STL assignment. |
 | `n_faces` | `int` | positive count | Number of faces represented by every per-face result. |
-| `unique_component_ids` | tuple of `int` | ascending IDs | Component identities present in the geometry. |
+| `unique_component_ids` | tuple of `int` | ascending IDs | Component IDs present in the geometry. |
 
-This geometry surface does not expose the VTP point array or triangle
-connectivity.
+`result.geometry` does not expose the VTP point array or triangle connectivity.
 
 ### Flow state
 
@@ -323,7 +321,7 @@ The current scalar mappings are:
 
 | Domain | `cell_scalars` keys | Meaning |
 |---|---|---|
-| FMF | `normal_traction_coeff`, `tangential_traction_coeff`, `theta_deg` | Local normal/tangential Sentman traction projections and the normal-to-flow angle. |
+| FMF | `normal_traction_coeff`, `tangential_traction_coeff`, `theta_deg` | Local normal/tangential Sentman traction components and the normal-to-flow angle. |
 | Hypersonic | `cp`, `theta_deg` | Local pressure coefficient and the normal-to-flow angle. |
 
 Each current scalar array is `float64`. The model-specific scalar definitions
@@ -331,7 +329,7 @@ are in the [FMF](../solvers/fmf.md) and
 [Hypersonic](../solvers/hypersonic.md) solver pages, while the shared
 `theta_deg` definition is in
 [Load and coefficient conventions](load-and-coefficient-conventions.md#common-panel-angle).
-Their artifact representations are documented separately under VTP
+The corresponding VTP arrays are documented under
 [common cell data](../results/vtp.md#common-cell-data) and
 [model-specific cell data](../results/vtp.md#model-specific-cell-data).
 
@@ -364,34 +362,34 @@ dtype. Nested result objects are frozen value objects, and the scalar/metadata
 mappings are immutable. Make an explicit copy when mutable working data is
 needed, for example `result.geometry.centers_stl_m.copy()`.
 
-These in-memory dtypes differ where an artifact deliberately projects a storage
-type, such as VTP `stl_index` (`int32`) or `shielded` (`uint8`). The
-[VTP reference](../results/vtp.md) owns artifact dtypes.
+Some VTP arrays use a different stored dtype: `stl_index` uses `int32`, and
+`shielded` uses `uint8`. The [VTP reference](../results/vtp.md) lists the stored
+dtype for every array.
 
 ## API ↔ Summary CSV / VTP correspondence
 
-This table gives the useful semantic correspondence. The result pages define
-serialization order, stored dtypes, blank conditions, and artifact-only
-metadata.
+This table maps API fields to Summary CSV columns and VTP arrays. The result
+pages define serialization order, stored dtypes, blank conditions, and metadata
+that exists only in output files.
 
-| In-memory API value | Artifact correspondence |
+| In-memory API value | Output-file field |
 |---|---|
 | `coefficients.CA`, `CY`, `CN`, `Cl`, `Cm`, `Cn`, `CD`, `CL` | Same-named Summary CSV columns on the `total` row. |
-| `components[*].integrated` | Same coefficient surface on Summary `component` rows. |
+| `components[*].integrated` | Same coefficient fields on Summary `component` rows. |
 | Component IDs and counts | Summary `component_id`, `faces`, and `shielded_faces`; components use input-STL order. |
 | `case_signature` | Summary and VTP `case_signature`. |
 | `ray_backend_used` | Summary and VTP `ray_backend_used`. |
 | `geometry.areas_m2` | VTP `area_m2`. |
 | Columns of `geometry.centers_stl_m` | VTP `center_x_stl_m`, `center_y_stl_m`, and `center_z_stl_m`. |
-| `geometry.component_ids` | VTP `stl_index` (with artifact projection dtype). |
-| `flow_state.shielded` | VTP `shielded` (with artifact projection dtype). |
+| `geometry.component_ids` | VTP `stl_index` (stored as `int32`). |
+| `flow_state.shielded` | VTP `shielded` (stored as `uint8`). |
 | `local_loads.cell_scalars` | Same-named VTP diagnostic/model cell data. |
 | `local_loads.traction_coeff_stl` | Not serialized directly; VTP `C_face_stl` is its `area_m2 / Aref_m2` weighted contribution. |
 
-The API does not return artifact paths, timestamps, solver-version provenance,
-VTP points/connectivity, or the original case-table row. See the complete
+The API does not return output paths, timestamps, solver-version provenance,
+VTP points/connectivity, or the original case-table row. See the
 [Summary CSV](../results/summary-csv.md) and [VTP](../results/vtp.md)
-references for those surfaces.
+references for those fields.
 
 ## Validation and errors
 
@@ -418,10 +416,10 @@ file-I/O free. They perform calculation and return `SolveResult` without:
 - writing PNG;
 - writing checkpoints;
 - creating an output directory; or
-- producing other result-artifact side effects.
+- producing other result-file side effects.
 
 Use the [CLI](../user-guide/cli.md) or [GUI](../user-guide/gui.md) case-table
-workflow when artifacts or atmosphere-derived FMF Mode B are required.
+workflow when output files or atmosphere-derived FMF Mode B are required.
 
 ## Minimal examples
 

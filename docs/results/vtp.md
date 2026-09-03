@@ -1,7 +1,7 @@
 # VTP reference
 
-This page defines the supported content and semantics of Panel Solver VTP
-artifacts. Each saved `.vtp` is VTK XML PolyData containing the validated case
+This page defines the supported content and meanings of Panel Solver VTP files.
+Each saved `.vtp` is VTK XML PolyData containing the validated case
 mesh, face-aligned result arrays, and case-level provenance. The
 [Summary CSV reference](summary-csv.md) defines integrated and component rows;
 per-case path rules are in [Case files](../user-guide/case-files.md), and write-
@@ -9,15 +9,16 @@ failure behavior is in
 [Batch execution and recovery](../user-guide/batch-execution-and-recovery.md).
 The [Python API reference](../reference/python-api.md)
 distinguishes the in-memory local traction from the area-weighted
-`C_face_stl` artifact value.
+`C_face_stl` value stored in VTP.
 
-## What is contractual
+## Guaranteed VTP contents
 
-The supported contract is the named mesh, cell-data, and field-data content
-described below. Numeric values are compared with the tolerance appropriate to
-the selected physical model. XML element order, binary encoding details,
-compression, temporary files, and byte-for-byte file identity are not
-compatibility contracts.
+Panel Solver's compatibility guarantee covers the mesh, cell-data arrays, and
+field-data arrays described below, including their names, associations, shapes,
+stored dtypes, units, meanings, and roles in integration. Numeric values are
+compared with the tolerance appropriate to the selected physical model. The
+guarantee does not cover XML element order, binary encoding details,
+compression, temporary files, or byte-for-byte equality.
 
 There are no Panel Solver-defined point-data arrays. Every cell-data array is
 aligned with the VTP triangle-cell order. Array names are case-sensitive.
@@ -27,14 +28,14 @@ aligned with the VTP triangle-cell order. Array names are case-sensitive.
 The VTP contains the loaded, validated, SI-scaled panel mesh used by the
 calculation.
 
-| Element | Association | Semantic shape | Projection dtype | Unit | Meaning |
+| Element | Association | Shape | Stored dtype | Unit | Meaning |
 |---|---|---:|---|---|---|
 | Points | point coordinates | `(n_vertices, 3)` | `float64` | m | Vertex coordinates in the STL frame after applying `stl_scale_m_per_unit`. |
-| Triangle connectivity | polygon cells | `n_faces` triangles of 3 vertex indices | `int64` VTK-ID projection | — | Face topology and face order used by geometry, shielding, model evaluation, and every cell-data array. |
+| Triangle connectivity | polygon cells | `n_faces` triangles of 3 vertex indices | `int64` VTK IDs | — | Face topology and face order used by geometry, shielding, model evaluation, and every cell-data array. |
 
-The in-memory VTP projection represents each triangle as flattened VTK
-connectivity `[3, i0, i1, i2]`; ordinary VTK/PyVista readers expose the same
-content as triangle cells.
+Before writing, each triangle is stored in the flattened VTK connectivity array
+as `[3, i0, i1, i2]`. Ordinary VTK/PyVista readers expose the same values as
+triangle cells.
 
 ## Common cell data
 
@@ -72,33 +73,33 @@ equation and its limits.
 | `tangential_traction_coeff` | `(n_faces,)` | `float64` | dimensionless | Component of local Sentman traction along the resolved flow direction projected into the panel plane, before area/reference-area scaling. It is exactly zero where that in-plane direction is undefined at normal incidence. | Visualization/diagnostic scalar derived from the local `traction_coeff_stl` before area/reference-area weighting. It is not independently integrated. |
 
 See [Free Molecular Flow](../solvers/fmf.md) for the Sentman equation and the
-exact normal and tangential projections.
+exact normal and tangential components.
 
 `Cp_n` is not emitted by either domain.
 
 ## Common field data
 
-Every common field-data array has semantic shape `(1,)`.
+Every common field-data array has shape `(1,)`.
 
 | Field | Stored dtype / format | Unit / values | Meaning |
 |---|---|---|---|
 | `alpha_t_deg_resolved` | `float64` | degrees | Resolved tangent angle of attack used for this calculation. It matches the Summary CSV field of the same name. |
 | `attitude_input_used` | string | `beta_tan`, `beta_sin`, or `bank` | Normalized attitude representation used to interpret the two input angles. The corresponding Summary CSV field is `out_attitude_input`. |
 | `beta_t_deg_resolved` | `float64` | degrees | Resolved tangent sideslip angle used for this calculation. It matches the Summary CSV field of the same name. |
-| `case_id` | string | portable case text | Case identifier and planned artifact basename. |
-| `case_signature` | string; 64-character lowercase hexadecimal SHA-256 | — | SHA-256 identity for the current case and its artifacts. It corresponds to the Summary CSV value, and the GUI compares it with the currently loaded case for automatic display. |
+| `case_id` | string | portable case text | Case identifier and planned VTP basename. |
+| `case_signature` | string; 64-character lowercase hexadecimal SHA-256 | — | SHA-256 value that identifies the current case and associates its output files. It corresponds to the Summary CSV value, and the GUI compares it with the currently loaded case for automatic display. |
 | `ray_backend_used` | string | `not_used`, `rtree`, or `embree` | Effective [ray-shielding backend](../reference/ray-shielding.md#backend-behavior). `not_used` means ray shielding was disabled. |
-| `solver_version` | string | installed version | `panelsolver` distribution version that generated the artifact. |
-| `stl_count` | `int64` | positive component count | Number of ordered STL sources represented in the artifact. |
+| `solver_version` | string | installed version | `panelsolver` distribution version that generated the VTP file. |
+| `stl_count` | `int64` | positive component count | Number of ordered STL sources represented in the VTP file. |
 | `stl_paths_json` | JSON string containing a list of strings | resolved absolute paths | Ordered STL source paths corresponding to `stl_index=0,1,...`. JSON non-ASCII characters are escaped for VTK portability; parse the JSON to recover the original Unicode paths. |
 
-Other string field data is stored as semantic VTK text and round-trips Unicode
-through supported readers; its internal bridge representation is not a
-user-facing type distinction.
+Other string field data is stored in VTK string arrays and round-trips Unicode
+through supported readers. Reader-library in-memory types are not part of the
+VTP file specification.
 
 ## Hypersonic field data
 
-Each Hypersonic-only field has semantic shape `(1,)` and string storage.
+Each Hypersonic-only field has shape `(1,)` and string storage.
 
 | Field | Values | Meaning |
 |---|---|---|
@@ -111,7 +112,7 @@ and `out_Ti_K` are recorded in the
 
 ## Relating VTP to Summary CSV
 
-For a current saved artifact:
+For a VTP file saved during the current run:
 
 - VTP `case_id`, `case_signature`, `solver_version`,
   `alpha_t_deg_resolved`, `beta_t_deg_resolved`, and `ray_backend_used`

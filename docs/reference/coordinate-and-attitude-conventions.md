@@ -1,11 +1,11 @@
 # Coordinate and attitude conventions
 
-This page defines the coordinate and attitude conventions shared by FMF and
-Hypersonic. It explains what each attitude representation means geometrically
-and how all representations resolve to one freestream direction. The
-[Case files guide](../user-guide/case-files.md#attitude-modes) owns accepted
-input values and ranges; the domain input references own required/default
-behavior.
+FMF and Hypersonic use the coordinate and attitude calculations defined on this
+page. It explains what each attitude representation means geometrically and how
+all representations resolve to one freestream direction. Accepted input values
+and ranges are listed in the
+[Case files guide](../user-guide/case-files.md#attitude-modes). Required fields
+and defaults are listed in the domain input references.
 
 ## Frames, direction, and angle units
 
@@ -148,7 +148,7 @@ immaterial.
 ## Resolved tangent angles
 
 For every resolved unit direction
-$\hat{\boldsymbol V}_{\mathrm{STL}}=(V_x,V_y,V_z)$, the common pipeline uses
+$\hat{\boldsymbol V}_{\mathrm{STL}}=(V_x,V_y,V_z)$, both domains use
 
 ```math
 \alpha_t=\operatorname{atan2}(V_z,V_x),
