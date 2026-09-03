@@ -7,6 +7,9 @@ face-aligned result arrays, and case-level provenance. The
 per-case path rules are in [Case files](../user-guide/case-files.md), and write-
 failure behavior is in
 [Batch execution and recovery](../user-guide/batch-execution-and-recovery.md).
+The [Python API reference](../reference/python-api.md)
+distinguishes the in-memory local traction from the area-weighted
+`C_face_stl` artifact value.
 
 ## What is contractual
 
