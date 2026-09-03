@@ -326,10 +326,14 @@ The current scalar mappings are:
 | FMF | `normal_traction_coeff`, `tangential_traction_coeff`, `theta_deg` | Local normal/tangential Sentman traction projections and the normal-to-flow angle. |
 | Hypersonic | `cp`, `theta_deg` | Local pressure coefficient and the normal-to-flow angle. |
 
-Each current scalar array is `float64`. Their exact physical definitions are in
-the [FMF](../solvers/fmf.md) and
-[Hypersonic](../solvers/hypersonic.md) solver pages and the
-[VTP model-specific cell-data reference](../results/vtp.md#model-specific-cell-data).
+Each current scalar array is `float64`. The model-specific scalar definitions
+are in the [FMF](../solvers/fmf.md) and
+[Hypersonic](../solvers/hypersonic.md) solver pages, while the shared
+`theta_deg` definition is in
+[Load and coefficient conventions](load-and-coefficient-conventions.md#common-panel-angle).
+Their artifact representations are documented separately under VTP
+[common cell data](../results/vtp.md#common-cell-data) and
+[model-specific cell data](../results/vtp.md#model-specific-cell-data).
 
 FMF metadata contains `mode` (always `A` for this API), `S`, `Ti_K`, and
 `Tw_K`. Hypersonic metadata contains `Mach`, `gamma`, `windward_eq`, and
