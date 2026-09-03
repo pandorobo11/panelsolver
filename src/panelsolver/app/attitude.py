@@ -1,4 +1,4 @@
-"""Shared attitude parsing with one canonical supported domain."""
+"""Shared attitude parsing with one supported principal domain."""
 
 from __future__ import annotations
 

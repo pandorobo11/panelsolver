@@ -1,7 +1,7 @@
 # Release
 
 One Panel Solver release contains the shared engine, both physical models, the
-`panelsolver` package, and the two canonical command entry points.
+`panelsolver` package, and the two Panel Solver command entry points.
 
 ## Version and release identity
 
@@ -53,7 +53,7 @@ duplicate or unexpected filenames, hash or commit changes, wheel Name/Version or
 `project.version` mismatch, and any difference between the documentation ZIP and
 the wheel-bundled site.
 
-Wheel verification checks the packaged offline documentation and its canonical
+Wheel verification checks the packaged offline documentation and its required
 solver pages, required packaged examples, project name/version and publication
 metadata, license and third-party notice files, and the audited theme-asset
 license mapping. It also rejects developer or removed documentation and rejects
@@ -78,11 +78,11 @@ Before publishing, CI verifies:
 - generated US1976 and documentation-plot sources;
 - strict offline docs, local assets, links, and MathML rendering;
 - the original wheel in a fresh dependency-installed environment outside the
-  checkout, including canonical commands, stable Python API, actual FMF
+  checkout, including Panel Solver commands, stable Python API, actual FMF
   and Hypersonic solves, all representative release examples, packaged docs,
   and offscreen GUI construction;
 - an isolated wheel rebuild from the sdist, followed by install, resource,
-  metadata, and canonical command smoke checks;
+  metadata, and Panel Solver command smoke checks;
 - unchanged regression, compatibility, scheduler, rtree, and available Embree
   behavior on Ubuntu, Windows, and macOS;
 - annotated tag, matching version and lock, nonempty matching CHANGELOG section,

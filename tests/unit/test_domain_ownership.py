@@ -15,14 +15,14 @@ INSTALLED_VERSION = version("panelsolver")
 
 
 class DomainOwnershipTests(unittest.TestCase):
-    def test_canonical_runtime_policies_use_domain_product_ids(self) -> None:
+    def test_runtime_policies_use_domain_product_ids(self) -> None:
         self.assertEqual("fmf", fmf.CASE_POLICY.product_id)
         self.assertEqual("fmf", fmf.RUNTIME_POLICY.product_id)
         self.assertEqual("hypersonic", hypersonic.CASE_POLICY.product_id)
         self.assertEqual("hypersonic", hypersonic.RUNTIME_POLICY.product_id)
 
     @pytest.mark.slow
-    def test_canonical_domain_execution_does_not_load_legacy_or_compat(self) -> None:
+    def test_domain_execution_does_not_load_removed_product_packages(self) -> None:
         code = f"""
 import sys
 import tempfile

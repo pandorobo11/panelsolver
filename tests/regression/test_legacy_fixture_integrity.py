@@ -354,7 +354,7 @@ class LegacyFixtureComparatorTests(unittest.TestCase):
         self.assertEqual((1e-10, 0.0), tolerance("fmf_shielded", exposed_panel))
         self.assertEqual((0.0, 0.0), tolerance("newt_shielded", shielded_panel))
 
-    def test_capture_environment_and_windows_paths_are_canonical(self) -> None:
+    def test_capture_environment_and_windows_paths_are_normalized(self) -> None:
         module = self._load_comparator_module()
         with mock.patch.dict(
             os.environ,
@@ -523,7 +523,7 @@ class LegacyFixtureSemanticIntegrityTests(unittest.TestCase):
                     else:
                         self.assertFalse(shielded.any())
 
-    def test_canonical_validation_values_are_frozen(self) -> None:
+    def test_validation_reference_values_are_frozen(self) -> None:
         fmf = _total_row(_load_case("fmfsolver", "fmf_zero_plate"))
         newt = _total_row(_load_case("newtsolver", "newt_zero_newtonian"))
         self.assertAlmostEqual(2.3944907701811076, float(fmf["CA"]), places=12)

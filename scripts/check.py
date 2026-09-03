@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the canonical cross-platform local validation gate."""
+"""Run the standard cross-platform local validation gate."""
 
 from __future__ import annotations
 

@@ -12,7 +12,7 @@ ROOT = Path(__file__).parents[2]
 
 
 class VersioningTests(unittest.TestCase):
-    def test_canonical_project_distribution_and_package_identity(self) -> None:
+    def test_project_distribution_and_package_identity(self) -> None:
         with (ROOT / "pyproject.toml").open("rb") as stream:
             project = tomllib.load(stream)["project"]
         self.assertEqual("panelsolver", project["name"])

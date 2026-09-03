@@ -1,6 +1,6 @@
 # Architecture
 
-The software ships one distribution with a small canonical CLI and in-memory
+The software ships one distribution with a small top-level CLI and in-memory
 API, a shared model-neutral engine/application layer, and two independent
 physical models.
 
@@ -23,17 +23,17 @@ panelsolver.models   panelsolver.core
 
 | Layer | Owns |
 |---|---|
-| `panelsolver` root/API | small stable domain-specific in-memory solve surface and canonical flow-domain command selection |
+| `panelsolver` root/API | small stable domain-specific in-memory solve surface and top-level flow-domain command selection |
 | `panelsolver.domains` | current FMF/Hypersonic case schemas, adaptation, runtime/projection policies, output validation, and CLI/GUI composition |
 | `panelsolver.core` | immutable contracts, geometry, frames, shielding, integration, aggregation, signatures, mesh/shielding caches, scheduler |
 | `panelsolver.models` | Sentman and hypersonic case validation, equations, model scalars, model signature payloads |
 | `panelsolver.app` | case-table mechanics, product assembly, environment resolution, CLI/GUI orchestration, artifact and CSV serialization |
 
-Allowed dependency directions are canonical user surfaces to `panelsolver.domains`,
+Allowed dependency directions are public user surfaces to `panelsolver.domains`,
 domains to `app/models/core`, `app -> models -> core`, and `app -> core`. Core
 cannot import models, app, GUI, or domains; models cannot import app, GUI, or
 domains. Physical equations do not belong in domains or GUI code. Product
-selection and canonical environment names are resolved in the domain/application
+selection and Panel Solver environment-variable names are resolved in the domain/application
 boundary. Core receives product-neutral configuration values and does not inspect
 process environment variables.
 
@@ -82,13 +82,13 @@ requires both that signature and the current case ID for automatic display.
 Manual **Open VTP...** remains a generic inspection path and does not establish a
 historical artifact compatibility contract.
 
-Canonical selectors and high-level case names use the FMF and Hypersonic flow
+Flow-domain selectors and high-level case names use the FMF and Hypersonic flow
 domains. Sentman and Newtonian-family names identify physical models or methods.
 See [ADR 0011](../adr/0011-canonical-domain-naming.md).
 
 ## Shared convergence
 
-Both canonical domain selectors use the same application-owned case-table
+Both domain selectors use the same application-owned case-table
 dispatch, strict geometry and numeric validation, output collision checks,
 durable CSV writing, scheduler behavior, and input-ordered result reconstruction.
 Domain schemas, physical equations, and domain-only artifact fields remain owned

@@ -1,4 +1,4 @@
-"""Canonical FMF application composition around the Sentman model."""
+"""FMF application composition around the Sentman model."""
 
 from __future__ import annotations
 
@@ -580,7 +580,7 @@ def gui_spec(
     *,
     adapters: SolverGuiAdapters | None | object = _DEFAULT_ADAPTERS,
 ) -> SolverSpec:
-    """Return the canonical FMF GUI composition."""
+    """Return the FMF GUI composition."""
     selected_adapters = GUI_ADAPTERS if adapters is _DEFAULT_ADAPTERS else adapters
     return SolverSpec(
         product_id="fmf",
@@ -597,7 +597,7 @@ def gui_spec(
     )
 
 
-CANONICAL_CLI_POLICY = ProductCliPolicy(
+CLI_POLICY = ProductCliPolicy(
     program="panelsolver fmf",
     description="Run the Sentman free-molecular-flow model from CSV/XLSX/XLSM input.",
     runtime_policy=RUNTIME_POLICY,
@@ -607,9 +607,9 @@ CANONICAL_CLI_POLICY = ProductCliPolicy(
 
 
 __all__ = (
-    "CANONICAL_CLI_POLICY",
     "CASE_POLICY",
     "CASE_READER_POLICY",
+    "CLI_POLICY",
     "CSV_PROJECTION_POLICY",
     "CSV_WRITE_POLICY",
     "DEFAULTS",

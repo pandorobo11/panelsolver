@@ -47,11 +47,11 @@ class ResolvedHypersonicCase:
     leeward_equations: tuple[str, ...]
 
     @property
-    def windward_canonical(self) -> str:
+    def windward_selector_text(self) -> str:
         return ";".join(self.windward_equations)
 
     @property
-    def leeward_canonical(self) -> str:
+    def leeward_selector_text(self) -> str:
         return ";".join(self.leeward_equations)
 
     @property
@@ -60,8 +60,8 @@ class ResolvedHypersonicCase:
         return {
             "Mach": self.mach,
             "gamma": self.gamma,
-            "windward_eq": self.windward_canonical,
-            "leeward_eq": self.leeward_canonical,
+            "windward_eq": self.windward_selector_text,
+            "leeward_eq": self.leeward_selector_text,
         }
 
 
@@ -76,7 +76,7 @@ def _real(payload: ModelCasePayload, name: str) -> float:
     return result
 
 
-def _canonical_equations(
+def _normalize_equation_selectors(
     value: object,
     *,
     field: str,
@@ -115,13 +115,13 @@ def resolve_hypersonic_case(case: ModelCasePayload) -> ResolvedHypersonicCase:
             "ModelCasePayload.payload.gamma",
             "must be > 1",
         )
-    windward = _canonical_equations(
+    windward = _normalize_equation_selectors(
         case.payload.get("windward_eq"),
         field="ModelCasePayload.payload.windward_eq",
         default="newtonian",
         normalizer=normalize_windward_equation,
     )
-    leeward = _canonical_equations(
+    leeward = _normalize_equation_selectors(
         case.payload.get("leeward_eq"),
         field="ModelCasePayload.payload.leeward_eq",
         default="shield",
@@ -269,8 +269,8 @@ class HypersonicModel:
             metadata={
                 "Mach": resolved.mach,
                 "gamma": resolved.gamma,
-                "windward_eq": resolved.windward_canonical,
-                "leeward_eq": resolved.leeward_canonical,
+                "windward_eq": resolved.windward_selector_text,
+                "leeward_eq": resolved.leeward_selector_text,
             },
         )
 

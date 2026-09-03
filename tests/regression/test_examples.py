@@ -86,7 +86,7 @@ class ExampleRegressionTests(unittest.TestCase):
                     (EXAMPLES_ROOT / "geometry" / name).read_bytes(),
                 )
 
-    def test_tables_are_portable_unique_and_canonical(self) -> None:
+    def test_tables_are_portable_unique_and_use_current_names(self) -> None:
         case_ids: list[str] = []
         for (domain, table), raw_rows in self.raw_rows.items():
             frame = self.frames[(domain, table)]

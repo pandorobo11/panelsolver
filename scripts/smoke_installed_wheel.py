@@ -108,10 +108,10 @@ def _smoke_high_level_api(staging: Path, inputs: Path) -> None:
             raise RuntimeError("high-level solve result is incomplete")
 
 
-def _smoke_canonical_gui_entrypoint() -> None:
+def _smoke_gui_entrypoint() -> None:
     from PySide6 import QtCore, QtWidgets
 
-    from panelsolver import gui as canonical_gui
+    from panelsolver import gui as gui_module
     from panelsolver.app.gui_bootstrap import _application_icon, create_main_window
     from panelsolver.app.main_window import MainWindow
 
@@ -172,7 +172,9 @@ def _smoke_canonical_gui_entrypoint() -> None:
 
     def construct(spec, argv):
         if len(argv) != 1:
-            raise RuntimeError(f"canonical GUI leaked dispatcher arguments: {argv!r}")
+            raise RuntimeError(
+                f"Panel Solver GUI leaked dispatcher arguments: {argv!r}"
+            )
         window = create_main_window(
             spec,
             window_factory=lambda selected: MainWindow(
@@ -181,20 +183,20 @@ def _smoke_canonical_gui_entrypoint() -> None:
             ),
         )
         constructed.append((spec.product_id, spec.model_id, window.windowTitle()))
-        verify_help_menu(window, identity="canonical")
+        verify_help_menu(window, identity="Panel Solver")
         window.close()
         return 0
 
-    original = canonical_gui.run_gui
-    canonical_gui.run_gui = construct
+    original = gui_module.run_gui
+    gui_module.run_gui = construct
     try:
         for domain in expected:
             if launcher([domain]) != 0:
-                raise RuntimeError(f"canonical GUI {domain} launcher failed")
+                raise RuntimeError(f"Panel Solver GUI {domain} launcher failed")
     finally:
-        canonical_gui.run_gui = original
+        gui_module.run_gui = original
     if constructed != list(expected.values()):
-        raise RuntimeError(f"canonical GUI identity changed: {constructed!r}")
+        raise RuntimeError(f"Panel Solver GUI identity changed: {constructed!r}")
 
 
 def _smoke_subprocess_environment(staging: Path) -> dict[str, str]:
@@ -557,15 +559,15 @@ def main(argv: list[str] | None = None) -> int:
         _smoke_high_level_api(staging, inputs)
         _smoke_packaged_documentation()
         _smoke_packaged_examples(staging)
-        _smoke_canonical_gui_entrypoint()
+        _smoke_gui_entrypoint()
         if dist_dir is not None:
             release_examples = _extract_release_archives(repository, dist_dir, staging)
             _smoke_release_examples(release_examples, staging, subprocess_environment)
-        canonical = _command_path("panelsolver")
-        canonical_gui = _command_path("panelsolver-gui")
+        panel_solver = _command_path("panelsolver")
+        panel_solver_gui = _command_path("panelsolver-gui")
         for arguments in (("--help",), ("fmf", "--help"), ("hypersonic", "--help")):
             gui_help = subprocess.run(
-                [canonical_gui, *arguments],
+                [panel_solver_gui, *arguments],
                 cwd=staging,
                 capture_output=True,
                 text=True,
@@ -574,34 +576,35 @@ def main(argv: list[str] | None = None) -> int:
             )
             if gui_help.returncode != 0 or "panelsolver-gui" not in gui_help.stdout:
                 raise RuntimeError(
-                    f"canonical GUI help failed for {arguments!r}:\n"
+                    f"Panel Solver GUI help failed for {arguments!r}:\n"
                     f"stdout={gui_help.stdout!r}\nstderr={gui_help.stderr!r}"
                 )
-        canonical_help = subprocess.run(
-            [canonical, "--help"],
+        panel_solver_help = subprocess.run(
+            [panel_solver, "--help"],
             cwd=staging,
             capture_output=True,
             text=True,
             check=False,
             env=subprocess_environment,
         )
-        canonical_help_required = (
+        panel_solver_help_required = (
             "Run Panel Solver for an FMF or Hypersonic flow domain.",
             "{fmf,hypersonic}",
         )
         if (
-            canonical_help.returncode != 0
-            or "usage: panelsolver" not in canonical_help.stdout.casefold()
+            panel_solver_help.returncode != 0
+            or "usage: panelsolver" not in panel_solver_help.stdout.casefold()
             or any(
-                fragment not in canonical_help.stdout
-                for fragment in canonical_help_required
+                fragment not in panel_solver_help.stdout
+                for fragment in panel_solver_help_required
             )
         ):
             raise RuntimeError(
-                "canonical help failed:\n"
-                f"stdout={canonical_help.stdout!r}\nstderr={canonical_help.stderr!r}"
+                "Panel Solver help failed:\n"
+                f"stdout={panel_solver_help.stdout!r}\n"
+                f"stderr={panel_solver_help.stderr!r}"
             )
-        canonical_cases = {
+        domain_cases = {
             "fmf": (
                 "fmfsolver",
                 "fmf_zero_plate",
@@ -620,9 +623,9 @@ def main(argv: list[str] | None = None) -> int:
             case_id,
             description,
             domain_module,
-        ) in canonical_cases.items():
+        ) in domain_cases.items():
             domain_help = subprocess.run(
-                [canonical, domain, "--help"],
+                [panel_solver, domain, "--help"],
                 cwd=staging,
                 capture_output=True,
                 text=True,
@@ -641,13 +644,13 @@ def main(argv: list[str] | None = None) -> int:
                 or "--debug" not in domain_help.stdout
             ):
                 raise RuntimeError(
-                    f"canonical {domain} help failed:\n"
+                    f"Panel Solver {domain} help failed:\n"
                     f"stdout={domain_help.stdout!r}\nstderr={domain_help.stderr!r}"
                 )
-            output = staging / f"canonical_{domain}_results.csv"
-            canonical_run = subprocess.run(
+            output = staging / f"panel_solver_{domain}_results.csv"
+            domain_run = subprocess.run(
                 [
-                    canonical,
+                    panel_solver,
                     domain,
                     "--input",
                     inputs / f"{product}_cases.csv",
@@ -666,49 +669,47 @@ def main(argv: list[str] | None = None) -> int:
                 check=False,
                 env=subprocess_environment,
             )
-            if canonical_run.returncode != 0 or not output.is_file():
+            if domain_run.returncode != 0 or not output.is_file():
                 raise RuntimeError(
-                    f"canonical {domain} run failed:\n"
-                    f"stdout={canonical_run.stdout!r}\n"
-                    f"stderr={canonical_run.stderr!r}"
+                    f"Panel Solver {domain} run failed:\n"
+                    f"stdout={domain_run.stdout!r}\n"
+                    f"stderr={domain_run.stderr!r}"
                 )
             header = output.read_text(encoding=CSV_ENCODING).splitlines()[0]
             if "npz" in header.casefold():
-                raise RuntimeError(f"canonical {domain} restored NPZ output")
+                raise RuntimeError(f"Panel Solver {domain} restored NPZ output")
             with output.open(encoding=CSV_ENCODING, newline="") as stream:
-                canonical_rows = list(csv.DictReader(stream))
-            canonical_versions = {row["solver_version"] for row in canonical_rows}
-            if canonical_versions != {installed_version}:
+                domain_rows = list(csv.DictReader(stream))
+            domain_versions = {row["solver_version"] for row in domain_rows}
+            if domain_versions != {installed_version}:
                 raise RuntimeError(
-                    f"canonical {domain} artifact version changed: "
-                    f"{canonical_versions!r}"
+                    f"Panel Solver {domain} artifact version changed: "
+                    f"{domain_versions!r}"
                 )
-            canonical_total = next(
-                row for row in canonical_rows if row["scope"] == "total"
-            )
-            canonical_vtp = pv.read(canonical_total["vtp_path"])
-            if str(canonical_vtp.field_data["solver_version"][0]) != installed_version:
-                raise RuntimeError(f"canonical {domain} CSV/VTP versions differ")
+            domain_total = next(row for row in domain_rows if row["scope"] == "total")
+            domain_vtp = pv.read(domain_total["vtp_path"])
+            if str(domain_vtp.field_data["solver_version"][0]) != installed_version:
+                raise RuntimeError(f"Panel Solver {domain} CSV/VTP versions differ")
             current_frame = domain_module.read_cases(inputs / f"{product}_cases.csv")
             current_row = (
                 current_frame.loc[current_frame["case_id"] == case_id].iloc[0].to_dict()
             )
             if not match_artifact_case(
-                canonical_vtp,
+                domain_vtp,
                 current_row,
                 domain_module.build_case_signature(current_row),
             ).matched:
                 raise RuntimeError(
-                    f"canonical {domain} VTP did not match its current signature"
+                    f"Panel Solver {domain} VTP did not match its current signature"
                 )
             for suffix, input_path in excel_inputs[product].items():
                 format_output = (
-                    staging / "canonical-format-smoke" / domain / f"{suffix[1:]}.csv"
+                    staging / "panel-solver-format-smoke" / domain / f"{suffix[1:]}.csv"
                 )
                 format_output.parent.mkdir(parents=True, exist_ok=True)
                 format_run = subprocess.run(
                     [
-                        canonical,
+                        panel_solver,
                         domain,
                         "--input",
                         input_path,
@@ -727,7 +728,7 @@ def main(argv: list[str] | None = None) -> int:
                 )
                 if format_run.returncode != 0 or not format_output.is_file():
                     raise RuntimeError(
-                        f"canonical {domain} {suffix} run failed:\n"
+                        f"Panel Solver {domain} {suffix} run failed:\n"
                         f"stdout={format_run.stdout!r}\n"
                         f"stderr={format_run.stderr!r}"
                     )
@@ -738,7 +739,7 @@ def main(argv: list[str] | None = None) -> int:
                 product=product,
             )
             empty_cases = subprocess.run(
-                [canonical, domain, "--input", "cases.csv", "--cases"],
+                [panel_solver, domain, "--input", "cases.csv", "--cases"],
                 cwd=staging,
                 capture_output=True,
                 text=True,
@@ -757,7 +758,7 @@ def main(argv: list[str] | None = None) -> int:
             output = staging / f"{product}_results.csv"
             run_result = subprocess.run(
                 [
-                    canonical,
+                    panel_solver,
                     domain,
                     "--input",
                     cli_input,
@@ -883,7 +884,7 @@ def main(argv: list[str] | None = None) -> int:
                 format_output.parent.mkdir(parents=True, exist_ok=True)
                 format_result = subprocess.run(
                     [
-                        canonical,
+                        panel_solver,
                         domain,
                         "--input",
                         input_path,
@@ -909,7 +910,7 @@ def main(argv: list[str] | None = None) -> int:
             rejected_output = staging / "format-smoke" / product / "xls.csv"
             rejected = subprocess.run(
                 [
-                    canonical,
+                    panel_solver,
                     domain,
                     "--input",
                     inputs / f"{product}_cases.xls",

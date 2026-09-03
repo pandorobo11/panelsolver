@@ -930,7 +930,7 @@ def verify_wheel_contents(repository: Path, wheel: Path) -> None:
     if not any(
         "https://github.com/pandorobo11/panelsolver" in value for value in project_urls
     ):
-        raise RuntimeError("wheel METADATA has no canonical repository URL")
+        raise RuntimeError("wheel METADATA has no required repository URL")
     runtime_requirements = metadata.get_all("Requires-Dist", [])
     build_only = ("mkdocs", "latex2mathml")
     if any(
@@ -1119,7 +1119,7 @@ def verify_github_release_state(
     repository_name: str = _REPOSITORY_NAME,
     expected_commit: str | None = None,
 ) -> None:
-    """Require the canonical repository, green main, and zero open trackers."""
+    """Require the release repository, green main, and zero open trackers."""
     if repository_name != _REPOSITORY_NAME:
         raise RuntimeError(
             f"release repository mismatch: {repository_name!r} != {_REPOSITORY_NAME!r}"
@@ -1129,7 +1129,7 @@ def verify_github_release_state(
         not isinstance(repository, dict)
         or repository.get("full_name") != _REPOSITORY_NAME
     ):
-        raise RuntimeError("GitHub API did not resolve the canonical repository")
+        raise RuntimeError("GitHub API did not resolve the release repository")
     queries = {
         "issue": f"search/issues?q=repo:{repository_name}+is:issue+is:open&per_page=1",
         "pull request": f"search/issues?q=repo:{repository_name}+is:pr+is:open&per_page=1",

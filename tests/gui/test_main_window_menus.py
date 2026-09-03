@@ -13,8 +13,8 @@ from PySide6 import QtCore, QtWidgets
 from panelsolver.app.main_window import MainWindow
 from panelsolver.app.viewer_data import ArtifactViewState, ArtifactViewStatus
 from panelsolver.docs_site import DocumentationSiteError
-from panelsolver.domains.fmf import gui_spec as canonical_fmf_spec
-from panelsolver.domains.hypersonic import gui_spec as canonical_hypersonic_spec
+from panelsolver.domains.fmf import gui_spec as fmf_spec
+from panelsolver.domains.hypersonic import gui_spec as hypersonic_spec
 
 
 class _Cases(QtWidgets.QWidget):
@@ -133,7 +133,7 @@ class MainWindowMenuTests(unittest.TestCase):
         return window, cases
 
     def test_open_action_uses_the_same_picker_as_the_screen_button(self) -> None:
-        window, cases = self.make_window(canonical_fmf_spec())
+        window, cases = self.make_window(fmf_spec())
         self.assertEqual(
             [
                 "Open Input File...",
@@ -149,7 +149,7 @@ class MainWindowMenuTests(unittest.TestCase):
         window.close()
 
     def test_open_vtp_action_uses_the_existing_viewer_entry_point(self) -> None:
-        window, _cases = self.make_window(canonical_fmf_spec())
+        window, _cases = self.make_window(fmf_spec())
         self.assertTrue(window.open_vtp_action.shortcut().isEmpty())
         window.open_vtp_action.trigger()
         self.assertEqual(1, window.viewer_panel.open_vtp_count)
@@ -158,7 +158,7 @@ class MainWindowMenuTests(unittest.TestCase):
     def test_artifact_state_signal_is_projected_without_main_window_branching(
         self,
     ) -> None:
-        window, cases = self.make_window(canonical_fmf_spec())
+        window, cases = self.make_window(fmf_spec())
         state = ArtifactViewState(
             ArtifactViewStatus.MISSING,
             "/tmp/case.vtp",
@@ -179,7 +179,7 @@ class MainWindowMenuTests(unittest.TestCase):
                 "Shielding",
             ],
         }
-        for spec in (canonical_fmf_spec(), canonical_hypersonic_spec()):
+        for spec in (fmf_spec(), hypersonic_spec()):
             with self.subTest(product=spec.product_id):
                 window, _cases = self.make_window(spec)
                 self.assertEqual(
@@ -200,7 +200,7 @@ class MainWindowMenuTests(unittest.TestCase):
             root = Path(directory)
             copied_input = root / "fmf" / "basic.csv"
             library = _Library(copied_input)
-            window, cases = self.make_window(canonical_fmf_spec(), library)
+            window, cases = self.make_window(fmf_spec(), library)
             with patch.object(
                 QtWidgets.QFileDialog,
                 "getExistingDirectory",
@@ -217,7 +217,7 @@ class MainWindowMenuTests(unittest.TestCase):
             root.mkdir(parents=True)
             (root / "index.html").touch()
             site = _Site(root)
-            window, _cases = self.make_window(canonical_fmf_spec(), site=site)
+            window, _cases = self.make_window(fmf_spec(), site=site)
             self.assertEqual(
                 ["Documentation", "", "About"],
                 [action.text() for action in window.help_menu.actions()],
@@ -237,7 +237,7 @@ class MainWindowMenuTests(unittest.TestCase):
             self.assertTrue(site.closed)
 
     def test_about_uses_panelsolver_version_domain_and_license(self) -> None:
-        for spec in (canonical_fmf_spec(), canonical_hypersonic_spec()):
+        for spec in (fmf_spec(), hypersonic_spec()):
             with self.subTest(domain=spec.domain_name):
                 window, _cases = self.make_window(spec)
                 with (
@@ -263,7 +263,7 @@ class MainWindowMenuTests(unittest.TestCase):
             (_Site(), "default browser did not accept"),
         ):
             with self.subTest(message=message):
-                window, _cases = self.make_window(canonical_fmf_spec(), site=site)
+                window, _cases = self.make_window(fmf_spec(), site=site)
                 with (
                     patch(
                         "panelsolver.app.main_window.QtGui.QDesktopServices.openUrl",

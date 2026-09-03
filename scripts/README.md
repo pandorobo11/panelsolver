@@ -3,7 +3,7 @@
 Repository maintenance and reproducible fixture-generation scripts belong here.
 Scripts must not become an alternate implementation of production logic.
 
-`check.py` is the canonical cross-platform local validation runner:
+`check.py` is the cross-platform local validation runner:
 
 ```bash
 python scripts/check.py --quick  # development feedback
