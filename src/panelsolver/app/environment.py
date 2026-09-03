@@ -49,7 +49,7 @@ def resolve_shielding_environment(
     *,
     environment: Mapping[str, str] | None = None,
 ) -> ShieldingConfig:
-    """Resolve explicit values before the canonical environment variable."""
+    """Resolve explicit values before the Panel Solver environment variable."""
     if not isinstance(config, ShieldingConfig):
         raise TypeError("config must be a ShieldingConfig instance")
     if not config.enabled:

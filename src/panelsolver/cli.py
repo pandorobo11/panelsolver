@@ -1,4 +1,4 @@
-"""Canonical command dispatcher for the shared panel-solver platform."""
+"""Top-level command dispatcher for the shared panel-solver platform."""
 
 from __future__ import annotations
 
@@ -8,10 +8,8 @@ import sys
 from rich_argparse import RichHelpFormatter
 
 from panelsolver.app.cli import ProductCliPolicy, run_cli
-from panelsolver.domains.fmf import CANONICAL_CLI_POLICY as _FMF_POLICY
-from panelsolver.domains.hypersonic import (
-    CANONICAL_CLI_POLICY as _HYPERSONIC_POLICY,
-)
+from panelsolver.domains.fmf import CLI_POLICY as _FMF_POLICY
+from panelsolver.domains.hypersonic import CLI_POLICY as _HYPERSONIC_POLICY
 
 _POLICIES: dict[str, ProductCliPolicy] = {
     "fmf": _FMF_POLICY,

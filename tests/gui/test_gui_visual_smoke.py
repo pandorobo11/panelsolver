@@ -27,7 +27,7 @@ _SPEC.loader.exec_module(gui_visual_smoke)
 
 
 def _spec_with_reader(reader):
-    spec = gui_visual_smoke.canonical_gui_spec("fmf")
+    spec = gui_visual_smoke.gui_spec_for_domain("fmf")
     assert spec.adapters is not None
     return replace(spec, adapters=replace(spec.adapters, read_cases=reader))
 
@@ -198,7 +198,7 @@ class GuiVisualSmokeAutomationTests(unittest.TestCase):
                 patch.object(gui_visual_smoke, "parse_args", return_value=args),
                 patch.object(
                     gui_visual_smoke,
-                    "canonical_gui_spec",
+                    "gui_spec_for_domain",
                     return_value=spec,
                 ),
                 patch.object(gui_visual_smoke, "create_main_window") as create_window,
@@ -225,7 +225,7 @@ class GuiVisualSmokeAutomationTests(unittest.TestCase):
                 patch.object(gui_visual_smoke, "parse_args", return_value=args),
                 patch.object(
                     gui_visual_smoke,
-                    "canonical_gui_spec",
+                    "gui_spec_for_domain",
                     return_value=spec,
                 ),
                 patch.object(gui_visual_smoke, "create_main_window") as create_window,

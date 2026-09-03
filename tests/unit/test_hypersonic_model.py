@@ -289,7 +289,7 @@ class HypersonicModelTests(unittest.TestCase):
             np.array([180.0, 0.0]),
         )
 
-    def test_case_validation_canonicalizes_only_hypersonic_fields(self) -> None:
+    def test_case_validation_normalizes_only_hypersonic_fields(self) -> None:
         model = HypersonicModel()
         case = _case(
             windward_eq=" TANGENT_CONE ; NEWTONIAN ",

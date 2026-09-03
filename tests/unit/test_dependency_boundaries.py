@@ -153,7 +153,7 @@ class DependencyBoundaryTests(unittest.TestCase):
         )
 
     @pytest.mark.slow
-    def test_canonical_cli_import_has_no_removed_product_packages(self) -> None:
+    def test_top_level_cli_import_has_no_removed_product_packages(self) -> None:
         code = (
             "import importlib.util; import panelsolver.cli; "
             "assert importlib.util.find_spec('fmfsolver') is None; "
@@ -163,12 +163,12 @@ class DependencyBoundaryTests(unittest.TestCase):
         subprocess.run([sys.executable, "-c", code], check=True)
 
     @pytest.mark.slow
-    def test_canonical_domain_composition_uses_only_current_identities(self) -> None:
+    def test_domain_composition_uses_only_current_identities(self) -> None:
         code = (
-            "from panelsolver.domains.fmf import CANONICAL_CLI_POLICY as f_cli, "
+            "from panelsolver.domains.fmf import CLI_POLICY as f_cli, "
             "gui_spec as f_gui; "
             "from panelsolver.domains.hypersonic import "
-            "CANONICAL_CLI_POLICY as h_cli, gui_spec as h_gui; "
+            "CLI_POLICY as h_cli, gui_spec as h_gui; "
             "assert f_cli.program == 'panelsolver fmf'; "
             "assert h_cli.program == 'panelsolver hypersonic'; "
             "assert f_gui().window_title == 'Panel Solver — FMF'; "

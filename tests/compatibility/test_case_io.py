@@ -309,10 +309,12 @@ class CaseReaderCompatibilityTests(unittest.TestCase):
                 with self.assertRaisesRegex(Exception, "Unicode casefold"):
                     reader(path)
 
-                canonical_duplicates = pd.concat([base, base], ignore_index=True)
-                canonical_duplicates.loc[0, "case_id"] = "é"
-                canonical_duplicates.loc[1, "case_id"] = "e\N{COMBINING ACUTE ACCENT}"
-                canonical_duplicates.to_csv(path, index=False)
+                nfc_equivalent_duplicates = pd.concat([base, base], ignore_index=True)
+                nfc_equivalent_duplicates.loc[0, "case_id"] = "é"
+                nfc_equivalent_duplicates.loc[1, "case_id"] = (
+                    "e\N{COMBINING ACUTE ACCENT}"
+                )
+                nfc_equivalent_duplicates.to_csv(path, index=False)
                 with self.assertRaisesRegex(Exception, "Unicode casefold"):
                     reader(path)
 

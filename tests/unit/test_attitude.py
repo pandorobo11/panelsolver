@@ -114,7 +114,7 @@ class ResolvedAttitudeInvariantTests(unittest.TestCase):
                     "beta_tan",
                 )
 
-    def test_beta_tan_uses_one_canonical_principal_domain(self) -> None:
+    def test_beta_tan_uses_one_supported_principal_domain(self) -> None:
         for alpha, beta in ((-90.0, 0.0), (90.0, 0.0), (0.0, -90.0), (0.0, 90.0)):
             with (
                 self.subTest(alpha=alpha, beta=beta),

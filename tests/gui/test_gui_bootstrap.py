@@ -11,7 +11,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6 import QtCore, QtWidgets
 
-from panelsolver import gui as canonical_gui
+from panelsolver import gui as gui_module
 from panelsolver.app import GuiRunResult, SolverGuiAdapters
 from panelsolver.app.gui_bootstrap import (
     _WINDOWS_APP_USER_MODEL_ID,
@@ -23,7 +23,7 @@ from panelsolver.app.gui_bootstrap import (
     run_gui,
 )
 from panelsolver.domains.fmf import gui_spec as fmf_solver_spec
-from panelsolver.domains.hypersonic import gui_spec as newt_solver_spec
+from panelsolver.domains.hypersonic import gui_spec as hypersonic_solver_spec
 
 
 class _FakeCases:
@@ -65,7 +65,7 @@ class GuiBootstrapTests(unittest.TestCase):
         complete = fmf_solver_spec(adapters=_adapters())
         self.assertIs(complete, prepare_gui_spec(complete))
 
-        selected = newt_solver_spec(adapters=None)
+        selected = hypersonic_solver_spec(adapters=None)
         runtime = prepare_gui_spec(selected)
         self.assertIsNot(selected, runtime)
         for field in (
@@ -177,7 +177,7 @@ class GuiBootstrapTests(unittest.TestCase):
             patch("panelsolver.app.gui_bootstrap.apply_application_theme"),
         ):
             run_gui(
-                newt_solver_spec(),
+                hypersonic_solver_spec(),
                 application_factory=make_application,
                 window_factory=_FakeWindow,
             )
@@ -196,9 +196,9 @@ class GuiBootstrapTests(unittest.TestCase):
             _set_windows_app_user_model_id()
         set_app_id.assert_called_once_with(_WINDOWS_APP_USER_MODEL_ID)
 
-    def test_canonical_launcher_reuses_specs_with_domain_visible_identity(self) -> None:
-        fmf = canonical_gui.canonical_gui_spec("fmf")
-        hypersonic = canonical_gui.canonical_gui_spec("hypersonic")
+    def test_launcher_reuses_specs_with_domain_visible_identity(self) -> None:
+        fmf = gui_module.gui_spec_for_domain("fmf")
+        hypersonic = gui_module.gui_spec_for_domain("hypersonic")
         self.assertEqual("fmf", fmf.product_id)
         self.assertEqual("sentman", fmf.model_id)
         self.assertEqual("Panel Solver — FMF", fmf.window_title)
@@ -213,18 +213,18 @@ class GuiBootstrapTests(unittest.TestCase):
             "panelsolver.gui.run_gui",
             side_effect=lambda spec, argv: captured.append((spec, argv)) or 17,
         ):
-            self.assertEqual(17, canonical_gui.main(["fmf"]))
-            self.assertEqual(17, canonical_gui.main(["hypersonic"]))
+            self.assertEqual(17, gui_module.main(["fmf"]))
+            self.assertEqual(17, gui_module.main(["hypersonic"]))
         self.assertEqual(
             ["Panel Solver — FMF", "Panel Solver — Hypersonic"],
             [spec.window_title for spec, _argv in captured],
         )
         self.assertTrue(all(len(argv) == 1 for _spec, argv in captured))
 
-    def test_canonical_launcher_without_domain_prints_help_and_exits_zero(self) -> None:
+    def test_launcher_without_domain_prints_help_and_exits_zero(self) -> None:
         stdout = io.StringIO()
         with contextlib.redirect_stdout(stdout):
-            self.assertEqual(0, canonical_gui.main([]))
+            self.assertEqual(0, gui_module.main([]))
         help_text = stdout.getvalue()
         self.assertIn("usage: panelsolver-gui", help_text)
         self.assertIn("fmf", help_text)

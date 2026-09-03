@@ -861,10 +861,10 @@ class ReleaseToolTests(unittest.TestCase):
                 verify_release_tag(repository, "v2.3.4")
 
     def test_zero_open_tracker_gate_separates_issues_and_pull_requests(self) -> None:
-        canonical = {"full_name": "pandorobo11/panelsolver"}
+        repository_payload = {"full_name": "pandorobo11/panelsolver"}
         with patch(
             "scripts.release_tools._github_api_json",
-            side_effect=[canonical, {"total_count": 0}, {"total_count": 0}],
+            side_effect=[repository_payload, {"total_count": 0}, {"total_count": 0}],
         ):
             verify_github_release_state()
         for counts in ((1, 0), (0, 1)):
@@ -873,7 +873,7 @@ class ReleaseToolTests(unittest.TestCase):
                 patch(
                     "scripts.release_tools._github_api_json",
                     side_effect=[
-                        canonical,
+                        repository_payload,
                         {"total_count": counts[0]},
                         {"total_count": counts[1]},
                     ],
@@ -888,12 +888,12 @@ class ReleaseToolTests(unittest.TestCase):
                 "scripts.release_tools._github_api_json",
                 return_value={"full_name": "someone/panelsolver"},
             ),
-            self.assertRaisesRegex(RuntimeError, "canonical repository"),
+            self.assertRaisesRegex(RuntimeError, "release repository"),
         ):
             verify_github_release_state()
 
     def test_github_gate_accepts_only_latest_exact_main_push_ci(self) -> None:
-        canonical = {"full_name": "pandorobo11/panelsolver"}
+        repository_payload = {"full_name": "pandorobo11/panelsolver"}
         commit = "a" * 40
 
         def run(
@@ -929,7 +929,7 @@ class ReleaseToolTests(unittest.TestCase):
         with patch(
             "scripts.release_tools._github_api_json",
             side_effect=[
-                canonical,
+                repository_payload,
                 {"total_count": 0},
                 {"total_count": 0},
                 green_with_current_tag,
@@ -951,7 +951,7 @@ class ReleaseToolTests(unittest.TestCase):
         with patch(
             "scripts.release_tools._github_api_json",
             side_effect=[
-                canonical,
+                repository_payload,
                 {"total_count": 0},
                 {"total_count": 0},
                 obsolete_failure_then_green,
@@ -979,7 +979,7 @@ class ReleaseToolTests(unittest.TestCase):
                 patch(
                     "scripts.release_tools._github_api_json",
                     side_effect=[
-                        canonical,
+                        repository_payload,
                         {"total_count": 0},
                         {"total_count": 0},
                         runs,

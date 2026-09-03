@@ -41,7 +41,7 @@ def _set_windows_app_user_model_id() -> None:
 
 
 def _application_icon() -> QtGui.QIcon:
-    """Load the canonical application icon from the installed package."""
+    """Load the Panel Solver application icon from the installed package."""
     payload = (
         resources.files("panelsolver")
         .joinpath("assets", "panelsolver.png")
@@ -54,7 +54,7 @@ def _application_icon() -> QtGui.QIcon:
 
 
 def _configure_application(application: QtWidgets.QApplication) -> None:
-    """Apply the canonical Qt identity to a new or reused application."""
+    """Apply the Panel Solver Qt identity to a new or reused application."""
     application.setApplicationName(_APPLICATION_NAME)
     application.setApplicationDisplayName(_APPLICATION_NAME)
     application.setOrganizationName(_ORGANIZATION_NAME)

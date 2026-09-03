@@ -11,7 +11,7 @@ from panelsolver.models.sentman_atmosphere import (
     sample_at_altitude_km,
 )
 
-# SHA-256 values captured from each pre-migration canonical array.  Explicit
+# SHA-256 values captured from each pre-migration reference array.  Explicit
 # published-value formatting makes these full-grid checks independent of tuple
 # layout while preserving every supported numeric value.
 PREVIOUS_COLUMN_SHA256 = {
@@ -23,7 +23,7 @@ PREVIOUS_COLUMN_SHA256 = {
 
 
 class SentmanAtmosphereTableTests(unittest.TestCase):
-    def test_single_canonical_table_has_only_required_quantities(self) -> None:
+    def test_single_shared_table_has_only_required_quantities(self) -> None:
         self.assertIs(type(US1976_SENTMAN_TABLE), tuple)
         self.assertEqual(201, len(US1976_SENTMAN_TABLE))
         self.assertTrue(all(type(row) is tuple for row in US1976_SENTMAN_TABLE))

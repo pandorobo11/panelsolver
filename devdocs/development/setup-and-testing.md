@@ -42,7 +42,7 @@ Their exact source commits are in
 [Migration sources](../history/migration/MIGRATION_SOURCES.md). Do not regenerate
 or change expected values merely to make tests pass.
 
-## Canonical local quality gates
+## Standard local quality gates
 
 ```bash
 python scripts/check.py --quick  # during development
@@ -50,7 +50,8 @@ python scripts/check.py          # before push or pull request
 python scripts/check.py --full   # deeper local validation
 ```
 
-The Python runner is canonical and resolves the repository root independently
+`scripts/check.py` is the cross-platform local validation runner and resolves
+the repository root independently
 of the caller's current directory. It works on Windows, macOS, and Linux. POSIX
 users may invoke `scripts/check.sh` with the same flags; the shell script is only
 a thin argument-forwarding wrapper. Every mode performs
@@ -112,8 +113,8 @@ push or pull request through the standard runner; CI continues to run it on
 every supported operating system.
 
 For installed-interface or packaging changes, install the built wheel into a
-clean environment and test imports, canonical `panelsolver` and subcommand help,
-canonical `panelsolver-gui` dispatch and construction, plus both canonical
+clean environment and test imports, `panelsolver` and subcommand help,
+`panelsolver-gui` dispatch and construction, plus both supported
 domain selectors outside the checkout. For GUI
 changes, add headless-safe tests where practical and record a manual smoke test.
 For shielding or numerical work, run the applicable golden cases with both

@@ -16,11 +16,11 @@ from panelsolver.app.csv_writer import (
 )
 from panelsolver.core import CsvProjection
 from panelsolver.domains import fmf as fmf_csv
-from panelsolver.domains import hypersonic as newt_csv
-from panelsolver.domains.fmf import CANONICAL_CLI_POLICY as FMF_CLI_POLICY
+from panelsolver.domains import hypersonic as hypersonic_csv
+from panelsolver.domains.fmf import CLI_POLICY as FMF_CLI_POLICY
 from panelsolver.domains.fmf import GUI_ADAPTERS as FMF_GUI_ADAPTERS
-from panelsolver.domains.hypersonic import CANONICAL_CLI_POLICY as NEWT_CLI_POLICY
-from panelsolver.domains.hypersonic import GUI_ADAPTERS as NEWT_GUI_ADAPTERS
+from panelsolver.domains.hypersonic import CLI_POLICY as HYPERSONIC_CLI_POLICY
+from panelsolver.domains.hypersonic import GUI_ADAPTERS as HYPERSONIC_GUI_ADAPTERS
 
 
 def projection() -> CsvProjection:
@@ -65,11 +65,11 @@ class CsvWriterTests(unittest.TestCase):
 
     def test_products_use_one_durable_write_policy(self) -> None:
         self.assertIs(DURABLE_CSV_WRITE_POLICY, fmf_csv.CSV_WRITE_POLICY)
-        self.assertIs(DURABLE_CSV_WRITE_POLICY, newt_csv.CSV_WRITE_POLICY)
+        self.assertIs(DURABLE_CSV_WRITE_POLICY, hypersonic_csv.CSV_WRITE_POLICY)
         self.assertTrue(DURABLE_CSV_WRITE_POLICY.fsync_before_replace)
 
     def test_both_products_flush_fsync_replace_and_preserve_semantic_csv(self) -> None:
-        for adapter in (fmf_csv, newt_csv):
+        for adapter in (fmf_csv, hypersonic_csv):
             with (
                 self.subTest(adapter=adapter.__name__),
                 tempfile.TemporaryDirectory() as td,
@@ -97,7 +97,7 @@ class CsvWriterTests(unittest.TestCase):
                     )
 
     def test_atomic_writer_emits_bom_and_round_trips_unicode(self) -> None:
-        for adapter in (fmf_csv, newt_csv):
+        for adapter in (fmf_csv, hypersonic_csv):
             with (
                 self.subTest(adapter=adapter.__name__),
                 tempfile.TemporaryDirectory() as td,
@@ -112,7 +112,7 @@ class CsvWriterTests(unittest.TestCase):
                     )
 
     def test_both_policies_preserve_output_and_clean_temp_on_failure(self) -> None:
-        for policy in (fmf_csv.CSV_WRITE_POLICY, newt_csv.CSV_WRITE_POLICY):
+        for policy in (fmf_csv.CSV_WRITE_POLICY, hypersonic_csv.CSV_WRITE_POLICY):
             with self.subTest(policy=policy), tempfile.TemporaryDirectory() as td:
                 output = Path(td) / "results.csv"
                 output.write_text("original\n", encoding="utf-8")
@@ -128,7 +128,7 @@ class CsvWriterTests(unittest.TestCase):
                 self.assertEqual([output], list(Path(td).iterdir()))
 
     def test_both_policies_clean_temp_on_replace_failure(self) -> None:
-        for policy in (fmf_csv.CSV_WRITE_POLICY, newt_csv.CSV_WRITE_POLICY):
+        for policy in (fmf_csv.CSV_WRITE_POLICY, hypersonic_csv.CSV_WRITE_POLICY):
             with self.subTest(policy=policy), tempfile.TemporaryDirectory() as td:
                 output = Path(td) / "results.csv"
                 output.write_text("original\n", encoding="utf-8")
@@ -144,7 +144,7 @@ class CsvWriterTests(unittest.TestCase):
                 self.assertEqual([output], list(Path(td).iterdir()))
 
     def test_both_policies_clean_temp_on_fsync_failure(self) -> None:
-        for policy in (fmf_csv.CSV_WRITE_POLICY, newt_csv.CSV_WRITE_POLICY):
+        for policy in (fmf_csv.CSV_WRITE_POLICY, hypersonic_csv.CSV_WRITE_POLICY):
             with self.subTest(policy=policy), tempfile.TemporaryDirectory() as td:
                 output = Path(td) / "results.csv"
                 output.write_text("original\n", encoding="utf-8")
@@ -175,7 +175,7 @@ class CsvWriterTests(unittest.TestCase):
                 },
             )
 
-            for adapter in (fmf_csv, newt_csv):
+            for adapter in (fmf_csv, hypersonic_csv):
                 for protected in (
                     input_path,
                     stl_path,
@@ -203,7 +203,7 @@ class CsvWriterTests(unittest.TestCase):
                     "out_dir": "outputs",
                 },
             )
-            for adapter in (fmf_csv, newt_csv):
+            for adapter in (fmf_csv, hypersonic_csv):
                 for protected in (
                     input_path.parent / "geometry" / "mesh.stl",
                     input_path.parent / "outputs" / "case_a.vtp",
@@ -270,7 +270,7 @@ class CsvWriterTests(unittest.TestCase):
                     stl_nfc,
                 ),
             )
-            for adapter in (fmf_csv, newt_csv):
+            for adapter in (fmf_csv, hypersonic_csv):
                 for output, input_file, rows, role, protected in cases:
                     with self.subTest(adapter=adapter.__name__, role=role):
                         with self.assertRaises(ValueError) as caught:
@@ -297,7 +297,7 @@ class CsvWriterTests(unittest.TestCase):
                 summary.symlink_to(input_path)
             except (NotImplementedError, OSError) as exc:
                 self.skipTest(f"symlink creation is unavailable: {exc}")
-            for adapter in (fmf_csv, newt_csv):
+            for adapter in (fmf_csv, hypersonic_csv):
                 with self.assertRaises(ValueError) as caught:
                     adapter.validate_results_output_path(summary, input_path, ())
                 self.assertIn("summary path", str(caught.exception))
@@ -313,7 +313,7 @@ class CsvWriterTests(unittest.TestCase):
                 os.link(input_path, summary)
             except (NotImplementedError, OSError) as exc:
                 self.skipTest(f"hardlink creation is unavailable: {exc}")
-            for adapter in (fmf_csv, newt_csv):
+            for adapter in (fmf_csv, hypersonic_csv):
                 with self.assertRaises(ValueError) as caught:
                     adapter.validate_results_output_path(summary, input_path, ())
                 self.assertIn("summary path", str(caught.exception))
@@ -337,7 +337,7 @@ class CsvWriterTests(unittest.TestCase):
                     "save_vtp_on": 0,
                 },
             )
-            for adapter in (fmf_csv, newt_csv):
+            for adapter in (fmf_csv, hypersonic_csv):
                 with (
                     self.subTest(adapter=adapter.__name__),
                     self.assertRaisesRegex(
@@ -373,7 +373,7 @@ class CsvWriterTests(unittest.TestCase):
                         "out_dir": str(second_out),
                     },
                 )
-                for adapter in (fmf_csv, newt_csv):
+                for adapter in (fmf_csv, hypersonic_csv):
                     with (
                         self.subTest(
                             adapter=adapter.__name__,
@@ -401,7 +401,7 @@ class CsvWriterTests(unittest.TestCase):
                 },
             )
             expected = (root / "summary.csv").resolve()
-            for adapter in (fmf_csv, newt_csv):
+            for adapter in (fmf_csv, hypersonic_csv):
                 self.assertEqual(
                     expected,
                     adapter.validate_results_output_path(
@@ -427,9 +427,9 @@ class CsvWriterTests(unittest.TestCase):
             )
             validators = (
                 FMF_CLI_POLICY.validate_output_path,
-                NEWT_CLI_POLICY.validate_output_path,
+                HYPERSONIC_CLI_POLICY.validate_output_path,
                 FMF_GUI_ADAPTERS.validate_output_path,
-                NEWT_GUI_ADAPTERS.validate_output_path,
+                HYPERSONIC_GUI_ADAPTERS.validate_output_path,
             )
             for validator in validators:
                 for protected in (input_path, stl_path, artifact):

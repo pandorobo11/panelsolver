@@ -51,7 +51,7 @@ def mean_to_most_probable_speed(mean_speed_ms: float) -> float:
 
 
 def load_us1976_tables() -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Return defensive legacy-shaped views of the single canonical table."""
+    """Return defensive legacy-shaped views of the shared atmosphere table."""
     return (
         pd.DataFrame({"Z": _ALTITUDE_KM, "T": _TEMPERATURE_K, "c": _SPEED_OF_SOUND_MS}),
         pd.DataFrame({"Z": _ALTITUDE_KM, "V": _MEAN_MOLECULAR_SPEED_MS}),

@@ -1,4 +1,4 @@
-"""Canonical Hypersonic application composition around its pressure models."""
+"""Hypersonic application composition around its pressure models."""
 
 from __future__ import annotations
 
@@ -259,14 +259,14 @@ def _validate_surface_equations(frame: pd.DataFrame, add_issue: AddIssue) -> Non
                 field="windward_eq",
                 default="newtonian",
             )
-            _, canonical = expand_component_values(
+            _, selector_text = expand_component_values(
                 windward,
                 default_value="newtonian",
                 resolver=normalize_windward_equation,
                 component_count=component_count,
                 field_name="windward_eq",
             )
-            frame.at[index, "windward_eq"] = canonical
+            frame.at[index, "windward_eq"] = selector_text
         except (TypeError, ValueError) as exc:
             add_issue(int(index), "windward_eq", str(exc))
             continue
@@ -276,14 +276,14 @@ def _validate_surface_equations(frame: pd.DataFrame, add_issue: AddIssue) -> Non
                 field="leeward_eq",
                 default="shield",
             )
-            _, canonical = expand_component_values(
+            _, selector_text = expand_component_values(
                 leeward,
                 default_value="shield",
                 resolver=normalize_leeward_equation,
                 component_count=component_count,
                 field_name="leeward_eq",
             )
-            frame.at[index, "leeward_eq"] = canonical
+            frame.at[index, "leeward_eq"] = selector_text
         except (TypeError, ValueError) as exc:
             add_issue(int(index), "leeward_eq", str(exc))
 
@@ -604,7 +604,7 @@ def gui_spec(
     *,
     adapters: SolverGuiAdapters | None | object = _DEFAULT_ADAPTERS,
 ) -> SolverSpec:
-    """Return the canonical Hypersonic GUI composition."""
+    """Return the Hypersonic GUI composition."""
     selected_adapters = GUI_ADAPTERS if adapters is _DEFAULT_ADAPTERS else adapters
     return SolverSpec(
         product_id="hypersonic",
@@ -621,7 +621,7 @@ def gui_spec(
     )
 
 
-CANONICAL_CLI_POLICY = ProductCliPolicy(
+CLI_POLICY = ProductCliPolicy(
     program="panelsolver hypersonic",
     description="Run hypersonic panel models from CSV/XLSX/XLSM input.",
     runtime_policy=RUNTIME_POLICY,
@@ -631,9 +631,9 @@ CANONICAL_CLI_POLICY = ProductCliPolicy(
 
 
 __all__ = (
-    "CANONICAL_CLI_POLICY",
     "CASE_POLICY",
     "CASE_READER_POLICY",
+    "CLI_POLICY",
     "CSV_PROJECTION_POLICY",
     "CSV_WRITE_POLICY",
     "DEFAULTS",

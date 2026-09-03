@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the canonical Sentman US1976 table from the pinned PDAS program."""
+"""Generate the package-internal Sentman US1976 table from pinned PDAS."""
 
 from __future__ import annotations
 

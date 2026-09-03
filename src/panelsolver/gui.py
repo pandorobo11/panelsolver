@@ -1,4 +1,4 @@
-"""Canonical GUI dispatcher using flow-domain names."""
+"""Top-level GUI dispatcher using flow-domain names."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ _DOMAIN_SPECS: dict[str, Callable[[], SolverSpec]] = {
 
 
 def build_parser() -> argparse.ArgumentParser:
-    """Build the canonical GUI flow-domain selector parser."""
+    """Build the GUI flow-domain selector parser."""
     parser = argparse.ArgumentParser(
         prog="panelsolver-gui",
         description="Launch the Panel Solver GUI for an FMF or Hypersonic flow domain.",
@@ -35,8 +35,8 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def canonical_gui_spec(domain: str) -> SolverSpec:
-    """Return the canonical GUI composition for one flow domain."""
+def gui_spec_for_domain(domain: str) -> SolverSpec:
+    """Return the GUI composition for one flow domain."""
     try:
         factory = _DOMAIN_SPECS[domain]
     except KeyError as exc:
@@ -54,7 +54,7 @@ def main(argv: list[str] | None = None) -> int:
     namespace = parser.parse_args(arguments)
     if namespace.domain is None:
         parser.error("a flow domain is required: fmf or hypersonic")
-    return run_gui(canonical_gui_spec(namespace.domain), argv=[sys.argv[0]])
+    return run_gui(gui_spec_for_domain(namespace.domain), argv=[sys.argv[0]])
 
 
-__all__ = ("build_parser", "canonical_gui_spec", "main")
+__all__ = ("build_parser", "gui_spec_for_domain", "main")

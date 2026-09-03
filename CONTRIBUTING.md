@@ -22,7 +22,7 @@ python scripts/check.py          # before push or pull request
 python scripts/check.py --full   # deeper packaging/process validation
 ```
 
-The Python runner is canonical on Windows, macOS, and Linux. On POSIX systems,
+`scripts/check.py` is the cross-platform local validation runner. On POSIX systems,
 `scripts/check.sh` forwards the same arguments. All modes perform the locked
 dependency sync first and stop at the first failed step.
 

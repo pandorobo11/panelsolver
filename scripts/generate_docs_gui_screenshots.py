@@ -14,7 +14,7 @@ from panelsolver.app.gui_bootstrap import _configure_application, create_main_wi
 from panelsolver.app.gui_theme import ThemeMode, apply_application_theme
 from panelsolver.app.solver_spec import GuiRunRequest
 from panelsolver.app.viewer_data import ArtifactViewStatus
-from panelsolver.gui import canonical_gui_spec
+from panelsolver.gui import gui_spec_for_domain
 
 try:
     from scripts.gui_visual_smoke import capture_main_window
@@ -205,7 +205,7 @@ def main() -> int:
     """Regenerate both committed GUI-guide screenshots."""
     output_dir = ROOT / "docs" / "assets" / "screenshots"
     output_dir.mkdir(parents=True, exist_ok=True)
-    spec = canonical_gui_spec("hypersonic")
+    spec = gui_spec_for_domain("hypersonic")
 
     with tempfile.TemporaryDirectory(prefix="panelsolver-docs-gui-") as temporary:
         temporary_root = Path(temporary)

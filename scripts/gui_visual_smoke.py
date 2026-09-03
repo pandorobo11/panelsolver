@@ -14,7 +14,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from panelsolver.app.gui_bootstrap import _configure_application, create_main_window
 from panelsolver.app.gui_theme import ThemeMode, apply_application_theme
 from panelsolver.app.solver_spec import SolverSpec
-from panelsolver.gui import canonical_gui_spec
+from panelsolver.gui import gui_spec_for_domain
 
 
 def _existing_input_path(value: str) -> Path:
@@ -259,7 +259,7 @@ def _prepare_and_schedule_capture(
 def main(argv: list[str] | None = None) -> int:
     """Show one real MainWindow on the normal platform display."""
     args = parse_args(argv)
-    spec = canonical_gui_spec(args.domain)
+    spec = gui_spec_for_domain(args.domain)
     try:
         spec = _preflight_noninteractive_spec(spec, args)
     except Exception as exc:

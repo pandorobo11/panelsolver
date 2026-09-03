@@ -12,14 +12,14 @@ from panelsolver.app.cli import build_parser as build_product_parser
 from panelsolver.app.cli import parse_case_ids
 from panelsolver.app.csv_writer import CSV_ENCODING
 from panelsolver.app.runtime import DEFAULT_CHECKPOINT_CASES
-from panelsolver.cli import build_parser as build_canonical_parser
-from panelsolver.cli import main as canonical_main
-from panelsolver.domains.fmf import CANONICAL_CLI_POLICY as FMF_CLI_POLICY
+from panelsolver.cli import build_parser as build_panel_solver_parser
+from panelsolver.cli import main as panel_solver_main
+from panelsolver.domains.fmf import CLI_POLICY as FMF_CLI_POLICY
 from panelsolver.domains.fmf import read_cases as read_fmf_cases
 from panelsolver.domains.hypersonic import (
-    CANONICAL_CLI_POLICY as NEWT_CLI_POLICY,
+    CLI_POLICY as HYPERSONIC_CLI_POLICY,
 )
-from panelsolver.domains.hypersonic import read_cases as read_newt_cases
+from panelsolver.domains.hypersonic import read_cases as read_hypersonic_cases
 from tests.current_case_fixtures import read_current_cases
 
 INPUTS = Path(__file__).parents[1] / "fixtures" / "phase1" / "inputs"
@@ -29,22 +29,22 @@ def build_fmf_parser():
     return build_product_parser(FMF_CLI_POLICY)
 
 
-def build_newt_parser():
-    return build_product_parser(NEWT_CLI_POLICY)
+def build_hypersonic_parser():
+    return build_product_parser(HYPERSONIC_CLI_POLICY)
 
 
 def fmf_main(argv: list[str]) -> int:
-    return canonical_main(["fmf", *argv])
+    return panel_solver_main(["fmf", *argv])
 
 
-def newt_main(argv: list[str]) -> int:
-    return canonical_main(["hypersonic", *argv])
+def hypersonic_main(argv: list[str]) -> int:
+    return panel_solver_main(["hypersonic", *argv])
 
 
-class CanonicalCliTests(unittest.TestCase):
-    def test_canonical_help_names_flow_domains_and_delegated_program(self) -> None:
+class PanelSolverCliTests(unittest.TestCase):
+    def test_help_names_flow_domains_and_delegated_program(self) -> None:
         with patch.dict(os.environ, {"COLUMNS": "80"}):
-            help_text = build_canonical_parser().format_help()
+            help_text = build_panel_solver_parser().format_help()
             self.assertIn("usage: panelsolver", help_text.casefold())
             self.assertIn("fmf", help_text)
             self.assertIn("hypersonic", help_text)
@@ -56,7 +56,7 @@ class CanonicalCliTests(unittest.TestCase):
                     stdout = io.StringIO()
                     with contextlib.redirect_stdout(stdout):
                         with self.assertRaises(SystemExit) as caught:
-                            canonical_main([domain, "--help"])
+                            panel_solver_main([domain, "--help"])
                     self.assertEqual(0, caught.exception.code)
                     delegated = stdout.getvalue()
                     self.assertIn(f"usage: panelsolver {domain}", delegated.casefold())
@@ -75,7 +75,7 @@ class CanonicalCliTests(unittest.TestCase):
                 (
                     "panelsolver hypersonic",
                     "Run hypersonic panel models from CSV/XLSX/XLSM input.",
-                    build_newt_parser,
+                    build_hypersonic_parser,
                 ),
             ):
                 with self.subTest(program=program):
@@ -107,14 +107,14 @@ class CanonicalCliTests(unittest.TestCase):
         self.assertIsNone(parse_case_ids([" , "]))
 
     def test_argument_errors_and_unknown_cases_keep_exit_boundaries(self) -> None:
-        for policy in (FMF_CLI_POLICY, NEWT_CLI_POLICY):
+        for policy in (FMF_CLI_POLICY, HYPERSONIC_CLI_POLICY):
             with self.subTest(product=policy.runtime_policy.product_id):
                 with contextlib.redirect_stderr(io.StringIO()):
                     with self.assertRaises(SystemExit) as workers_exit:
                         parser = (
                             build_fmf_parser()
                             if policy is FMF_CLI_POLICY
-                            else build_newt_parser()
+                            else build_hypersonic_parser()
                         )
                         args = parser.parse_args(["--input", "x", "--workers", "0"])
                         if args.workers < 1:
@@ -183,8 +183,8 @@ class CanonicalCliTests(unittest.TestCase):
                 ("fmf_zero_plate", "fmf_mode_b_offset"),
             ),
             (
-                newt_main,
-                read_newt_cases,
+                hypersonic_main,
+                read_hypersonic_cases,
                 "newtsolver_cases.csv",
                 ("newt_zero_newtonian", "newt_modified_offset"),
             ),

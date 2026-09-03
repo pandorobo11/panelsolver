@@ -18,7 +18,7 @@ from panelsolver.app.output_status import (
     OutputKind,
     OutputPhase,
 )
-from panelsolver.domains.fmf import CANONICAL_CLI_POLICY
+from panelsolver.domains.fmf import CLI_POLICY
 
 
 class _Stream(io.StringIO):
@@ -94,7 +94,7 @@ class CliPresentationTests(unittest.TestCase):
 
     def test_cli_passes_runtime_arguments_and_progress_callback_unchanged(self) -> None:
         policy = replace(
-            CANONICAL_CLI_POLICY,
+            CLI_POLICY,
             read_cases=lambda _path: pd.DataFrame([{"case_id": "one"}]),
             validate_output_path=lambda *_args: Path("result.csv"),
         )
@@ -114,7 +114,7 @@ class CliPresentationTests(unittest.TestCase):
 
     def test_cli_keeps_nonzero_semantics_for_structured_output_failures(self) -> None:
         policy = replace(
-            CANONICAL_CLI_POLICY,
+            CLI_POLICY,
             read_cases=lambda _path: pd.DataFrame([{"case_id": "one"}]),
             validate_output_path=lambda *_args: Path("result.csv"),
         )
