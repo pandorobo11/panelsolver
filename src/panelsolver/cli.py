@@ -23,7 +23,7 @@ def build_parser() -> argparse.ArgumentParser:
     """Build the small model-domain selector parser."""
     parser = argparse.ArgumentParser(
         prog="panelsolver",
-        description="Run Panel Solver using a canonical flow-domain selector.",
+        description="Run Panel Solver for an FMF or Hypersonic flow domain.",
         formatter_class=RichHelpFormatter,
     )
     subparsers = parser.add_subparsers(dest="domain", metavar="{fmf,hypersonic}")

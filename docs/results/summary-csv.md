@@ -1,8 +1,8 @@
 # Summary CSV reference
 
-This page is the canonical contract for the result portion of Panel Solver
-Summary CSV files. The case-table columns that precede these results are defined
-in the [FMF input reference](../reference/fmf-input.md), the
+This page defines the result columns and row semantics of Panel Solver Summary
+CSV files. The case-table columns that precede these results are defined in the
+[FMF input reference](../reference/fmf-input.md), the
 [Hypersonic input reference](../reference/hypersonic-input.md), and
 [Case files](../user-guide/case-files.md). The [CLI guide](../user-guide/cli.md)
 defines the CLI Summary destination, while
@@ -19,7 +19,7 @@ not part of this result reference.
 
 Columns are written in this order:
 
-1. canonical input columns for the selected domain;
+1. schema-defined input columns for the selected domain;
 2. accepted non-reserved extra input columns, in their source-table order;
 3. the domain result columns below.
 
@@ -69,7 +69,7 @@ number.
 | Column | Domain | Type / format | Unit | Rows | Blank when | Meaning |
 |---|---|---|---|---|---|---|
 | `solver_version` | common | text | — | all | never | Installed `panelsolver` distribution version that generated the result. |
-| `case_signature` | common | 64-character lowercase hexadecimal SHA-256 | — | all | never | Canonical current case/artifact identity. It incorporates the numerical geometry, normalized common and model case, model algorithm version, and shielding configuration including the effective backend. The GUI uses it with `case_id` to match a VTP to a current case. It is not a complete-result cache key. |
+| `case_signature` | common | 64-character lowercase hexadecimal SHA-256 | — | all | never | SHA-256 identity for the current case and its artifacts. It incorporates the numerical geometry, normalized common and model case, model algorithm version, and shielding configuration including the effective backend. The GUI uses it with `case_id` to match a VTP to a current case. It is not a complete-result cache key. |
 | `run_started_at_utc` | common | ISO 8601 UTC timestamp ending in `Z` | — | all | never | Time at which this case began execution. It is a per-case timestamp, not the batch start. |
 | `run_finished_at_utc` | common | ISO 8601 UTC timestamp ending in `Z` | — | all | never | Time after calculation and the case's optional VTP write attempt completed. It is a per-case timestamp, not the final Summary CSV write time. |
 | `run_elapsed_s` | common | floating-point number | s | all | never | Monotonic elapsed time over the same per-case interval, including optional VTP handling and excluding final batch Summary CSV serialization. |
@@ -95,7 +95,7 @@ needed for provenance.
 
 | Column | Domain | Type / format | Unit / values | Rows | Blank when | Meaning |
 |---|---|---|---|---|---|---|
-| `out_attitude_input` | common | text | `beta_tan`, `beta_sin`, or `bank` | all | never | Canonical attitude representation used to interpret the two input angles. The corresponding VTP field is `attitude_input_used`. |
+| `out_attitude_input` | common | text | `beta_tan`, `beta_sin`, or `bank` | all | never | Normalized attitude representation used to interpret the two input angles. The corresponding VTP field is `attitude_input_used`. |
 | `alpha_t_deg_resolved` | common | floating-point number | degrees | all | never | Resolved tangent angle of attack used by integration and stability-frame conversion. |
 | `beta_t_deg_resolved` | common | floating-point number | degrees | all | never | Resolved tangent sideslip angle associated with the evaluated flow direction. |
 | `scope` | common | text | `total` or `component` | all | never | Identifies whether the row covers the complete case geometry or one STL component. |
@@ -135,7 +135,7 @@ All coefficient columns are floating-point, dimensionless, present on both
 | `CL` | stability Z | Lift coefficient, `-C_Z_stability`. |
 
 Panel-area/reference-area normalization, the STL-to-body mapping, the
-body-to-stability rotation, signs, and moment calculation are canonical in
+body-to-stability rotation, signs, and moment calculation are defined in
 [Load and coefficient conventions](../reference/load-and-coefficient-conventions.md).
 Per-panel contributions from which these coefficients are integrated are stored
 as `C_face_stl` in the [VTP reference](vtp.md).

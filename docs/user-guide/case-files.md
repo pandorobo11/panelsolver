@@ -66,8 +66,8 @@ transformations are defined in
 - Empty, non-finite, degenerate, or unrepaired inconsistently wound meshes are
   rejected by the shared strict geometry boundary.
 
-Accepted non-reserved unknown input columns are preserved after the canonical
-input columns in the Summary CSV. `save_npz_on` is a reserved field that the
-CSV, XLSX, and XLSM readers explicitly reject; remove it when updating an older
-case file. The documented case file plus CLI/GUI path is the supported file
-interface.
+Accepted non-reserved unknown input columns are preserved after the
+schema-defined input columns in the Summary CSV. `save_npz_on` is a reserved
+field that the CSV, XLSX, and XLSM readers explicitly reject; remove it when
+updating an older case file. The documented case file plus CLI/GUI path is the
+supported file interface.

@@ -1,8 +1,8 @@
 # FMF input reference
 
-This page is the canonical FMF case-table schema. Columns appear in the order
-shown; accepted non-reserved unknown columns are retained after them in Summary
-CSV output. Common formats, paths, case IDs, and reserved-field rejection are
+This page defines the FMF case-table schema. Columns appear in the order shown;
+accepted non-reserved unknown columns are retained after them in Summary CSV
+output. Common formats, paths, case IDs, and reserved-field rejection are
 defined in [Case files](../user-guide/case-files.md).
 
 | Column | Required | Default | Unit / values | Meaning |
@@ -54,6 +54,6 @@ FMF uses the common attitude resolver also used by Hypersonic. See
 [Case files](../user-guide/case-files.md#attitude-modes) for mode selection and
 accepted ranges, and
 [Coordinate and attitude conventions](coordinate-and-attitude-conventions.md)
-for the canonical axes, signs, and geometric definitions. Common path, case-ID,
-flag, and mesh rules are also in Case files. Model interpretation is in
+for the axes, signs, and geometric definitions. Common path, case-ID, flag, and
+mesh rules are also in Case files. Model interpretation is in
 [Sentman local-load equation](../solvers/fmf.md#sentman-local-load-equation).

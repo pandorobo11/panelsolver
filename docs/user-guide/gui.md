@@ -1,6 +1,6 @@
 # GUI guide
 
-Launch the canonical GUI with a flow-domain selector:
+Launch the GUI with a flow-domain selector:
 
 ```bash
 panelsolver-gui fmf
@@ -58,10 +58,10 @@ not discard its history: messages continue to accumulate and are available when
 the section is expanded again.
 
 The case table uses user-facing headers with source units while retaining the
-canonical case-file columns internally. Comparable numeric values are right-
-aligned; identifiers and text remain left-aligned, and 0/1 flags are centered.
-This presentation layer does not round values, normalize scientific notation,
-or convert units.
+case-file column names internally. Comparable numeric values are right-aligned;
+identifiers and text remain left-aligned, and 0/1 flags are centered. This
+presentation layer does not round values, normalize scientific notation, or
+convert units.
 
 A run whose calculations complete with one or more artifact write failures
 finishes as **Completed with output errors**, not **Failed**, and shows one
@@ -90,7 +90,7 @@ files.
 
 When a case saves VTP, the first selected case's result is loaded automatically. A
 selected row also loads an existing `<out_dir>/<case_id>.vtp` when its case ID
-and current canonical signature match. Missing, stale-signature, and
+and current case signature match. Missing, stale-signature, and
 identity-mismatched artifacts are not rendered automatically. The compact status
 row above the Viewer explains what result is displayed or why the selected case's
 result is unavailable; the signature and field-data contract is documented in

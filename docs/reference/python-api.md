@@ -6,7 +6,7 @@ artifacts.
 
 ## Supported imports and scope
 
-The canonical supported Python API is exactly these seven names, imported from
+The supported Python API consists of exactly these seven names, imported from
 the package root:
 
 ```python
@@ -61,7 +61,7 @@ the concise accepted-input rules are also listed in
 | `velocity_hat_stl` | NumPy `float64` vector `(3,)` | unit vector | Resolved direction in which the freestream travels, expressed in STL axes. |
 | `alpha_t_deg` | `float` | degrees | Resolved tangent angle of attack. |
 | `beta_t_deg` | `float` | degrees | Resolved tangent sideslip. |
-| `input_mode` | `str` | `beta_tan`, `beta_sin`, or `bank` | Canonical representation used for the input pair. |
+| `input_mode` | `str` | `beta_tan`, `beta_sin`, or `bank` | Normalized representation used for the input pair. |
 
 `ResolvedAttitude` is itself part of the package-root API and supports direct
 construction:
@@ -223,11 +223,11 @@ solve_hypersonic(case: HypersonicCase) -> SolveResult
 ```
 
 Each function accepts only its matching case type and runs synchronously. It
-loads the ordered STL sources, uses the same canonical geometry, shielding,
-model, integration, component-aggregation, and case-signature pipeline as an
-equivalent documented case-table calculation, and returns its result in
-memory. Equivalent inputs therefore produce the same numerical result as the
-CLI/GUI case-table workflow.
+loads the ordered STL sources and uses the same geometry loading, shielding,
+model, integration, component aggregation, and case-signature pipeline as an
+equivalent documented case-table calculation. It returns the result in memory,
+so equivalent inputs produce the same numerical result as the CLI/GUI
+case-table workflow.
 
 These functions do not expose registry, request, or cache controls.
 
@@ -243,7 +243,7 @@ solve function:
 | `geometry` | nested per-face geometry | `n_faces` rows | SI-scaled geometry used by the calculation. |
 | `flow_state` | nested flow state | `n_faces` mask | Resolved flow direction and geometric shielding mask. |
 | `local_loads` | nested model result | `n_faces` rows | Local traction plus model visualization/diagnostic scalars and resolved model metadata. |
-| `case_signature` | `str` | 64 lowercase hexadecimal characters | Canonical current case/artifact identity for the evaluated geometry, normalized case, model algorithm, and resolved shielding configuration. |
+| `case_signature` | `str` | 64 lowercase hexadecimal characters | SHA-256 identity for the evaluated geometry, normalized case, model algorithm, and resolved shielding configuration. |
 | `ray_backend_used` | `str` | `not_used`, `rtree`, or `embree` | Effective ray backend. `not_used` means shielding was disabled. |
 | `warnings` | tuple of `str` | possibly empty | User-visible warnings produced while loading/executing the case. Exact warning text is not a stable taxonomy, and warnings are not fields in Summary CSV or VTP. |
 
@@ -337,7 +337,8 @@ Their artifact representations are documented separately under VTP
 
 FMF metadata contains `mode` (always `A` for this API), `S`, `Ti_K`, and
 `Tw_K`. Hypersonic metadata contains `Mach`, `gamma`, `windward_eq`, and
-`leeward_eq`; equation values are their canonical one-or-per-component strings.
+`leeward_eq`; equation values are their normalized one-or-per-component
+strings.
 
 !!! important "Local traction is not VTP `C_face_stl`"
 
@@ -369,9 +370,9 @@ type, such as VTP `stl_index` (`int32`) or `shielded` (`uint8`). The
 
 ## API ↔ Summary CSV / VTP correspondence
 
-This table gives the useful semantic correspondence; the result pages remain
-canonical for serialization order, stored dtypes, blank conditions, and
-artifact-only metadata.
+This table gives the useful semantic correspondence. The result pages define
+serialization order, stored dtypes, blank conditions, and artifact-only
+metadata.
 
 | In-memory API value | Artifact correspondence |
 |---|---|

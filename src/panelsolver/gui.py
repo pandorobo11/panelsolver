@@ -21,7 +21,7 @@ def build_parser() -> argparse.ArgumentParser:
     """Build the canonical GUI flow-domain selector parser."""
     parser = argparse.ArgumentParser(
         prog="panelsolver-gui",
-        description="Launch the Panel Solver GUI for a canonical flow domain.",
+        description="Launch the Panel Solver GUI for an FMF or Hypersonic flow domain.",
     )
     subparsers = parser.add_subparsers(dest="domain", metavar="{fmf,hypersonic}")
     subparsers.add_parser(

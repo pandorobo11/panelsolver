@@ -17,8 +17,8 @@ add directly to the total row for all eight coefficients. The four meshes in
 `geometry/` are simple geometric fixtures carried forward byte-identically from
 the small Phase 1 inputs. The current example CSVs were created for Panel Solver;
 they do not copy the historical sample matrices. These files are project
-material distributed under Apache-2.0. Examples exercise the current canonical
-readers, defaults, validation, and output semantics.
+material distributed under Apache-2.0. Examples exercise the current readers,
+defaults, validation, and output semantics.
 
 The first-release examples archive is named
 `panelsolver-examples-v<version>.zip`. It preserves this `examples/` layout and
@@ -26,8 +26,8 @@ adds `LICENSE` and `THIRD_PARTY_NOTICES.md` at the archive root. Generated
 outputs, caches, NPZ, legacy `.xls`, test fixtures, and migration inputs are not
 release examples.
 
-The current example directories use the canonical flow-domain names
-`examples/fmf/` and `examples/hypersonic/`.
+The current example directories use the flow-domain names `examples/fmf/` and
+`examples/hypersonic/`.
 
 For the complete schemas, see the
 [FMF input reference](../docs/reference/fmf-input.md),
@@ -37,10 +37,10 @@ For the complete schemas, see the
 
 ## Running and opening results
 
-Run a table from the repository root with its canonical command below. To
-inspect FMF results, launch `panelsolver-gui fmf`; for Hypersonic results,
-launch `panelsolver-gui hypersonic`. Open the listed CSV, select a row, and
-choose **Run Selected Cases**. The GUI loads the saved VTP for the selected case.
+Run a table from the repository root with the command below. To inspect FMF
+results, launch `panelsolver-gui fmf`; for Hypersonic results, launch
+`panelsolver-gui hypersonic`. Open the listed CSV, select a row, and choose
+**Run Selected Cases**. The GUI loads the saved VTP for the selected case.
 
 The CLI summary for a table is
 `examples/<domain>/outputs/<table>_result.csv`. Additional examples keep their

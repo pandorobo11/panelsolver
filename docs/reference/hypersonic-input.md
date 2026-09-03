@@ -1,8 +1,8 @@
 # Hypersonic input reference
 
-This page is the canonical Hypersonic case-table schema. Columns appear in the
-order shown; accepted non-reserved unknown columns are retained after them in
-Summary CSV output.
+This page defines the Hypersonic case-table schema. Columns appear in the order
+shown; accepted non-reserved unknown columns are retained after them in Summary
+CSV output.
 Common formats, paths, case IDs, and reserved-field rejection are defined in
 [Case files](../user-guide/case-files.md).
 
@@ -45,6 +45,6 @@ Hypersonic uses the common attitude resolver also used by FMF. See
 [Case files](../user-guide/case-files.md#attitude-modes) for mode selection and
 accepted ranges, and
 [Coordinate and attitude conventions](coordinate-and-attitude-conventions.md)
-for the canonical axes, signs, and geometric definitions. Other common rules
-are in Case files; physical interpretation is in the Hypersonic
+for the axes, signs, and geometric definitions. Other common rules are in Case
+files; physical interpretation is in the Hypersonic
 [pressure-model equations](../solvers/hypersonic.md#pressure-model-equations).
