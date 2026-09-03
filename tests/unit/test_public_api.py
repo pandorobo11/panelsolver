@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+import ast
+import io
 import os
+import re
+import shutil
 import tempfile
 import unicodedata
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
 
 import numpy as np
@@ -25,6 +30,7 @@ from panelsolver.domains.hypersonic import read_cases as read_hypersonic_cases
 from tests.current_case_fixtures import read_current_cases
 
 INPUTS = Path(__file__).parents[1] / "fixtures" / "phase1" / "inputs"
+PYTHON_API_DOC = Path(__file__).parents[2] / "docs" / "reference" / "python-api.md"
 
 
 def _paths(row) -> tuple[str, ...]:
@@ -74,6 +80,55 @@ class PublicApiTests(unittest.TestCase):
         self.assertFalse(hasattr(panelsolver, "solve_sentman"))
         self.assertFalse(hasattr(panelsolver, "CaseExecutionRequest"))
         self.assertFalse(hasattr(panelsolver, "ProductRuntimePolicy"))
+
+    def test_solve_functions_reject_the_wrong_case_type(self) -> None:
+        with self.assertRaises(TypeError):
+            solve_fmf(object())  # type: ignore[arg-type]
+        with self.assertRaises(TypeError):
+            solve_hypersonic(object())  # type: ignore[arg-type]
+
+    def test_documented_minimal_examples_use_and_execute_the_root_api(self) -> None:
+        source = PYTHON_API_DOC.read_text(encoding="utf-8")
+        examples = dict(
+            re.findall(
+                r"<!-- python-api-example: ([a-z]+) -->\s*```python\n(.*?)```",
+                source,
+                flags=re.DOTALL,
+            )
+        )
+        self.assertEqual({"fmf", "hypersonic"}, set(examples))
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            shutil.copyfile(INPUTS / "stl" / "plate.stl", root / "model.stl")
+            previous = Path.cwd()
+            os.chdir(root)
+            try:
+                for name, example in examples.items():
+                    with self.subTest(name=name):
+                        syntax = ast.parse(example, filename=f"python-api:{name}")
+                        for node in ast.walk(syntax):
+                            if isinstance(node, ast.ImportFrom):
+                                self.assertEqual("panelsolver", node.module)
+                            if isinstance(node, ast.Import):
+                                self.assertTrue(
+                                    all(
+                                        alias.name == "panelsolver"
+                                        for alias in node.names
+                                    )
+                                )
+                        namespace: dict[str, object] = {}
+                        with redirect_stdout(io.StringIO()):
+                            exec(  # noqa: S102 - execute a checked-in docs example
+                                compile(syntax, f"python-api:{name}", "exec"),
+                                namespace,
+                            )
+                        self.assertIsInstance(namespace["result"], SolveResult)
+            finally:
+                os.chdir(previous)
+            self.assertEqual(
+                ["model.stl"], sorted(path.name for path in root.iterdir())
+            )
 
     def assert_matches_execution(self, result, compatibility) -> None:
         self.assertIsInstance(result, SolveResult)

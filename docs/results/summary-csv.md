@@ -7,7 +7,9 @@ in the [FMF input reference](../reference/fmf-input.md), the
 [Case files](../user-guide/case-files.md). The [CLI guide](../user-guide/cli.md)
 defines the CLI Summary destination, while
 [Batch execution and recovery](../user-guide/batch-execution-and-recovery.md)
-defines checkpoint and write-failure behavior.
+defines checkpoint and write-failure behavior. The
+[Python API reference](../reference/python-api.md)
+maps these serialized results to the in-memory result surface.
 
 ## Serialization and column order
 
