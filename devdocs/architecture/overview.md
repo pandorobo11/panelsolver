@@ -82,7 +82,7 @@ requires both that signature and the current case ID for automatic display.
 Manual **Open VTP...** remains a generic inspection path and does not establish a
 historical artifact compatibility contract.
 
-Top-level selectors and high-level case names use the FMF and Hypersonic flow
+Flow-domain selectors and high-level case names use the FMF and Hypersonic flow
 domains. Sentman and Newtonian-family names identify physical models or methods.
 See [ADR 0011](../adr/0011-canonical-domain-naming.md).
 
