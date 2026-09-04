@@ -47,7 +47,7 @@ panelsolver hypersonic --help
 panelsolver-gui --help
 panelsolver-gui fmf --help
 panelsolver-gui hypersonic --help
-python -c 'import importlib.metadata as m; print(m.version("panelsolver"))'
+python -c "from importlib.metadata import version; print(version('panelsolver'))"
 ```
 
 The version printed by the final command is the installed `panelsolver`
