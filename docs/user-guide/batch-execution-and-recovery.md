@@ -42,8 +42,8 @@ finish before the request is observed.
 
 Summary CSV snapshots and VTP files already written are not rolled back. If the
 run is canceled before every case finishes, a new final Summary CSV is not
-guaranteed. Use the most recent checkpoint and any VTP files written
-successfully during this run.
+guaranteed. Use the most recent checkpoint written successfully during this run
+and any VTP files written successfully during this run.
 
 A calculation failure, such as a geometry-loading or model-execution error,
 stops the batch. Results from cases completed earlier may still be
@@ -53,9 +53,10 @@ be written.
 
 ## Output-file failures and partial success
 
-VTP and Summary CSV write failures are reported separately from calculation
-failures. The [CLI guide](cli.md) and [GUI guide](gui.md) define how their
-respective run statuses present these failures.
+Output-directory preparation, VTP write, and Summary CSV write failures are
+reported separately from calculation failures. The [CLI guide](cli.md) and
+[GUI guide](gui.md) define how their respective run statuses present these
+failures.
 
 | Failure | What Panel Solver does | What remains usable |
 |---|---|---|
