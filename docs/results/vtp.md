@@ -1,15 +1,25 @@
 # VTP reference
 
-This page defines the supported content and meanings of Panel Solver VTP files.
-Each saved `.vtp` is VTK XML PolyData containing the validated case
-mesh, face-aligned result arrays, and case-level provenance. The
-[Summary CSV reference](summary-csv.md) defines integrated and component rows;
-per-case path rules are in [Case files](../user-guide/case-files.md), and write-
-failure behavior is in
+A VTP is the mesh and surface-distribution result for one case. Open it in the
+[Panel Solver GUI](../user-guide/gui.md#view-and-export), ParaView, or another
+VTK-capable tool to see where the surface load acts. The GUI normally loads a
+selected case's matching result automatically; **Open VTP...** also allows
+manual inspection.
+
+For Hypersonic, start with `cp`, the local pressure coefficient. For FMF, inspect
+`normal_traction_coeff` and `tangential_traction_coeff`, the local Sentman
+traction components. These surface scalars describe individual panels; use the
+[Summary CSV](summary-csv.md) for integrated force and moment coefficients.
+
+Each `.vtp` is VTK XML PolyData containing the SI-scaled mesh, one result value
+per triangle for each cell array, and case-level provenance. The tables below
+define every supported field. Per-case paths are in
+[Case files](../user-guide/case-files.md#paths-vtp-destinations-and-components),
+and write failures are covered by
 [Batch execution and recovery](../user-guide/batch-execution-and-recovery.md).
 The [Python API reference](../reference/python-api.md)
-distinguishes the in-memory local traction from the area-weighted
-`C_face_stl` value stored in VTP.
+distinguishes in-memory local traction from the area-weighted `C_face_stl`
+stored in VTP.
 
 ## Guaranteed VTP contents
 

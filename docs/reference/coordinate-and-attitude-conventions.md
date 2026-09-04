@@ -18,7 +18,7 @@ zero attitude it is $+X_{\mathrm{STL}}$. The model-neutral
 [ray-shielding method](ray-shielding.md#geometry-occlusion-method) traces in the
 opposite, upstream direction.
 
-The frozen STL-to-body axis mapping is
+The fixed STL-to-body axis mapping is
 
 ```math
 (x_{\mathrm{body}},y_{\mathrm{body}},z_{\mathrm{body}})

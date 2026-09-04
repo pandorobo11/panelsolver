@@ -8,6 +8,21 @@ and the [Hypersonic solver page](../solvers/hypersonic.md) for pressure-model
 equations and assumptions. The [VTP reference](../results/vtp.md) lists each
 result array's association, shape, and stored dtype.
 
+## Reading coefficients
+
+`CA`, `CY`, and `CN` describe body-axis axial, side, and normal forces;
+`Cl`, `Cm`, and `Cn` describe roll, pitch, and yaw moments about your chosen
+reference point. `CD` and `CL` are the stability-axis drag and lift coefficients
+defined below. The [Summary CSV](../results/summary-csv.md) reports these for the
+whole case and, for multiple STLs, each component.
+
+All eight coefficients are dimensionless. Their magnitudes depend on your
+`Aref_m2`; moments also depend on the reference point and the three
+`Lref_*_m` lengths. Use the same reference conventions when comparing cases or
+external data. [Case files](../user-guide/case-files.md#choose-reference-quantities)
+explains how to choose these inputs. The equations below give the exact area
+weighting, signs, frames, and normalization.
+
 ## Local traction and panel contributions
 
 For panel $j$, a physical model returns a local nondimensional traction
@@ -39,8 +54,8 @@ moment integration. Do not multiply `C_face_stl` by panel area again.
 
 A scalar pressure coefficient cannot represent every model's local load.
 Hypersonic local traction is pressure-only, but Sentman can also contribute
-tangential load. The model/core interface therefore retains the full traction
-vector. Model-specific `cp`, `normal_traction_coeff`, and
+tangential load. Both domains therefore retain the full traction vector.
+Model-specific `cp`, `normal_traction_coeff`, and
 `tangential_traction_coeff` are interpreted on their solver pages and in the
 [VTP reference](../results/vtp.md#model-specific-cell-data); they are not
 substitutes for `traction_coeff_stl`.
@@ -52,7 +67,7 @@ Ray shielding may set a panel's local traction, and therefore its
 ## Body-axis force coefficients
 
 The total STL-frame force coefficient is transformed to body axes with the
-frozen STL-to-body mapping defined in
+fixed STL-to-body mapping defined in
 [Coordinate and attitude conventions](coordinate-and-attitude-conventions.md#frames-direction-and-angle-units):
 
 ```math
@@ -80,6 +95,11 @@ Drag and lift use the resolved tangent angle of attack $\alpha_t$, not
 necessarily the original `alpha_deg` input. See
 [Coordinate and attitude conventions](coordinate-and-attitude-conventions.md#resolved-tangent-angles)
 for how the resolved freestream direction determines $\alpha_t$.
+
+`CD` and `CL` use only this resolved alpha in the frame rotation. There is no
+additional sideslip rotation: at nonzero sideslip these remain stability-axis
+coefficients, not coefficients from a full wind-axis transform. Sideslip still
+affects the panel loads through the resolved freestream direction.
 
 The body-to-stability transformation is the right-handed rotation about
 $+Y_{\mathrm{body}}$:

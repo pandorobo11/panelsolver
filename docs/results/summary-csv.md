@@ -1,26 +1,34 @@
 # Summary CSV reference
 
-This page defines the result columns and row semantics of Panel Solver Summary
-CSV files. The case-table columns that precede these results are defined in the
-[FMF input reference](../reference/fmf-input.md), the
-[Hypersonic input reference](../reference/hypersonic-input.md), and
-[Case files](../user-guide/case-files.md). The [CLI guide](../user-guide/cli.md)
-defines the CLI Summary destination, while
-[Batch execution and recovery](../user-guide/batch-execution-and-recovery.md)
-defines checkpoint and write-failure behavior. The
-[Python API reference](../reference/python-api.md) shows which in-memory fields
-correspond to these CSV columns.
+The Summary CSV is the tabular result to open when you want whole-case or
+component aerodynamic coefficients. Find your `case_id` and read the row with
+`scope=total` for the complete geometry. Multi-STL cases also have
+`scope=component` rows showing each STL's contribution with the same reference
+quantities.
 
-## Serialization and column order
+Start with `CA`, `CY`, and `CN` for body-axis forces, `Cl`, `Cm`, and `Cn` for
+roll, pitch, and yaw moments, and `CD`/`CL` for stability-axis drag/lift. These
+are dimensionless coefficients. `CD` and `CL` use the resolved-alpha rotation
+defined in [Load and coefficient conventions](../reference/load-and-coefficient-conventions.md#stability-axis-force-coefficients);
+it is not a full wind-axis transform at nonzero sideslip.
+
+The exhaustive columns below follow the case inputs from the
+[FMF](../reference/fmf-input.md) or [Hypersonic](../reference/hypersonic-input.md)
+input reference. The [CLI guide](../user-guide/cli.md) and
+[GUI guide](../user-guide/gui.md) explain where the Summary is saved;
+[Batch execution and recovery](../user-guide/batch-execution-and-recovery.md)
+covers checkpoints and write failures. For surface distributions, use the
+[VTP result](vtp.md).
+
+## File format and column order
 
 Summary CSV uses UTF-8 with a byte-order mark (`utf-8-sig`). Panel Solver
-guarantees the parsed columns and values described here. Temporary-file and
-replacement mechanics are not part of the supported file format.
+guarantees the parsed columns and values described here.
 
 Columns are written in this order:
 
 1. schema-defined input columns for the selected domain;
-2. accepted non-reserved extra input columns, in their source-table order;
+2. extra input columns allowed by [Case files](../user-guide/case-files.md#common-validation), in their source-table order;
 3. the domain result columns below.
 
 ### FMF result columns
@@ -72,7 +80,7 @@ number.
 | `case_signature` | common | 64-character lowercase hexadecimal SHA-256 | — | all | never | SHA-256 value that identifies the current case and associates its output files. It incorporates the numerical geometry, normalized common and model case, model algorithm version, and shielding configuration including the effective backend. The GUI uses it with `case_id` to match a VTP to a current case. It is not a complete-result cache key. |
 | `run_started_at_utc` | common | ISO 8601 UTC timestamp ending in `Z` | — | all | never | Time at which this case began execution. It is a per-case timestamp, not the batch start. |
 | `run_finished_at_utc` | common | ISO 8601 UTC timestamp ending in `Z` | — | all | never | Time after calculation and the case's optional VTP write attempt completed. It is a per-case timestamp, not the final Summary CSV write time. |
-| `run_elapsed_s` | common | floating-point number | s | all | never | Monotonic elapsed time over the same per-case interval, including optional VTP handling and excluding final batch Summary CSV serialization. |
+| `run_elapsed_s` | common | floating-point number | s | all | never | Monotonic elapsed time over the same per-case interval, including optional VTP handling and excluding the final batch Summary CSV write. |
 
 The same provenance and timing values are repeated on every component row for a
 case; they are not component timings.

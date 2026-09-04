@@ -8,8 +8,9 @@ domains:
 | `fmf` | Free-molecular and rarefied-flow surface loads | Sentman |
 | `hypersonic` | Hypersonic pressure loads | Newtonian-family methods |
 
-Choose FMF when molecular thermal interaction and tangential surface load matter.
-Choose Hypersonic for continuum pressure estimates using Newtonian,
+Choose FMF for free-molecular flow with complete diffuse reflection and thermal
+accommodation at the surface. Choose Hypersonic for local, inviscid continuum
+pressure estimates using Newtonian,
 modified Newtonian, tangent-wedge, tangent-cone, or Prandtl–Meyer methods. See
 [Choosing a solver](docs/index.md#choosing-a-solver) for the model limits.
 
@@ -44,7 +45,7 @@ The built-in `rtree` backend remains supported. See the
 
 ## Run
 
-Launch either GUI, then select its example case file:
+Launch the GUI for your flow domain, then choose **File > New from Example > Basic**:
 
 ```bash
 panelsolver-gui fmf
@@ -54,8 +55,8 @@ panelsolver-gui hypersonic
 Run the same examples without the GUI:
 
 ```bash
-panelsolver fmf --input examples/fmf/basic.csv --workers 1 --checkpoint-every-cases 0
-panelsolver hypersonic --input examples/hypersonic/basic.csv --workers 1 --checkpoint-every-cases 0
+panelsolver fmf --input examples/fmf/basic.csv
+panelsolver hypersonic --input examples/hypersonic/basic.csv
 ```
 
 `fmf` is the free-molecular-flow domain selector. The selected physical model is
@@ -66,8 +67,9 @@ use UTF-8 with BOM (`utf-8-sig`); BOM-less UTF-8 CSV files remain accepted on
 input for compatibility.
 
 Results are written below each example's `outputs/` directory. The
-[quickstart](docs/getting-started/quickstart.md) explains the files and the main
-CLI options.
+[quickstart](docs/getting-started/quickstart.md) explains what to inspect and how
+to change and rerun the example. See the [CLI guide](docs/user-guide/cli.md) for
+command options.
 
 ## Documentation
 

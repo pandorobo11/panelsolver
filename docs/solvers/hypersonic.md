@@ -17,7 +17,7 @@ and optional VTP files.
 
 `leeward_eq` accepts:
 
-- `shield`: zero leeward pressure;
+- `shield`: zero leeward pressure coefficient (`Cp = 0`);
 - `prandtl_meyer`: expansion pressure/suction model.
 
 A single selector applies to every STL. With multiple STL components, provide
@@ -246,7 +246,8 @@ For `leeward_eq=shield`,
 C_p=0.
 ```
 
-This is a leeward surface-pressure equation. It is separate from
+By the pressure-coefficient definition above, this means $p=p_\infty$,
+not $p=0$. This is a leeward surface-pressure equation. It is separate from
 `shielding_on=1`, which performs ray-occlusion geometry processing and forces a
 panel hidden by another face to zero load regardless of its pressure equation.
 See [Ray shielding](../reference/ray-shielding.md#ray-shielding-versus-leeward_eqshield).
@@ -382,7 +383,7 @@ panel before multiplication by $A_j/A_{\mathrm{ref}}$. They are not
 whole-vehicle aerodynamic polars. The plotted $C_p$ values are local panel
 coefficients, not whole-vehicle force coefficients.
 
-The `leeward_eq=shield` selector is only the zero-pressure equation for a
+The `leeward_eq=shield` selector assigns zero pressure coefficient to a
 leeward-oriented, otherwise active panel. In contrast, `shielding_on=1` performs
 ray-occlusion testing and forces any geometrically hidden panel to zero load,
 independently of whether its selected leeward equation is `shield` or

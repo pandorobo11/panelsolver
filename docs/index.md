@@ -1,18 +1,26 @@
 # Panel Solver documentation
 
-`panelsolver` provides a shared geometry, execution, shielding, integration,
-output, CLI, and GUI platform for two independent panel-load models. Start with
-[installation](getting-started/installation.md), then run the
-[quickstart](getting-started/quickstart.md).
+Panel Solver estimates aerodynamic forces and moments on a triangulated STL
+surface. Supply one or more STL files and a case table of flow conditions,
+attitudes, and reference quantities. It calculates total and component force
+and moment coefficients, plus surface load distributions for inspection in
+the GUI or another VTK-capable viewer.
+
+Choose the flow domain below, follow
+[Installation](getting-started/installation.md), then use the
+[Quickstart](getting-started/quickstart.md) to run a supplied plate example,
+read its results, and change its attitude. When you are ready to use your own
+geometry, continue with [Case files](user-guide/case-files.md).
 
 ## Choosing a solver
 
-| Question | FMF | Hypersonic |
+| Choice | FMF | Hypersonic |
 |---|---|---|
-| Flow regime | Free molecular / rarefied | Hypersonic pressure approximation |
+| Physical applicability | Free-molecular flow, where intermolecular collisions near the body can be neglected | Hypersonic flow suited to a local, inviscid pressure approximation |
+| Surface/model assumptions | Sentman with complete diffuse reflection and complete thermal accommodation | Newtonian-family pressure methods; constant specific-heat ratio, no viscous shear or heat transfer |
 | Model input | `S` + `Ti_K`, or `Mach` + `Altitude_km`; always `Tw_K` | `Mach`, `gamma`, and surface equations |
 | Panel load | Sentman normal and tangential traction | Pressure-only normal traction |
-| Equation selection | Sentman Mode A or Mode B | Per-component windward/leeward equations |
+| Input/method choices | Two ways to specify the same Sentman model: Mode A or atmosphere-derived Mode B | Per-component windward/leeward equations |
 | Read next | [FMF](solvers/fmf.md) | [Hypersonic](solvers/hypersonic.md) |
 
 These are engineering panel methods, not general-purpose CFD. Confirm that the

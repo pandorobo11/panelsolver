@@ -5,7 +5,10 @@
 - Python 3.12 or newer
 - A platform supported by the required Python dependencies, including Qt,
   PyVista/VTK, Trimesh, SciPy, pandas, and rtree
-- An STL mesh and a CSV, XLSX, or XLSM case table
+- A normal desktop display for the GUI
+
+You can start with the supplied example mesh and case table; you do not need to
+prepare your own STL before trying the software.
 
 ## Install a wheel
 
@@ -50,3 +53,11 @@ python -c 'import importlib.metadata as m; print(m.version("panelsolver"))'
 The version printed by the final command is the installed `panelsolver`
 distribution version. Newly generated FMF and Hypersonic Summary CSV/VTP
 artifacts record that value as `solver_version`.
+
+## Run your first case
+
+Continue with [Quickstart](quickstart.md). A checkout already contains
+`examples/`. For a wheel installation, extract the matching
+`panelsolver-examples-v<version>.zip` from the release alongside your working
+files, or use **File > New from Example > Basic** in the GUI to copy a bundled
+example to a workspace.
