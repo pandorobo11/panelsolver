@@ -1,10 +1,12 @@
 # Hypersonic input reference
 
-This page defines the Hypersonic case-table schema. Columns appear in the order
-shown; accepted non-reserved unknown columns are retained after them in Summary
-CSV output.
+This page defines the Hypersonic case-table schema. Input columns may be in any
+order. The standard input columns are written to Summary CSV in the order shown
+below, followed by extra input columns in their original relative order.
 [Case files](../user-guide/case-files.md) defines accepted formats, path
-resolution, case-ID rules, and reserved-field rejection.
+resolution, case-ID rules, and reserved-field rejection. See
+[Columns and defaults](../user-guide/case-files.md#columns-and-defaults) for
+omitted-column and empty-cell behavior.
 
 | Column | Required | Default | Unit / values | Meaning |
 |---|---:|---|---|---|

@@ -1,8 +1,79 @@
 # Python API reference
 
 Panel Solver provides a small synchronous API for one-case, in-memory
-calculation. It reads the requested STL files but does not serialize result
-artifacts.
+calculation. It reads the requested STL files and returns results in memory;
+**it does not write Summary CSV or VTP files**.
+
+**FMF input:** public `FMFCase` represents resolved Mode A input (speed ratio,
+incident static temperature, and wall temperature). For atmosphere-derived
+Mode B using `Mach` and `Altitude_km`, use a [CLI](../user-guide/cli.md) or
+[GUI](../user-guide/gui.md) case table. Those workflows also write result files.
+
+## Minimal examples
+
+Both examples assume that a readable, valid `model.stl` already exists in the
+process working directory. To try them with the supplied geometry, copy
+`examples/geometry/plate.stl` from the [Quickstart](../getting-started/quickstart.md)
+examples to `model.stl` there. All imports below use the supported package root.
+The returned coefficients describe the whole case, while the scalar arrays
+provide one value per triangular panel.
+
+### FMF
+
+<!-- python-api-example: fmf -->
+```python
+from panelsolver import FMFCase, resolve_attitude, solve_fmf
+
+attitude = resolve_attitude(5.0, 0.0, "beta_tan")
+case = FMFCase(
+    case_id="fmf-example",
+    stl_paths=("model.stl",),
+    stl_scale_m_per_unit=1.0,
+    attitude=attitude,
+    Aref_m2=1.0,
+    moment_reference_stl_m=(0.0, 0.0, 0.0),
+    Lref_Cl_m=1.0,
+    Lref_Cm_m=1.0,
+    Lref_Cn_m=1.0,
+    speed_ratio=7.0,
+    translational_temperature_k=1000.0,
+    wall_temperature_k=300.0,
+)
+result = solve_fmf(case)
+
+print(result.coefficients.CD, result.coefficients.CL)
+local_traction = result.local_loads.traction_coeff_stl
+normal_traction = result.local_loads.cell_scalars["normal_traction_coeff"]
+print(local_traction.shape, normal_traction.shape)
+```
+
+### Hypersonic
+
+<!-- python-api-example: hypersonic -->
+```python
+from panelsolver import HypersonicCase, resolve_attitude, solve_hypersonic
+
+attitude = resolve_attitude(10.0, 0.0)
+case = HypersonicCase(
+    case_id="hypersonic-example",
+    stl_paths=("model.stl",),
+    stl_scale_m_per_unit=1.0,
+    attitude=attitude,
+    Aref_m2=1.0,
+    moment_reference_stl_m=(0.0, 0.0, 0.0),
+    Lref_Cl_m=1.0,
+    Lref_Cm_m=1.0,
+    Lref_Cn_m=1.0,
+    mach=6.0,
+    gamma=1.4,
+)
+result = solve_hypersonic(case)
+
+print(result.coefficients.CA, result.coefficients.Cm)
+cp = result.local_loads.cell_scalars["cp"]
+shielded = result.flow_state.shielded
+print(cp.shape, shielded.shape, result.case_signature)
+```
 
 ## Supported imports and scope
 
@@ -338,29 +409,31 @@ FMF metadata contains `mode` (always `A` for this API), `S`, `Ti_K`, and
 `leeward_eq`; equation values are their normalized one-or-per-component
 strings.
 
-!!! important "Local traction is not VTP `C_face_stl`"
+**Important: local traction is not VTP `C_face_stl`.**
 
-    `result.local_loads.traction_coeff_stl` is the unweighted local model
-    result. The common integrator forms the per-face force-coefficient
-    contribution stored in VTP as
+`result.local_loads.traction_coeff_stl` is the unweighted local model result.
+The per-face force-coefficient contribution stored in VTP includes panel area
+and reference-area normalization. For example, with the solved `case` and
+`result`:
 
-    ```text
-    C_face_stl = traction_coeff_stl * area_m2 / Aref_m2
-    ```
+```python
+C_face_stl = (
+    result.local_loads.traction_coeff_stl
+    * result.geometry.areas_m2[:, None]
+    / case.Aref_m2
+)
+```
 
-    The package-root `SolveResult` does not directly expose `C_face_stl`. It can
-    be derived from `local_loads.traction_coeff_stl` and
-    `geometry.areas_m2` when the case's `Aref_m2` is available. Do not treat the
-    two arrays as identical and do not apply panel area twice. See
-    [Load and coefficient conventions](load-and-coefficient-conventions.md#local-traction-and-panel-contributions).
+`SolveResult` does not directly expose `C_face_stl`. Do not treat these two
+arrays as identical or apply panel area twice. See
+[Load and coefficient conventions](load-and-coefficient-conventions.md#local-traction-and-panel-contributions).
 
 ### Arrays and mutability
 
 Result arrays are C-contiguous, read-only NumPy buffers: central floating arrays
 use `float64`, component IDs use `int64`, and the shielding mask uses boolean
-dtype. Nested result objects are frozen value objects, and the scalar/metadata
-mappings are immutable. Make an explicit copy when mutable working data is
-needed, for example `result.geometry.centers_stl_m.copy()`.
+dtype. Nested result objects and scalar/metadata mappings are also read-only.
+Make an explicit copy when mutable working data is needed, for example `result.geometry.centers_stl_m.copy()`.
 
 Some VTP arrays use a different stored dtype: `stl_index` uses `int32`, and
 `shielded` uses `uint8`. The [VTP reference](../results/vtp.md) lists the stored
@@ -369,7 +442,7 @@ dtype for every array.
 ## API ↔ Summary CSV / VTP correspondence
 
 This table maps API fields to Summary CSV columns and VTP arrays. The result
-pages define serialization order, stored dtypes, blank conditions, and metadata
+pages define output order, stored dtypes, blank conditions, and metadata
 that exists only in output files.
 
 | In-memory API value | Output-file field |
@@ -384,7 +457,7 @@ that exists only in output files.
 | `geometry.component_ids` | VTP `stl_index` (stored as `int32`). |
 | `flow_state.shielded` | VTP `shielded` (stored as `uint8`). |
 | `local_loads.cell_scalars` | Same-named VTP diagnostic/model cell data. |
-| `local_loads.traction_coeff_stl` | Not serialized directly; VTP `C_face_stl` is its `area_m2 / Aref_m2` weighted contribution. |
+| `local_loads.traction_coeff_stl` | Not written directly; VTP `C_face_stl` is its `area_m2 / Aref_m2` weighted contribution. |
 
 The API does not return output paths, timestamps, solver-version provenance,
 VTP points/connectivity, or the original case-table row. See the
@@ -420,66 +493,3 @@ file-I/O free. They perform calculation and return `SolveResult` without:
 
 Use the [CLI](../user-guide/cli.md) or [GUI](../user-guide/gui.md) case-table
 workflow when output files or atmosphere-derived FMF Mode B are required.
-
-## Minimal examples
-
-Both examples assume that a readable, valid `model.stl` already exists in the
-process working directory. They import Panel Solver names only from the package
-root.
-
-### FMF
-
-<!-- python-api-example: fmf -->
-```python
-from panelsolver import FMFCase, resolve_attitude, solve_fmf
-
-attitude = resolve_attitude(5.0, 0.0, "beta_tan")
-case = FMFCase(
-    case_id="fmf-example",
-    stl_paths=("model.stl",),
-    stl_scale_m_per_unit=1.0,
-    attitude=attitude,
-    Aref_m2=1.0,
-    moment_reference_stl_m=(0.0, 0.0, 0.0),
-    Lref_Cl_m=1.0,
-    Lref_Cm_m=1.0,
-    Lref_Cn_m=1.0,
-    speed_ratio=7.0,
-    translational_temperature_k=1000.0,
-    wall_temperature_k=300.0,
-)
-result = solve_fmf(case)
-
-print(result.coefficients.CD, result.coefficients.CL)
-local_traction = result.local_loads.traction_coeff_stl
-normal_traction = result.local_loads.cell_scalars["normal_traction_coeff"]
-print(local_traction.shape, normal_traction.shape)
-```
-
-### Hypersonic
-
-<!-- python-api-example: hypersonic -->
-```python
-from panelsolver import HypersonicCase, resolve_attitude, solve_hypersonic
-
-attitude = resolve_attitude(10.0, 0.0)
-case = HypersonicCase(
-    case_id="hypersonic-example",
-    stl_paths=("model.stl",),
-    stl_scale_m_per_unit=1.0,
-    attitude=attitude,
-    Aref_m2=1.0,
-    moment_reference_stl_m=(0.0, 0.0, 0.0),
-    Lref_Cl_m=1.0,
-    Lref_Cm_m=1.0,
-    Lref_Cn_m=1.0,
-    mach=6.0,
-    gamma=1.4,
-)
-result = solve_hypersonic(case)
-
-print(result.coefficients.CA, result.coefficients.Cm)
-cp = result.local_loads.cell_scalars["cp"]
-shielded = result.flow_state.shielded
-print(cp.shape, shielded.shape, result.case_signature)
-```

@@ -38,7 +38,7 @@ These are different operations:
   It performs the upstream geometry-occlusion test and sets a hidden panel's
   traction vector to exact zero.
 - **Hypersonic `leeward_eq=shield`** is a Hypersonic-only pressure-model
-  selector. It assigns zero local pressure to an active leeward panel and does
+  selector. It assigns `Cp = 0` to an active leeward panel and does
   not trace rays or determine geometry occlusion. FMF has no `leeward_eq`
   selector.
 
