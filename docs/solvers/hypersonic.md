@@ -2,8 +2,9 @@
 
 The Hypersonic domain evaluates pressure-only panel traction for
 Newtonian-family flow models. The local load is `-cp` times the outward panel
-normal; the shared engine
-owns geometry scaling, shielding, integration, components, and artifacts.
+normal. Panel Solver scales the geometry, applies shielding, and integrates
+total and component coefficients. The CLI and GUI can then write Summary CSV
+and optional VTP files.
 
 ## Surface equations
 
@@ -25,7 +26,7 @@ independently. Empty entries and mismatched counts are invalid.
 
 ## Pressure-model equations
 
-### Common panel geometry and local pressure convention
+### Panel geometry and local pressure convention
 
 For each panel, define:
 
@@ -63,10 +64,10 @@ returns local pressure-only traction
 \boldsymbol{\tau}_j=-C_{p,j}\boldsymbol n_{\mathrm{out},j}.
 ```
 
-The shared integrator, not the model, applies `area / Aref` exactly once and
+The solver, not the model, applies `area / Aref` exactly once and
 forms whole-vehicle force and moment coefficients. See
 [Load and coefficient conventions](../reference/load-and-coefficient-conventions.md)
-for common integration, coefficient signs, and moment normalization, and
+for area weighting, coefficient signs, and moment normalization, and
 [Coordinate and attitude conventions](../reference/coordinate-and-attitude-conventions.md)
 for the coordinate and attitude transforms.
 
@@ -76,8 +77,8 @@ viscosity, heat transfer, real-gas chemistry, shock--shock and
 shock--boundary-layer interactions, and coupled flow between neighboring
 panels. Tangent methods estimate pressure from each panel's local angle rather
 than solving a global three-dimensional flow field. `cp` remains a local
-value until the common engine performs the area integration. The code's input
-domain checks establish only that a selected relation can be evaluated; they do
+value until the solver performs the area integration. Input validation
+establishes only that a selected relation can be evaluated; it does
 not establish that its physical approximation is accurate for a particular
 vehicle, Mach number, or flow regime.
 
@@ -86,7 +87,7 @@ Newtonian uses impact momentum, Modified Newtonian scales it by a finite-Mach
 stagnation cap, tangent wedge uses a local weak oblique shock, and tangent cone
 uses local conical flow. The leeward choice either assigns zero pressure
 coefficient or an isentropic expansion pressure. Geometry and whole-vehicle
-integration are otherwise common.
+integration are the same for every choice.
 
 ### Newtonian
 
@@ -110,7 +111,7 @@ Modified Newtonian replaces the factor 2 with a stagnation-point cap:
 C_p=C_{p,\max}\sin^2\delta=C_{p,\max}\mu^2.
 ```
 
-The current code obtains that cap from a normal shock followed by isentropic
+The implementation obtains that cap from a normal shock followed by isentropic
 deceleration of the post-shock flow:
 
 ```math
@@ -308,10 +309,10 @@ This is an isentropic expansion model and does not represent separated flow.
 
 ### Detached-branch continuation
 
-Tangent wedge and tangent cone share an implementation-defined continuation
+Tangent wedge and tangent cone use the same implementation-defined continuation
 after their respective attached weak branches end. Let $\delta_{\max}$ be the
 maximum attached turning angle and $C_{p,\mathrm{crit}}$ its pressure
-coefficient. The current code uses
+coefficient. The implementation uses
 
 ```math
 w
@@ -333,8 +334,8 @@ C_{p,\mathrm{crit}}
 This preserves continuity with $C_p(\delta_{\max})=C_{p,\mathrm{crit}}$ and
 reaches $C_p(90^\circ)=C_{p,\max}$. It is not a standard attached
 oblique-shock solution or an attached Taylor--Maccoll solution, and it does not
-directly solve a detached shock field. It is the current code's
-implementation-defined bridge to the Modified-Newtonian cap.
+directly solve a detached shock field. It is the continuation from the attached
+branch to the Modified-Newtonian cap.
 
 ### Representative angular response
 
@@ -362,8 +363,8 @@ local panel coefficients, not whole-vehicle force coefficients.
 Newtonian reaches $C_p=2$ at $\delta=90^\circ$. Modified Newtonian retains the
 same $\sin^2\delta$ shape but scales it by the finite-Mach $C_{p,\max}$.
 Tangent Wedge and Tangent Cone use their local shock relations at small and
-moderate angles. After each model's computed attachment limit, the current
-implementation-defined continuation connects its critical value to
+moderate angles. After each model's computed attachment limit, the continuation
+defined above connects its critical value to
 $C_{p,\max}$; the dashed portions are not detached-shock solutions. Agreement
 or separation among these curves does not establish a universal ranking of
 model accuracy.
