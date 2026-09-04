@@ -2,12 +2,12 @@
 
 This page defines the FMF case-table schema. Columns appear in the order shown;
 accepted non-reserved unknown columns are retained after them in Summary CSV
-output. Common formats, paths, case IDs, and reserved-field rejection are
-defined in [Case files](../user-guide/case-files.md).
+output. [Case files](../user-guide/case-files.md) defines accepted formats, path
+resolution, case-ID rules, and reserved-field rejection.
 
 | Column | Required | Default | Unit / values | Meaning |
 |---|---:|---|---|---|
-| `case_id` | yes | — | portable text | Unique case and artifact basename |
+| `case_id` | yes | — | portable text | Unique case ID and VTP filename stem |
 | `stl_path` | yes | — | path; `;` separates components | Ordered STL sources |
 | `stl_scale_m_per_unit` | yes | — | m / STL unit, > 0 | Geometry scale |
 | `S` | Mode A | blank | dimensionless, > 0 | Molecular speed ratio, `V_inf / sqrt(2 R Ti)` |
@@ -25,9 +25,9 @@ defined in [Case files](../user-guide/case-files.md).
 | `Lref_Cl_m` | yes | — | m, > 0 | Roll-moment reference length |
 | `Lref_Cm_m` | yes | — | m, > 0 | Pitch-moment reference length |
 | `Lref_Cn_m` | yes | — | m, > 0 | Yaw-moment reference length |
-| `shielding_on` | no | `0` | `0` or `1` | Enable the common [ray-occlusion shielding method](ray-shielding.md) |
+| `shielding_on` | no | `0` | `0` or `1` | Enable the [ray-occlusion shielding method](ray-shielding.md) |
 | `ray_backend` | no | `auto` | `auto`, `rtree`, `embree` | [Ray-shielding backend](ray-shielding.md#backend-behavior) |
-| `out_dir` | no | `outputs` | path | Per-case VTP directory; resolution and path rules are in [Case files](../user-guide/case-files.md#paths-artifact-destinations-and-components) |
+| `out_dir` | no | `outputs` | path | Per-case VTP directory; resolution and path rules are in [Case files](../user-guide/case-files.md#paths-vtp-destinations-and-components) |
 | `save_vtp_on` | no | `1` | `0` or `1` | `1` writes the case VTP; `0` skips it |
 
 Mode A requires both `S` and `Ti_K`; Mode B requires both `Mach` and
@@ -50,10 +50,10 @@ The Sentman reflected term uses `sqrt(Tw_K / Ti_K)`. Because the input schema ha
 no separate reflected-gas temperature or accommodation coefficient, the model
 uses `Tw_K` as the diffusely reflected molecular temperature (`T_r = T_w`).
 
-FMF uses the common attitude resolver also used by Hypersonic. See
+FMF and Hypersonic use the same attitude resolver. See
 [Case files](../user-guide/case-files.md#attitude-modes) for mode selection and
 accepted ranges, and
 [Coordinate and attitude conventions](coordinate-and-attitude-conventions.md)
-for the axes, signs, and geometric definitions. Common path, case-ID, flag, and
-mesh rules are also in Case files. Model interpretation is in
+for the axes, signs, and geometric definitions. Path, case-ID, flag, and mesh
+rules are also in Case files. Model interpretation is in
 [Sentman local-load equation](../solvers/fmf.md#sentman-local-load-equation).

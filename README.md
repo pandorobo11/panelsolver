@@ -85,16 +85,16 @@ server or network access.
   [interpret results](docs/index.md#interpret-results), or
   [diagnose a problem](docs/index.md#diagnose-a-problem-or-check-support).
 - Review the [compatibility and versioning policy](docs/reference/compatibility.md)
-  for the supported product surface.
+  for the supported commands, file formats, and Python API.
 - [Developer documentation](devdocs/README.md)
 
 ## Compatibility
 
 One `panelsolver` distribution provides command entry points for both flow
-domains. Summary CSV and VTP artifacts record the installed distribution
+domains. Summary CSV and VTP files record the installed distribution
 version. The package-root Python API is stable. See the
 [compatibility policy](docs/reference/compatibility.md) and
-[CHANGELOG.md](CHANGELOG.md) for the supported surface and release changes.
+[CHANGELOG.md](CHANGELOG.md) for compatibility guarantees and release changes.
 
 ## License
 

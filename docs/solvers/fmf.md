@@ -2,7 +2,7 @@
 
 FMF evaluates free-molecular-flow panel loads with the Sentman model. Unlike a
 pressure-only model, its local nondimensional traction retains both normal and
-tangential/freestream contributions. The shared engine then applies panel area,
+tangential/freestream contributions. The solver then applies panel area,
 reference-area normalization, force/moment integration, and component totals.
 
 ## Flow inputs
@@ -34,7 +34,7 @@ pair, or neither mode is invalid.
 
 For each panel, the Sentman model computes a local nondimensional traction
 vector. The model returns this vector without panel-area or reference-area
-scaling; the shared engine applies those factors and performs force, moment, and
+scaling; the solver applies those factors and performs force, moment, and
 component integration. General frame transformations and moment conventions are
 defined in
 [Load and coefficient conventions](../reference/load-and-coefficient-conventions.md).
@@ -123,9 +123,9 @@ momentum cancels statistically, so the reflected term appears only in the
 normal direction. The error-function and exponential terms retain random
 thermal motion, so this is not a simple windward-only pressure law.
 
-The current model returns this local traction numerator. The model-neutral
-`area / Aref` weighting and whole-vehicle force/moment integration are defined
-once in [Load and coefficient conventions](../reference/load-and-coefficient-conventions.md#local-traction-and-panel-contributions).
+The model returns this local traction vector. The `area / Aref` weighting and
+whole-vehicle force/moment integration are defined in
+[Load and coefficient conventions](../reference/load-and-coefficient-conventions.md#local-traction-and-panel-contributions).
 
 ### Representative angular response
 
@@ -184,14 +184,14 @@ grazing incidence the load is
 not exactly zero, Sentman retains tangential traction, and a negative local
 angle does not make the response immediately vanish because random molecular
 thermal motion remains. Geometrically occluded faces are handled separately:
-ray shielding sets their complete traction to exact zero.
+ray shielding sets their entire traction vector to exact zero.
 
 ### Assumptions and implementation scope
 
 Sentman's Eq. (21) applies within kinetic theory, free-molecular flow, and
 complete diffuse-reflection assumptions. Its general form uses reflected
 molecular temperature $T_r$. FMF has no independent $T_r$ input or thermal
-accommodation coefficient; the current implementation assumes complete thermal
+accommodation coefficient; the implementation assumes complete thermal
 accommodation and substitutes $T_r=T_w$, which produces the
 $\sqrt{T_w/T_i}$ factor above.
 
@@ -209,7 +209,8 @@ FMF VTP data includes `normal_traction_coeff`,
 traction scalars are derived from the model's `traction_coeff_stl`; they do not
 participate in whole-vehicle integration. See the
 [Summary CSV reference](../results/summary-csv.md#fmf-resolved-state-fields)
-and [VTP reference](../results/vtp.md#fmf) for complete field contracts.
+for the resolved FMF columns and [VTP reference](../results/vtp.md#fmf) for the
+FMF cell-data array names, types, units, and meanings.
 
 Use this model only when the free-molecular/Sentman assumptions are appropriate
 for the intended regime and surface interaction. Mode B is tied to the bundled,

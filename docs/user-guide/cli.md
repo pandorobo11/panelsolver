@@ -15,18 +15,15 @@ Here `fmf` means the free-molecular-flow domain selector. The selected physical
 model is Sentman; the stable Python API names the domain as `FMFCase` and
 `solve_fmf()`.
 
-| Selector | Flow-domain identity | Physical model identity | Reused case schema |
+| Selector | Flow regime | Method | Input table |
 |---|---|---|---|
 | `fmf` | free molecular flow | Sentman | FMF case table |
 | `hypersonic` | hypersonic pressure approximation | Newtonian-family methods | Hypersonic case table |
 
-The final column describes schema/application-service reuse; it does not change
-the command identity.
-
-Both batch forms use the same case-table reader and application service. They
-accept CSV, XLSX, and XLSM. Summary CSV and optional per-case VTP are the only
-formal outputs; Excel 97–2003 BIFF `.xls` and NPZ are not supported. Their
-complete field contracts are in the
+Both commands accept CSV, XLSX, and XLSM case tables. Summary CSV and optional
+per-case VTP are the only supported result files; Excel 97–2003 BIFF `.xls`
+input and NPZ output are not supported. Their field names, types, units, and
+meanings are in the
 [Summary CSV reference](../results/summary-csv.md) and
 [VTP reference](../results/vtp.md).
 
@@ -36,7 +33,7 @@ complete field contracts are in the
 | `-o`, `--output` | Summary CSV destination | `<input_dir>/outputs/<input_stem>_result.csv` |
 | `-j`, `--workers` | Spawn workers; must be at least 1 | `1` |
 | `--cases` | Space- or comma-separated case IDs | all cases |
-| `--checkpoint-every-cases` | Rewrite a complete checkpoint after N completed cases; `0` disables | `2000` |
+| `--checkpoint-every-cases` | Rewrite a Summary CSV snapshot after N completed cases; `0` disables | `2000` |
 | `--verbose` | Show case-level runtime messages in Rich mode | off |
 | `--plain` | Disable Rich run/progress output | off |
 | `--debug` | Show a Python traceback for CLI errors | off |
@@ -53,10 +50,10 @@ Selected rows retain input-table order. Unknown case IDs reject the request.
 uses a Rich summary and live progress while suppressing case-level `[RUN]` and
 `[OK]` messages; `--verbose` shows those messages. Use `--plain` for plain-text
 run output. Redirected or piped stdout and CI environments automatically use
-plain output. Validation and calculation failures normally show a concise error
-and return a nonzero exit status; `--debug` shows the Python traceback. Artifact
-failures are also reported with a nonzero exit status after the runtime has
-applied its documented continuation and recovery rules. See
+plain output. Validation and calculation failures show a concise error and
+return a nonzero exit status; `--debug` shows the Python traceback. Output-file
+failures are also reported with a nonzero exit status after Panel Solver has
+applied the documented continuation and recovery rules. See
 [Batch execution and recovery](batch-execution-and-recovery.md).
 
 Output-path validation rejects collisions with the input table, any STL, and

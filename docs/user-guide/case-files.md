@@ -2,14 +2,14 @@
 
 Both domains accept CSV, XLSX, and XLSM. Excel input uses the first worksheet.
 Excel 97–2003 BIFF `.xls` is not a supported input format; resave the workbook as
-`.xlsx` or export it as CSV. Exact columns and defaults are defined in the
+`.xlsx` or export it as CSV. Column names and defaults are defined in the
 [FMF input reference](../reference/fmf-input.md) and
 [Hypersonic input reference](../reference/hypersonic-input.md).
 
 CSV case tables use UTF-8 with BOM (`utf-8-sig`). The reader also accepts
 BOM-less UTF-8 CSV files, so existing UTF-8 inputs remain compatible.
 
-## Paths, artifact destinations, and components
+## Paths, VTP destinations, and components
 
 Relative `stl_path` and `out_dir` values are resolved from the case table's
 directory, not the process working directory. Absolute paths are used as
@@ -26,9 +26,9 @@ Use semicolons to list multiple STL components in input order:
 geometry/body.stl;geometry/fin.stl
 ```
 
-Every STL is scaled by the common `stl_scale_m_per_unit`. Component IDs are
-zero-based positions in that list. Component rows use the global reference area,
-moment reference point, and reference lengths.
+Every STL in a case is scaled by that row's `stl_scale_m_per_unit`. Component
+IDs are zero-based positions in that list. Component rows use the global
+reference area, moment reference point, and reference lengths.
 
 For Hypersonic, a surface-equation cell may contain one selector applied to all
 components or exactly one semicolon-separated selector per STL. See
@@ -49,8 +49,8 @@ Use `beta_tan` for two tangent-angle inputs, `beta_sin` when the sideslip source
 uses the sine definition, and `bank` when attitude is expressed as an included
 angle plus a circumferential orientation. All modes use the same resolver for
 FMF and Hypersonic and become a unit STL-frame freestream vector and resolved
-tangent angles before panel calculation. This page owns the accepted ranges;
-the coordinate axes, signs, reference directions, periodicity, and exact
+tangent angles before panel calculation. The table above lists the accepted
+ranges; the coordinate axes, signs, reference directions, periodicity, and
 transformations are defined in
 [Coordinate and attitude conventions](../reference/coordinate-and-attitude-conventions.md).
 
@@ -64,10 +64,10 @@ transformations are defined in
 - `shielding_on` and `save_vtp_on` are `0` or `1`.
 - `ray_backend` is `auto`, `rtree`, or `embree`.
 - Empty, non-finite, degenerate, or unrepaired inconsistently wound meshes are
-  rejected by the shared strict geometry boundary.
+  rejected by mesh validation.
 
 Accepted non-reserved unknown input columns are preserved after the
 schema-defined input columns in the Summary CSV. `save_npz_on` is a reserved
 field that the CSV, XLSX, and XLSM readers explicitly reject; remove it when
-updating an older case file. The documented case file plus CLI/GUI path is the
-supported file interface.
+updating an older case file. Panel Solver accepts the documented CSV, XLSX, and
+XLSM case tables through both the CLI and GUI.
