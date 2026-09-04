@@ -63,12 +63,12 @@ identifiers and text remain left-aligned, and 0/1 flags are centered. This
 presentation layer does not round values, normalize scientific notation, or
 convert units.
 
-A run whose calculations finish with one or more VTP or Summary CSV write
-failures ends as **Completed with output errors**, not **Failed**, and shows one
-bounded summary at the end; details remain in the log. **Failed** is
-reserved for case-computation failures such as geometry loading or model
-execution errors. Continuation and recovery behavior is in
-[Batch execution and recovery](batch-execution-and-recovery.md).
+A run whose calculations finish with one or more output-directory preparation,
+VTP write, or Summary CSV write failures ends as **Completed with output
+errors**, not **Failed**, and shows one bounded summary at the end; details
+remain in the log. **Failed** is reserved for case-computation failures such as
+geometry loading or model execution errors. Continuation and recovery behavior
+is in [Batch execution and recovery](batch-execution-and-recovery.md).
 After a VTP failure, an older file at that case's planned path is not auto-loaded
 as the newly calculated result. It remains available for explicit **Open VTP...**
 inspection.
