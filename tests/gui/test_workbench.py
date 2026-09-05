@@ -277,27 +277,31 @@ class WorkbenchTests(unittest.TestCase):
 
     def test_camera_pairs_wrap_when_native_buttons_have_large_minimum_widths(self):
         viewer = self.viewer()
+        group = viewer.camera_axis_group
+        group.setParent(None)
         try:
-            # Native Windows button hints can be much wider than their short labels.
-            for button in viewer._camera_buttons:
+            # Isolate the axis group from platform-dependent selector/export hints.
+            # Six 160px buttons cannot share this width, but each +/- pair can.
+            for button in viewer._camera_axis_buttons:
                 button.setMinimumWidth(160)
-            viewer.resize(500, 650)
-            viewer.show()
+            group.resize(400, 200)
+            group.show()
             self.app.processEvents()
-            self.assertLessEqual(viewer.minimumSizeHint().width(), 500)
-            self.assertEqual(viewer.width(), 500)
-            self.assert_flow_groups_fit(viewer)
+            self.assertLessEqual(group.minimumSizeHint().width(), 400)
+            self.assertEqual(group.width(), 400)
+            self.assert_flow_groups_fit(group)
             axes = viewer._camera_axis_buttons
             for positive, negative in zip(axes[::2], axes[1::2], strict=True):
                 self.assertEqual(
-                    positive.mapTo(viewer, QtCore.QPoint()).y(),
-                    negative.mapTo(viewer, QtCore.QPoint()).y(),
+                    positive.mapTo(group, QtCore.QPoint()).y(),
+                    negative.mapTo(group, QtCore.QPoint()).y(),
                 )
             self.assertLess(
-                axes[0].mapTo(viewer, QtCore.QPoint()).y(),
-                axes[2].mapTo(viewer, QtCore.QPoint()).y(),
+                axes[0].mapTo(group, QtCore.QPoint()).y(),
+                axes[2].mapTo(group, QtCore.QPoint()).y(),
             )
         finally:
+            group.close()
             viewer.close()
 
     def test_themed_control_heights_and_header_units_at_larger_text(self):
