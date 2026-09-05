@@ -32,6 +32,48 @@ class WorkbenchTests(unittest.TestCase):
         spec = spec or self.panel().spec
         return ViewerPanel(spec, plotter_factory=lambda _parent: FakePlotter())
 
+    def layout_diagnostics(self, window):
+        panel, viewer = window.cases_panel, window.viewer_panel
+        objects = {
+            "window": window,
+            "cases": panel,
+            "viewer": viewer,
+            "settings": panel.settings_row,
+            "execution": panel.execution_row,
+            "workers": panel.spin_workers,
+            "checkpoint": panel.spin_checkpoint_every_cases,
+        }
+        objects.update(
+            (name, getattr(viewer, name))
+            for name in (
+                "controls_chrome",
+                "scalar_row",
+                "colorbar_row",
+                "display_row",
+                "camera_row",
+                "camera_axis_group",
+                "export_row",
+                "cmb_scalar",
+                "cmb_cmap",
+                "edit_vmin",
+                "btn_view_xp",
+            )
+        )
+        lines = [
+            f"style={self.app.style().objectName()}, font={self.app.font().toString()}"
+        ]
+        for name, obj in objects.items():
+            minimum = (
+                obj.minimumSizeHint()
+                if isinstance(obj, QtWidgets.QWidget)
+                else obj.minimumSize()
+            )
+            lines.append(
+                f"{name}: hint={obj.sizeHint().width()}, minimum={minimum.width()}, "
+                f"actual={obj.geometry().width()}"
+            )
+        return "\n".join(lines)
+
     def test_all_columns_and_pinned_selection_preserve_input_order(self):
         panel = self.panel()
         panel.load_input_file("/tmp/input.csv")
@@ -164,7 +206,7 @@ class WorkbenchTests(unittest.TestCase):
                     self.assertGreaterEqual(origin.x(), 0)
                     self.assertLessEqual(origin.x() + control.width(), owner.width())
                     self.assertLessEqual(origin.y() + control.height(), owner.height())
-            self.assertLessEqual(window.width(), 1100)
+            self.assertLessEqual(window.width(), 1100, self.layout_diagnostics(window))
             self.assertLessEqual(window.height(), 720)
             window.close()
         finally:
