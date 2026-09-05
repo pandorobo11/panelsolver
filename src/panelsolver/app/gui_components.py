@@ -3,6 +3,20 @@
 from PySide6 import QtCore, QtWidgets
 
 
+class WorkbenchSpinBox(QtWidgets.QSpinBox):
+    """Keep the native editor with the same content height as themed buttons."""
+
+    def sizeHint(self):
+        size = super().sizeHint()
+        size.setHeight(max(20, self.fontMetrics().height()) + 10)
+        return size
+
+    def minimumSizeHint(self):
+        size = super().minimumSizeHint()
+        size.setHeight(self.sizeHint().height())
+        return size
+
+
 class FlowLayout(QtWidgets.QLayout):
     """Wrap complete control groups without hiding commands at narrow widths."""
 
@@ -86,6 +100,9 @@ class FrozenCaseTable(QtWidgets.QTableWidget):
         super().__init__()
         self.frozen = QtWidgets.QTableView(self)
         self.frozen.setProperty("workbenchPinned", True)
+        for table in (self, self.frozen):
+            table.setProperty("workbenchCases", True)
+            table.setShowGrid(False)
         self.frozen.setModel(self.model())
         self.frozen.setItemDelegate(_PinnedDelegate(self))
         self.frozen.setSelectionModel(self.selectionModel())

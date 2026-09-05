@@ -10,7 +10,7 @@ QPushButton, QToolButton {
     color: @{text_primary};
     border: 1px solid @{border_control};
     border-radius: 5px;
-    min-height: 18px;
+    min-height: 20px;
     padding: 4px 12px;
 }
 
@@ -120,6 +120,19 @@ QLineEdit, QPlainTextEdit, QTextEdit {
     selection-color: @{selection_text};
 }
 
+/* Match single-line edits to buttons, combos, and numeric controls. */
+QLineEdit {
+    min-height: 20px;
+    padding: 4px 10px;
+    border-radius: 5px;
+}
+QAbstractSpinBox QLineEdit, QComboBox QLineEdit {
+    min-height: 0px;
+    border: none;
+    padding: 0px;
+    background-color: transparent;
+}
+
 QLineEdit:hover, QPlainTextEdit:hover, QTextEdit:hover {
     border-color: @{border_hover};
 }
@@ -157,7 +170,8 @@ QProgressBar {
     color: @{text_primary};
     border: 1px solid @{border_control};
     border-radius: 3px;
-    padding: 1px;
+    min-height: 22px;
+    padding: 3px;
     text-align: center;
 }
 
@@ -240,6 +254,24 @@ QAbstractItemView:focus {
     border: 1px solid @{focus_border};
 }
 
+/* Case tables use row rules and quiet headers, with no vertical grid. */
+QTableView[workbenchCases="true"]::item {
+    border: none;
+    border-bottom: 1px solid @{border_subtle};
+    padding: 0px 8px;
+}
+QTableView[workbenchCases="true"]::item:selected {
+    border-bottom-color: transparent;
+}
+QTableView[workbenchCases="true"] QHeaderView::section {
+    background-color: @{secondary_surface};
+    color: @{text_primary};
+    border: none;
+    border-bottom: 1px solid @{border_control};
+    padding: 6px 8px;
+    font-weight: 500;
+}
+
 /* The pinned view shares the table frame; a second border offsets its rows. */
 QTableView[workbenchPinned="true"] { border: none; }
 
@@ -265,7 +297,7 @@ QComboBox {
     color: @{text_primary};
     border: 1px solid @{border_control};
     border-radius: 5px;
-    min-height: 18px;
+    min-height: 20px;
     padding: 4px 30px 4px 10px;
     selection-background-color: @{selection_background};
     selection-color: @{selection_text};
@@ -324,7 +356,8 @@ QSpinBox {
     border: 1px solid @{border_control};
     border-radius: 5px;
     min-height: 22px;
-    padding: 3px 58px 3px 10px;
+    /* Qt already reserves the 24px up-button beside the editor. */
+    padding: 3px 34px 3px 10px;
     selection-background-color: @{selection_background};
     selection-color: @{selection_text};
 }

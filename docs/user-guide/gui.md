@@ -62,11 +62,14 @@ problem to correct. Edit the source table and reopen it before rerunning.
 ## Organize the workspace
 
 The case table shows every input field, including extra fields, in the declared
-column order. Case ID stays pinned while scrolling horizontally. Full geometry
+column order. Unit-bearing headers place the unit on a second line. Subtle
+horizontal row separators and alternating shading support scanning across
+columns. Case ID stays pinned while scrolling horizontally. Full geometry
 paths remain available in table tooltips. **Run scope** states the execution
 target and selected count in one place. **Clear selection** returns to running all loaded cases.
 The overlay identifies the displayed case and groups its conditions into
-separate lines with units. For a matching current result, the duplicate status
+separate lines with units. Overlay and colorbar typography follow a common
+size based on the application font. For a matching current result, the duplicate status
 row is hidden while **Show info text** is enabled; turning it off restores the
 compact status row. Manual, stale, and error states retain explicit status.
 Before a result is selected, guidance appears inside the empty Viewer only.
@@ -89,7 +92,8 @@ to Diagnostics. During cooperative cancellation, the progress display continues
 to say **Cancelling** even when further progress arrives.
 
 Window placement, split position, column widths, and Diagnostics visibility
-are remembered separately for each domain. **View > Reset Layout** restores the
+are remembered separately for each domain. Saved column widths are expanded
+when necessary to fit the declared headers, including Shielding and Save VTP. **View > Reset Layout** restores the
 initial workspace layout. Input files, row selection, execution settings, and
 color-range values are not restored by this feature. The platform's standard
 Open shortcut opens an input file.

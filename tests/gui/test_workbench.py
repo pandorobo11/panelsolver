@@ -170,6 +170,72 @@ class WorkbenchTests(unittest.TestCase):
         finally:
             self.app.setFont(previous)
 
+    def test_themed_control_heights_and_header_units_at_larger_text(self):
+        previous_style, previous_font = self.app.styleSheet(), self.app.font()
+        try:
+            for mode in (ThemeMode.LIGHT, ThemeMode.DARK):
+                self.app.setStyleSheet(render_application_qss(resolve_theme(mode)))
+                for scale in (1.0, 1.25):
+                    font = self.app.font()
+                    font.setPointSizeF(previous_font.pointSizeF() * scale)
+                    self.app.setFont(font)
+                    panel = self.panel()
+                    viewer = self.viewer(panel.spec)
+                    window = MainWindow(
+                        panel.spec,
+                        cases_panel=panel,
+                        viewer_panel=viewer,
+                        persist_layout=False,
+                    )
+                    panel.load_input_file("/tmp/input.csv")
+                    window.show()
+                    self.app.processEvents()
+                    controls = (
+                        panel.spin_workers,
+                        panel.spin_checkpoint_every_cases,
+                        panel.input_value,
+                        viewer.cmb_scalar,
+                        viewer.cmb_cmap,
+                        viewer.edit_vmin,
+                        viewer.edit_vmax,
+                        viewer.btn_open_vtp,
+                        viewer.btn_view_xp,
+                        viewer.btn_save_image,
+                    )
+                    for control in controls:
+                        self.assertEqual(
+                            panel.btn_run.height(),
+                            control.height(),
+                            type(control).__name__,
+                        )
+                    col = panel._table_columns.index("stl_scale_m_per_unit")
+                    item = panel.case_table.horizontalHeaderItem(col)
+                    self.assertEqual("STL scale\n[m/STL unit]", item.text())
+                    self.assertEqual("STL scale [m/STL unit]", item.toolTip())
+                    self.assertGreaterEqual(
+                        panel.case_table.columnWidth(col),
+                        panel.case_table.horizontalHeader().sectionSizeHint(col),
+                    )
+                    panel.restore_columns(
+                        {
+                            "shielding_on": {"width": 40},
+                            "save_vtp_on": {"width": 40},
+                        }
+                    )
+                    for presentation in panel.spec.case_column_presentations:
+                        index = panel._table_columns.index(presentation.name)
+                        self.assertGreaterEqual(
+                            panel.case_table.columnWidth(index),
+                            panel._header_width(index),
+                            presentation.name,
+                        )
+                    self.assertFalse(panel.case_table.showGrid())
+                    self.assertFalse(panel.case_table.frozen.showGrid())
+                    window.close()
+        finally:
+            self.app.setFont(previous_font)
+            self.app.setStyleSheet(previous_style)
+
     def test_full_input_remains_in_table_without_a_duplicate_details_panel(self):
         panel = self.panel()
         panel.load_input_file("/tmp/input.csv")

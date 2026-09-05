@@ -316,6 +316,10 @@ class ViewerPanelTests(unittest.TestCase):
         )
         self.assertEqual((0.2, 0.4), plotter.mesh_calls[0][1]["clim"])
         self.assertIn("Case  case", plotter.text_calls[-1])
+        self.assertEqual(
+            viewer._overlay_actor.GetTextProperty().GetFontSize(),
+            plotter.mesh_calls[0][1]["scalar_bar_args"]["label_font_size"],
+        )
         self.assertTrue(plotter.parallel_enabled)
         self.assertEqual(ArtifactViewStatus.CURRENT, viewer.artifact_view_state.status)
         self.assertEqual("Current result", viewer.lbl_artifact_state.text())

@@ -1041,9 +1041,14 @@ class ViewerPanel(QtWidgets.QWidget):
             render=False,
         )
         prop = self._overlay_actor.GetTextProperty()
+        prop.SetFontSize(self._viewer_font_size())
         prop.SetJustificationToLeft()
         prop.SetVerticalJustificationToTop()
         prop.SetLineSpacing(1.4)
+
+    def _viewer_font_size(self) -> int:
+        # Use one Qt-derived size for VTK text instead of viewport-driven sizing.
+        return max(10, round(self.font().pointSizeF()))
 
     def _update_status_visibility(self) -> None:
         status = self._artifact_view_state.status
@@ -1098,6 +1103,10 @@ class ViewerPanel(QtWidgets.QWidget):
         if scalar_name is not None:
             common["scalar_bar_args"] = {
                 "title": self.spec.scalar_labels.get(scalar_name, scalar_name),
+                "font_family": "arial",
+                "label_font_size": self._viewer_font_size(),
+                "title_font_size": self._viewer_font_size() + 1,
+                "bold": False,
                 "position_x": 0.18,
                 "position_y": 0.02,
                 "width": 0.64,

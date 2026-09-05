@@ -176,7 +176,9 @@ class CasesPanelTests(unittest.TestCase):
                 actual = {
                     name: panel.case_table.horizontalHeaderItem(
                         panel._table_columns.index(name)
-                    ).text()
+                    )
+                    .text()
+                    .replace("\n", " ")
                     for name in expected
                 }
                 self.assertEqual(expected, actual)

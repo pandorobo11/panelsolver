@@ -10,7 +10,7 @@ from pathlib import Path
 import pyvista as pv
 from PySide6 import QtCore, QtWidgets
 
-from .gui_components import FlowLayout, FrozenCaseTable
+from .gui_components import FlowLayout, FrozenCaseTable, WorkbenchSpinBox
 from .gui_theme import set_semantic_property
 from .output_status import OutputKind, OutputPhase
 from .path_resolution import (
@@ -36,7 +36,6 @@ from .viewer_data import (
 _INLINE_LABEL_CONTROL_SPACING = 4
 _RUN_SETTINGS_GROUP_SPACING = 12
 _RUN_ACTION_SPACING = 8
-_CHECKPOINT_ORDINARY_DIGITS = 6
 
 
 @dataclass(frozen=True, slots=True)
@@ -100,8 +99,8 @@ _FULL_VALUE_TOOLTIP_ROLES = frozenset(
 )
 
 
-def _bounded_spin_box_width(spin_box: QtWidgets.QSpinBox) -> int:
-    """Fit ordinary checkpoint values without reserving the full integer range."""
+def _bounded_spin_box_width(spin_box: QtWidgets.QSpinBox, digits: int) -> int:
+    """Fit the requested digit count without reserving the full integer range."""
     spin_box.ensurePolished()
     option = QtWidgets.QStyleOptionSpinBox()
     spin_box.initStyleOption(option)
@@ -121,11 +120,7 @@ def _bounded_spin_box_width(spin_box: QtWidgets.QSpinBox) -> int:
     )
     metrics = spin_box.fontMetrics()
     representative_width = max(
-        metrics.horizontalAdvance(str(DEFAULT_CHECKPOINT_CASES)),
-        *(
-            metrics.horizontalAdvance(digit * _CHECKPOINT_ORDINARY_DIGITS)
-            for digit in "0123456789"
-        ),
+        metrics.horizontalAdvance(digit * digits) for digit in "0123456789"
     )
     return native_chrome_width + representative_width + 2 * focus_margin
 
@@ -247,12 +242,13 @@ class CasesPanel(QtWidgets.QWidget):
         self.btn_cancel.setEnabled(False)
         self.btn_run.setEnabled(False)
         self.lbl_case_summary = QtWidgets.QLabel("No cases loaded")
-        self.spin_workers = QtWidgets.QSpinBox()
+        self.spin_workers = WorkbenchSpinBox()
         self.spin_workers.setAccessibleName("Workers")
         self.spin_workers.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
         self.spin_workers.setRange(1, os.cpu_count() or 1)
         self.spin_workers.setValue(1)
-        self.spin_checkpoint_every_cases = QtWidgets.QSpinBox()
+        self.spin_workers.setMaximumWidth(_bounded_spin_box_width(self.spin_workers, 3))
+        self.spin_checkpoint_every_cases = WorkbenchSpinBox()
         self.spin_checkpoint_every_cases.setAlignment(
             QtCore.Qt.AlignmentFlag.AlignRight
         )
@@ -266,7 +262,7 @@ class CasesPanel(QtWidgets.QWidget):
             "Checkpoint interval in cases (0 to 2,147,483,647)."
         )
         self.spin_checkpoint_every_cases.setMaximumWidth(
-            _bounded_spin_box_width(self.spin_checkpoint_every_cases)
+            _bounded_spin_box_width(self.spin_checkpoint_every_cases, 6)
         )
         self.case_table = FrozenCaseTable()
         self.case_table.setSelectionMode(
@@ -509,10 +505,17 @@ class CasesPanel(QtWidgets.QWidget):
             for presentation in self.spec.case_column_presentations
         }
         headers = [
-            presentations[name].label if name in presentations else name
+            presentations[name].label.replace(" [", "\n[", 1)
+            if name in presentations
+            else name
             for name in self._table_columns
         ]
         self.case_table.setHorizontalHeaderLabels(headers)
+        for column, name in enumerate(self._table_columns):
+            if name in presentations:
+                self.case_table.horizontalHeaderItem(column).setToolTip(
+                    presentations[name].label
+                )
         width_roles = [
             (
                 presentations[name].width_role
@@ -527,7 +530,10 @@ class CasesPanel(QtWidgets.QWidget):
         ]
         for column, width in enumerate(column_widths):
             self.case_table.setColumnWidth(column, width)
-            if self._header_width(column) > width:
+            if (
+                self._header_width(column) > width
+                and not self.case_table.horizontalHeaderItem(column).toolTip()
+            ):
                 header_item = self.case_table.horizontalHeaderItem(column)
                 header_item.setToolTip(header_item.text())
         for row_index, row in enumerate(self.case_rows):
@@ -568,10 +574,13 @@ class CasesPanel(QtWidgets.QWidget):
 
     def restore_columns(self, preferences: dict) -> None:
         self._column_preferences = preferences
+        declared = {p.name for p in self.spec.case_column_presentations}
         for column, name in enumerate(self._table_columns):
             self.case_table.setColumnHidden(column, False)
             width = preferences.get(name, {}).get("width")
             if isinstance(width, int) and 40 <= width <= 1200:
+                if name in declared:
+                    width = max(width, self._header_width(column))
                 self.case_table.setColumnWidth(column, width)
 
     def reset_columns(self) -> None:
@@ -641,6 +650,12 @@ class CasesPanel(QtWidgets.QWidget):
             )
             minimum = min(minimum, preferred)
         maximum = max(maximum, minimum)
+        # Short flag values must not cap the width below their declared header.
+        if any(
+            p.name == self._table_columns[column]
+            for p in self.spec.case_column_presentations
+        ):
+            maximum = max(maximum, self._header_width(column))
         return min(
             max(preferred, minimum, self._header_width(column)),
             maximum,
