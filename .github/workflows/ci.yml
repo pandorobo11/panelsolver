@@ -179,7 +179,7 @@ jobs:
           if-no-files-found: error
 
   installed-wheel:
-    needs: [distribution-build]
+    needs: [distribution-build, quality]
     strategy:
       fail-fast: false
       matrix:
@@ -222,7 +222,7 @@ jobs:
           --dist-dir dist
 
   clean-install:
-    needs: [distribution-build]
+    needs: [distribution-build, quality]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
