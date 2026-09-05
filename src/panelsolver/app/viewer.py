@@ -9,7 +9,7 @@ from pathlib import Path
 
 import numpy as np
 import pyvista as pv
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 from pyvistaqt import QtInteractor
 
 from .gui_components import FlowLayout
@@ -140,6 +140,27 @@ class ViewerPanel(QtWidgets.QWidget):
         self._plotter_closed = False
         self.set_artifact_view_state(self._artifact_view_state)
         self._update_export_controls()
+        self._apply_background()
+
+    def changeEvent(self, event) -> None:
+        super().changeEvent(event)
+        if event.type() == QtCore.QEvent.Type.PaletteChange and hasattr(self, "_poly"):
+            QtCore.QTimer.singleShot(0, self._apply_background)
+
+    def _apply_background(self) -> None:
+        if self._plotter_closed:
+            return
+        choice = self.cmb_background.currentData()
+        dark = choice == "black" or (
+            choice == "theme"
+            and self.palette().color(QtGui.QPalette.ColorRole.Window).lightnessF() < 0.5
+        )
+        self._viewport_foreground = "white" if dark else "black"
+        self.plotter.set_background("black" if dark else "white")
+        if self._poly is not None:
+            self.update_view()
+        else:
+            self.plotter.render()
 
     def close_plotter(self) -> None:
         """Stop periodic native rendering before the window destroys its view."""
@@ -170,6 +191,15 @@ class ViewerPanel(QtWidgets.QWidget):
             pass
 
     def _init_controls(self) -> None:
+        self.cmb_background = QtWidgets.QComboBox()
+        for label, value in (
+            ("Follow theme", "theme"),
+            ("White", "white"),
+            ("Black", "black"),
+        ):
+            self.cmb_background.addItem(label, value)
+        self.cmb_background.setAccessibleName("Viewer background")
+        self.cmb_background.currentIndexChanged.connect(self._apply_background)
         self.cmb_scalar = QtWidgets.QComboBox()
         self.cmb_scalar.setMinimumWidth(145)
         self.chk_edges = QtWidgets.QCheckBox("Show edges")
@@ -271,6 +301,10 @@ class ViewerPanel(QtWidgets.QWidget):
         self.scalar_row = QtWidgets.QWidget()
         scalar = FlowLayout(self.scalar_row)
         self.scalar_selectors = self._make_control_row()
+        self.scalar_selectors.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Expanding,
+            QtWidgets.QSizePolicy.Policy.Preferred,
+        )
         selectors = self.scalar_selectors.layout()
         selectors.addWidget(self.cmb_scalar)
         selectors.addSpacing(8)
@@ -278,6 +312,7 @@ class ViewerPanel(QtWidgets.QWidget):
         cmap_label.setBuddy(self.cmb_cmap)
         selectors.addWidget(cmap_label)
         selectors.addWidget(self.cmb_cmap)
+        selectors.addStretch(1)
         scalar.addWidget(self.scalar_selectors)
         scalar.addWidget(self.btn_open_vtp)
 
@@ -306,6 +341,12 @@ class ViewerPanel(QtWidgets.QWidget):
             self.chk_overlay_text,
         ):
             display.addWidget(control)
+        background = self._make_control_row()
+        background_label = QtWidgets.QLabel("Background")
+        background_label.setBuddy(self.cmb_background)
+        background.layout().addWidget(background_label)
+        background.layout().addWidget(self.cmb_background)
+        display.addWidget(background)
 
         self._camera_axis_buttons = (
             self.btn_view_xp,
@@ -379,6 +420,7 @@ class ViewerPanel(QtWidgets.QWidget):
             self.chk_edges,
             self.chk_shield_transparent,
             self.chk_overlay_text,
+            self.cmb_background,
             *self._camera_buttons,
             self.btn_save_image,
             self.btn_save_selected_images,
@@ -1046,6 +1088,7 @@ class ViewerPanel(QtWidgets.QWidget):
         )
         self._overlay_actor = self.plotter.add_text(
             text,
+            color=self._viewport_foreground,
             position=(0.025, 0.965),
             viewport=True,
             font="arial",
@@ -1124,7 +1167,36 @@ class ViewerPanel(QtWidgets.QWidget):
                 "position_y": 0.02,
                 "width": 0.64,
                 "height": 0.08,
+                "color": self._viewport_foreground,
             }
+            field = self._scalar_fields[scalar_name]
+            values = np.asarray(self._poly.cell_data[scalar_name])
+            constant = (
+                not field.categorical
+                and values.size > 0
+                and np.min(values) == np.max(values)
+                and not self.edit_vmin.text().strip()
+                and not self.edit_vmax.text().strip()
+            )
+            if constant:
+                value = float(values[0])
+                color = pv.LookupTable(cmap=self.cmb_cmap.currentText()).values[0, :3]
+                common["cmap"] = [pv.Color(tuple(color / 255.0)).hex_rgb]
+                common["scalar_bar_args"].update(
+                    title=f"{self.spec.scalar_labels.get(scalar_name, scalar_name)} = {value:.6g}",
+                    n_labels=0,
+                    n_colors=1,
+                    width=0.3,
+                    position_x=0.35,
+                )
+            else:
+                limits = common["clim"]
+                if limits is not None:
+                    ticks = np.linspace(*limits, 5)
+                    for precision in range(3, 18):
+                        if len({f"{value:.{precision}g}" for value in ticks}) == 5:
+                            break
+                    common["scalar_bar_args"]["fmt"] = f"%.{precision}g"
         self._refresh_range_validation()
         shield = self._shield_mask()
         if shield is None:
@@ -1132,7 +1204,7 @@ class ViewerPanel(QtWidgets.QWidget):
         else:
             self._add_shield_groups(shield, common)
         self._update_overlay()
-        self.plotter.add_axes()
+        self.plotter.add_axes(color=self._viewport_foreground)
         if not self._restore_camera_state(previous_camera):
             self.plotter.reset_camera()
             self.plotter.view_vector(self._default_view_vec)

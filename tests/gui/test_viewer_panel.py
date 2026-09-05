@@ -73,8 +73,11 @@ class FakePlotter:
     def remove_actor(self, _actor) -> None:
         return None
 
-    def add_axes(self) -> None:
-        return None
+    def set_background(self, color) -> None:
+        self.background = color
+
+    def add_axes(self, **kwargs) -> None:
+        self.axes_kwargs = kwargs
 
     def reset_camera(self) -> None:
         self.reset_count += 1
@@ -402,9 +405,51 @@ class ViewerPanelTests(unittest.TestCase):
         self.assertEqual("cp", viewer.cmb_scalar.currentData())
         self.assertEqual("cp", plotter.mesh_calls[0][1]["scalars"])
         self.assertEqual(
-            "Cp",
+            "Cp = 0.7",
             plotter.mesh_calls[0][1]["scalar_bar_args"]["title"],
         )
+        self.assertEqual(0, plotter.mesh_calls[0][1]["scalar_bar_args"]["n_labels"])
+        self.assertEqual(1, len(plotter.mesh_calls[0][1]["cmap"]))
+
+    def test_small_scalar_variation_and_manual_range_keep_gradient(self):
+        viewer, plotter = self.make_viewer(spec=newt_solver_spec())
+        viewer.load_vtp("/tmp/case.vtp", FakePoly({"cp": [0.134001, 0.134002]}))
+        options = plotter.mesh_calls[0][1]
+        labels = [
+            options["scalar_bar_args"]["fmt"] % v
+            for v in np.linspace(0.134001, 0.134002, 5)
+        ]
+        self.assertEqual(5, len(set(labels)))
+        self.assertEqual("jet", options["cmap"])
+        viewer.edit_vmin.setText("0")
+        viewer.edit_vmax.setText("1")
+        viewer.load_vtp("/tmp/case.vtp", FakePoly({"cp": [0.7]}))
+        self.assertEqual("jet", plotter.mesh_calls[0][1]["cmap"])
+        self.assertEqual("Cp", plotter.mesh_calls[0][1]["scalar_bar_args"]["title"])
+
+    def test_background_follows_palette_and_respects_explicit_override(self):
+        from PySide6 import QtGui
+
+        viewer, plotter = self.make_viewer()
+        viewer.load_vtp("/tmp/case.vtp", FakePoly({"cp": [0.2, 0.5]}))
+        camera = viewer._capture_camera_state()
+        for window_color, expected in (("black", "black"), ("white", "white")):
+            palette = viewer.palette()
+            palette.setColor(
+                QtGui.QPalette.ColorRole.Window, QtGui.QColor(window_color)
+            )
+            viewer.setPalette(palette)
+            self.app.processEvents()
+            self.assertEqual(expected, plotter.background)
+            foreground = "white" if expected == "black" else "black"
+            self.assertEqual(foreground, plotter.axes_kwargs["color"])
+            self.assertEqual(
+                foreground, plotter.mesh_calls[0][1]["scalar_bar_args"]["color"]
+            )
+        viewer.cmb_background.setCurrentIndex(viewer.cmb_background.findData("black"))
+        viewer._apply_background()
+        self.assertEqual("black", plotter.background)
+        self.assertEqual(camera, viewer._capture_camera_state())
 
     def test_reload_uses_first_available_preferred_scalar(self) -> None:
         viewer, _plotter = self.make_viewer()
