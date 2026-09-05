@@ -7,12 +7,14 @@ import sys
 import tempfile
 from collections.abc import Mapping
 from dataclasses import replace
+from functools import partial
 from pathlib import Path
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from panelsolver.app.gui_bootstrap import _configure_application, create_main_window
 from panelsolver.app.gui_theme import ThemeMode, apply_application_theme
+from panelsolver.app.main_window import MainWindow
 from panelsolver.app.solver_spec import SolverSpec
 from panelsolver.gui import gui_spec_for_domain
 
@@ -147,29 +149,34 @@ def capture_main_window(window: QtWidgets.QMainWindow, output_path: Path) -> Non
     interactor = getattr(plotter, "interactor", None)
     if not isinstance(interactor, QtWidgets.QWidget):
         raise TypeError("window viewer must provide a QWidget interactor")
-    if interactor.width() <= 0 or interactor.height() <= 0:
+    if interactor.isVisible() and (interactor.width() <= 0 or interactor.height() <= 0):
         raise RuntimeError("VTK interactor has no drawable area")
 
     # Grab Qt-owned widgets before asking VTK to render its native child surface.
     # Some platform backends invalidate sibling backing-store regions during the
     # VTK export; the earlier client grab preserves a complete table and chrome.
     client = window.grab()
-    with tempfile.TemporaryDirectory(prefix="panelsolver-gui-capture-") as temp_dir:
-        viewport_path = Path(temp_dir) / "viewport.png"
-        plotter.screenshot(str(viewport_path))
-        viewport = QtGui.QImage(str(viewport_path))
-        if viewport.isNull():
-            raise RuntimeError("VTK viewport screenshot could not be read")
+    empty_panel = getattr(viewer_panel, "empty_panel", None)
+    showing_empty = (
+        isinstance(empty_panel, QtWidgets.QWidget) and not empty_panel.isHidden()
+    )
+    if interactor.isVisible() and not showing_empty:
+        with tempfile.TemporaryDirectory(prefix="panelsolver-gui-capture-") as temp_dir:
+            viewport_path = Path(temp_dir) / "viewport.png"
+            plotter.screenshot(str(viewport_path))
+            viewport = QtGui.QImage(str(viewport_path))
+            if viewport.isNull():
+                raise RuntimeError("VTK viewport screenshot could not be read")
 
-        viewport_origin = interactor.mapTo(window, QtCore.QPoint(0, 0))
-        viewport_rect = QtCore.QRect(viewport_origin, interactor.size())
-        painter = QtGui.QPainter(client)
-        if not painter.isActive():
-            raise RuntimeError("Qt client-area compositor could not start")
-        try:
-            painter.drawImage(viewport_rect, viewport)
-        finally:
-            painter.end()
+            viewport_origin = interactor.mapTo(window, QtCore.QPoint(0, 0))
+            viewport_rect = QtCore.QRect(viewport_origin, interactor.size())
+            painter = QtGui.QPainter(client)
+            if not painter.isActive():
+                raise RuntimeError("Qt client-area compositor could not start")
+            try:
+                painter.drawImage(viewport_rect, viewport)
+            finally:
+                painter.end()
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     if not client.save(str(output_path), "PNG"):
@@ -272,7 +279,9 @@ def main(argv: list[str] | None = None) -> int:
     application = QtWidgets.QApplication([sys.argv[0]])
     _configure_application(application)
     apply_application_theme(application, ThemeMode(args.theme))
-    window = create_main_window(spec)
+    window = create_main_window(
+        spec, window_factory=partial(MainWindow, persist_layout=False)
+    )
 
     window.show()
     QtCore.QTimer.singleShot(

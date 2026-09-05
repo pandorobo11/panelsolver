@@ -401,9 +401,8 @@ class RunLifecycleTests(unittest.TestCase):
                     self.wait_until(
                         lambda active_panel=panel: active_panel.progress.text() == "1/2"
                     )
-                format_before_cancel = panel.progress.text()
                 panel.cancel_run()
-                self.assertEqual(format_before_cancel, panel.progress.text())
+                self.assertIn("Cancelling", panel.progress.text())
                 self.assertEqual("warning", panel.progress.property("fluentStatus"))
                 self.assertTrue(panel.progress.property("fluentBusy"))
                 self.assertFalse(panel.btn_cancel.isEnabled())

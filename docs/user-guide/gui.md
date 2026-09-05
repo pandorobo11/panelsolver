@@ -33,7 +33,7 @@ ready for result inspection.*
    XLSX, or XLSM case table.
 2. Select one or more table rows to run those cases. With no selected rows,
    **Run All Cases** runs every loaded case.
-3. Leave **Workers** and **Checkpoint every** at their defaults for a first run.
+3. Leave **Workers** and **Checkpoint** at their defaults for a first run.
    For larger batches, see [Batch execution and recovery](batch-execution-and-recovery.md).
 4. Choose **Run All Cases** or **Run Selected Cases**, as shown for the selected
    rows, and select the Summary CSV destination. The suggested location is
@@ -58,6 +58,49 @@ inspection.
 
 Input validation issues identify the spreadsheet row, case ID, field, and
 problem to correct. Edit the source table and reopen it before rerunning.
+
+## Organize the workspace
+
+The case table shows every input field, including extra fields, in the declared
+column order. Unit-bearing headers place the unit on a second line. Subtle
+horizontal row separators and alternating shading support scanning across
+columns. Case ID stays pinned while scrolling horizontally. Full geometry
+paths remain available in table tooltips. **Run scope** states the execution
+target and selected count in one place. **Clear selection** returns to running all loaded cases.
+The overlay identifies the displayed case and groups its conditions into
+separate lines with units. Overlay and colorbar typography follow a common
+size based on the application font. For a matching current result, the duplicate status
+row is hidden while **Show info text** is enabled; turning it off restores the
+compact status row. Manual, stale, and error states retain explicit status.
+Before a result is selected, guidance appears inside the empty Viewer only.
+Workers and Checkpoint accept direct number entry and keyboard stepping;
+the adjacent minus and plus controls decrease or increase the value.
+Each setting stays with its label when the settings row wraps. The run and
+cancel actions stay together and can move below the progress indicator.
+
+Scalar, colormap, color range, display toggles, all camera directions, and image
+export stay visible below the Viewer. Related controls wrap as groups when the
+window is narrow: scalar and colormap selectors, range endpoints, camera axis
+pairs, isometric and wind views, and image export actions stay together.
+Min and Max retain their
+existing behavior: blank endpoints are automatic. The colorbar shows the actual
+limits. Invalid numeric text falls back to the automatic range; the affected
+input is marked and its tooltip explains the fallback.
+
+**Show diagnostics** opens the log and changes to **Hide diagnostics**.
+**Clear log** clears its contents and resets the warning and error counts, even
+while the log is collapsed or a run is active. New messages continue to arrive
+after clearing. The counts represent warning and error **messages received since
+the last clear** (or application launch), not failed cases. Read and write error states provide a direct route
+to Diagnostics. During cooperative cancellation, the progress display continues
+to say **Cancelling** even when further progress arrives.
+
+Window placement, split position, column widths, and Diagnostics visibility
+are remembered separately for each domain. Saved column widths are expanded
+when necessary to fit the declared headers, including Shielding and Save VTP. **View > Reset Layout** restores the
+initial workspace layout. Input files, row selection, execution settings, and
+color-range values are not restored by this feature. The platform's standard
+Open shortcut opens an input file.
 
 ## Start from an example
 

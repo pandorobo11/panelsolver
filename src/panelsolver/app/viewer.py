@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import textwrap
 from collections.abc import Callable, Sequence
+from itertools import pairwise
 from pathlib import Path
 
 import numpy as np
@@ -10,6 +12,7 @@ import pyvista as pv
 from PySide6 import QtCore, QtWidgets
 from pyvistaqt import QtInteractor
 
+from .gui_components import FlowLayout
 from .gui_theme import set_semantic_property
 from .path_resolution import (
     absolute_input_path,
@@ -52,14 +55,12 @@ def _process_gui_events() -> None:
 
 _VIEWER_CHROME_HORIZONTAL_INSET = 12
 _CONTROL_COLUMN_SPACING = 6
-_CONTROL_ROW_SPACING = 6
-_CAMERA_GROUP_SPACING = 4
-_CAMERA_SUBGROUP_SPACING = 12
 
 
 class ViewerPanel(QtWidgets.QWidget):
     """Render VTP cell data without owning product or numerical behavior."""
 
+    diagnostics_requested = QtCore.Signal()
     log_message = QtCore.Signal(str)
     save_selected_images_requested = QtCore.Signal()
 
@@ -104,7 +105,21 @@ class ViewerPanel(QtWidgets.QWidget):
         interactor = getattr(self.plotter, "interactor", None)
         if not isinstance(interactor, QtWidgets.QWidget):
             raise TypeError("plotter_factory must provide a QWidget interactor")
+        self.empty_panel = QtWidgets.QWidget(self)
+        self.empty_panel.setAutoFillBackground(True)
+        empty_layout = QtWidgets.QVBoxLayout(self.empty_panel)
+        empty_layout.addStretch(1)
+        self.empty_title = QtWidgets.QLabel("Inspect a result")
+        self.empty_title.setProperty("workbenchHeading", True)
+        self.empty_title.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        self.empty_hint = QtWidgets.QLabel()
+        self.empty_hint.setWordWrap(True)
+        self.empty_hint.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        empty_layout.addWidget(self.empty_title)
+        empty_layout.addWidget(self.empty_hint)
+        empty_layout.addStretch(1)
         self._root_layout.addWidget(interactor, 6)
+        interactor.installEventFilter(self)
 
         self._init_controls()
         self._build_controls_layout()
@@ -122,8 +137,26 @@ class ViewerPanel(QtWidgets.QWidget):
         self._overlay_actor = None
         self._default_view_vec = (-1, -1, 1)
         self._camera_initialized = False
+        self._plotter_closed = False
         self.set_artifact_view_state(self._artifact_view_state)
         self._update_export_controls()
+
+    def close_plotter(self) -> None:
+        """Stop periodic native rendering before the window destroys its view."""
+        if not self._plotter_closed:
+            self._plotter_closed = True
+            close = getattr(self.plotter, "close", None)
+            if callable(close):
+                close()
+
+    def eventFilter(self, watched, event) -> bool:
+        if watched is getattr(
+            getattr(self, "plotter", None), "interactor", None
+        ) and event.type() in (QtCore.QEvent.Type.Resize, QtCore.QEvent.Type.Move):
+            self.empty_panel.setGeometry(watched.geometry())
+            if not self.empty_panel.isHidden():
+                self.empty_panel.raise_()
+        return super().eventFilter(watched, event)
 
     def _enable_parallel_projection(self) -> None:
         try:
@@ -215,6 +248,9 @@ class ViewerPanel(QtWidgets.QWidget):
 
         row.addWidget(self.lbl_artifact_state)
         row.addWidget(self.lbl_artifact_detail, 1)
+        self.btn_show_diagnostics = QtWidgets.QPushButton("Diagnostics")
+        self.btn_show_diagnostics.clicked.connect(self.diagnostics_requested.emit)
+        row.addWidget(self.btn_show_diagnostics)
         self._root_layout.addWidget(self.artifact_status_row)
 
     def _build_controls_layout(self) -> None:
@@ -222,47 +258,54 @@ class ViewerPanel(QtWidgets.QWidget):
         self.controls_chrome.setObjectName("viewerControlsChrome")
         self._controls_grid = QtWidgets.QGridLayout(self.controls_chrome)
         self._controls_grid.setContentsMargins(
-            _VIEWER_CHROME_HORIZONTAL_INSET,
-            0,
-            _VIEWER_CHROME_HORIZONTAL_INSET,
-            0,
+            _VIEWER_CHROME_HORIZONTAL_INSET, 4, _VIEWER_CHROME_HORIZONTAL_INSET, 0
         )
-        self._controls_grid.setHorizontalSpacing(_CONTROL_COLUMN_SPACING)
-        self._controls_grid.setVerticalSpacing(_CONTROL_ROW_SPACING)
-
+        self._controls_grid.setHorizontalSpacing(12)
+        self._controls_grid.setVerticalSpacing(8)
         self.lbl_scalar = QtWidgets.QLabel("Scalar")
+        self.lbl_colorbar = QtWidgets.QLabel("Range")
         self.lbl_display = QtWidgets.QLabel("Display")
-        self.lbl_colorbar = QtWidgets.QLabel("Colorbar")
         self.lbl_camera = QtWidgets.QLabel("Camera")
         self.lbl_export = QtWidgets.QLabel("Export")
-
-        self.scalar_row = self._make_control_row()
-        scalar = self.scalar_row.layout()
-        assert isinstance(scalar, QtWidgets.QHBoxLayout)
-        scalar.setSpacing(0)
-        scalar.addWidget(self.cmb_scalar)
-        scalar.addSpacing(12)
-        scalar.addWidget(QtWidgets.QLabel("Colormap"))
-        scalar.addSpacing(_CONTROL_COLUMN_SPACING)
-        scalar.addWidget(self.cmb_cmap)
-        scalar.addStretch(1)
+        self.lbl_scalar.setBuddy(self.cmb_scalar)
+        self.scalar_row = QtWidgets.QWidget()
+        scalar = FlowLayout(self.scalar_row)
+        self.scalar_selectors = self._make_control_row()
+        selectors = self.scalar_selectors.layout()
+        selectors.addWidget(self.cmb_scalar)
+        selectors.addSpacing(8)
+        cmap_label = QtWidgets.QLabel("Colormap")
+        cmap_label.setBuddy(self.cmb_cmap)
+        selectors.addWidget(cmap_label)
+        selectors.addWidget(self.cmb_cmap)
+        scalar.addWidget(self.scalar_selectors)
         scalar.addWidget(self.btn_open_vtp)
 
-        self.display_row = self._make_control_row(spacing=8)
-        display = self.display_row.layout()
-        assert isinstance(display, QtWidgets.QHBoxLayout)
-        display.addWidget(self.chk_edges)
-        display.addWidget(self.chk_shield_transparent)
-        display.addWidget(self.chk_overlay_text)
-        display.addStretch(1)
-
-        self.colorbar_row = self._make_control_row()
-        colorbar = self.colorbar_row.layout()
-        assert isinstance(colorbar, QtWidgets.QHBoxLayout)
-        colorbar.addWidget(self.edit_vmin)
-        colorbar.addWidget(self.edit_vmax)
+        self.colorbar_row = QtWidgets.QWidget()
+        colorbar = FlowLayout(self.colorbar_row)
+        self.range_inputs = self._make_control_row()
+        self.range_inputs.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Maximum, QtWidgets.QSizePolicy.Policy.Preferred
+        )
+        range_inputs = self.range_inputs.layout()
+        for text, edit in (("Min", self.edit_vmin), ("Max", self.edit_vmax)):
+            edit.setPlaceholderText("Auto")
+            edit.setMaximumWidth(120)
+            edit.setAccessibleName(f"Color range {text.lower()}")
+            label = QtWidgets.QLabel(text)
+            label.setBuddy(edit)
+            range_inputs.addWidget(label)
+            range_inputs.addWidget(edit)
+        colorbar.addWidget(self.range_inputs)
         colorbar.addWidget(self.btn_auto_range)
-        colorbar.addStretch(1)
+        self.display_row = QtWidgets.QWidget()
+        display = FlowLayout(self.display_row, spacing=12)
+        for control in (
+            self.chk_edges,
+            self.chk_shield_transparent,
+            self.chk_overlay_text,
+        ):
+            display.addWidget(control)
 
         self._camera_axis_buttons = (
             self.btn_view_xp,
@@ -272,14 +315,8 @@ class ViewerPanel(QtWidgets.QWidget):
             self.btn_view_zp,
             self.btn_view_zn,
         )
-        self._camera_isometric_buttons = (
-            self.btn_view_iso_1,
-            self.btn_view_iso_2,
-        )
-        self._camera_wind_buttons = (
-            self.btn_view_wind,
-            self.btn_view_wind_rev,
-        )
+        self._camera_isometric_buttons = (self.btn_view_iso_1, self.btn_view_iso_2)
+        self._camera_wind_buttons = (self.btn_view_wind, self.btn_view_wind_rev)
         self._camera_buttons = (
             *self._camera_axis_buttons,
             *self._camera_isometric_buttons,
@@ -287,11 +324,18 @@ class ViewerPanel(QtWidgets.QWidget):
         )
         for button in self._camera_buttons:
             button.setProperty("viewerCameraControl", True)
-
-        self.camera_row = self._make_control_row(spacing=_CAMERA_SUBGROUP_SPACING)
-        camera = self.camera_row.layout()
-        assert isinstance(camera, QtWidgets.QHBoxLayout)
-        self.camera_axis_group = self._make_camera_group(self._camera_axis_buttons)
+            button.setToolTip(
+                "Camera looks from this direction toward the model in STL coordinates; Wind uses the case flow direction."
+            )
+        self.btn_view_iso_1.setToolTip("View from (-X, -Y, +Z) in STL coordinates")
+        self.camera_row = QtWidgets.QWidget()
+        camera = FlowLayout(self.camera_row, spacing=8)
+        self.camera_axis_group = QtWidgets.QWidget()
+        axes = FlowLayout(self.camera_axis_group, spacing=4)
+        for start in range(0, len(self._camera_axis_buttons), 2):
+            axes.addWidget(
+                self._make_camera_group(self._camera_axis_buttons[start : start + 2])
+            )
         self.camera_isometric_group = self._make_camera_group(
             self._camera_isometric_buttons
         )
@@ -303,40 +347,44 @@ class ViewerPanel(QtWidgets.QWidget):
         )
         for group in self._camera_groups:
             camera.addWidget(group)
-        camera.addStretch(1)
 
-        self.export_row = self._make_control_row()
-        export = self.export_row.layout()
-        assert isinstance(export, QtWidgets.QHBoxLayout)
-        export.addWidget(self.btn_save_image)
-        export.addWidget(self.btn_save_selected_images)
-        export.addStretch(1)
-
-        labels = (
-            self.lbl_scalar,
-            self.lbl_display,
-            self.lbl_colorbar,
-            self.lbl_camera,
-            self.lbl_export,
-        )
-        rows = (
-            self.scalar_row,
-            self.display_row,
-            self.colorbar_row,
-            self.camera_row,
-            self.export_row,
-        )
-        for row_index, (label, row_widget) in enumerate(zip(labels, rows, strict=True)):
-            self._controls_grid.addWidget(
-                label,
-                row_index,
-                0,
-                QtCore.Qt.AlignmentFlag.AlignLeft
-                | QtCore.Qt.AlignmentFlag.AlignVCenter,
+        self.export_row = QtWidgets.QWidget()
+        export = FlowLayout(self.export_row)
+        self.image_export_group = self._make_control_row()
+        self.image_export_group.layout().addWidget(self.btn_save_image)
+        self.image_export_group.layout().addWidget(self.btn_save_selected_images)
+        export.addWidget(self.image_export_group)
+        for row_index, (label, control) in enumerate(
+            (
+                (self.lbl_scalar, self.scalar_row),
+                (self.lbl_colorbar, self.colorbar_row),
+                (self.lbl_display, self.display_row),
+                (self.lbl_camera, self.camera_row),
+                (self.lbl_export, self.export_row),
             )
-            self._controls_grid.addWidget(row_widget, row_index, 1)
+        ):
+            self._controls_grid.addWidget(
+                label, row_index, 0, QtCore.Qt.AlignmentFlag.AlignVCenter
+            )
+            self._controls_grid.addWidget(control, row_index, 1)
         self._controls_grid.setColumnStretch(1, 1)
         self._root_layout.addWidget(self.controls_chrome)
+        order = (
+            self.cmb_scalar,
+            self.cmb_cmap,
+            self.btn_open_vtp,
+            self.edit_vmin,
+            self.edit_vmax,
+            self.btn_auto_range,
+            self.chk_edges,
+            self.chk_shield_transparent,
+            self.chk_overlay_text,
+            *self._camera_buttons,
+            self.btn_save_image,
+            self.btn_save_selected_images,
+        )
+        for first, second in pairwise(order):
+            QtWidgets.QWidget.setTabOrder(first, second)
 
     @staticmethod
     def _make_control_row(
@@ -363,7 +411,7 @@ class ViewerPanel(QtWidgets.QWidget):
         self,
         buttons: Sequence[QtWidgets.QPushButton],
     ) -> QtWidgets.QWidget:
-        group = self._make_control_row(spacing=_CAMERA_GROUP_SPACING)
+        group = self._make_control_row(spacing=4)
         layout = group.layout()
         assert isinstance(layout, QtWidgets.QHBoxLayout)
         self._equalize_button_minimum_widths(buttons)
@@ -510,6 +558,7 @@ class ViewerPanel(QtWidgets.QWidget):
         if not isinstance(state, ArtifactViewState):
             raise TypeError("state must be an ArtifactViewState")
         self._artifact_view_state = state
+        self._update_status_visibility()
         label, detail, semantic_status = self._artifact_state_presentation(state)
         self.lbl_artifact_state.setText(label)
         self.lbl_artifact_detail.setText(detail)
@@ -527,6 +576,33 @@ class ViewerPanel(QtWidgets.QWidget):
         tooltip = description if state.path is not None else ""
         self.lbl_artifact_state.setToolTip(tooltip)
         self.lbl_artifact_detail.setToolTip(tooltip)
+        needs_help = state.status in {
+            ArtifactViewStatus.READ_ERROR,
+            ArtifactViewStatus.INVALID_DATA,
+            ArtifactViewStatus.WRITE_FAILED,
+        }
+        self.btn_show_diagnostics.setVisible(needs_help)
+        hints = {
+            ArtifactViewStatus.EMPTY: "Run cases to generate results, then select a case.\nOr open an existing VTP to inspect it.",
+            ArtifactViewStatus.MISSING: "No VTP is available for this case. Check Save VTP and its output directory, then run the case.",
+            ArtifactViewStatus.STALE: "The saved result does not match these inputs. Run this case again to generate a current result.",
+            ArtifactViewStatus.MISMATCHED: "The file belongs to different case metadata. Check the output location or run this case again.",
+            ArtifactViewStatus.WRITE_FAILED: "The latest result could not be saved. Open Diagnostics to inspect the output error.",
+            ArtifactViewStatus.READ_ERROR: "This VTP could not be read. Open Diagnostics for details, or open another file.",
+            ArtifactViewStatus.INVALID_DATA: "The VTP contains invalid result data. Open Diagnostics for details, or open another file.",
+        }
+        self.empty_title.setText(
+            label
+            if state.status is not ArtifactViewStatus.EMPTY
+            else "Inspect a result"
+        )
+        self.empty_hint.setText(hints.get(state.status, detail))
+        has_data = self._poly is not None
+        self.empty_panel.setVisible(not has_data)
+        self.empty_panel.setGeometry(self.plotter.interactor.geometry())
+        if not has_data:
+            self.empty_panel.raise_()
+        self._update_render_controls()
 
     def _clear_rendered_artifact(self) -> None:
         """Clear geometry and render controls without choosing a status reason."""
@@ -668,9 +744,36 @@ class ViewerPanel(QtWidgets.QWidget):
             )
         return Path.cwd()
 
+    def _update_render_controls(self) -> None:
+        has_data = self._poly is not None
+        for control in (
+            self.cmb_scalar,
+            self.cmb_cmap,
+            self.edit_vmin,
+            self.edit_vmax,
+            self.btn_auto_range,
+            self.chk_edges,
+            self.chk_shield_transparent,
+            self.chk_overlay_text,
+            *self._camera_buttons,
+        ):
+            control.setEnabled(has_data)
+            if not has_data:
+                control.setAccessibleDescription("Load a result to use this control")
+            else:
+                control.setAccessibleDescription("")
+
     def _update_export_controls(self) -> None:
         self.btn_save_image.setEnabled(
             self._poly is not None and self._selected_scalar_name() is not None
+        )
+        self.btn_save_image.setToolTip(
+            "Save the displayed result as an image"
+            if self._poly is not None
+            else "Load a result before saving an image"
+        )
+        self.btn_save_selected_images.setToolTip(
+            "Export images for selected cases; select rows in the case table first"
         )
         self.btn_save_selected_images.setEnabled(
             self._input_path is not None
@@ -902,7 +1005,20 @@ class ViewerPanel(QtWidgets.QWidget):
             maximum = minimum + 1.0e-12
         return (minimum, maximum)
 
+    def _refresh_range_validation(self) -> None:
+        texts = (self.edit_vmin.text().strip(), self.edit_vmax.text().strip())
+        for edit, text in zip((self.edit_vmin, self.edit_vmax), texts, strict=True):
+            try:
+                bad = bool(text) and not bool(np.isfinite(float(text)))
+            except ValueError:
+                bad = True
+            set_semantic_property(edit, "fluentInvalid", bad)
+            description = "Invalid number; using automatic color range" if bad else ""
+            edit.setToolTip(description)
+            edit.setAccessibleDescription(description)
+
     def _update_overlay(self) -> None:
+        self._update_status_visibility()
         if self._overlay_actor is not None:
             try:
                 self.plotter.remove_actor(self._overlay_actor)
@@ -915,15 +1031,46 @@ class ViewerPanel(QtWidgets.QWidget):
             text = self.spec.format_case(self._display_case_row)
         elif self._poly is not None:
             case_id = field_data_scalar(self._poly, "case_id")
-            text = f"case_id={case_id}" if case_id else ""
+            text = f"Case  {case_id}" if case_id else ""
         else:
             text = ""
         if not text:
             text = "(no case info for displayed VTP)"
+        # Preserve the domain's semantic lines instead of letting a corner
+        # annotation rescale and wrap a single machine-oriented string.
+        text = "\n".join(
+            textwrap.fill(
+                line, width=64, break_long_words=False, break_on_hyphens=False
+            )
+            for line in text.splitlines()
+        )
         self._overlay_actor = self.plotter.add_text(
             text,
-            position="upper_left",
-            font_size=10,
+            position=(0.025, 0.965),
+            viewport=True,
+            font="arial",
+            font_size=6,
+            shadow=False,
+            render=False,
+        )
+        prop = self._overlay_actor.GetTextProperty()
+        prop.SetFontSize(self._viewer_font_size())
+        prop.SetJustificationToLeft()
+        prop.SetVerticalJustificationToTop()
+        prop.SetLineSpacing(1.4)
+
+    def _viewer_font_size(self) -> int:
+        # Use one Qt-derived size for VTK text instead of viewport-driven sizing.
+        return max(10, round(self.font().pointSizeF()))
+
+    def _update_status_visibility(self) -> None:
+        status = self._artifact_view_state.status
+        self.artifact_status_row.setVisible(
+            status is not ArtifactViewStatus.EMPTY
+            and not (
+                status is ArtifactViewStatus.CURRENT
+                and self.chk_overlay_text.isChecked()
+            )
         )
 
     def _capture_camera_state(self) -> dict[str, object] | None:
@@ -968,8 +1115,17 @@ class ViewerPanel(QtWidgets.QWidget):
         }
         if scalar_name is not None:
             common["scalar_bar_args"] = {
-                "title": self.spec.scalar_labels.get(scalar_name, scalar_name)
+                "title": self.spec.scalar_labels.get(scalar_name, scalar_name),
+                "font_family": "arial",
+                "label_font_size": self._viewer_font_size(),
+                "title_font_size": self._viewer_font_size() + 1,
+                "bold": False,
+                "position_x": 0.18,
+                "position_y": 0.02,
+                "width": 0.64,
+                "height": 0.08,
             }
+        self._refresh_range_validation()
         shield = self._shield_mask()
         if shield is None:
             self.plotter.add_mesh(self._poly, opacity=1.0, **common)
@@ -980,6 +1136,9 @@ class ViewerPanel(QtWidgets.QWidget):
         if not self._restore_camera_state(previous_camera):
             self.plotter.reset_camera()
             self.plotter.view_vector(self._default_view_vec)
+            camera = getattr(self.plotter, "camera", None)
+            if camera is not None and hasattr(camera, "parallel_scale"):
+                camera.parallel_scale *= 1.32
         self._camera_initialized = True
         self.plotter.render()
 

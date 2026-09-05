@@ -8,13 +8,18 @@ specific values or embed raw colors.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
+import tempfile
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import Enum
+from functools import cache
 from importlib import resources
+from pathlib import Path
 from types import MappingProxyType
+from xml.sax.saxutils import escape
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
@@ -218,12 +223,9 @@ def build_application_palette(
 ) -> QtGui.QPalette:
     """Build broad Qt roles while retaining native control surface pairs.
 
-    Platform styles can own complex-control surfaces independently of an
-    explicit application light/dark request.  In particular, macOS Aqua keeps
-    a non-editable ``QComboBox`` aligned with the system appearance.  Preserve
-    the base palette's ``Button``/``ButtonText`` pair so that its native surface
-    and foreground cannot diverge.  Application-QSS buttons continue to use the
-    resolved semantic control tokens.
+    Unstyled native controls retain their system Button/ButtonText pair.
+    Buttons and combo boxes use complete application-QSS surfaces and the
+    resolved semantic foreground tokens instead.
     """
     palette = (
         QtGui.QPalette(base_palette) if base_palette is not None else QtGui.QPalette()
@@ -300,27 +302,32 @@ def build_application_palette(
     return palette
 
 
-def _native_combo_box_palette(
-    system_palette: QtGui.QPalette,
-) -> QtGui.QPalette:
-    """Pair the native combo surface with Qt's separately painted label.
+@cache
+def _indicator_directory() -> tempfile.TemporaryDirectory:
+    # Qt QSS loads SVGs by path. Keep the temporary assets alive for the entire
+    # theme lifetime; filenames are content-addressed and never touch the package.
+    return tempfile.TemporaryDirectory(prefix="panelsolver-indicators-")
 
-    On macOS the native style paints a non-editable combo's bezel with an
-    ``NSPopUpButton``, while ``QComboBox.paintEvent()`` paints its current label
-    with ``QPalette.Text``.  A partial class palette maps only that label role to
-    the system ``ButtonText`` foreground; every other combo and popup role keeps
-    resolving from the application palette.
-    """
-    palette = QtGui.QPalette()
-    role = QtGui.QPalette.ColorRole
-    group = QtGui.QPalette.ColorGroup
-    for color_group in (group.Active, group.Inactive, group.Disabled):
-        palette.setColor(
-            color_group,
-            role.Text,
-            system_palette.color(color_group, role.ButtonText),
-        )
-    return palette
+
+def _indicator_urls(theme: ResolvedTheme) -> dict[str, str]:
+    """Resolve crisp control icons from the same semantic text colors as controls."""
+    result = {}
+    for name, token, shape in (
+        ("chevron_down", "text_secondary", "M2.5 4.5 6 8 9.5 4.5"),
+        ("chevron_down_disabled", "disabled_text", "M2.5 4.5 6 8 9.5 4.5"),
+        ("step_plus", "text_secondary", "M2.5 6h7M6 2.5v7"),
+        ("step_plus_disabled", "disabled_text", "M2.5 6h7M6 2.5v7"),
+        ("step_minus", "text_secondary", "M2.5 6h7"),
+        ("step_minus_disabled", "disabled_text", "M2.5 6h7"),
+    ):
+        color = escape(theme.value(token), {'"': "&quot;"})
+        svg = f'<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12"><path d="{shape}" fill="none" stroke="{color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+        filename = hashlib.sha256(svg.encode()).hexdigest()[:16] + ".svg"
+        path = Path(_indicator_directory().name) / filename
+        if not path.exists():
+            path.write_text(svg, encoding="utf-8")
+        result[name] = path.as_posix()
+    return result
 
 
 def _qss_template() -> str:
@@ -338,10 +345,11 @@ def render_application_qss(
     """Generate application QSS and reject every unresolved placeholder."""
     source = _qss_template() if template is None else template
     missing: set[str] = set()
+    values = {**theme.tokens, **_indicator_urls(theme)}
 
     def replace(match: re.Match[str]) -> str:
         name = match.group(1)
-        value = theme.tokens.get(name)
+        value = values.get(name)
         if value is None:
             missing.add(name)
             return match.group(0)
@@ -455,9 +463,8 @@ class ApplicationThemeManager(QtCore.QObject):
         style = self.application.style()
         if style is not None:
             self._system_palette = QtGui.QPalette(style.standardPalette())
-        # Explicit application themes still retain native complex-control
-        # Button/ButtonText roles. Refresh those roles when the system scheme
-        # changes even though the requested semantic mode stays fixed.
+        # Refresh unstyled native controls and high-contrast fallbacks even
+        # when an explicit light/dark application theme stays fixed.
         QtCore.QTimer.singleShot(0, self.apply)
 
     @staticmethod
@@ -499,7 +506,7 @@ class ApplicationThemeManager(QtCore.QObject):
             qss = render_application_qss(theme)
             self.application.setPalette(palette)
             self.application.setPalette(
-                _native_combo_box_palette(self._system_palette),
+                palette,
                 "QComboBox",
             )
             self.application.setStyleSheet(qss)  # fluent-audit: allow generated app QSS

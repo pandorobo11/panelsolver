@@ -6,7 +6,7 @@ from unittest.mock import Mock, patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6 import QtCore, QtGui, QtWidgets
+from PySide6 import QtCore, QtGui, QtTest, QtWidgets
 
 from panelsolver.app.gui_theme import (
     SEMANTIC_PROPERTY_NAMES,
@@ -180,8 +180,6 @@ class GuiThemeTests(unittest.TestCase):
         for mode in (ThemeMode.LIGHT, ThemeMode.DARK):
             qss = render_application_qss(resolve_theme(mode))
             for control in (
-                "QComboBox",
-                "QSpinBox",
                 "QDoubleSpinBox",
                 "QDateEdit",
                 "QTimeEdit",
@@ -207,9 +205,11 @@ class GuiThemeTests(unittest.TestCase):
                 "qradialgradient",
                 "qconicalgradient",
                 "animation",
-                "image:",
             ):
                 self.assertNotIn(decorative_treatment, qss)
+            for rule in qss.split("}"):
+                if rule.strip().startswith("QProgressBar"):
+                    self.assertNotIn("image:", rule)
 
     def test_progress_status_text_and_boundaries_have_contrast(self) -> None:
         roles = (
@@ -248,63 +248,11 @@ class GuiThemeTests(unittest.TestCase):
         selector = 'QPushButton[viewerCameraControl="true"]'
         rule = qss.split(f"{selector} {{", 1)[1].split("}", 1)[0]
 
-        self.assertIn("padding-left: 6px", rule)
-        self.assertIn("padding-right: 6px", rule)
+        self.assertIn("padding: 4px 6px", rule)
         self.assertNotIn("padding-top", rule)
         self.assertNotIn("padding-bottom", rule)
         self.assertNotIn("min-height", rule)
         self.assertNotIn("fluentSize", qss)
-
-    def test_diagnostics_disclosure_states_are_bounded_and_subtle_stays_global(
-        self,
-    ) -> None:
-        disclosure_selector = 'QToolButton[diagnosticsDisclosure="true"]'
-        subtle_selector = (
-            'QPushButton[fluentAppearance="subtle"],\n'
-            'QToolButton[fluentAppearance="subtle"]'
-        )
-        for mode in (ThemeMode.LIGHT, ThemeMode.DARK):
-            theme = resolve_theme(mode)
-            qss = render_application_qss(theme)
-            rest = qss.split(f"{disclosure_selector} {{", 1)[1].split("}", 1)[0]
-            checked = qss.split(f"{disclosure_selector}:checked {{", 1)[1].split(
-                "}", 1
-            )[0]
-            hover = qss.split(f"{disclosure_selector}:hover {{", 1)[1].split("}", 1)[0]
-            pressed = qss.split(f"{disclosure_selector}:pressed {{", 1)[1].split(
-                "}", 1
-            )[0]
-            subtle = qss.split(f"{subtle_selector} {{", 1)[1].split("}", 1)[0]
-
-            with self.subTest(mode=mode):
-                self.assertIn(
-                    f"background-color: {theme.value('control_background')}",
-                    rest,
-                )
-                self.assertIn(
-                    f"border-color: {theme.value('border_subtle')}",
-                    rest,
-                )
-                self.assertIn("text-align: left", rest)
-                self.assertIn(
-                    f"background-color: {theme.value('inactive_selection_background')}",
-                    checked,
-                )
-                self.assertIn(
-                    f"border-color: {theme.value('border_control')}",
-                    checked,
-                )
-                self.assertIn(
-                    f"background-color: {theme.value('control_hover')}",
-                    hover,
-                )
-                self.assertIn(
-                    f"background-color: {theme.value('control_pressed')}",
-                    pressed,
-                )
-                self.assertIn("background-color: transparent", subtle)
-                self.assertIn("border-color: transparent", subtle)
-                self.assertNotIn("fluentSize", qss)
 
     def test_palette_populates_active_inactive_and_disabled_groups(self) -> None:
         theme = resolve_theme(ThemeMode.LIGHT)
@@ -465,9 +413,15 @@ class GuiThemeTests(unittest.TestCase):
                         ),
                     )
                     self.assertEqual(
-                        palette.color(
-                            QtGui.QPalette.ColorGroup.Active,
-                            QtGui.QPalette.ColorRole.ButtonText,
+                        (
+                            QtGui.QColor(theme.value("text_primary"))
+                            if isinstance(
+                                control, (QtWidgets.QComboBox, QtWidgets.QSpinBox)
+                            )
+                            else palette.color(
+                                QtGui.QPalette.ColorGroup.Active,
+                                QtGui.QPalette.ColorRole.ButtonText,
+                            )
                         ),
                         control.palette().color(
                             QtGui.QPalette.ColorGroup.Active,
@@ -486,111 +440,133 @@ class GuiThemeTests(unittest.TestCase):
                     )
                 control.deleteLater()
 
-    def test_native_combo_label_pairs_with_system_button_surface(self) -> None:
+    def test_combo_uses_semantic_surface_in_both_themes_and_disabled_state(
+        self,
+    ) -> None:
         role = QtGui.QPalette.ColorRole
         group = QtGui.QPalette.ColorGroup
-        system_palette = QtGui.QPalette()
-        expected = {
-            group.Active: ("#ffffff", "#111111"),
-            group.Inactive: ("#f4f4f4", "#222222"),
-            group.Disabled: ("#e2e2e2", "#595959"),
-        }
-        for color_group, (surface, foreground) in expected.items():
-            system_palette.setColor(
-                color_group,
-                role.Button,
-                QtGui.QColor(surface),
-            )
-            system_palette.setColor(
-                color_group,
-                role.ButtonText,
-                QtGui.QColor(foreground),
-            )
-
-        manager = ApplicationThemeManager(self.app, mode=ThemeMode.DARK)
-        manager._system_palette = system_palette
-        theme = manager.apply()
         combo = QtWidgets.QComboBox()
-        combo.addItem("Cp")
-        combo.ensurePolished()
-        spin = QtWidgets.QSpinBox()
-        spin.ensurePolished()
-        application_palette = self.app.palette()
-
-        self.assertEqual(
-            QtGui.QColor(theme.value("text_primary")),
-            application_palette.color(group.Active, role.Text),
-        )
-        self.assertNotEqual(
-            application_palette.color(group.Active, role.Text),
-            combo.palette().color(group.Active, role.Text),
-        )
-        for color_group, (surface, foreground) in expected.items():
-            with self.subTest(group=color_group):
-                self.assertEqual(
-                    QtGui.QColor(foreground),
-                    combo.palette().color(color_group, role.Text),
-                )
-                self.assertEqual(
-                    QtGui.QColor(surface),
-                    combo.palette().color(color_group, role.Button),
-                )
-                self.assertGreaterEqual(
-                    _contrast_ratio(foreground, surface),
-                    4.5,
-                )
-                self.assertEqual(
-                    application_palette.color(color_group, role.Text),
-                    spin.palette().color(color_group, role.Text),
-                )
-
-        combo.setEnabled(False)
-        self.assertEqual(group.Disabled, combo.palette().currentColorGroup())
-        self.assertEqual(
-            QtGui.QColor(expected[group.Disabled][1]),
-            combo.palette().color(role.Text),
-        )
-        combo.view().ensurePolished()
-        self.assertEqual(
-            application_palette.color(group.Active, role.Text),
-            combo.view().palette().color(group.Active, role.Text),
-        )
-        self.assertEqual("Cp", combo.currentText())
-        combo.deleteLater()
-        spin.deleteLater()
-        manager.deleteLater()
-
-    def test_native_combo_label_palette_refreshes_with_system_appearance(self) -> None:
-        role = QtGui.QPalette.ColorRole
-        group = QtGui.QPalette.ColorGroup
-        manager = ApplicationThemeManager(self.app, mode=ThemeMode.DARK)
-        combo = QtWidgets.QComboBox()
-        combo.addItem("jet")
-
-        light_system = QtGui.QPalette()
-        light_system.setColor(role.ButtonText, QtGui.QColor("#111111"))
-        manager._system_palette = light_system
-        for mode in (ThemeMode.LIGHT, ThemeMode.DARK, ThemeMode.SYSTEM):
-            manager.set_mode(mode)
+        combo.addItems(["Cp", "Area"])
+        manager = ApplicationThemeManager(self.app)
+        for mode in (ThemeMode.LIGHT, ThemeMode.DARK):
+            theme = manager.set_mode(mode)
+            combo.setEnabled(True)
             combo.ensurePolished()
-            with self.subTest(mode=mode):
-                self.assertEqual(
-                    QtGui.QColor("#111111"),
-                    combo.palette().color(group.Active, role.Text),
-                )
-
-        dark_system = QtGui.QPalette()
-        dark_system.setColor(role.ButtonText, QtGui.QColor("#f5f5f5"))
-        manager._system_palette = dark_system
-        manager.set_mode(ThemeMode.DARK)
-        self.app.processEvents()
-        self.assertEqual(
-            QtGui.QColor("#f5f5f5"),
-            combo.palette().color(group.Active, role.Text),
-        )
-        self.assertEqual("jet", combo.currentText())
+            self.app.processEvents()
+            self.assertEqual(
+                QtGui.QColor(theme.value("text_primary")),
+                combo.palette().color(group.Active, role.Text),
+            )
+            self.assertEqual(
+                QtGui.QColor(theme.value("control_background")),
+                combo.palette().color(group.Active, role.Base),
+            )
+            combo.setEnabled(False)
+            self.app.processEvents()
+            self.assertEqual(
+                QtGui.QColor(theme.value("disabled_text")),
+                combo.palette().color(role.Text),
+            )
+            self.assertEqual(
+                QtGui.QColor(theme.value("disabled_background")),
+                combo.palette().color(role.Base),
+            )
+            self.assertEqual("Cp", combo.currentText())
         combo.deleteLater()
         manager.deleteLater()
+
+    def test_styled_combo_keeps_keyboard_selection_and_popup_colors(self) -> None:
+        combo = QtWidgets.QComboBox()
+        combo.addItems(["Cp", "Area", "Shielded"])
+        manager = ApplicationThemeManager(self.app)
+        for mode in (ThemeMode.LIGHT, ThemeMode.DARK):
+            theme = manager.set_mode(mode)
+            combo.setCurrentIndex(0)
+            combo.show()
+            combo.setFocus()
+            self.app.processEvents()
+            QtTest.QTest.keyClick(combo, QtCore.Qt.Key.Key_Down)
+            self.assertEqual("Area", combo.currentText())
+            combo.showPopup()
+            self.app.processEvents()
+            self.assertTrue(combo.view().isVisible())
+            self.assertEqual(
+                QtGui.QColor(theme.value("text_primary")),
+                combo.view().palette().color(QtGui.QPalette.ColorRole.Text),
+            )
+            QtTest.QTest.keyClick(combo.view(), QtCore.Qt.Key.Key_Down)
+            QtTest.QTest.keyClick(combo.view(), QtCore.Qt.Key.Key_Return)
+            self.assertEqual("Shielded", combo.currentText())
+            combo.hidePopup()
+        combo.close()
+        manager.deleteLater()
+
+    def test_themed_integer_input_preserves_keyboard_and_step_buttons(self) -> None:
+        for mode in (ThemeMode.LIGHT, ThemeMode.DARK):
+            self.app.setStyleSheet(render_application_qss(resolve_theme(mode)))
+            spin = QtWidgets.QSpinBox()
+            spin.setRange(0, 2_147_483_647)
+            spin.resize(140, 30)
+            spin.show()
+            spin.setFocus()
+            self.app.processEvents()
+            spin.selectAll()
+            QtTest.QTest.keyClicks(spin, "2000")
+            QtTest.QTest.keyClick(spin, QtCore.Qt.Key.Key_Return)
+            self.assertEqual(2000, spin.value())
+            option = QtWidgets.QStyleOptionSpinBox()
+            spin.initStyleOption(option)
+            up = spin.style().subControlRect(
+                QtWidgets.QStyle.ComplexControl.CC_SpinBox,
+                option,
+                QtWidgets.QStyle.SubControl.SC_SpinBoxUp,
+                spin,
+            )
+            QtTest.QTest.mouseClick(
+                spin, QtCore.Qt.MouseButton.LeftButton, pos=up.center()
+            )
+            self.assertEqual(2001, spin.value())
+            down = spin.style().subControlRect(
+                QtWidgets.QStyle.ComplexControl.CC_SpinBox,
+                option,
+                QtWidgets.QStyle.SubControl.SC_SpinBoxDown,
+                spin,
+            )
+            self.assertFalse(up.intersects(down))
+            self.assertLess(down.center().x(), up.center().x())
+            QtTest.QTest.mouseClick(
+                spin, QtCore.Qt.MouseButton.LeftButton, pos=down.center()
+            )
+            self.assertEqual(2000, spin.value())
+
+            spin.setValue(spin.maximum())
+            QtTest.QTest.keyClick(spin, QtCore.Qt.Key.Key_Up)
+            self.assertEqual(2_147_483_647, spin.value())
+            spin.setValue(0)
+            QtTest.QTest.keyClick(spin, QtCore.Qt.Key.Key_Down)
+            self.assertEqual(0, spin.value())
+            spin.setReadOnly(True)
+            QtTest.QTest.keyClick(spin, QtCore.Qt.Key.Key_Up)
+            self.assertEqual(0, spin.value())
+            spin.close()
+
+    def test_themed_chevrons_load_as_images_and_spin_buttons_are_right_aligned(
+        self,
+    ) -> None:
+        import re
+
+        for mode in (ThemeMode.LIGHT, ThemeMode.DARK):
+            qss = render_application_qss(resolve_theme(mode))
+            paths = re.findall(r'image: url\("([^"\n]+)"\)', qss)
+            self.assertGreaterEqual(len(paths), 2)
+            for path in paths:
+                image = QtGui.QImage(path)
+                self.assertFalse(image.isNull())
+                self.assertEqual(QtCore.QSize(12, 12), image.size())
+            rule = qss.split("QSpinBox::up-button, QSpinBox::down-button {", 1)[
+                1
+            ].split("}", 1)[0]
+            self.assertIn("subcontrol-position: center right", rule)
 
     def test_semantic_property_helper_preserves_behavior(self) -> None:
         self.assertEqual(

@@ -329,8 +329,8 @@ class SolverSpecTests(unittest.TestCase):
 
     def test_product_case_formatting_remains_independent(self) -> None:
         self.assertEqual(
-            "case_id=f | mode=A | S=5.0 | Ti=300.0 | Tw=400.0 | "
-            "alpha_t=1.0 | beta_s=2.0 | shield=1 | ray=rtree",
+            "Case  f\nMode  A  ·  S  5.0  ·  Ti [K]  300.0  ·  Tw [K]  400.0\n"
+            "Alpha_t [deg]  1.0  ·  Beta_s [deg]  2.0\nShielding  1  ·  Ray backend  rtree",
             format_fmf_case(
                 {
                     "case_id": "f",
@@ -346,8 +346,10 @@ class SolverSpecTests(unittest.TestCase):
             ),
         )
         self.assertEqual(
-            "case_id=n | Mach=6.0 | gamma=1.4 | w_eq=tangent_cone | "
-            "l_eq=shield | alpha_i=3.0 | phi=4.0 | shield=0 | ray=auto",
+            "Case  n\nMach  6.0  ·  Gamma  1.4\n"
+            "Windward  tangent_cone  ·  Leeward  shield\n"
+            "Incidence [deg]  3.0  ·  Bank [deg]  4.0\n"
+            "Shielding  0  ·  Ray backend  auto",
             format_newt_case(
                 {
                     "case_id": "n",

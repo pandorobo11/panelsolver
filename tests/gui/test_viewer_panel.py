@@ -66,7 +66,9 @@ class FakePlotter:
 
     def add_text(self, text, **_kwargs):
         self.text_calls.append(text)
-        return object()
+        from vtkmodules.vtkRenderingCore import vtkTextActor
+
+        return vtkTextActor()
 
     def remove_actor(self, _actor) -> None:
         return None
@@ -134,10 +136,12 @@ class ViewerPanelTests(unittest.TestCase):
         )
         return viewer, plotter
 
-    def test_initial_status_is_compact_accessible_neutral_empty_state(self) -> None:
+    def test_initial_empty_guidance_has_no_duplicate_status_row(self) -> None:
         viewer, _plotter = self.make_viewer()
         self.assertEqual(ArtifactViewStatus.EMPTY, viewer.artifact_view_state.status)
-        self.assertEqual("No result displayed", viewer.lbl_artifact_state.text())
+        self.assertTrue(viewer.artifact_status_row.isHidden())
+        self.assertFalse(viewer.empty_panel.isHidden())
+        self.assertEqual("Inspect a result", viewer.empty_title.text())
         self.assertEqual(
             "Select a case or open a VTP.",
             viewer.lbl_artifact_detail.text(),
@@ -155,101 +159,27 @@ class ViewerPanelTests(unittest.TestCase):
             viewer.lbl_artifact_detail.sizePolicy().horizontalPolicy(),
         )
 
-    def test_control_grid_shares_one_label_and_control_boundary(self) -> None:
+    def test_all_frequent_controls_stay_visible_without_disclosure(self) -> None:
         viewer, _plotter = self.make_viewer()
-        expected = (
-            (viewer.lbl_scalar, viewer.scalar_row, viewer.cmb_scalar),
-            (viewer.lbl_display, viewer.display_row, viewer.chk_edges),
-            (viewer.lbl_colorbar, viewer.colorbar_row, viewer.edit_vmin),
-            (viewer.lbl_camera, viewer.camera_row, viewer.btn_view_xp),
-            (viewer.lbl_export, viewer.export_row, viewer.btn_save_image),
-        )
-
-        for row_index, (label, row_widget, _first_control) in enumerate(expected):
-            with self.subTest(label=label.text()):
-                label_position = viewer._controls_grid.getItemPosition(
-                    viewer._controls_grid.indexOf(label)
-                )
-                row_position = viewer._controls_grid.getItemPosition(
-                    viewer._controls_grid.indexOf(row_widget)
-                )
-                self.assertEqual((row_index, 0, 1, 1), label_position)
-                self.assertEqual((row_index, 1, 1, 1), row_position)
-
-        viewer.resize(max(800, viewer.minimumSizeHint().width()), 600)
+        viewer.load_vtp("/tmp/case.vtp", FakePoly({"cp": [0.2, 0.5]}))
+        viewer.resize(850, 650)
         viewer.show()
         self.app.processEvents()
-        starts = {
-            first_control.mapTo(viewer, QtCore.QPoint(0, 0)).x()
-            for _label, _row_widget, first_control in expected
-        }
-        self.assertEqual(1, len(starts))
-        viewer.close()
-
-    def test_camera_buttons_are_ordered_and_equal_only_within_subgroups(
-        self,
-    ) -> None:
-        viewer, _plotter = self.make_viewer()
-        groups = (
-            viewer._camera_axis_buttons,
-            viewer._camera_isometric_buttons,
-            viewer._camera_wind_buttons,
-        )
-        self.assertEqual(
-            [
-                viewer.camera_axis_group,
-                viewer.camera_isometric_group,
-                viewer.camera_wind_group,
-            ],
-            [viewer.camera_row.layout().itemAt(index).widget() for index in range(3)],
-        )
-        self.assertEqual(
-            [
-                "+X",
-                "-X",
-                "+Y",
-                "-Y",
-                "+Z",
-                "-Z",
-                "-X -Y +Z",
-                "+X -Y -Z",
-                "Wind +",
-                "Wind -",
-            ],
-            [button.text() for button in viewer._camera_buttons],
-        )
-        for buttons in groups:
-            with self.subTest(buttons=[button.text() for button in buttons]):
-                widths = {button.minimumWidth() for button in buttons}
-                self.assertEqual(1, len(widths))
-                width = widths.pop()
-                self.assertGreater(width, 0)
-                self.assertEqual(
-                    width,
-                    max(button.sizeHint().width() for button in buttons),
-                )
-                self.assertTrue(
-                    all(
-                        button.property("viewerCameraControl") is True
-                        for button in buttons
-                    )
-                )
-        viewer.show()
-        self.app.processEvents()
-        wanted = set(viewer._camera_buttons)
-        focus_order = []
-        current = viewer.btn_view_xp
-        for _index in range(80):
-            if current in wanted and current not in focus_order:
-                focus_order.append(current)
-            if len(focus_order) == len(wanted):
-                break
-            current = current.nextInFocusChain()
-        self.assertEqual(list(viewer._camera_buttons), focus_order)
+        self.assertTrue(viewer.btn_view_iso_1.isVisible())
+        self.assertTrue(viewer.btn_view_wind.isVisible())
+        self.assertTrue(viewer.chk_edges.isVisible())
+        self.assertTrue(viewer.btn_view_xp.isVisible())
+        self.assertTrue(viewer.btn_view_iso_2.isVisible())
+        self.assertTrue(viewer.btn_view_wind_rev.isVisible())
+        viewer.btn_view_xp.click()
+        self.assertEqual((1, 0, 0), _plotter.view_vectors[-1])
+        viewer.btn_view_iso_1.click()
+        self.assertEqual((-1, -1, 1), _plotter.view_vectors[-1])
         viewer.close()
 
     def test_canvas_is_full_bleed_while_viewer_chrome_is_inset(self) -> None:
         viewer, plotter = self.make_viewer()
+        viewer.load_vtp("/tmp/case.vtp", FakePoly({"cp": [0.2, 0.5]}))
         root_margins = viewer._root_layout.contentsMargins()
         self.assertEqual(
             (0, 0, 0, 0),
@@ -381,14 +311,22 @@ class ViewerPanelTests(unittest.TestCase):
             plotter.mesh_calls[0][1]["scalars"],
         )
         self.assertEqual(
-            {"title": "Normal traction coeff."},
-            plotter.mesh_calls[0][1]["scalar_bar_args"],
+            "Normal traction coeff.",
+            plotter.mesh_calls[0][1]["scalar_bar_args"]["title"],
         )
         self.assertEqual((0.2, 0.4), plotter.mesh_calls[0][1]["clim"])
-        self.assertIn("case_id=case", plotter.text_calls[-1])
+        self.assertIn("Case  case", plotter.text_calls[-1])
+        self.assertEqual(
+            viewer._overlay_actor.GetTextProperty().GetFontSize(),
+            plotter.mesh_calls[0][1]["scalar_bar_args"]["label_font_size"],
+        )
         self.assertTrue(plotter.parallel_enabled)
         self.assertEqual(ArtifactViewStatus.CURRENT, viewer.artifact_view_state.status)
         self.assertEqual("Current result", viewer.lbl_artifact_state.text())
+        self.assertTrue(viewer.artifact_status_row.isHidden())
+        viewer.chk_overlay_text.setChecked(False)
+        self.assertFalse(viewer.artifact_status_row.isHidden())
+        viewer.chk_overlay_text.setChecked(True)
         self.assertEqual("case · case.vtp", viewer.lbl_artifact_detail.text())
         expected_path = str(Path("/tmp/case.vtp").resolve(strict=False))
         self.assertIn(expected_path, viewer.lbl_artifact_detail.toolTip())
@@ -464,8 +402,8 @@ class ViewerPanelTests(unittest.TestCase):
         self.assertEqual("cp", viewer.cmb_scalar.currentData())
         self.assertEqual("cp", plotter.mesh_calls[0][1]["scalars"])
         self.assertEqual(
-            {"title": "Cp"},
-            plotter.mesh_calls[0][1]["scalar_bar_args"],
+            "Cp",
+            plotter.mesh_calls[0][1]["scalar_bar_args"]["title"],
         )
 
     def test_reload_uses_first_available_preferred_scalar(self) -> None:
@@ -544,7 +482,7 @@ class ViewerPanelTests(unittest.TestCase):
             "Not matched to current input · stale.vtp",
             viewer.lbl_artifact_detail.text(),
         )
-        self.assertEqual("case_id=case", plotter.text_calls[-1])
+        self.assertEqual("Case  case", plotter.text_calls[-1])
         with patch.object(
             QtWidgets.QFileDialog,
             "getSaveFileName",
@@ -626,7 +564,7 @@ class ViewerPanelTests(unittest.TestCase):
         self.assertEqual(manual_path, viewer._loaded_vtp_path)
         self.assertEqual(mesh_calls, plotter.mesh_calls)
         self.assertEqual(camera_position, plotter.camera.position)
-        self.assertIn("mode=A", plotter.text_calls[-1])
+        self.assertIn("Mode  A", plotter.text_calls[-1])
         assert_paths_equivalent(
             self,
             "/tmp/current/results/images/case__normal_traction_coeff.png",
@@ -681,7 +619,7 @@ class ViewerPanelTests(unittest.TestCase):
         self.assertIs(poly, viewer._poly)
         self.assertEqual(manual_path, viewer._loaded_vtp_path)
         self.assertEqual(mesh_calls, plotter.mesh_calls)
-        self.assertEqual("case_id=case", plotter.text_calls[-1])
+        self.assertEqual("Case  case", plotter.text_calls[-1])
         assert_paths_equivalent(
             self,
             "/tmp/images/manual-current__normal_traction_coeff.png",
