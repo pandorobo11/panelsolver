@@ -9,14 +9,9 @@ QPushButton, QToolButton {
     background-color: @{control_background};
     color: @{text_primary};
     border: 1px solid @{border_control};
-    border-radius: 3px;
-    padding: 4px 10px;
-}
-
-/* Viewer-local density; defer a shared size role until cross-panel reuse. */
-QPushButton[viewerCameraControl="true"] {
-    padding-left: 6px;
-    padding-right: 6px;
+    border-radius: 5px;
+    min-height: 18px;
+    padding: 4px 12px;
 }
 
 QPushButton:hover, QToolButton:hover {
@@ -76,30 +71,6 @@ QToolButton[fluentAppearance="subtle"]:hover {
 QPushButton[fluentAppearance="subtle"]:pressed,
 QToolButton[fluentAppearance="subtle"]:pressed {
     background-color: @{control_pressed};
-}
-
-/* CasesPanel-local disclosure affordance; global subtle actions stay transparent. */
-QToolButton[diagnosticsDisclosure="true"] {
-    background-color: @{control_background};
-    color: @{text_primary};
-    border-color: @{border_subtle};
-    text-align: left;
-}
-
-QToolButton[diagnosticsDisclosure="true"]:checked {
-    background-color: @{inactive_selection_background};
-    color: @{inactive_selection_text};
-    border-color: @{border_control};
-}
-
-QToolButton[diagnosticsDisclosure="true"]:hover {
-    background-color: @{control_hover};
-    border-color: @{border_hover};
-}
-
-QToolButton[diagnosticsDisclosure="true"]:pressed {
-    background-color: @{control_pressed};
-    border-color: @{border_hover};
 }
 
 QPushButton[fluentAppearance="danger"],
@@ -269,9 +240,127 @@ QAbstractItemView:focus {
     border: 1px solid @{focus_border};
 }
 
+/* The pinned view shares the table frame; a second border offsets its rows. */
+QTableView[workbenchPinned="true"] { border: none; }
+
 QToolTip {
     background-color: @{tooltip_background};
     color: @{tooltip_text};
     border: 1px solid @{border_control};
     padding: 3px 5px;
 }
+
+QLabel[workbenchHeading="true"] {
+    font-weight: 600;
+    color: @{text_primary};
+    padding: 4px 0px;
+}
+QLabel[workbenchSecondary="true"] {
+    color: @{text_secondary};
+}
+
+/* Complete combo surfaces replace Aqua's separate native bezel/label pair. */
+QComboBox {
+    background-color: @{control_background};
+    color: @{text_primary};
+    border: 1px solid @{border_control};
+    border-radius: 5px;
+    min-height: 18px;
+    padding: 4px 30px 4px 10px;
+    selection-background-color: @{selection_background};
+    selection-color: @{selection_text};
+}
+QComboBox:hover {
+    background-color: @{control_hover};
+    border-color: @{border_hover};
+}
+QComboBox:on {
+    background-color: @{control_pressed};
+    border-color: @{border_hover};
+}
+QComboBox:focus {
+    border-color: @{focus_border};
+}
+QComboBox:disabled {
+    background-color: @{disabled_background};
+    color: @{disabled_text};
+    border-color: @{disabled_border};
+}
+QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 26px;
+    border: none;
+}
+QComboBox::down-arrow {
+    image: url("@{chevron_down}");
+    width: 12px;
+    height: 12px;
+}
+QComboBox::down-arrow:disabled {
+    image: url("@{chevron_down_disabled}");
+}
+QComboBox QAbstractItemView {
+    background-color: @{control_background};
+    color: @{text_primary};
+    border: 1px solid @{border_control};
+    border-radius: 4px;
+    padding: 4px;
+    selection-background-color: @{selection_background};
+    selection-color: @{selection_text};
+}
+QComboBox QAbstractItemView::item {
+    min-height: 24px;
+    padding: 2px 8px;
+}
+QPushButton[viewerCameraControl="true"] {
+    padding: 4px 6px;
+}
+
+/* Keep native integer editing/stepping with a complete themed spin surface. */
+QSpinBox {
+    background-color: @{control_background};
+    color: @{text_primary};
+    border: 1px solid @{border_control};
+    border-radius: 5px;
+    min-height: 22px;
+    padding: 3px 58px 3px 10px;
+    selection-background-color: @{selection_background};
+    selection-color: @{selection_text};
+}
+QSpinBox:hover { border-color: @{border_hover}; }
+QSpinBox:focus { border-color: @{focus_border}; }
+QSpinBox:disabled {
+    background-color: @{disabled_background};
+    color: @{disabled_text};
+    border-color: @{disabled_border};
+}
+QSpinBox[readOnly="true"] { background-color: @{secondary_surface}; }
+QSpinBox::up-button, QSpinBox::down-button {
+    subcontrol-origin: padding;
+    subcontrol-position: center right;
+    width: 24px;
+    height: 22px;
+    border: none;
+    border-radius: 3px;
+    background-color: transparent;
+}
+QSpinBox::up-button { right: 3px; }
+QSpinBox::down-button { right: 29px; }
+QSpinBox::up-button:hover, QSpinBox::down-button:hover {
+    background-color: @{control_hover};
+}
+QSpinBox::up-button:pressed, QSpinBox::down-button:pressed {
+    background-color: @{control_pressed};
+}
+QSpinBox::up-button:disabled, QSpinBox::down-button:disabled,
+QSpinBox[readOnly="true"]::up-button, QSpinBox[readOnly="true"]::down-button {
+    background-color: transparent;
+}
+QSpinBox::up-arrow, QSpinBox::down-arrow { width: 12px; height: 12px; }
+QSpinBox::up-arrow { image: url("@{step_plus}"); }
+QSpinBox::down-arrow { image: url("@{step_minus}"); }
+QSpinBox::up-arrow:disabled, QSpinBox::up-arrow:off,
+QSpinBox[readOnly="true"]::up-arrow { image: url("@{step_plus_disabled}"); }
+QSpinBox::down-arrow:disabled, QSpinBox::down-arrow:off,
+QSpinBox[readOnly="true"]::down-arrow { image: url("@{step_minus_disabled}"); }

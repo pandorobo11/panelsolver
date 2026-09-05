@@ -10,6 +10,7 @@ from pathlib import Path
 import pyvista as pv
 from PySide6 import QtCore, QtWidgets
 
+from .gui_components import FlowLayout, FrozenCaseTable
 from .gui_theme import set_semantic_property
 from .output_status import OutputKind, OutputPhase
 from .path_resolution import (
@@ -35,7 +36,6 @@ from .viewer_data import (
 _INLINE_LABEL_CONTROL_SPACING = 4
 _RUN_SETTINGS_GROUP_SPACING = 12
 _RUN_ACTION_SPACING = 8
-_DIAGNOSTICS_DISCLOSURE_ICON_SIZE = 12
 _CHECKPOINT_ORDINARY_DIGITS = 6
 
 
@@ -247,11 +247,15 @@ class CasesPanel(QtWidgets.QWidget):
         self.btn_cancel.setEnabled(False)
         self.btn_run.setEnabled(False)
         self.lbl_case_summary = QtWidgets.QLabel("No cases loaded")
-        self.lbl_selection_summary = QtWidgets.QLabel("Selected: 0")
         self.spin_workers = QtWidgets.QSpinBox()
+        self.spin_workers.setAccessibleName("Workers")
+        self.spin_workers.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
         self.spin_workers.setRange(1, os.cpu_count() or 1)
         self.spin_workers.setValue(1)
         self.spin_checkpoint_every_cases = QtWidgets.QSpinBox()
+        self.spin_checkpoint_every_cases.setAlignment(
+            QtCore.Qt.AlignmentFlag.AlignRight
+        )
         self.spin_checkpoint_every_cases.setRange(0, 2_147_483_647)
         self.spin_checkpoint_every_cases.setValue(DEFAULT_CHECKPOINT_CASES)
         self.spin_checkpoint_every_cases.setAccessibleName("Checkpoint every")
@@ -264,7 +268,7 @@ class CasesPanel(QtWidgets.QWidget):
         self.spin_checkpoint_every_cases.setMaximumWidth(
             _bounded_spin_box_width(self.spin_checkpoint_every_cases)
         )
-        self.case_table = QtWidgets.QTableWidget()
+        self.case_table = FrozenCaseTable()
         self.case_table.setSelectionMode(
             QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection
         )
@@ -277,31 +281,15 @@ class CasesPanel(QtWidgets.QWidget):
         self.case_table.setAlternatingRowColors(True)
         self.case_table.setWordWrap(False)
         self.case_table.verticalHeader().setVisible(False)
-        self.btn_diagnostics = QtWidgets.QToolButton()
-        self.btn_diagnostics.setText("Diagnostics")
+        self.btn_diagnostics = QtWidgets.QPushButton("Show diagnostics")
         self.btn_diagnostics.setCheckable(True)
-        self.btn_diagnostics.setChecked(False)
-        self.btn_diagnostics.setArrowType(QtCore.Qt.ArrowType.RightArrow)
-        self.btn_diagnostics.setIconSize(
-            QtCore.QSize(
-                _DIAGNOSTICS_DISCLOSURE_ICON_SIZE,
-                _DIAGNOSTICS_DISCLOSURE_ICON_SIZE,
-            )
-        )
-        self.btn_diagnostics.setToolButtonStyle(
-            QtCore.Qt.ToolButtonStyle.ToolButtonTextBesideIcon
-        )
-        self.btn_diagnostics.setSizePolicy(
-            QtWidgets.QSizePolicy.Policy.Expanding,
-            QtWidgets.QSizePolicy.Policy.Fixed,
-        )
         self.btn_diagnostics.setAccessibleName("Diagnostics")
-        self.btn_diagnostics.setProperty("diagnosticsDisclosure", True)
-        set_semantic_property(
-            self.btn_diagnostics,
-            "fluentAppearance",
-            "subtle",
+        self.btn_clear_diagnostics = QtWidgets.QPushButton("Clear log")
+        self.btn_clear_diagnostics.setAccessibleName("Clear diagnostics")
+        self.btn_clear_diagnostics.setToolTip(
+            "Clear the log and reset warning and error counts"
         )
+        self.btn_clear_diagnostics.clicked.connect(self.clear_diagnostics)
         self.log = QtWidgets.QPlainTextEdit()
         self.log.setReadOnly(True)
         self.log.setMaximumBlockCount(8000)
@@ -317,6 +305,15 @@ class CasesPanel(QtWidgets.QWidget):
         self._run_rows: tuple[CaseRow, ...] = ()
         self._run_output_path: Path | None = None
         self._invalid_current_vtp_artifacts: set[tuple[str, Path]] = set()
+        self._cancel_requested = False
+        self._warning_messages = 0
+        self._error_messages = 0
+        self._column_preferences: dict[str, dict] = {}
+        self.btn_clear_selection = QtWidgets.QPushButton("Clear selection")
+        self.btn_clear_selection.setToolTip("Clear selection to run all loaded cases")
+        self.btn_clear_selection.clicked.connect(self.case_table.clearSelection)
+        self.lbl_run_scope = QtWidgets.QLabel("Load an input file to begin")
+        self.lbl_run_scope.setWordWrap(True)
         self._build_layout()
         self._set_diagnostics_expanded(False)
 
@@ -329,6 +326,7 @@ class CasesPanel(QtWidgets.QWidget):
 
     def _build_layout(self) -> None:
         layout = QtWidgets.QVBoxLayout(self)
+        layout.setSpacing(8)
         input_row = QtWidgets.QHBoxLayout()
         input_row.addWidget(self.input_value, 1)
         input_row.addWidget(self.btn_pick_input)
@@ -336,11 +334,12 @@ class CasesPanel(QtWidgets.QWidget):
         summaries = QtWidgets.QHBoxLayout()
         summaries.addWidget(self.lbl_case_summary)
         summaries.addStretch(1)
-        summaries.addWidget(self.lbl_selection_summary)
+        summaries.addWidget(self.btn_clear_selection)
         layout.addLayout(summaries)
         layout.addWidget(self.case_table, 4)
-        self.lbl_workers = QtWidgets.QLabel("Workers:")
-        self.lbl_checkpoint_every_cases = QtWidgets.QLabel("Checkpoint every:")
+        layout.addWidget(self.lbl_run_scope)
+        self.lbl_workers = QtWidgets.QLabel("Workers")
+        self.lbl_checkpoint_every_cases = QtWidgets.QLabel("Checkpoint")
         self.lbl_checkpoint_unit = QtWidgets.QLabel("cases")
         self.lbl_workers.setBuddy(self.spin_workers)
         self.lbl_checkpoint_every_cases.setBuddy(self.spin_checkpoint_every_cases)
@@ -381,20 +380,44 @@ class CasesPanel(QtWidgets.QWidget):
         )
         self.execution_row.addLayout(self.run_actions_group)
         layout.addLayout(self.execution_row)
-        layout.addWidget(self.btn_diagnostics)
+        self.diagnostics_row = QtWidgets.QWidget()
+        diagnostics = FlowLayout(self.diagnostics_row, spacing=8)
+        diagnostics.addWidget(self.btn_diagnostics)
+        diagnostics.addWidget(self.btn_clear_diagnostics)
+        layout.addWidget(self.diagnostics_row)
         layout.addWidget(self.log, 2)
 
     def logln(self, message: str) -> None:
         self.log.appendPlainText(message)
+        self._warning_messages += int(message.startswith("[WARN]"))
+        self._error_messages += int(message.startswith("[ERROR]"))
+        self._refresh_diagnostics_label()
+
+    def _refresh_diagnostics_label(self) -> None:
+        action = "Hide" if self.btn_diagnostics.isChecked() else "Show"
+        text = f"{action} diagnostics"
+        if self._warning_messages or self._error_messages:
+            text += (
+                f" · {self._warning_messages} warnings · {self._error_messages} errors"
+            )
+        self.btn_diagnostics.setText(text)
+        self.btn_clear_diagnostics.setEnabled(not self.log.document().isEmpty())
+
+    @QtCore.Slot()
+    def clear_diagnostics(self) -> None:
+        self.log.clear()
+        self._warning_messages = 0
+        self._error_messages = 0
+        self._refresh_diagnostics_label()
+
+    def show_diagnostics(self) -> None:
+        self.btn_diagnostics.setChecked(True)
+        self.log.setFocus()
 
     @QtCore.Slot(bool)
     def _set_diagnostics_expanded(self, expanded: bool) -> None:
         self.log.setVisible(expanded)
-        self.btn_diagnostics.setArrowType(
-            QtCore.Qt.ArrowType.DownArrow
-            if expanded
-            else QtCore.Qt.ArrowType.RightArrow
-        )
+        self._refresh_diagnostics_label()
         description = "Hide diagnostic log" if expanded else "Show diagnostic log"
         self.btn_diagnostics.setToolTip(description)
         self.btn_diagnostics.setAccessibleDescription(description)
@@ -475,6 +498,8 @@ class CasesPanel(QtWidgets.QWidget):
         return (*self.spec.case_columns, *extras)
 
     def _populate_case_table(self) -> None:
+        if self._table_columns:
+            self._column_preferences = self.column_preferences()
         self._table_columns = self._ordered_columns()
         self.case_table.clear()
         self.case_table.setColumnCount(len(self._table_columns))
@@ -531,7 +556,34 @@ class CasesPanel(QtWidgets.QWidget):
                 if column == 0:
                     item.setData(QtCore.Qt.ItemDataRole.UserRole, row_index)
                 self.case_table.setItem(row_index, column, item)
+        self.restore_columns(self._column_preferences)
+        self.case_table.refresh_frozen()
         self._refresh_summary()
+
+    def column_preferences(self) -> dict[str, dict]:
+        return {
+            name: {"width": self.case_table.columnWidth(column)}
+            for column, name in enumerate(self._table_columns)
+        }
+
+    def restore_columns(self, preferences: dict) -> None:
+        self._column_preferences = preferences
+        for column, name in enumerate(self._table_columns):
+            self.case_table.setColumnHidden(column, False)
+            width = preferences.get(name, {}).get("width")
+            if isinstance(width, int) and 40 <= width <= 1200:
+                self.case_table.setColumnWidth(column, width)
+
+    def reset_columns(self) -> None:
+        self._column_preferences = {}
+        presentations = {p.name: p for p in self.spec.case_column_presentations}
+        for c, name in enumerate(self._table_columns):
+            role = (
+                presentations[name].width_role
+                if name in presentations
+                else CaseColumnWidthRole.FALLBACK
+            )
+            self.case_table.setColumnWidth(c, self._initial_column_width(c, role))
 
     def _column_horizontal_padding(self) -> int:
         style = self.case_table.style()
@@ -582,6 +634,12 @@ class CasesPanel(QtWidgets.QWidget):
         maximum = self._column_text_width(policy.maximum_text)
         header = self.case_table.horizontalHeader()
         minimum = max(minimum, header.minimumSectionSize())
+        if self._table_columns[column] == "stl_path":
+            preferred = (
+                self.case_table.fontMetrics().horizontalAdvance("geometry_part.stl")
+                + self._column_horizontal_padding()
+            )
+            minimum = min(minimum, preferred)
         maximum = max(maximum, minimum)
         return min(
             max(preferred, minimum, self._header_width(column)),
@@ -731,6 +789,7 @@ class CasesPanel(QtWidgets.QWidget):
         set_semantic_property(self.progress, "fluentStatus", "info")
         set_semantic_property(self.progress, "fluentBusy", True)
         self._set_running_state(True)
+        self._cancel_requested = False
         self.logln(f"[RUN] Running {total} case(s)...")
 
         thread = QtCore.QThread(self)
@@ -766,6 +825,8 @@ class CasesPanel(QtWidgets.QWidget):
         """Request cooperative cancellation at the next scheduler boundary."""
         if self._run_worker is None:
             return
+        self._cancel_requested = True
+        self.progress.setFormat("Cancelling…")
         self._run_worker.cancel()
         self.btn_cancel.setEnabled(False)
         set_semantic_property(self.progress, "fluentStatus", "warning")
@@ -781,7 +842,11 @@ class CasesPanel(QtWidgets.QWidget):
         safe_done = min(max(int(done), 0), safe_total)
         self.progress.setRange(0, safe_total)
         self.progress.setValue(safe_done)
-        self.progress.setFormat(f"{done}/{total}")
+        self.progress.setFormat(
+            f"Cancelling… {done}/{total}"
+            if self._cancel_requested
+            else f"{done}/{total}"
+        )
 
     @QtCore.Slot(object)
     def _on_run_completed(self, result: GuiRunResult) -> None:
@@ -935,6 +1000,9 @@ class CasesPanel(QtWidgets.QWidget):
         self.btn_pick_input.setEnabled(not running)
         self.spin_workers.setEnabled(not running)
         self.case_table.setEnabled(not running)
+        self.btn_clear_selection.setEnabled(
+            not running and bool(self.selected_case_rows())
+        )
         self.btn_cancel.setEnabled(running)
         self.btn_run.setEnabled((not running) and bool(self.case_rows))
 
@@ -965,7 +1033,16 @@ class CasesPanel(QtWidgets.QWidget):
         self.lbl_case_summary.setText(
             "No cases loaded" if total == 0 else f"Loaded: {total} case(s)"
         )
-        self.lbl_selection_summary.setText(f"Selected: {selected}")
+        self.btn_clear_selection.setEnabled(
+            selected > 0 and self.case_table.isEnabled()
+        )
+        self.lbl_run_scope.setText(
+            "Load an input file to begin"
+            if not total
+            else f"Run scope: {selected} selected case(s)"
+            if selected
+            else f"Run scope: all {total} cases"
+        )
         self._refresh_run_action()
 
     def _refresh_run_action(self) -> None:

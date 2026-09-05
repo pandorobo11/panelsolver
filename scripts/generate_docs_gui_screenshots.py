@@ -6,12 +6,14 @@ import shutil
 import sys
 import tempfile
 from dataclasses import dataclass
+from functools import partial
 from pathlib import Path
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from panelsolver.app.gui_bootstrap import _configure_application, create_main_window
 from panelsolver.app.gui_theme import ThemeMode, apply_application_theme
+from panelsolver.app.main_window import MainWindow
 from panelsolver.app.solver_spec import GuiRunRequest
 from panelsolver.app.viewer_data import ArtifactViewStatus
 from panelsolver.gui import gui_spec_for_domain
@@ -113,7 +115,9 @@ def _process_events(application: QtWidgets.QApplication) -> None:
 
 
 def _prepare_window(application, spec, input_path: Path):
-    window = create_main_window(spec)
+    window = create_main_window(
+        spec, window_factory=partial(MainWindow, persist_layout=False)
+    )
     window.resize(WINDOW_SIZE)
     window.show()
     _process_events(application)
@@ -226,6 +230,9 @@ def main() -> int:
                     _process_events(application)
                     window.viewer_panel.plotter.render()
                     _process_events(application)
+                # Keep the maintained captures at the same table origin.
+                window.cases_panel.case_table.horizontalScrollBar().setValue(0)
+                _process_events(application)
                 _assert_window_state(window, contract)
                 candidate = temporary_root / contract.filename
                 capture_main_window(window, candidate)

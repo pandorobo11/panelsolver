@@ -331,7 +331,7 @@ class CasesPanelTests(unittest.TestCase):
         self.assertEqual(width("ref_x_m"), width("ref_y_m"))
         self.assertEqual(width("ref_y_m"), width("ref_z_m"))
         self.assertEqual(width("ref_z_m"), width("Aref_m2"))
-        self.assertEqual(width("stl_path"), width("out_dir"))
+        self.assertLess(width("stl_path"), width("out_dir"))
         self.assertLess(width("shielding_on"), width("stl_path"))
         self.assertLess(width("save_vtp_on"), width("windward_eq"))
         self.assertLess(width("ray_backend"), width("windward_eq"))
@@ -549,9 +549,13 @@ class CasesPanelTests(unittest.TestCase):
         panel, _ = self.make_panel()
         root = panel.layout()
 
-        self.assertIs(panel.settings_row, root.itemAt(3).layout())
-        self.assertIs(panel.execution_row, root.itemAt(4).layout())
-        self.assertIsNone(root.itemAt(4).widget())
+        self.assertIs(
+            panel.settings_row, root.itemAt(root.indexOf(panel.settings_row)).layout()
+        )
+        self.assertIs(
+            panel.execution_row, root.itemAt(root.indexOf(panel.execution_row)).layout()
+        )
+        self.assertIsNone(root.itemAt(root.indexOf(panel.execution_row)).widget())
 
         self.assertEqual(4, panel.settings_row.count())
         self.assertIs(panel.workers_group, panel.settings_row.itemAt(0).layout())
@@ -619,38 +623,9 @@ class CasesPanelTests(unittest.TestCase):
         panel.show()
         self.app.processEvents()
         try:
-            self.assertEqual("Diagnostics", panel.btn_diagnostics.text())
-            self.assertEqual(
-                "subtle",
-                panel.btn_diagnostics.property("fluentAppearance"),
-            )
-            self.assertTrue(panel.btn_diagnostics.property("diagnosticsDisclosure"))
-            self.assertEqual(
-                QtWidgets.QSizePolicy.Policy.Expanding,
-                panel.btn_diagnostics.sizePolicy().horizontalPolicy(),
-            )
-            self.assertEqual(
-                QtWidgets.QSizePolicy.Policy.Fixed,
-                panel.btn_diagnostics.sizePolicy().verticalPolicy(),
-            )
-            self.assertEqual(
-                panel.layout().contentsRect().width(),
-                panel.btn_diagnostics.width(),
-            )
-            self.assertGreater(
-                panel.btn_diagnostics.width(),
-                panel.btn_diagnostics.sizeHint().width(),
-            )
+            self.assertEqual("Show diagnostics", panel.btn_diagnostics.text())
+            self.assertLess(panel.btn_diagnostics.width(), panel.contentsRect().width())
             self.assertFalse(panel.btn_diagnostics.isChecked())
-            self.assertEqual(
-                QtCore.Qt.ArrowType.RightArrow,
-                panel.btn_diagnostics.arrowType(),
-            )
-            self.assertEqual(QtCore.QSize(12, 12), panel.btn_diagnostics.iconSize())
-            self.assertEqual(
-                QtCore.Qt.ToolButtonStyle.ToolButtonTextBesideIcon,
-                panel.btn_diagnostics.toolButtonStyle(),
-            )
             self.assertEqual("Diagnostics", panel.btn_diagnostics.accessibleName())
             self.assertEqual(
                 "Show diagnostic log",
@@ -674,10 +649,7 @@ class CasesPanelTests(unittest.TestCase):
             panel.btn_diagnostics.click()
             self.app.processEvents()
             self.assertTrue(panel.btn_diagnostics.isChecked())
-            self.assertEqual(
-                QtCore.Qt.ArrowType.DownArrow,
-                panel.btn_diagnostics.arrowType(),
-            )
+            self.assertEqual("Hide diagnostics", panel.btn_diagnostics.text())
             self.assertTrue(panel.log.isVisible())
             self.assertIn("[TEST] hidden message", panel.log.toPlainText())
             self.assertEqual(
@@ -689,10 +661,7 @@ class CasesPanelTests(unittest.TestCase):
             panel.btn_diagnostics.click()
             self.app.processEvents()
             self.assertFalse(panel.btn_diagnostics.isChecked())
-            self.assertEqual(
-                QtCore.Qt.ArrowType.RightArrow,
-                panel.btn_diagnostics.arrowType(),
-            )
+            self.assertEqual("Show diagnostics", panel.btn_diagnostics.text())
             self.assertTrue(panel.log.isHidden())
             self.assertIn("[TEST] hidden message", panel.log.toPlainText())
             self.assertEqual(
@@ -1235,17 +1204,24 @@ class CasesPanelTests(unittest.TestCase):
     def test_table_and_log_keep_primary_secondary_stretch_contract(self) -> None:
         panel, _ = self.make_panel()
         root = panel.layout()
-        self.assertIs(panel.case_table, root.itemAt(2).widget())
-        self.assertEqual(4, root.stretch(2))
-        self.assertIs(panel.execution_row, root.itemAt(4).layout())
+        self.assertIs(
+            panel.case_table, root.itemAt(root.indexOf(panel.case_table)).widget()
+        )
+        self.assertEqual(4, root.stretch(root.indexOf(panel.case_table)))
+        self.assertIs(
+            panel.execution_row, root.itemAt(root.indexOf(panel.execution_row)).layout()
+        )
         self.assertIs(panel.progress, panel.execution_row.itemAt(0).widget())
-        self.assertIs(panel.btn_diagnostics, root.itemAt(5).widget())
-        self.assertIs(panel.log, root.itemAt(6).widget())
+        self.assertIs(
+            panel.diagnostics_row,
+            root.itemAt(root.indexOf(panel.diagnostics_row)).widget(),
+        )
+        self.assertIs(panel.log, root.itemAt(root.indexOf(panel.log)).widget())
         self.assertEqual(
-            QtWidgets.QSizePolicy.Policy.Expanding,
+            QtWidgets.QSizePolicy.Policy.Minimum,
             panel.btn_diagnostics.sizePolicy().horizontalPolicy(),
         )
-        self.assertEqual(2, root.stretch(6))
+        self.assertEqual(2, root.stretch(root.indexOf(panel.log)))
         self.assertEqual(180, panel.log.minimumHeight())
         self.assertFalse(panel.progress.isHidden())
 

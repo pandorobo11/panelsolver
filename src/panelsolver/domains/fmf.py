@@ -569,11 +569,37 @@ def format_case(row: Mapping[str, object]) -> str:
     fields.extend(
         (("shield", row.get("shielding_on")), ("ray", row.get("ray_backend")))
     )
-    return " | ".join(
-        f"{name}={text}"
-        for name, value in fields
-        if (text := _present(value)) is not None
+    labels = {
+        "case_id": "Case",
+        "mode": "Mode",
+        "Ti": "Ti [K]",
+        "Tw": "Tw [K]",
+        "Alt_km": "Altitude [km]",
+        "alpha": "Alpha [deg]",
+        "beta": "Beta [deg]",
+        "alpha_i": "Incidence [deg]",
+        "phi": "Bank [deg]",
+        "alpha_t": "Alpha_t [deg]",
+        "beta_t": "Beta_t [deg]",
+        "beta_s": "Beta_s [deg]",
+        "shield": "Shielding",
+        "ray": "Ray backend",
+    }
+    groups = (
+        {"case_id"},
+        {"mode", "S", "Ti", "Mach", "Alt_km", "Tw"},
+        {"alpha", "beta", "alpha_i", "phi", "alpha_t", "beta_t", "beta_s"},
+        {"shield", "ray"},
     )
+    lines = [
+        "  ·  ".join(
+            f"{labels.get(name, name)}  {text}"
+            for name, value in fields
+            if name in group and (text := _present(value)) is not None
+        )
+        for group in groups
+    ]
+    return "\n".join(line for line in lines if line)
 
 
 def gui_spec(

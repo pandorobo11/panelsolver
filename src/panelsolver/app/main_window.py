@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from importlib.metadata import PackageNotFoundError
 from pathlib import Path
 
@@ -27,6 +28,8 @@ class MainWindow(QtWidgets.QMainWindow):
         viewer_panel: QtWidgets.QWidget | None = None,
         documentation_site: DocumentationSite | None = None,
         example_library: ExampleLibrary | None = None,
+        layout_settings: QtCore.QSettings | None = None,
+        persist_layout: bool = True,
     ) -> None:
         if not isinstance(spec, SolverSpec):
             raise TypeError("spec must be a SolverSpec")
@@ -47,10 +50,27 @@ class MainWindow(QtWidgets.QMainWindow):
         self.viewer_panel = viewer_panel or ViewerPanel(spec)
         self.splitter.addWidget(self.cases_panel)
         self.splitter.addWidget(self.viewer_panel)
-        self.splitter.setStretchFactor(1, 4)
+        self.splitter.setStretchFactor(0, 2)
+        self.splitter.setStretchFactor(1, 3)
+        self.splitter.setSizes([600, 850])
         self._close_when_run_finishes = False
         self._build_file_menu()
         self._build_help_menu()
+        self._layout_settings = layout_settings if persist_layout else None
+        self._saved_columns = {}
+        if isinstance(self.cases_panel, CasesPanel) and isinstance(
+            self.viewer_panel, ViewerPanel
+        ):
+            if persist_layout and self._layout_settings is None:
+                self._layout_settings = QtCore.QSettings("PanelSolver", "Workbench")
+            self.viewer_panel.diagnostics_requested.connect(
+                self.cases_panel.show_diagnostics
+            )
+            self.cases_panel.cases_updated.connect(self._restore_case_columns)
+            view_menu = self.menuBar().addMenu("View")
+            reset = view_menu.addAction("Reset Layout")
+            reset.triggered.connect(self.reset_layout)
+            self._restore_layout()
 
         self.viewer_panel.log_message.connect(self.cases_panel.logln)
         self.cases_panel.vtp_loaded.connect(self.viewer_panel.load_vtp)
@@ -74,6 +94,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def _build_file_menu(self) -> None:
         self.file_menu = self.menuBar().addMenu("File")
         self.open_input_action = QtGui.QAction("Open Input File...", self)
+        self.open_input_action.setShortcut(QtGui.QKeySequence.StandardKey.Open)
         self.open_input_action.triggered.connect(self.cases_panel.pick_input_file)
         self.file_menu.addAction(self.open_input_action)
 
@@ -189,6 +210,76 @@ class MainWindow(QtWidgets.QMainWindow):
             return
         self.viewer_panel.save_images_for_case_rows(rows)
 
+    def _layout_key(self, name: str) -> str:
+        return f"layout/v1/{self.spec.domain_name}/{name}"
+
+    def _restore_layout(self) -> None:
+        settings = self._layout_settings
+        if settings is None:
+            return
+        for key, restore in (
+            ("geometry", self.restoreGeometry),
+            ("splitter", self.splitter.restoreState),
+        ):
+            value = settings.value(self._layout_key(key))
+            if isinstance(value, QtCore.QByteArray):
+                restore(value)
+        # Keep the title bar reachable after changing monitors.
+        if not any(
+            screen.availableGeometry().intersects(self.frameGeometry())
+            for screen in QtGui.QGuiApplication.screens()
+        ):
+            self.move(
+                QtGui.QGuiApplication.primaryScreen().availableGeometry().topLeft()
+            )
+        try:
+            columns = json.loads(str(settings.value(self._layout_key("columns"), "{}")))
+            self._saved_columns = {
+                name: value
+                for name, value in columns.items()
+                if isinstance(name, str) and isinstance(value, dict)
+            }
+        except (ValueError, AttributeError):
+            self._saved_columns = {}
+        for name, button in self._layout_disclosures():
+            button.setChecked(
+                str(settings.value(self._layout_key(name), "false")).lower() == "true"
+            )
+
+    def _layout_disclosures(self):
+        return (("diagnostics", self.cases_panel.btn_diagnostics),)
+
+    def _restore_case_columns(self, _rows=None) -> None:
+        if self._saved_columns:
+            self.cases_panel.restore_columns(self._saved_columns)
+            self._saved_columns = {}
+
+    def _save_layout(self) -> None:
+        settings = self._layout_settings
+        if settings is None or not isinstance(self.cases_panel, CasesPanel):
+            return
+        for key, value in (
+            ("geometry", self.saveGeometry()),
+            ("splitter", self.splitter.saveState()),
+        ):
+            settings.setValue(self._layout_key(key), value)
+        columns = self.cases_panel.column_preferences()
+        if columns:
+            settings.setValue(self._layout_key("columns"), json.dumps(columns))
+        for key, button in self._layout_disclosures():
+            settings.setValue(self._layout_key(key), button.isChecked())
+        settings.sync()
+
+    def reset_layout(self) -> None:
+        if self._layout_settings is not None:
+            self._layout_settings.remove(self._layout_key(""))
+        self.resize(1480, 900)
+        self.splitter.setSizes([600, 850])
+        self._saved_columns = {}
+        self.cases_panel.reset_columns()
+        for _name, button in self._layout_disclosures():
+            button.setChecked(False)
+
     def closeEvent(self, event) -> None:
         """Cancel an active run and defer close until its thread is cleaned up."""
         if self.cases_panel.is_running():
@@ -198,6 +289,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.cases_panel.logln("[CLOSE] Waiting for the active run to stop...")
             event.ignore()
             return
+        self._save_layout()
+        if isinstance(self.viewer_panel, ViewerPanel):
+            self.viewer_panel.close_plotter()
         self._documentation_site.close()
         super().closeEvent(event)
 
