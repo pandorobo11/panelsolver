@@ -87,6 +87,17 @@ existing behavior: blank endpoints are automatic. The colorbar shows the actual
 limits. Invalid numeric text falls back to the automatic range; the affected
 input is marked and its tooltip explains the fallback.
 
+**Background** offers **Follow theme** (the initial setting), **White**, and
+**Black**. Following the theme uses white in light mode and black in dark mode.
+An explicit color stays selected when the theme changes; this choice lasts for
+the current window. Viewer text and axis labels use the contrasting color, and
+saved images include the selected background.
+
+For a constant continuous scalar with both range endpoints automatic, the legend
+shows one color and one value, such as **Cp = 0.134**. Categorical fields and
+manually specified ranges retain their color scale. Small nonzero variations
+retain a gradient with enough label precision to distinguish the ticks.
+
 **Show diagnostics** opens the log and changes to **Hide diagnostics**.
 **Clear log** clears its contents and resets the warning and error counts, even
 while the log is collapsed or a run is active. New messages continue to arrive

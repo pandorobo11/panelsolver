@@ -104,10 +104,18 @@ class FlowLayout(QtWidgets.QLayout):
                     expanding.remove(item)
                 if item.hasHeightForWidth():
                     size.setHeight(item.heightForWidth(size.width()))
-                if apply:
-                    item.setGeometry(QtCore.QRect(x, y, size.width(), size.height()))
-                x += size.width() + self.spacing()
                 height = max(height, size.height())
+            for item, size in line:
+                if apply:
+                    item.setGeometry(
+                        QtCore.QRect(
+                            x,
+                            y + (height - size.height()) // 2,
+                            size.width(),
+                            size.height(),
+                        )
+                    )
+                x += size.width() + self.spacing()
             return height
 
         for item in self._items:

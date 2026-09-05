@@ -33,6 +33,39 @@ class WorkbenchTests(unittest.TestCase):
         spec = spec or self.panel().spec
         return ViewerPanel(spec, plotter_factory=lambda _parent: FakePlotter())
 
+    def test_flow_centers_different_heights_on_each_wrapped_line(self):
+        host = QtWidgets.QWidget()
+        flow = FlowLayout(host)
+        widgets = [QtWidgets.QWidget(), QtWidgets.QWidget()]
+        for widget, height in zip(widgets, (20, 36), strict=True):
+            widget.setFixedSize(80, height)
+            flow.addWidget(widget)
+        flow.setGeometry(QtCore.QRect(0, 0, 200, 80))
+        self.assertEqual(
+            widgets[0].geometry().center().y(), widgets[1].geometry().center().y()
+        )
+        self.assertEqual(flow.heightForWidth(200), 36)
+        flow.setGeometry(QtCore.QRect(0, 0, 100, 80))
+        self.assertEqual(widgets[0].y(), 0)
+        self.assertEqual(widgets[1].y(), 28)
+        self.assertEqual(flow.heightForWidth(100), 64)
+
+    def test_open_vtp_is_right_aligned_with_compact_scalar_selectors(self):
+        viewer = self.viewer()
+        viewer.resize(1100, 700)
+        viewer.show()
+        self.app.processEvents()
+        button = viewer.btn_open_vtp
+        self.assertEqual(button.geometry().right(), viewer.scalar_row.rect().right())
+        self.assertGreater(
+            button.x()
+            - viewer.scalar_selectors.mapTo(
+                viewer.scalar_row, viewer.cmb_cmap.geometry().topRight()
+            ).x(),
+            100,
+        )
+        viewer.close()
+
     def layout_diagnostics(self, window):
         panel, viewer = window.cases_panel, window.viewer_panel
         objects = {
