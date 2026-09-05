@@ -94,7 +94,9 @@ class ReleaseWorkflowTests(unittest.TestCase):
     def test_clean_install_uses_the_built_wheel_in_an_empty_environment(self) -> None:
         clean_install = self.job("clean-install")
         self.assertIn("runs-on: ubuntu-latest", clean_install)
-        self.assertTrue({"distribution-build", "quality"} <= self.needs("clean-install"))
+        self.assertTrue(
+            {"distribution-build", "quality"} <= self.needs("clean-install")
+        )
         self.assertIn("verify-wheel", clean_install)
         self.assertIn("uv venv", clean_install)
         self.assertIn("uv pip install", clean_install)
@@ -125,7 +127,9 @@ class ReleaseWorkflowTests(unittest.TestCase):
 
     def test_one_installed_wheel_smoke_owner_per_platform(self) -> None:
         wheel = self.job("installed-wheel")
-        self.assertTrue({"distribution-build", "quality"} <= self.needs("installed-wheel"))
+        self.assertTrue(
+            {"distribution-build", "quality"} <= self.needs("installed-wheel")
+        )
         for platform in ("windows-latest", "macos-15"):
             self.assertIn(f"- {platform}", wheel)
         self.assertNotIn("ubuntu-latest", wheel)
