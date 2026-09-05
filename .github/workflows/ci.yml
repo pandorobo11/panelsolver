@@ -2,7 +2,14 @@ name: CI
 
 on:
   push:
+    branches: [main]
+    tags: ["v*"]
   pull_request:
+
+# Only PR runs share a cancellable group; main/tag runs have unique run IDs.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || format('run-{0}', github.run_id) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -39,9 +46,6 @@ jobs:
           src/panelsolver/__init__.py
 
   test:
-    needs:
-      - artifact
-      - quality
     strategy:
       fail-fast: false
       matrix:
@@ -68,21 +72,9 @@ jobs:
       - name: Install dependencies
         run: uv sync --locked --extra rayaccel --group docs
 
-      - name: Download verified distributions
-        uses: actions/download-artifact@v4
-        with:
-          name: panelsolver-dist-${{ github.run_id }}
-          path: dist
-
-      - name: Verify downloaded distribution manifest
-        run: >-
-          uv run --no-sync python scripts/release_tools.py verify-manifest .
-          --manifest dist/manifest.json --dist-dir dist
-          --expected-commit "${{ github.sha }}"
-
       - name: Verify Embree backend availability
         run: >-
-          uv run python -c "import trimesh; from trimesh import ray;
+          uv run --no-sync python -c "import trimesh; from trimesh import ray;
           print('trimesh_version:', trimesh.__version__);
           print('has_embree:', ray.has_embree);
           (_ for _ in ()).throw(SystemExit('Embree backend is required in CI but not available.'))
@@ -90,25 +82,15 @@ jobs:
 
       - name: Tests
         timeout-minutes: 10
-        run: uv run pytest
+        run: uv run --no-sync pytest --durations=30
 
       - name: Scheduler lifecycle stress
         timeout-minutes: 3
         run: >-
-          uv run python scripts/probe_scheduler_lifecycle.py
+          uv run --no-sync python scripts/probe_scheduler_lifecycle.py
           --iterations 10 --timeout-seconds 90
 
-      - name: Reinstall exact verified wheel
-        run: >-
-          uv run --no-sync python scripts/release_tools.py reinstall-wheel .
-          --dist-dir dist
-
-      - name: Smoke installed commands outside repository
-        run: >-
-          uv run --no-sync python scripts/smoke_installed_wheel.py .
-          --dist-dir dist
-
-  artifact:
+  distribution-build:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -189,15 +171,6 @@ jobs:
         run: >-
           uv run --no-sync python scripts/release_tools.py dry-run .
 
-      - name: Reinstall built wheel
-        run: >-
-          uv run --no-sync python scripts/release_tools.py reinstall-wheel .
-
-      - name: Smoke installed commands outside repository
-        run: >-
-          uv run --no-sync python scripts/smoke_installed_wheel.py .
-          --dist-dir dist
-
       - name: Upload verified distributions
         uses: actions/upload-artifact@v4
         with:
@@ -205,10 +178,51 @@ jobs:
           path: dist
           if-no-files-found: error
 
+  installed-wheel:
+    needs: [distribution-build]
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - windows-latest
+          - macos-15
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v9.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --locked --extra rayaccel --group docs
+
+      - name: Download verified distributions
+        uses: actions/download-artifact@v4
+        with:
+          name: panelsolver-dist-${{ github.run_id }}
+          path: dist
+
+      - name: Verify downloaded distribution manifest
+        run: >-
+          uv run --no-sync python scripts/release_tools.py verify-manifest .
+          --manifest dist/manifest.json --dist-dir dist
+          --expected-commit "${{ github.sha }}"
+
+      - name: Reinstall exact verified wheel
+        run: >-
+          uv run --no-sync python scripts/release_tools.py reinstall-wheel .
+          --dist-dir dist
+
+      - name: Smoke installed commands outside repository
+        run: >-
+          uv run --no-sync python scripts/smoke_installed_wheel.py .
+          --dist-dir dist
+
   clean-install:
-    needs:
-      - artifact
-      - quality
+    needs: [distribution-build]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -246,8 +260,28 @@ jobs:
             "${GITHUB_WORKSPACE}/scripts/smoke_installed_wheel.py" \
             "${GITHUB_WORKSPACE}" --dist-dir "${GITHUB_WORKSPACE}/dist"
 
+  # Keep the protected-main context, and fail closed even if a consumer is skipped.
+  # Quality previously gated the required test jobs; retain it in this required gate.
+  artifact:
+    needs: [quality, distribution-build, installed-wheel, clean-install]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every prerequisite to succeed
+        env:
+          NEEDS_RESULTS: ${{ toJSON(needs) }}
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          results = json.loads(os.environ["NEEDS_RESULTS"])
+          if not results or any(job["result"] != "success" for job in results.values()):
+              raise SystemExit(f"Required validation did not succeed: {results}")
+          PY
+
   release:
-    needs: [test, artifact, clean-install]
+    needs: [test, artifact]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:

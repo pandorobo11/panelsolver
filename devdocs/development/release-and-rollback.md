@@ -14,7 +14,7 @@ Runtime lookup uses `importlib.metadata.version("panelsolver")`.
 
 ## Build-once artifact contract
 
-The artifact job builds and uploads exactly this set once:
+The `distribution-build` job builds and uploads exactly this set once:
 
 1. `panelsolver-<version>-py3-none-any.whl`;
 2. `panelsolver-<version>.tar.gz`;
@@ -35,11 +35,28 @@ Both ZIPs normalize ordering, timestamps, permissions, separators, compression,
 and metadata. Rebuilding either from identical source must produce an identical
 SHA-256 digest.
 
-Test and release jobs download the internal
+Installed-wheel, clean-install, and release jobs download the internal
 `panelsolver-dist-${{ github.run_id }}` artifact, verify it, and reuse it. They
 must not run `uv build`, `mkdocs build`, or rebuild either ZIP. The sdist rebuild
 is an isolated verification artifact and is never published in place of the
 original wheel.
+
+Source `test` jobs run the complete pytest suite (with slow-test timings), Embree
+availability checks, and the unchanged scheduler lifecycle probe independently
+on Ubuntu, Windows, and macOS. They do not wait for distribution production.
+Windows and macOS `installed-wheel` jobs reinstall the uploaded wheel and run
+the full installed-wheel smoke. Ubuntu `clean-install` runs that smoke, including
+release archives, after installing the exact wheel with its declared dependencies
+and `rayaccel` extra in an empty environment outside the checkout.
+
+The required `artifact` gate runs even when a prerequisite fails or is skipped,
+and explicitly requires quality, distribution production, and all installed-wheel
+validation to succeed. Release requires both this gate and all source test jobs.
+The protected-main contexts remain `test (ubuntu-latest)`,
+`test (windows-latest)`, `test (macos-15)`, and `artifact`.
+
+CI runs on pull requests, pushes to `main`, and `v*` release tags. A newer PR run
+cancels the obsolete run for that PR; main and tag runs use distinct groups.
 
 ## Manifest schema v2
 
