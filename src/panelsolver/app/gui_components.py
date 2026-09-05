@@ -29,6 +29,10 @@ class FlowLayout(QtWidgets.QLayout):
     def addItem(self, item) -> None:
         self._items.append(item)
 
+    def addLayout(self, layout) -> None:
+        self.addChildLayout(layout)
+        self.addItem(layout)
+
     def count(self) -> int:
         return len(self._items)
 
@@ -52,12 +56,23 @@ class FlowLayout(QtWidgets.QLayout):
         self._arrange(rect, apply=True)
 
     def sizeHint(self):
-        return self.minimumSize()
+        items = [item for item in self._items if not item.isEmpty()]
+        margins = self.contentsMargins()
+        return QtCore.QSize(
+            sum(item.sizeHint().width() for item in items)
+            + max(0, len(items) - 1) * self.spacing()
+            + margins.left()
+            + margins.right(),
+            max((item.sizeHint().height() for item in items), default=0)
+            + margins.top()
+            + margins.bottom(),
+        )
 
     def minimumSize(self):
         size = QtCore.QSize()
         for item in self._items:
-            size = size.expandedTo(item.minimumSize())
+            if not item.isEmpty():
+                size = size.expandedTo(item.minimumSize())
         margins = self.contentsMargins()
         return size + QtCore.QSize(
             margins.left() + margins.right(), margins.top() + margins.bottom()
@@ -68,20 +83,49 @@ class FlowLayout(QtWidgets.QLayout):
         area = rect.adjusted(
             margins.left(), margins.top(), -margins.right(), -margins.bottom()
         )
-        x, y, line_height = area.x(), area.y(), 0
+        y = area.y()
+        line = []
+        line_width = 0
+
+        def place_line():
+            x = area.x()
+            expanding = [
+                item
+                for item, _size in line
+                if item.expandingDirections() & QtCore.Qt.Orientation.Horizontal
+            ]
+            spare = max(0, area.width() - line_width)
+            height = 0
+            for item, size in line:
+                if item in expanding:
+                    extra = spare // len(expanding)
+                    size.setWidth(size.width() + extra)
+                    spare -= extra
+                    expanding.remove(item)
+                if item.hasHeightForWidth():
+                    size.setHeight(item.heightForWidth(size.width()))
+                if apply:
+                    item.setGeometry(QtCore.QRect(x, y, size.width(), size.height()))
+                x += size.width() + self.spacing()
+                height = max(height, size.height())
+            return height
+
         for item in self._items:
             if item.isEmpty():
                 continue
             size = item.sizeHint()
-            if x > area.x() and x + size.width() > area.x() + area.width():
-                x = area.x()
-                y += line_height + self.spacing()
-                line_height = 0
-            if apply:
-                item.setGeometry(QtCore.QRect(QtCore.QPoint(x, y), size))
-            x += size.width() + self.spacing()
-            line_height = max(line_height, size.height())
-        return y + line_height - rect.y() + margins.bottom()
+            # A group's preferred single-row width may exceed the available
+            # space. Let its layout shrink/wrap within its real minimum width.
+            size.setWidth(
+                max(item.minimumSize().width(), min(size.width(), area.width()))
+            )
+            if line and line_width + self.spacing() + size.width() > area.width():
+                y += place_line() + self.spacing()
+                line = []
+                line_width = 0
+            line_width += (self.spacing() if line else 0) + size.width()
+            line.append((item, size))
+        return y + place_line() - rect.y() + margins.bottom()
 
 
 class _PinnedDelegate(QtWidgets.QStyledItemDelegate):

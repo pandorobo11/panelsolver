@@ -327,9 +327,12 @@ class CasesPanel(QtWidgets.QWidget):
         input_row.addWidget(self.input_value, 1)
         input_row.addWidget(self.btn_pick_input)
         layout.addLayout(input_row)
-        summaries = QtWidgets.QHBoxLayout()
+        summaries = FlowLayout()
+        self.lbl_case_summary.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Expanding,
+            QtWidgets.QSizePolicy.Policy.Preferred,
+        )
         summaries.addWidget(self.lbl_case_summary)
-        summaries.addStretch(1)
         summaries.addWidget(self.btn_clear_selection)
         layout.addLayout(summaries)
         layout.addWidget(self.case_table, 4)
@@ -359,21 +362,13 @@ class CasesPanel(QtWidgets.QWidget):
         self.run_actions_group.addWidget(self.btn_run)
         self.run_actions_group.addWidget(self.btn_cancel)
 
-        self.settings_row = QtWidgets.QHBoxLayout()
-        self.settings_row.setSpacing(0)
+        self.settings_row = FlowLayout(spacing=_RUN_SETTINGS_GROUP_SPACING)
         self.settings_row.addLayout(self.workers_group)
-        self.settings_row.addSpacing(_RUN_SETTINGS_GROUP_SPACING)
         self.settings_row.addLayout(self.checkpoint_group)
-        self.settings_row.addStretch(1)
         layout.addLayout(self.settings_row)
 
-        self.execution_row = QtWidgets.QHBoxLayout()
-        self.execution_row.setSpacing(_RUN_ACTION_SPACING)
-        self.execution_row.addWidget(
-            self.progress,
-            1,
-            QtCore.Qt.AlignmentFlag.AlignVCenter,
-        )
+        self.execution_row = FlowLayout(spacing=_RUN_ACTION_SPACING)
+        self.execution_row.addWidget(self.progress)
         self.execution_row.addLayout(self.run_actions_group)
         layout.addLayout(self.execution_row)
         self.diagnostics_row = QtWidgets.QWidget()

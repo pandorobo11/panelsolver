@@ -268,29 +268,36 @@ class ViewerPanel(QtWidgets.QWidget):
         self.lbl_camera = QtWidgets.QLabel("Camera")
         self.lbl_export = QtWidgets.QLabel("Export")
         self.lbl_scalar.setBuddy(self.cmb_scalar)
-        self.scalar_row = self._make_control_row()
-        scalar = self.scalar_row.layout()
-        scalar.addWidget(self.cmb_scalar)
-        scalar.addSpacing(8)
+        self.scalar_row = QtWidgets.QWidget()
+        scalar = FlowLayout(self.scalar_row)
+        self.scalar_selectors = self._make_control_row()
+        selectors = self.scalar_selectors.layout()
+        selectors.addWidget(self.cmb_scalar)
+        selectors.addSpacing(8)
         cmap_label = QtWidgets.QLabel("Colormap")
         cmap_label.setBuddy(self.cmb_cmap)
-        scalar.addWidget(cmap_label)
-        scalar.addWidget(self.cmb_cmap)
-        scalar.addStretch(1)
+        selectors.addWidget(cmap_label)
+        selectors.addWidget(self.cmb_cmap)
+        scalar.addWidget(self.scalar_selectors)
         scalar.addWidget(self.btn_open_vtp)
 
-        self.colorbar_row = self._make_control_row()
-        colorbar = self.colorbar_row.layout()
+        self.colorbar_row = QtWidgets.QWidget()
+        colorbar = FlowLayout(self.colorbar_row)
+        self.range_inputs = self._make_control_row()
+        self.range_inputs.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Maximum, QtWidgets.QSizePolicy.Policy.Preferred
+        )
+        range_inputs = self.range_inputs.layout()
         for text, edit in (("Min", self.edit_vmin), ("Max", self.edit_vmax)):
             edit.setPlaceholderText("Auto")
             edit.setMaximumWidth(120)
             edit.setAccessibleName(f"Color range {text.lower()}")
             label = QtWidgets.QLabel(text)
             label.setBuddy(edit)
-            colorbar.addWidget(label)
-            colorbar.addWidget(edit)
+            range_inputs.addWidget(label)
+            range_inputs.addWidget(edit)
+        colorbar.addWidget(self.range_inputs)
         colorbar.addWidget(self.btn_auto_range)
-        colorbar.addStretch(1)
         self.display_row = QtWidgets.QWidget()
         display = FlowLayout(self.display_row, spacing=12)
         for control in (
@@ -323,7 +330,12 @@ class ViewerPanel(QtWidgets.QWidget):
         self.btn_view_iso_1.setToolTip("View from (-X, -Y, +Z) in STL coordinates")
         self.camera_row = QtWidgets.QWidget()
         camera = FlowLayout(self.camera_row, spacing=8)
-        self.camera_axis_group = self._make_camera_group(self._camera_axis_buttons)
+        self.camera_axis_group = QtWidgets.QWidget()
+        axes = FlowLayout(self.camera_axis_group, spacing=4)
+        for start in range(0, len(self._camera_axis_buttons), 2):
+            axes.addWidget(
+                self._make_camera_group(self._camera_axis_buttons[start : start + 2])
+            )
         self.camera_isometric_group = self._make_camera_group(
             self._camera_isometric_buttons
         )
@@ -336,11 +348,12 @@ class ViewerPanel(QtWidgets.QWidget):
         for group in self._camera_groups:
             camera.addWidget(group)
 
-        self.export_row = self._make_control_row()
-        export = self.export_row.layout()
-        export.addWidget(self.btn_save_image)
-        export.addWidget(self.btn_save_selected_images)
-        export.addStretch(1)
+        self.export_row = QtWidgets.QWidget()
+        export = FlowLayout(self.export_row)
+        self.image_export_group = self._make_control_row()
+        self.image_export_group.layout().addWidget(self.btn_save_image)
+        self.image_export_group.layout().addWidget(self.btn_save_selected_images)
+        export.addWidget(self.image_export_group)
         for row_index, (label, control) in enumerate(
             (
                 (self.lbl_scalar, self.scalar_row),

@@ -547,7 +547,7 @@ class CasesPanelTests(unittest.TestCase):
             panel.btn_run.click()
         self.assertEqual([False], runs)
 
-    def test_execution_controls_use_fixed_settings_and_status_action_rows(self) -> None:
+    def test_execution_controls_keep_logical_groups_in_wrapping_rows(self) -> None:
         panel, _ = self.make_panel()
         root = panel.layout()
 
@@ -559,17 +559,11 @@ class CasesPanelTests(unittest.TestCase):
         )
         self.assertIsNone(root.itemAt(root.indexOf(panel.execution_row)).widget())
 
-        self.assertEqual(4, panel.settings_row.count())
+        self.assertEqual(2, panel.settings_row.count())
         self.assertIs(panel.workers_group, panel.settings_row.itemAt(0).layout())
-        settings_gap = panel.settings_row.itemAt(1).spacerItem()
-        self.assertIsNotNone(settings_gap)
-        self.assertIs(panel.checkpoint_group, panel.settings_row.itemAt(2).layout())
-        settings_stretch = panel.settings_row.itemAt(3).spacerItem()
-        self.assertIsNotNone(settings_stretch)
-        self.assertEqual(
-            QtWidgets.QSizePolicy.Policy.Expanding,
-            settings_stretch.sizePolicy().horizontalPolicy(),
-        )
+        self.assertIs(panel.checkpoint_group, panel.settings_row.itemAt(1).layout())
+        self.assertTrue(panel.settings_row.hasHeightForWidth())
+        self.assertTrue(panel.execution_row.hasHeightForWidth())
 
         self.assertEqual(
             [panel.lbl_workers, panel.spin_workers],
@@ -585,11 +579,6 @@ class CasesPanelTests(unittest.TestCase):
         )
         self.assertEqual(2, panel.execution_row.count())
         self.assertIs(panel.progress, panel.execution_row.itemAt(0).widget())
-        self.assertEqual(1, panel.execution_row.stretch(0))
-        self.assertTrue(
-            panel.execution_row.itemAt(0).alignment()
-            & QtCore.Qt.AlignmentFlag.AlignVCenter
-        )
         self.assertIs(
             panel.run_actions_group,
             panel.execution_row.itemAt(1).layout(),
@@ -600,11 +589,11 @@ class CasesPanelTests(unittest.TestCase):
         )
         self.assertLess(
             panel.workers_group.spacing(),
-            settings_gap.sizeHint().width(),
+            panel.settings_row.spacing(),
         )
         self.assertLess(
             panel.checkpoint_group.spacing(),
-            settings_gap.sizeHint().width(),
+            panel.settings_row.spacing(),
         )
         self.assertEqual(8, panel.run_actions_group.spacing())
         self.assertEqual(8, panel.execution_row.spacing())

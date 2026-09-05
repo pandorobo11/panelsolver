@@ -12,6 +12,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6 import QtCore, QtTest, QtWidgets
 
+from panelsolver.app.gui_components import FlowLayout
 from panelsolver.app.gui_theme import ThemeMode, render_application_qss, resolve_theme
 from panelsolver.app.main_window import MainWindow
 from panelsolver.app.viewer import ViewerPanel
@@ -172,20 +173,60 @@ class WorkbenchTests(unittest.TestCase):
         font.setPointSizeF(font.pointSizeF() * 1.25)
         self.app.setFont(font)
         try:
-            panel = self.panel()
-            viewer = self.viewer(panel.spec)
-            window = MainWindow(
-                panel.spec, cases_panel=panel, viewer_panel=viewer, persist_layout=False
-            )
+            self.assert_small_window_controls_fit()
+        finally:
+            self.app.setFont(previous)
+
+    def test_small_window_with_native_styles_themes_and_text_sizes(self):
+        previous_font = self.app.font()
+        previous_qss = self.app.styleSheet()
+        # Unwrap QStyleSheetStyle before recording the platform style name.
+        self.app.setStyleSheet("")
+        previous_style = self.app.style().objectName()
+        try:
+            for style in dict.fromkeys((previous_style, "Windows")):
+                self.app.setStyle(style)
+                for mode in (None, ThemeMode.LIGHT, ThemeMode.DARK):
+                    self.app.setStyleSheet(
+                        ""
+                        if mode is None
+                        else render_application_qss(resolve_theme(mode))
+                    )
+                    for scale in (1.0, 1.25):
+                        with self.subTest(style=style, theme=mode, scale=scale):
+                            font = self.app.font()
+                            font.setPointSizeF(previous_font.pointSizeF() * scale)
+                            self.app.setFont(font)
+                            self.assert_small_window_controls_fit()
+        finally:
+            self.app.setStyle(previous_style)
+            self.app.setStyleSheet(previous_qss)
+            self.app.setFont(previous_font)
+
+    def assert_small_window_controls_fit(self):
+        panel = self.panel()
+        viewer = self.viewer(panel.spec)
+        window = MainWindow(
+            panel.spec,
+            cases_panel=panel,
+            viewer_panel=viewer,
+            persist_layout=False,
+        )
+        try:
             window.resize(1100, 720)
             window.show()
             self.app.processEvents()
+            diagnostics = self.layout_diagnostics(window)
+            self.assertLessEqual(window.minimumSizeHint().width(), 1100, diagnostics)
+            self.assertLessEqual(window.width(), 1100, diagnostics)
+            self.assertLessEqual(window.height(), 720, diagnostics)
             for owner, controls in (
                 (
                     panel,
                     (
                         panel.btn_run,
                         panel.btn_clear_selection,
+                        panel.spin_workers,
                         panel.spin_checkpoint_every_cases,
                     ),
                 ),
@@ -193,24 +234,71 @@ class WorkbenchTests(unittest.TestCase):
                     viewer,
                     (
                         viewer.btn_save_image,
+                        viewer.btn_save_selected_images,
                         viewer.btn_open_vtp,
                         *viewer._camera_buttons,
+                        viewer.cmb_scalar,
                         viewer.cmb_cmap,
+                        viewer.edit_vmin,
+                        viewer.edit_vmax,
+                        viewer.btn_auto_range,
                         viewer.chk_edges,
+                        viewer.chk_shield_transparent,
                         viewer.chk_overlay_text,
                     ),
                 ),
             ):
                 for control in controls:
-                    origin = control.mapTo(owner, QtCore.QPoint())
-                    self.assertGreaterEqual(origin.x(), 0)
-                    self.assertLessEqual(origin.x() + control.width(), owner.width())
-                    self.assertLessEqual(origin.y() + control.height(), owner.height())
-            self.assertLessEqual(window.width(), 1100, self.layout_diagnostics(window))
-            self.assertLessEqual(window.height(), 720)
-            window.close()
+                    self.assertTrue(control.isVisible(), diagnostics)
+                    rect = QtCore.QRect(
+                        control.mapTo(owner, QtCore.QPoint()),
+                        control.size(),
+                    )
+                    self.assertTrue(owner.rect().contains(rect), diagnostics)
+            self.assert_flow_groups_fit(viewer)
+            self.assert_flow_groups_fit(panel)
         finally:
-            self.app.setFont(previous)
+            window.close()
+
+    def assert_flow_groups_fit(self, viewer):
+        for flow in viewer.findChildren(FlowLayout):
+            rectangles = []
+            for index in range(flow.count()):
+                item = flow.itemAt(index)
+                if item.isEmpty():
+                    continue
+                rect = item.geometry()
+                self.assertTrue(
+                    flow.parentWidget().rect().contains(rect),
+                    (flow.parentWidget().rect(), rect),
+                )
+                self.assertFalse(any(rect.intersects(other) for other in rectangles))
+                rectangles.append(rect)
+
+    def test_camera_pairs_wrap_when_native_buttons_have_large_minimum_widths(self):
+        viewer = self.viewer()
+        try:
+            # Native Windows button hints can be much wider than their short labels.
+            for button in viewer._camera_buttons:
+                button.setMinimumWidth(160)
+            viewer.resize(500, 650)
+            viewer.show()
+            self.app.processEvents()
+            self.assertLessEqual(viewer.minimumSizeHint().width(), 500)
+            self.assertEqual(viewer.width(), 500)
+            self.assert_flow_groups_fit(viewer)
+            axes = viewer._camera_axis_buttons
+            for positive, negative in zip(axes[::2], axes[1::2], strict=True):
+                self.assertEqual(
+                    positive.mapTo(viewer, QtCore.QPoint()).y(),
+                    negative.mapTo(viewer, QtCore.QPoint()).y(),
+                )
+            self.assertLess(
+                axes[0].mapTo(viewer, QtCore.QPoint()).y(),
+                axes[2].mapTo(viewer, QtCore.QPoint()).y(),
+            )
+        finally:
+            viewer.close()
 
     def test_themed_control_heights_and_header_units_at_larger_text(self):
         previous_style, previous_font = self.app.styleSheet(), self.app.font()

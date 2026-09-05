@@ -75,10 +75,14 @@ compact status row. Manual, stale, and error states retain explicit status.
 Before a result is selected, guidance appears inside the empty Viewer only.
 Workers and Checkpoint accept direct number entry and keyboard stepping;
 the adjacent minus and plus controls decrease or increase the value.
+Each setting stays with its label when the settings row wraps. The run and
+cancel actions stay together and can move below the progress indicator.
 
 Scalar, colormap, color range, display toggles, all camera directions, and image
-export stay visible below the Viewer. Camera groups and display toggles wrap
-onto another row when the window is narrow. Min and Max retain their
+export stay visible below the Viewer. Related controls wrap as groups when the
+window is narrow: scalar and colormap selectors, range endpoints, camera axis
+pairs, isometric and wind views, and image export actions stay together.
+Min and Max retain their
 existing behavior: blank endpoints are automatic. The colorbar shows the actual
 limits. Invalid numeric text falls back to the automatic range; the affected
 input is marked and its tooltip explains the fallback.
