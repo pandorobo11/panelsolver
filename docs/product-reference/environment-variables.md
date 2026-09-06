@@ -16,6 +16,6 @@ least 1; invalid values cause an error when the setting is used. An explicit
 configuration argument, where available, takes precedence over the environment.
 The stable package-root Python API does not expose these tuning arguments.
 
-For the geometric method and backend choices, see [Ray shielding](ray-shielding.md).
+For the geometric method and backend choices, see [Ray shielding](../methods/ray-shielding.md).
 For worker counts, checkpoints, and result ordering, see
-[Batch execution and recovery](../user-guide/batch-execution-and-recovery.md).
+[Batch execution and recovery](../running/batch-execution-and-recovery.md).

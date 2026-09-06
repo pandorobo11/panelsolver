@@ -22,7 +22,7 @@ extra as shown in the [Installation guide](../getting-started/installation.md).
 From a checkout, use `uv sync --extra rayaccel` or
 `python -m pip install ".[rayaccel]"`. Alternatively, set the case's
 `ray_backend` to `rtree`. See
-[Ray-shielding backend behavior](../reference/ray-shielding.md#backend-behavior).
+[Ray-shielding backend behavior](../methods/ray-shielding.md#backend-behavior).
 
 ## The result path is rejected
 
@@ -45,5 +45,5 @@ for the cooperative boundary and how to recover completed artifacts.
 ## A Python import fails
 
 The installed distribution and Python package are both `panelsolver`. Use the
-imports listed in the [Python API reference](../reference/python-api.md#supported-imports-and-scope).
+imports listed in the [Python API reference](python-api.md#supported-imports-and-scope).
 Code using predecessor-product package names must migrate to these imports.

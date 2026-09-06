@@ -4,7 +4,7 @@ FMF and Hypersonic use the coordinate and attitude calculations defined on this
 page. It explains what each attitude representation means geometrically and how
 all representations resolve to one freestream direction. Accepted input values
 and ranges are listed in the
-[Case files guide](../user-guide/case-files.md#attitude-modes). Required fields
+[Case files guide](../inputs/case-files.md#attitude-modes). Required fields
 and defaults are listed in the domain input references.
 
 ## Frames, direction, and angle units
@@ -33,22 +33,22 @@ $\hat{\boldsymbol V}_{\mathrm{STL}}$ and to the tangent angles $\alpha_t$ and
 $\beta_t$ used for panel calculation.
 
 Here
-$\operatorname{normalize}(\boldsymbol q)=\boldsymbol q/\lVert\boldsymbol q\rVert$.
+$\mathrm{normalize}(\boldsymbol q)=\boldsymbol q/\lVert\boldsymbol q\rVert$.
 
 ## Tangent-angle input (`beta_tan`)
 
 In this mode, `alpha_deg` is the tangent angle of attack $\alpha_t$, and
 `beta_or_bank_deg` is the tangent sideslip angle $\beta_t$. For inputs in the
-principal domain specified by [Case files](../user-guide/case-files.md#attitude-modes),
+principal domain specified by [Case files](../inputs/case-files.md#attitude-modes),
 
 ```math
 \hat{\boldsymbol V}_{\mathrm{STL}}
-=\operatorname{normalize}\!\begin{bmatrix}
+=\mathrm{normalize}\!\begin{bmatrix}
 \cos\alpha_t\cos\beta_t\\
 -\sin\beta_t\cos\alpha_t\\
 \sin\alpha_t\cos\beta_t
 \end{bmatrix}
-=\operatorname{normalize}\!\begin{bmatrix}
+=\mathrm{normalize}\!\begin{bmatrix}
 1\\-\tan\beta_t\\\tan\alpha_t
 \end{bmatrix}.
 ```
@@ -75,7 +75,7 @@ With $t=\tan\alpha_{\mathrm{in}}$ and $s=\sin\beta_s$, the unit direction is
 
 ```math
 \hat{\boldsymbol V}_{\mathrm{STL}}
-=\operatorname{normalize}\!\begin{bmatrix}
+=\mathrm{normalize}\!\begin{bmatrix}
 \sqrt{\dfrac{1-s^2}{1+t^2}}\\
 -s\\
 t\sqrt{\dfrac{1-s^2}{1+t^2}}
@@ -119,9 +119,9 @@ For every resolved unit direction
 $\hat{\boldsymbol V}_{\mathrm{STL}}=(V_x,V_y,V_z)$, both domains use
 
 ```math
-\alpha_t=\operatorname{atan2}(V_z,V_x),
+\alpha_t=\mathrm{atan2}(V_z,V_x),
 \qquad
-\beta_t=\operatorname{atan2}(-V_y,V_x).
+\beta_t=\mathrm{atan2}(-V_y,V_x).
 ```
 
 When $V_x\ne0$, these definitions give

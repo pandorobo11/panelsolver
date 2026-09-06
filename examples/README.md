@@ -13,7 +13,7 @@ The example STL coordinates are in metres (`stl_scale_m_per_unit=1`). Cases use
 an origin moment reference, `Aref_m2=1`, and 1 m moment reference lengths.
 Components use the same global references, so component rows add to the total
 for all eight coefficients. When adapting an example, choose your own
-[reference quantities](../docs/user-guide/case-files.md#choose-reference-quantities).
+[reference quantities](../docs/inputs/case-files.md#choose-reference-quantities).
 The four meshes in `geometry/` and the case tables are project material
 distributed under Apache-2.0.
 
@@ -22,8 +22,8 @@ this `examples/fmf/`, `examples/hypersonic/`, and `examples/geometry/` layout
 and includes `LICENSE` and `THIRD_PARTY_NOTICES.md` at the archive root.
 
 For the complete schemas, see the
-[FMF input reference](../docs/reference/fmf-input.md),
-[Hypersonic input reference](../docs/reference/hypersonic-input.md),
+[FMF input reference](../docs/inputs/fmf-input.md),
+[Hypersonic input reference](../docs/inputs/hypersonic-input.md),
 [Summary CSV reference](../docs/results/summary-csv.md), and
 [VTP reference](../docs/results/vtp.md).
 
@@ -150,7 +150,7 @@ remain directly under `outputs/`.
 a pressure-model choice that assigns zero `cp` to active leeward panels. The
 latter performs geometric ray-occlusion testing and zeros any hidden panel,
 regardless of its windward/leeward pressure selector. See the
-[Ray shielding reference](../docs/reference/ray-shielding.md) for the common
+[Ray shielding reference](../docs/methods/ray-shielding.md) for the common
 method and its exact-zero load consequence.
 
 ### `hypersonic/components.csv`

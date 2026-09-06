@@ -333,7 +333,7 @@ def _smoke_packaged_documentation() -> None:
 
     with DocumentationSite() as site:
         root = site.resolve().parent
-        for page in ("index.html", "solvers/fmf.html", "solvers/hypersonic.html"):
+        for page in ("index.html", "methods/fmf.html", "methods/hypersonic.html"):
             if not site.resolve(page).is_file():
                 raise RuntimeError(f"installed documentation page is missing: {page}")
         for legal_name in ("LICENSE", "THIRD_PARTY_NOTICES.md"):

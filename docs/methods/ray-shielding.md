@@ -2,8 +2,8 @@
 
 FMF and Hypersonic use the same ray-shielding method to detect geometry
 occlusion. Setting `shielding_on=1` enables this method for a case. The
-[FMF input reference](fmf-input.md) and
-[Hypersonic input reference](hypersonic-input.md) list the accepted
+[FMF input reference](../inputs/fmf-input.md) and
+[Hypersonic input reference](../inputs/hypersonic-input.md) list the accepted
 `shielding_on` and `ray_backend` values and defaults.
 
 ## Geometry-occlusion method
@@ -45,4 +45,4 @@ Results record the effective backend as `ray_backend_used` in
 count as `shielded_faces`.
 
 Ray-query batching can be tuned as described in the
-[Environment-variable reference](environment-variables.md).
+[Environment-variable reference](../product-reference/environment-variables.md).

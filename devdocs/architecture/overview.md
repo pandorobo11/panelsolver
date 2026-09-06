@@ -48,15 +48,15 @@ and reference normalization and integrates forces and moments.
 The exact contract and immutability rules are in
 [ADR 0002](../adr/0002-panel-load-vector-contract.md). Frames, attitude, signs,
 and normalization are in
-[Coordinate and attitude conventions](../../docs/reference/coordinate-and-attitude-conventions.md)
-and [Load and coefficient conventions](../../docs/reference/load-and-coefficient-conventions.md).
+[Coordinate and attitude conventions](../../docs/methods/coordinate-and-attitude-conventions.md)
+and [Load and coefficient conventions](../../docs/methods/load-and-coefficient-conventions.md).
 
 ## Public and lower-level Python boundaries
 
 The package root provides a small stable in-memory Python API that adapts domain
 cases into the shared numerical pipeline without serializing artifacts. The
 exact supported exports and their user-facing contract are defined in the
-[Python API reference](../../docs/reference/python-api.md).
+[Python API reference](../../docs/running/python-api.md).
 
 `panelsolver.core`, `panelsolver.models`, `panelsolver.app`, and
 `panelsolver.domains` are lower-level composition modules. They expose typed

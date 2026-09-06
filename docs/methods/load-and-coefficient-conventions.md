@@ -3,8 +3,8 @@
 This page defines how local panel loads are represented, how they are integrated
 into forces and moments, and how aggregate coefficients are formed for both
 domains. See the
-[FMF solver page](../solvers/fmf.md) for the Sentman equations and assumptions,
-and the [Hypersonic solver page](../solvers/hypersonic.md) for pressure-model
+[FMF solver page](fmf.md) for the Sentman equations and assumptions,
+and the [Hypersonic solver page](hypersonic.md) for pressure-model
 equations and assumptions. The [VTP reference](../results/vtp.md) lists each
 result array's association, shape, and stored dtype.
 
@@ -19,7 +19,7 @@ whole case and, for multiple STLs, each component.
 All eight coefficients are dimensionless. Their magnitudes depend on your
 `Aref_m2`; moments also depend on the reference point and the three
 `Lref_*_m` lengths. Use the same reference conventions when comparing cases or
-external data. [Case files](../user-guide/case-files.md#choose-reference-quantities)
+external data. [Case files](../inputs/case-files.md#choose-reference-quantities)
 explains how to choose these inputs. The equations below give the exact area
 weighting, signs, frames, and normalization.
 
@@ -65,7 +65,7 @@ fixed STL-to-body mapping defined in
 
 ```math
 \boldsymbol C_{\mathrm{body}}
-=\operatorname{STLToBody}(\boldsymbol C_{\mathrm{total},\mathrm{STL}}).
+=\mathrm{STLToBody}(\boldsymbol C_{\mathrm{total},\mathrm{STL}}).
 ```
 
 Writing its components as $(C_{X,\mathrm{body}},C_{Y,\mathrm{body}},
@@ -145,7 +145,7 @@ STL-frame panel normal and the resolved freestream direction:
 ```math
 \theta
 =
-\operatorname{acos}
+\mathrm{acos}
 \left(
 \boldsymbol n_{\mathrm{out},\mathrm{STL}}
 \mathbin{\boldsymbol\cdot}

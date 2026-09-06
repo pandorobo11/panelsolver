@@ -29,7 +29,7 @@ These open `Panel Solver — FMF` and `Panel Solver — Hypersonic`.
 
 The run writes the selected Summary CSV and, when enabled, one VTP per case at
 `<out_dir>/<case_id>.vtp`. Relative `out_dir` values use the input table's
-directory. See [Case files](case-files.md#paths-vtp-destinations-and-components)
+directory. See [Case files](../inputs/case-files.md#paths-vtp-destinations-and-components)
 for path rules.
 
 During cancellation, progress shows **Cancelling** until workers finish cleanup.

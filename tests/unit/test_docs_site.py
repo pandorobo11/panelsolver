@@ -81,18 +81,52 @@ class DocumentationSiteTests(unittest.TestCase):
     def tearDownClass(cls) -> None:
         cls.temporary.cleanup()
 
+    def test_navigation_matches_canonical_directories(self) -> None:
+        from mkdocs.config import load_config
+
+        sections = {
+            "Getting started": "getting-started",
+            "Methods and conventions": "methods",
+            "Inputs": "inputs",
+            "Running calculations": "running",
+            "Results": "results",
+            "Product reference": "product-reference",
+            "Appendix": "appendix",
+        }
+        nav = load_config(config_file=str(ROOT / "mkdocs.yml"))["nav"]
+        canonical = {"index.md"}
+        home = _ResourceParser()
+        home.feed((self.site / "index.html").read_text(encoding="utf-8"))
+        for section in nav:
+            for label, pages in section.items():
+                if label == "Panel Solver":
+                    self.assertEqual("index.md", pages)
+                    continue
+                for page in pages:
+                    for path in page.values():
+                        self.assertEqual(sections[label], Path(path).parent.as_posix())
+                        self.assertNotIn(path, canonical)
+                        canonical.add(path)
+                        self.assertIn(
+                            Path(path).with_suffix(".html").as_posix(), home.links
+                        )
+        sources = {
+            path.relative_to(ROOT / "docs").as_posix()
+            for path in (ROOT / "docs").rglob("*.md")
+        }
+        self.assertEqual(canonical, sources)
+
     def test_strict_site_has_current_pages_and_legal_files(self) -> None:
         for relative in (
             "index.html",
-            "solvers/fmf.html",
-            "solvers/hypersonic.html",
-            "reference/fmf-input.html",
-            "reference/hypersonic-input.html",
-            "reference/coordinate-and-attitude-conventions.html",
-            "reference/load-and-coefficient-conventions.html",
-            "reference/ray-shielding.html",
-            "reference/output-formats.html",
-            "user-guide/batch-execution-and-recovery.html",
+            "methods/fmf.html",
+            "methods/hypersonic.html",
+            "inputs/fmf-input.html",
+            "inputs/hypersonic-input.html",
+            "methods/coordinate-and-attitude-conventions.html",
+            "methods/load-and-coefficient-conventions.html",
+            "methods/ray-shielding.html",
+            "running/batch-execution-and-recovery.html",
             "assets/screenshots/gui-overview.png",
             "assets/screenshots/gui-result.png",
             "LICENSE",
@@ -300,7 +334,7 @@ class DocumentationSiteTests(unittest.TestCase):
                         self.assertIn(unquote(split.fragment), parsed[target].ids)
 
     def test_math_is_prerendered_as_self_contained_mathml(self) -> None:
-        for relative in ("solvers/fmf.html", "solvers/hypersonic.html"):
+        for relative in ("methods/fmf.html", "methods/hypersonic.html"):
             html = (self.site / relative).read_text(encoding="utf-8")
             with self.subTest(relative=relative):
                 self.assertIn("<math", html)
@@ -312,8 +346,8 @@ class DocumentationSiteTests(unittest.TestCase):
 
     def test_page_validation_accepts_only_normalized_relative_html(self) -> None:
         self.assertEqual(
-            "solvers/fmf.html",
-            validate_documentation_page(" solvers/fmf.html "),
+            "methods/fmf.html",
+            validate_documentation_page(" methods/fmf.html "),
         )
         for value in (
             None,
@@ -324,7 +358,7 @@ class DocumentationSiteTests(unittest.TestCase):
             "solvers/../index.html",
             "solvers\\index.html",
             "solvers//fmf.html",
-            "solvers/fmf.md",
+            "methods/fmf.md",
         ):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 validate_documentation_page(value)
@@ -335,9 +369,8 @@ class DocumentationSiteTests(unittest.TestCase):
         root = index.parent
         self.assertTrue(index.is_file())
         self.assertEqual(root, site.resolve().parent)
-        self.assertTrue(site.resolve("solvers/hypersonic.html").is_file())
-        self.assertTrue(site.resolve("reference/fmf-input.html").is_file())
-        self.assertTrue(site.resolve("reference/output-formats.html").is_file())
+        self.assertTrue(site.resolve("methods/hypersonic.html").is_file())
+        self.assertTrue(site.resolve("inputs/fmf-input.html").is_file())
         site.close()
         self.assertFalse(root.exists())
 

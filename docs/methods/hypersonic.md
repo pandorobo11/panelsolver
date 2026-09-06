@@ -60,7 +60,7 @@ is stored as `cp` and gives the traction
 ```
 
 Panel-area weighting, force/moment integration, and coefficient signs are
-specified in [Load and coefficient conventions](../reference/load-and-coefficient-conventions.md).
+specified in [Load and coefficient conventions](load-and-coefficient-conventions.md).
 
 The windward choices differ only in how they obtain this local $C_p$:
 Newtonian uses impact momentum, Modified Newtonian scales it by a finite-Mach
@@ -217,7 +217,7 @@ C_p=0.
 ```
 
 This sets surface pressure to freestream pressure, $p=p_\infty$.
-The separate [`shielding_on` setting](../reference/ray-shielding.md#ray-shielding-versus-leeward_eqshield)
+The separate [`shielding_on` setting](ray-shielding.md#ray-shielding-versus-leeward_eqshield)
 controls geometric occlusion.
 
 ### Prandtl–Meyer expansion
@@ -345,7 +345,7 @@ tangent wedge, tangent cone, and Prandtl–Meyer require `Mach > 1`.
 Newtonian with leeward `shield` accepts any positive Mach, including subsonic
 inputs. Physical applicability follows the assumptions below.
 
-See the [Hypersonic input reference](../reference/hypersonic-input.md) for the
+See the [Hypersonic input reference](../inputs/hypersonic-input.md) for the
 complete case schema. Local `cp` is documented in the
 [VTP reference](../results/vtp.md#hypersonic); integrated coefficients are in the
 [Summary CSV reference](../results/summary-csv.md).

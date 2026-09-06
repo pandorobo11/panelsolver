@@ -18,7 +18,7 @@ temperature, speed of sound, and mean molecular speed for the FMF/Sentman Mode
 B atmosphere calculation. The underlying U.S. Government report and physical
 data are not claimed as copyright by the Panel Solver project. Scientific and
 model-facing provenance is documented in
-[US1976 Sentman atmosphere data provenance](docs/reference/us1976-data-provenance.md).
+[US1976 Sentman atmosphere data provenance](docs/appendix/us1976-data-provenance.md).
 Maintainer regeneration steps and audit records are stored in repository and
 source-distribution path `devdocs/data/us1976-generation-and-audit.md`; that
 developer page is not included in GUI Help, the wheel documentation site, or

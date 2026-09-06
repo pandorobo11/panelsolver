@@ -5,7 +5,7 @@ calculation. It reads the requested STL files and returns a `SolveResult` in
 memory.
 
 Use this API to work directly with coefficients and per-panel arrays.
-The [CLI](../user-guide/cli.md) and [GUI](../user-guide/gui.md) provide case-table
+The [CLI](cli.md) and [GUI](gui.md) provide case-table
 workflows for writing result files.
 
 ## Minimal examples
@@ -93,7 +93,7 @@ from panelsolver import (
 Compatibility covers these package-root imports and the returned fields
 documented below. Nested result objects are accessed through `SolveResult`;
 their defining modules and direct constructors remain implementation details.
-See [Compatibility policy](compatibility.md) for the full support boundary.
+See [Compatibility policy](../product-reference/compatibility.md) for the full support boundary.
 
 ## Attitude resolution
 
@@ -117,7 +117,7 @@ trimmed and normalized case-insensitively. `None` and blank text select
 
 The resolver converts every mode to the tangent-angle values used by both solve
 functions. The equations, axes, signs, and periodic
-behavior are in [Coordinate and attitude conventions](coordinate-and-attitude-conventions.md).
+behavior are in [Coordinate and attitude conventions](../methods/coordinate-and-attitude-conventions.md).
 
 ### `ResolvedAttitude`
 
@@ -189,7 +189,7 @@ is required.
 
 `FMFCase` accepts resolved Sentman **Mode A** inputs: speed ratio, incident
 static temperature, and wall temperature. For Mode B (`Mach` and `Altitude_km`),
-use a CLI or GUI case table. See the [FMF solver page](../solvers/fmf.md#flow-inputs)
+use a CLI or GUI case table. See the [FMF solver page](../methods/fmf.md#flow-inputs)
 for the physical meaning of both modes.
 
 For comparison with a case table, `stl_paths` is the ordered in-memory form of
@@ -241,9 +241,9 @@ exactly one semicolon-separated selector per ordered STL component. Entries are
 trimmed and normalized case-insensitively; empty entries and mismatched counts
 are invalid. `modified_newtonian`, `tangent_wedge`, `tangent_cone`, and
 `prandtl_meyer` require `mach > 1`. The equations and physical applicability
-limits are in [Hypersonic Panel Methods](../solvers/hypersonic.md); the
+limits are in [Hypersonic Panel Methods](../methods/hypersonic.md); the
 case-table names and rules are in the
-[Hypersonic input reference](hypersonic-input.md).
+[Hypersonic input reference](../inputs/hypersonic-input.md).
 
 As with `FMFCase`, `stl_paths` corresponds to ordered `stl_path`, while
 `moment_reference_stl_m` combines `ref_x_m`, `ref_y_m`, and `ref_z_m`.
@@ -265,7 +265,7 @@ As with `FMFCase`, `stl_paths` corresponds to ordered `stl_path`, while
   angles are used by shielding, model evaluation, and integration.
 - `shielding` must be boolean. `ray_backend` accepts `auto`, `rtree`, or
   `embree`; `auto` selects an available supported backend when shielding is
-  enabled. See [Ray shielding](ray-shielding.md#backend-behavior).
+  enabled. See [Ray shielding](../methods/ray-shielding.md#backend-behavior).
 - Model inputs must satisfy the domain-specific ranges in the case tables
   above. Meshes must be readable, non-empty, finite, consistently orientable,
   and free of degenerate faces after applying the STL scale.
@@ -319,7 +319,7 @@ and scalar properties:
 | `CD`, `CL` | `float` | dimensionless | Drag and lift coefficients in stability axes. |
 
 Full transforms, signs, area normalization, and moment definitions are in
-[Load and coefficient conventions](load-and-coefficient-conventions.md).
+[Load and coefficient conventions](../methods/load-and-coefficient-conventions.md).
 
 ### Components
 
@@ -353,7 +353,7 @@ exposes:
 | `shielded` | NumPy boolean array `(n_faces,)` | `False` or `True` | Geometric ray-occlusion mask. Shielded faces have exact-zero local traction. |
 | `n_faces` | `int` | positive count | Number of entries in `shielded`. |
 
-See [Ray shielding](ray-shielding.md) for the geometric method and backend
+See [Ray shielding](../methods/ray-shielding.md) for the geometric method and backend
 behavior.
 
 ### Local loads
@@ -373,10 +373,10 @@ The current scalar mappings are:
 | Hypersonic | `cp`, `theta_deg` | Local pressure coefficient and the normal-to-flow angle. |
 
 Each current scalar array is `float64`. The model-specific scalar definitions
-are in the [FMF](../solvers/fmf.md) and
-[Hypersonic](../solvers/hypersonic.md) solver pages, while the shared
+are in the [FMF](../methods/fmf.md) and
+[Hypersonic](../methods/hypersonic.md) solver pages, while the shared
 `theta_deg` definition is in
-[Load and coefficient conventions](load-and-coefficient-conventions.md#common-panel-angle).
+[Load and coefficient conventions](../methods/load-and-coefficient-conventions.md#common-panel-angle).
 The corresponding VTP arrays are documented under
 [common cell data](../results/vtp.md#common-cell-data) and
 [model-specific cell data](../results/vtp.md#model-specific-cell-data).
@@ -398,7 +398,7 @@ C_face_stl = (
 ```
 
 Use the resulting `C_face_stl` for force summation and moment integration, as
-specified in [Load and coefficient conventions](load-and-coefficient-conventions.md#local-traction-and-panel-contributions).
+specified in [Load and coefficient conventions](../methods/load-and-coefficient-conventions.md#local-traction-and-panel-contributions).
 
 ### Arrays and mutability
 
@@ -451,5 +451,5 @@ private exception subclasses, and exact messages are outside the stable API.
 
 The solve functions read every path in `stl_paths` and return their results in
 memory. They create no output directories or result files (Summary CSV, VTP,
-PNG, or checkpoints). Use the [CLI](../user-guide/cli.md) or
-[GUI](../user-guide/gui.md) to write calculation outputs.
+PNG, or checkpoints). Use the [CLI](cli.md) or
+[GUI](gui.md) to write calculation outputs.
