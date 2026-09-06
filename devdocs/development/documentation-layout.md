@@ -33,31 +33,24 @@ Paths below are relative to `docs/`. Home (`index.md`) is unchanged.
 | US1976 data provenance | `reference/us1976-data-provenance.md` | `appendix/us1976-data-provenance.md` |
 | License and third-party notices | `reference/license-and-third-party-notices.md` | `appendix/license-and-third-party-notices.md` |
 
-## Old-link exceptions
+## Old URLs
 
-The 17 moved pages remain at their previous paths only as unlisted link guides.
-Every rendered content ID from the starting revision is retained as an explicit
-anchor with a relative link to the same anchor on the current page. Opening an
-old `.html#anchor` URL lands at that guide; following its link opens the current
-section. This is a one-click handoff, not an automatic redirect. It works through
-`file://` without JavaScript or a network connection. Canonical headings and
-explicit IDs are unchanged. Markdown source links work on the repository too.
+The 17 previous canonical paths and the former unlisted
+`reference/output-formats.md` guide are removed. No compatibility pages or
+redirects are shipped. Old page URLs, including their deep-anchor URLs, no longer
+resolve; use the current paths in the table above. Headings and explicit IDs on
+the current canonical pages are unchanged.
 
-`reference/output-formats.md` was already an unlisted compatibility guide. It
-continues to point to the two canonical Results references and the current input
-and GUI procedures, without duplicating schemas. These 18 guides are exceptions
-to the directory layout, not additional canonical references. Assets, Getting
-started, Results, and the home page stay in place. No previously deleted page is
-resurrected (including numerical-conventions and shielding-and-parallel).
-
-Historical records retain their recorded paths and are not current navigation
-sources. Current README, examples, developer architecture/data links, legal
-notice pointers, and packaging checks follow the new canonical locations.
+All Markdown pages under `docs/` are canonical navigation pages. Assets, Getting
+started, Results, and the home page stay in place. Historical records retain
+their recorded paths and are not current navigation sources; links in the
+history index to current user documentation follow the new locations.
 
 ## Verification when changing the layout
 
-`tests/unit/test_docs_site.py` checks section ownership, the compatibility-guide
-inventory and anchor handoffs, all generated local links/fragments, local image
-and stylesheet resources, and prerendered MathML. Run `python scripts/check.py`
-for the standard gate, including strict MkDocs and distribution builds. Verify
-that the wheel and release docs archive contain the full generated page set.
+`tests/unit/test_docs_site.py` checks section ownership, exact agreement between
+the navigation and Markdown page inventory, all generated local links/fragments,
+local image and stylesheet resources, and prerendered MathML. Run
+`python scripts/check.py` for the standard gate, including strict MkDocs and
+distribution builds. Verify that the wheel and release docs archive contain the
+full generated page set and no removed compatibility pages.
