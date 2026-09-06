@@ -65,7 +65,7 @@ fixed STL-to-body mapping defined in
 
 ```math
 \boldsymbol C_{\mathrm{body}}
-=\operatorname{STLToBody}(\boldsymbol C_{\mathrm{total},\mathrm{STL}}).
+=\mathrm{STLToBody}(\boldsymbol C_{\mathrm{total},\mathrm{STL}}).
 ```
 
 Writing its components as $(C_{X,\mathrm{body}},C_{Y,\mathrm{body}},
@@ -145,7 +145,7 @@ STL-frame panel normal and the resolved freestream direction:
 ```math
 \theta
 =
-\operatorname{acos}
+\mathrm{acos}
 \left(
 \boldsymbol n_{\mathrm{out},\mathrm{STL}}
 \mathbin{\boldsymbol\cdot}

@@ -33,7 +33,7 @@ $\hat{\boldsymbol V}_{\mathrm{STL}}$ and to the tangent angles $\alpha_t$ and
 $\beta_t$ used for panel calculation.
 
 Here
-$\operatorname{normalize}(\boldsymbol q)=\boldsymbol q/\lVert\boldsymbol q\rVert$.
+$\mathrm{normalize}(\boldsymbol q)=\boldsymbol q/\lVert\boldsymbol q\rVert$.
 
 ## Tangent-angle input (`beta_tan`)
 
@@ -43,12 +43,12 @@ principal domain specified by [Case files](../inputs/case-files.md#attitude-mode
 
 ```math
 \hat{\boldsymbol V}_{\mathrm{STL}}
-=\operatorname{normalize}\!\begin{bmatrix}
+=\mathrm{normalize}\!\begin{bmatrix}
 \cos\alpha_t\cos\beta_t\\
 -\sin\beta_t\cos\alpha_t\\
 \sin\alpha_t\cos\beta_t
 \end{bmatrix}
-=\operatorname{normalize}\!\begin{bmatrix}
+=\mathrm{normalize}\!\begin{bmatrix}
 1\\-\tan\beta_t\\\tan\alpha_t
 \end{bmatrix}.
 ```
@@ -75,7 +75,7 @@ With $t=\tan\alpha_{\mathrm{in}}$ and $s=\sin\beta_s$, the unit direction is
 
 ```math
 \hat{\boldsymbol V}_{\mathrm{STL}}
-=\operatorname{normalize}\!\begin{bmatrix}
+=\mathrm{normalize}\!\begin{bmatrix}
 \sqrt{\dfrac{1-s^2}{1+t^2}}\\
 -s\\
 t\sqrt{\dfrac{1-s^2}{1+t^2}}
@@ -119,9 +119,9 @@ For every resolved unit direction
 $\hat{\boldsymbol V}_{\mathrm{STL}}=(V_x,V_y,V_z)$, both domains use
 
 ```math
-\alpha_t=\operatorname{atan2}(V_z,V_x),
+\alpha_t=\mathrm{atan2}(V_z,V_x),
 \qquad
-\beta_t=\operatorname{atan2}(-V_y,V_x).
+\beta_t=\mathrm{atan2}(-V_y,V_x).
 ```
 
 When $V_x\ne0$, these definitions give
