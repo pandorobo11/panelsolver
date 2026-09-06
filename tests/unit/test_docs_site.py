@@ -124,12 +124,14 @@ class DocumentationSiteTests(unittest.TestCase):
                     continue
                 for page in pages:
                     for path in page.values():
-                        self.assertEqual(sections[label], str(Path(path).parent))
+                        self.assertEqual(sections[label], Path(path).parent.as_posix())
                         self.assertNotIn(path, canonical)
                         canonical.add(path)
-                        self.assertIn(str(Path(path).with_suffix(".html")), home.links)
+                        self.assertIn(
+                            Path(path).with_suffix(".html").as_posix(), home.links
+                        )
         sources = {
-            str(path.relative_to(ROOT / "docs"))
+            path.relative_to(ROOT / "docs").as_posix()
             for path in (ROOT / "docs").rglob("*.md")
         }
         self.assertEqual(
