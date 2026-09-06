@@ -1,43 +1,33 @@
 # Free Molecular Flow (FMF)
 
-FMF evaluates free-molecular-flow panel loads with the Sentman model. Unlike a
-pressure-only model, its local nondimensional traction retains both normal and
-tangential/freestream contributions. The solver then applies panel area,
-reference-area normalization, force/moment integration, and component totals.
+FMF evaluates free-molecular-flow panel loads with the Sentman model. Its local
+nondimensional traction includes normal and tangential contributions.
 
 ## Flow inputs
 
-Exactly one mode must be supplied:
+Supply exactly one of these input pairs:
 
-- **Mode A:** positive molecular speed ratio
-  `S = V_inf / sqrt(2 R Ti)` and positive free-stream incident translational
-  (static) temperature `Ti_K`. `Ti_K` is not total or stagnation temperature;
-  the supplied `S` and `Ti_K` must describe the same free-stream state.
-- **Mode B:** positive `Mach` and `Altitude_km` in the bundled US1976 table's
-  inclusive `0–1000 km` geometric-altitude range. The solver linearly
-  interpolates static translational temperature, speed of sound, and mean
-  molecular speed. It sets `V_inf = Mach * c`, converts mean molecular speed to
-  most-probable speed with `V_mp = sqrt(pi) / 2 * V_mean`, and resolves
-  `S = V_inf / V_mp` and `Ti_K` without a total-temperature conversion.
+- **Mode A:** positive molecular speed ratio `S = V_inf / sqrt(2 R Ti)` and
+  positive incident freestream translational (static) temperature `Ti_K`.
+- **Mode B:** positive `Mach` and geometric `Altitude_km` in the inclusive
+  `0–1000 km` range of the bundled US1976 table. The solver linearly interpolates
+  static temperature, sound speed, and mean molecular speed. It computes
+  `V_inf = Mach * c`, converts mean molecular speed to most-probable speed with
+  `V_mp = sqrt(pi) / 2 * V_mean`, and resolves `S = V_inf / V_mp` and `Ti_K`.
 
-The bundled table's scientific, software-right, regeneration, rounding, and
-full-grid equivalence evidence is recorded in
-[US1976 Sentman atmosphere data provenance](../reference/us1976-data-provenance.md).
+Both modes also require positive wall temperature `Tw_K`. The model assumes
+complete thermal accommodation, using the wall temperature as the diffusely
+reflected molecular temperature (`T_r = T_w`).
 
-Both modes require positive wall temperature `Tw_K`. The reflected Sentman term
-uses `sqrt(Tw_K / Ti_K)`; because there is no separate reflected-gas temperature
-or accommodation input, FMF uses the wall temperature as the diffusely
-reflected molecular temperature (`T_r = T_w`). Supplying both modes, only half a
-pair, or neither mode is invalid.
+The [FMF input reference](../reference/fmf-input.md) lists columns, defaults,
+and validity requirements.
 
 ## Sentman local-load equation
 
-For each panel, the Sentman model computes a local nondimensional traction
-vector. The model returns this vector without panel-area or reference-area
-scaling; the solver applies those factors and performs force, moment, and
-component integration. General frame transformations and moment conventions are
-defined in
-[Load and coefficient conventions](../reference/load-and-coefficient-conventions.md).
+For each panel, the model computes a local nondimensional traction vector
+$\boldsymbol\tau$. Panel-area weighting and whole-vehicle force/moment
+integration are defined in
+[Load and coefficient conventions](../reference/load-and-coefficient-conventions.md#local-traction-and-panel-contributions).
 
 ### Geometry and symbols
 
@@ -47,11 +37,9 @@ defined in
   unit normal used in Sentman's original report.
 - $\gamma=\boldsymbol n_{\mathrm{in}}\mathbin{\boldsymbol\cdot}
   \hat{\boldsymbol V}$ is the direction cosine between the flow and inward
-  normal. Here, $\gamma$ is not the specific-heat ratio used by Hypersonic
-  methods.
-- $S$ is the molecular speed ratio, $T_i$ is the incident translational
-  temperature, and $T_w$ is the wall temperature. The input columns are `S`,
-  `Ti_K`, and `Tw_K`.
+  normal.
+- $S$ is the molecular speed ratio (`S`), $T_i$ is the incident translational
+  temperature (`Ti_K`), and $T_w$ is the wall temperature (`Tw_K`).
 
 ### Auxiliary functions and local traction
 
@@ -105,13 +93,6 @@ c_{\parallel}\hat{\boldsymbol V}
 \left(c_{n,i}+c_{n,r}\right)\boldsymbol n_{\mathrm{in}}.
 ```
 
-In this local equation, $S$ enters the projected speed $h$ and the explicit
-$1/S$ and $1/S^2$ terms. The incident temperature and wall temperature enter
-the reflected coefficient through $\sqrt{T_w/T_i}$; $T_i$ also belongs to the
-physical free-stream state used to define or resolve $S$. Consequently, `S`,
-`Ti_K`, and `Tw_K` describe distinct parts of the implemented load rather than
-three interchangeable temperature or velocity corrections.
-
 The three terms have distinct roles. The
 $c_{\parallel}\hat{\boldsymbol V}$ term is the incident-molecule load in the
 flow direction and retains the component tangent to the panel.
@@ -120,12 +101,8 @@ random thermal motion of incident molecules, while
 $c_{n,r}\boldsymbol n_{\mathrm{in}}$ is the normal contribution from diffusely
 reflected molecules. Under complete diffuse reflection, reflected tangential
 momentum cancels statistically, so the reflected term appears only in the
-normal direction. The error-function and exponential terms retain random
-thermal motion, so this is not a simple windward-only pressure law.
-
-The model returns this local traction vector. The `area / Aref` weighting and
-whole-vehicle force/moment integration are defined in
-[Load and coefficient conventions](../reference/load-and-coefficient-conventions.md#local-traction-and-panel-contributions).
+normal direction. The error-function and exponential terms account for the
+random thermal motion of incident molecules.
 
 ### Representative angular response
 
@@ -136,21 +113,16 @@ $\mu=\boldsymbol n_{\mathrm{in}}\mathbin{\boldsymbol\cdot}
 \hat{\boldsymbol V}=\sin\delta$, where $\delta=-90^\circ$ faces directly away
 from the flow, $\delta=0^\circ$ is grazing incidence, and $\delta=+90^\circ$
 faces directly into the flow. The output angle is related by
-$\delta=\mathtt{theta\_deg}-90^\circ$. The plotted Mode A case uses
-$T_i=1000\ \mathrm{K}$ and $T_w=180.625\ \mathrm{K}$ to provide the stated
-representative temperature ratio.
+$\delta=\mathtt{theta\_deg}-90^\circ$.
 
 ![Sentman local normal and tangential traction versus local panel angle at S=7](../assets/plots/sentman-local-traction-vs-angle.svg)
 
-**Figure.** Representative local response at $S=7$ and
-$\sqrt{T_w/T_i}=0.425$, using complete diffuse reflection, complete thermal
-accommodation with $T_r=T_w$, and no ray shielding. The vertical line at
-$\delta=0^\circ$ marks grazing incidence; finite load there results from random
-thermal motion. These curves show the local response of one isolated,
-unshielded panel before multiplication by $A_j/A_{\mathrm{ref}}$. They are not
-whole-vehicle aerodynamic polars.
+**Figure.** Local panel traction at $S=7$, $T_i=1000\ \mathrm{K}$, and
+$T_w=180.625\ \mathrm{K}$, giving $\sqrt{T_w/T_i}=0.425$. The case uses
+complete diffuse reflection and thermal accommodation ($T_r=T_w$), with ray
+shielding off. The vertical line marks grazing incidence ($\delta=0^\circ$).
 
-The plotted normal component is the `normal_traction_coeff` scalar,
+The plotted normal component is
 
 ```math
 \mathtt{normal\_traction\_coeff}
@@ -177,50 +149,45 @@ flow direction,
 },
 ```
 
-and `tangential_traction_coeff` is
-$\boldsymbol\tau\mathbin{\boldsymbol\cdot}\hat{\boldsymbol t}$. At normal
-incidence, where the in-plane direction is not unique, it is exactly zero. At
-grazing incidence the load is
-not exactly zero, Sentman retains tangential traction, and a negative local
-angle does not make the response immediately vanish because random molecular
-thermal motion remains. Geometrically occluded faces are handled separately:
-ray shielding sets their entire traction vector to exact zero.
+and the tangential component is
+
+```math
+\mathtt{tangential\_traction\_coeff}
+=
+\boldsymbol\tau\mathbin{\boldsymbol\cdot}\hat{\boldsymbol t}.
+```
+
+At normal incidence the in-plane direction is undefined and the tangential
+component is exactly zero. Random molecular thermal motion produces finite
+traction at grazing incidence and a response extending into negative local
+angles.
 
 ### Assumptions and implementation scope
 
 Sentman's Eq. (21) applies within kinetic theory, free-molecular flow, and
-complete diffuse-reflection assumptions. Its general form uses reflected
-molecular temperature $T_r$. FMF has no independent $T_r$ input or thermal
-accommodation coefficient; the implementation assumes complete thermal
-accommodation and substitutes $T_r=T_w$, which produces the
-$\sqrt{T_w/T_i}$ factor above.
+complete diffuse reflection. FMF fixes the reflected temperature to the wall
+temperature as described under [Flow inputs](#flow-inputs); specular or mixed
+reflection and adjustable thermal accommodation are outside this model's scope.
 
-This equation does not model specular reflection, mixed reflection, an arbitrary
-thermal accommodation coefficient, or multiple reflections between surfaces.
-Ray shielding is a separate geometric approximation that sets an occluded
-panel's load to zero; see
-[Ray shielding](../reference/ray-shielding.md).
+[Ray shielding](../reference/ray-shielding.md) approximates geometric occlusion
+by setting a hidden panel's entire traction vector to zero. Multiple reflections
+between surfaces are outside this approximation.
+
+Mode B uses the same free-molecular model. Its bundled atmosphere table provides
+conditions within the tabulated altitude range. Table sources, rounding, and
+reproducibility are documented in
+[US1976 data provenance](../reference/us1976-data-provenance.md).
 
 ## Outputs and scope
 
-FMF VTP data includes `normal_traction_coeff`,
-`tangential_traction_coeff`, and `theta_deg`. Summary CSV includes resolved
-`mode`, `out_S`, and `out_Ti_K`; `Tw_K` remains an input column. Both displayed
-traction scalars are derived from the model's `traction_coeff_stl`; they do not
-participate in whole-vehicle integration. See the
-[Summary CSV reference](../results/summary-csv.md#fmf-resolved-state-fields)
-for the resolved FMF columns and [VTP reference](../results/vtp.md#fmf) for the
-FMF cell-data array names, types, units, and meanings.
+FMF VTP includes the local `normal_traction_coeff`, `tangential_traction_coeff`,
+and `theta_deg` scalars. Summary CSV records the resolved `mode`, `out_S`, and
+`out_Ti_K`; `Tw_K` remains an input column.
 
-Use this model only when the free-molecular/Sentman assumptions are appropriate
-for the intended regime and surface interaction. Mode B is tied to the bundled,
-pinned atmosphere table and does not accept extrapolation beyond its altitude
-range. It does not become a continuum-flow model merely because Mach is used to
-derive speed ratio.
-
-See the [FMF input reference](../reference/fmf-input.md),
-[Coordinate and attitude conventions](../reference/coordinate-and-attitude-conventions.md),
-and [Load and coefficient conventions](../reference/load-and-coefficient-conventions.md).
+See the [VTP reference](../results/vtp.md#fmf) for array types and units, and the
+[Summary CSV reference](../results/summary-csv.md#fmf-resolved-state-fields) for
+resolved-state columns. Interpret results within the
+[model assumptions](#assumptions-and-implementation-scope) above.
 
 ## Reference
 

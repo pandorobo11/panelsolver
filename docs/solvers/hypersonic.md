@@ -1,10 +1,8 @@
 # Hypersonic Panel Methods
 
-The Hypersonic domain evaluates pressure-only panel traction for
-Newtonian-family flow models. The local load is `-cp` times the outward panel
-normal. Panel Solver scales the geometry, applies shielding, and integrates
-total and component coefficients. The CLI and GUI can then write Summary CSV
-and optional VTP files.
+The Hypersonic domain evaluates pressure-only panel traction using
+Newtonian-family flow models. Choose windward and leeward pressure equations
+for the surfaces in your case.
 
 ## Surface equations
 
@@ -38,12 +36,10 @@ For each panel, define:
   \hat{\boldsymbol V}$: local incidence direction cosine;
 - $\delta=\sin^{-1}\mu$: local panel turning angle.
 
-The code classifies $\mu>0$ as windward and $\mu\leq0$ as leeward. Thus
-$\delta$ is positive on windward panels and nonpositive on leeward panels. It
-is a panel-local angle, not the whole-vehicle `alpha_deg`. It is also distinct
-from the output normal-to-flow angle
-`theta_deg` $=\cos^{-1}(\boldsymbol n_{\mathrm{out}}\mathbin{\boldsymbol\cdot}
-\hat{\boldsymbol V})$; in degrees, `theta_deg` is $90^\circ+\delta$.
+Panels with $\mu>0$ are windward ($\delta>0$); panels with $\mu\leq0$ are
+leeward ($\delta\leq0$). The output normal-to-flow angle is
+$\mathtt{theta\_deg}=\cos^{-1}(\boldsymbol n_{\mathrm{out}}\mathbin{\boldsymbol\cdot}
+\hat{\boldsymbol V})$, or $90^\circ+\delta$ when expressed in degrees.
 
 All pressure models use
 
@@ -56,31 +52,15 @@ C_p
 \left(\frac{p}{p_\infty}-1\right),
 ```
 
-where $\gamma$ is the specific-heat ratio, not the incidence cosine. `cp` is
-the Hypersonic domain's local panel pressure-coefficient output. The model
-returns local pressure-only traction
+where $\gamma$ is the specific-heat ratio. The local panel pressure coefficient
+is stored as `cp` and gives the traction
 
 ```math
 \boldsymbol{\tau}_j=-C_{p,j}\boldsymbol n_{\mathrm{out},j}.
 ```
 
-The solver, not the model, applies `area / Aref` exactly once and
-forms whole-vehicle force and moment coefficients. See
-[Load and coefficient conventions](../reference/load-and-coefficient-conventions.md)
-for area weighting, coefficient signs, and moment normalization, and
-[Coordinate and attitude conventions](../reference/coordinate-and-attitude-conventions.md)
-for the coordinate and attitude transforms.
-
-These are local, inviscid panel approximations for a calorically perfect gas
-with constant $\gamma$; they are not general CFD. They omit boundary layers,
-viscosity, heat transfer, real-gas chemistry, shock--shock and
-shock--boundary-layer interactions, and coupled flow between neighboring
-panels. Tangent methods estimate pressure from each panel's local angle rather
-than solving a global three-dimensional flow field. `cp` remains a local
-value until the solver performs the area integration. Input validation
-establishes only that a selected relation can be evaluated; it does
-not establish that its physical approximation is accurate for a particular
-vehicle, Mach number, or flow regime.
+Panel-area weighting, force/moment integration, and coefficient signs are
+specified in [Load and coefficient conventions](../reference/load-and-coefficient-conventions.md).
 
 The windward choices differ only in how they obtain this local $C_p$:
 Newtonian uses impact momentum, Modified Newtonian scales it by a finite-Mach
@@ -98,10 +78,7 @@ C_p=2\sin^2\delta=2\mu^2.
 ```
 
 This represents the surface-normal momentum change of particles impacting the
-panel. Mach number and $\gamma$ do not appear directly in this equation. The
-implemented Newtonian plus leeward `shield` path consequently accepts any
-positive Mach number, including subsonic values; input acceptance does not
-claim that Newtonian hypersonic impact theory is physically valid there.
+panel. The coefficient depends only on local incidence.
 
 ### Modified Newtonian
 
@@ -176,18 +153,13 @@ C_p
 \left(\frac{p_2}{p_\infty}-1\right).
 ```
 
-This is a panel-by-panel pressure estimate: an attached solution on one panel
-does not propagate a downstream state to its neighbors and does not account for
-intersections between the locally inferred shocks.
-
 Above the maximum attached turning angle, this attached oblique-shock branch is
 replaced by the [implementation-defined continuation](#detached-branch-continuation).
 
 ### Tangent cone
 
 Tangent cone interprets each windward panel's $\delta$ as a local circular-cone
-half-angle. It does not reconstruct the surface curvature or a physical local
-cone axis. For a candidate conical shock angle, the code first obtains the
+half-angle. For a candidate conical shock angle, the code first obtains the
 immediate post-shock state from oblique-shock relations, then integrates the
 Taylor--Maccoll system toward the cone. Velocity is nondimensionalized as
 
@@ -234,9 +206,7 @@ C_{p,c}
 The implementation evaluates candidate shock angles, retains the attached weak
 branch of the cone-angle relation for $C_p$, and interpolates that relation for
 panel angles. Beyond its maximum attached cone angle it uses the continuation
-defined below, rather than an attached Taylor--Maccoll solution. Each panel is
-evaluated independently, so this local cone analogy does not recover the
-configuration's actual three-dimensional conical-flow topology.
+defined below.
 
 ### Leeward shield
 
@@ -246,11 +216,9 @@ For `leeward_eq=shield`,
 C_p=0.
 ```
 
-By the pressure-coefficient definition above, this means $p=p_\infty$,
-not $p=0$. This is a leeward surface-pressure equation. It is separate from
-`shielding_on=1`, which performs ray-occlusion geometry processing and forces a
-panel hidden by another face to zero load regardless of its pressure equation.
-See [Ray shielding](../reference/ray-shielding.md#ray-shielding-versus-leeward_eqshield).
+This sets surface pressure to freestream pressure, $p=p_\infty$.
+The separate [`shielding_on` setting](../reference/ray-shielding.md#ray-shielding-versus-leeward_eqshield)
+controls geometric occlusion.
 
 ### Prandtl–Meyer expansion
 
@@ -306,7 +274,6 @@ C_{p,\mathrm{vac}}=-\frac{2}{\gamma M_\infty^2}.
 
 Expansion states below $\nu_{\max}$ are inverted numerically; larger requested
 turns use the vacuum coefficient, which is also enforced as the lower bound.
-This is an isentropic expansion model and does not represent separated flow.
 
 ### Detached-branch continuation
 
@@ -332,11 +299,10 @@ C_{p,\mathrm{crit}}
 +\left(C_{p,\max}-C_{p,\mathrm{crit}}\right)w.
 ```
 
-This preserves continuity with $C_p(\delta_{\max})=C_{p,\mathrm{crit}}$ and
-reaches $C_p(90^\circ)=C_{p,\max}$. It is not a standard attached
-oblique-shock solution or an attached Taylor--Maccoll solution, and it does not
-directly solve a detached shock field. It is the continuation from the attached
-branch to the Modified-Newtonian cap.
+This interpolation connects the end of the attached branch,
+$C_p(\delta_{\max})=C_{p,\mathrm{crit}}$, continuously to the
+Modified-Newtonian cap, $C_p(90^\circ)=C_{p,\max}$. It is an
+implementation-defined pressure continuation, not a detached-shock solution.
 
 ### Representative angular response
 
@@ -353,61 +319,54 @@ $\delta=+90^\circ$ it faces directly into the flow.
 
 ![Windward Hypersonic pressure coefficients versus local panel angle at Mach 6](../assets/plots/hypersonic-windward-cp-vs-angle.svg)
 
-**Figure.** Representative local response at $M_\infty=6$ and $\gamma=1.4$, with no ray
-shielding and `leeward_eq=shield`. Solid Tangent segments are attached weak
-branches; dashed Tangent segments are implementation-defined continuations to
-the Modified-Newtonian cap. These curves show the local response of one
-isolated, unshielded panel before multiplication by $A_j/A_{\mathrm{ref}}$.
-They are not whole-vehicle aerodynamic polars. The plotted $C_p$ values are
-local panel coefficients, not whole-vehicle force coefficients.
+**Figure.** Local panel $C_p$ at $M_\infty=6$ and $\gamma=1.4$, with ray
+shielding off and `leeward_eq=shield`. Solid Tangent segments are attached weak
+branches; dashed segments are the continuations defined above.
 
 Newtonian reaches $C_p=2$ at $\delta=90^\circ$. Modified Newtonian retains the
-same $\sin^2\delta$ shape but scales it by the finite-Mach $C_{p,\max}$.
-Tangent Wedge and Tangent Cone use their local shock relations at small and
-moderate angles. After each model's computed attachment limit, the continuation
-defined above connects its critical value to
-$C_{p,\max}$; the dashed portions are not detached-shock solutions. Agreement
-or separation among these curves does not establish a universal ranking of
-model accuracy.
+same $\sin^2\delta$ shape with a finite-Mach stagnation cap. Tangent Wedge and
+Tangent Cone use their local shock relations up to their attachment limits,
+then approach that same cap. Compare the curves within each method's
+[physical assumptions](#assumptions-and-limits).
 
 #### Leeward response
 
 ![Leeward Hypersonic pressure coefficients versus local panel angle at Mach 6](../assets/plots/hypersonic-leeward-cp-vs-angle.svg)
 
-**Figure.** Representative local response at $M_\infty=6$ and $\gamma=1.4$, with
-`windward_eq=newtonian` and no ray shielding. The leeward `shield` equation
-assigns $C_p=0$, while Prandtl--Meyer gives expansion suction; the vacuum
-pressure coefficient is the lower bound. Ray shielding is a separate geometry
-operation. These curves show the local response of one isolated, unshielded
-panel before multiplication by $A_j/A_{\mathrm{ref}}$. They are not
-whole-vehicle aerodynamic polars. The plotted $C_p$ values are local panel
-coefficients, not whole-vehicle force coefficients.
-
-The `leeward_eq=shield` selector assigns zero pressure coefficient to a
-leeward-oriented, otherwise active panel. In contrast, `shielding_on=1` performs
-ray-occlusion testing and forces any geometrically hidden panel to zero load,
-independently of whether its selected leeward equation is `shield` or
-`prandtl_meyer`.
+**Figure.** Local panel $C_p$ at $M_\infty=6$ and $\gamma=1.4$, with
+`windward_eq=newtonian` and ray shielding off. The leeward `shield` equation
+gives zero pressure coefficient. Prandtl–Meyer gives expansion suction bounded
+by the vacuum pressure coefficient.
 
 ## Flow inputs and constraints
 
 `Mach` must be positive and `gamma` must be greater than 1. Modified Newtonian,
-tangent wedge, tangent cone, and Prandtl–Meyer require `Mach > 1`. The implemented
-Newtonian + leeward `shield` path accepts positive subsonic Mach because its
-formula does not use a supersonic relation; that acceptance should not be read as
-a claim that the hypersonic approximation is physically suitable there.
+tangent wedge, tangent cone, and Prandtl–Meyer require `Mach > 1`.
+Newtonian with leeward `shield` accepts any positive Mach, including subsonic
+inputs. Physical applicability follows the assumptions below.
 
-Tangent-wedge and tangent-cone paths retain their accepted detached/limited
-branches, and Prandtl–Meyer retains its bounded numerical inversion. These panel
-approximations do not model viscous effects, full shock interaction, or general
-three-dimensional CFD physics. Select them only within a justified engineering
-approximation regime.
+See the [Hypersonic input reference](../reference/hypersonic-input.md) for the
+complete case schema. Local `cp` is documented in the
+[VTP reference](../results/vtp.md#hypersonic); integrated coefficients are in the
+[Summary CSV reference](../results/summary-csv.md).
 
-See the [Hypersonic input reference](../reference/hypersonic-input.md),
-[Coordinate and attitude conventions](../reference/coordinate-and-attitude-conventions.md),
-[Load and coefficient conventions](../reference/load-and-coefficient-conventions.md),
-[Summary CSV reference](../results/summary-csv.md), and
-[VTP reference](../results/vtp.md#hypersonic).
+## Assumptions and limits
+
+These methods evaluate each panel independently using local, inviscid pressure
+relations for a calorically perfect gas with constant $\gamma$. Choose a
+method whose assumptions suit the vehicle and flow regime; accepted input
+ranges establish that a relation can be evaluated, not its physical accuracy.
+
+The common model scope excludes viscosity and boundary layers, heat transfer,
+real-gas chemistry, shock interactions, and coupled flow between panels.
+Method-specific approximations are:
+
+- **Tangent wedge:** each panel uses its own local weak oblique-shock relation.
+- **Tangent cone:** the panel angle supplies a cone half-angle; surface
+  curvature and a physical cone axis are not reconstructed.
+- **Prandtl–Meyer:** isentropic expansion, excluding separated flow.
+- **Beyond attachment:** tangent methods use the
+  [pressure continuation](#detached-branch-continuation) defined above.
 
 ## References
 

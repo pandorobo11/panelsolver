@@ -38,15 +38,14 @@ applies to all STL components; otherwise the number of semicolon-separated
 entries must equal the STL count. Modified Newtonian, tangent wedge, tangent
 cone, and Prandtl–Meyer require `Mach > 1`.
 
-The leeward `shield` pressure selector and geometry-based ray shielding serve
-different purposes. See
-[Ray shielding versus `leeward_eq=shield`](ray-shielding.md#ray-shielding-versus-leeward_eqshield).
+Use `leeward_eq` to choose leeward pressure and `shielding_on` to enable
+[geometric occlusion](ray-shielding.md#ray-shielding-versus-leeward_eqshield).
 
 Every required numeric field must be finite, and numeric booleans are rejected.
-Hypersonic and FMF use the same attitude resolver. See
-[Case files](../user-guide/case-files.md#attitude-modes) for mode selection and
+
+See [Case files](../user-guide/case-files.md#attitude-modes) for mode selection and
 accepted ranges, and
 [Coordinate and attitude conventions](coordinate-and-attitude-conventions.md)
-for the axes, signs, and geometric definitions. Path, case-ID, flag, and mesh
-rules are in Case files; physical interpretation is in the Hypersonic
-[pressure-model equations](../solvers/hypersonic.md#pressure-model-equations).
+for axes, signs, and geometric definitions. The Hypersonic
+[pressure-model equations](../solvers/hypersonic.md#pressure-model-equations)
+explain the method choices and physical applicability.

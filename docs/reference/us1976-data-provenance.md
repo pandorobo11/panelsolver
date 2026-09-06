@@ -12,13 +12,8 @@ FMF/Sentman Mode B uses a bundled table containing four physical quantities:
 | mean molecular speed | m/s | PDAS Big Tables mean particle speed |
 
 The table has 201 rows at 5 km intervals from 0 through 1000 km inclusive.
-Panel Solver linearly interpolates these values and does not extrapolate beyond
-the tabulated altitude range. Runtime use requires neither an external data file
-nor network access.
-
-Pressure, density, viscosity, gravity, number density, mean free path, molecular
-weight, and other atmosphere fields are not included because the solver does not
-use them.
+Panel Solver linearly interpolates these four quantities within the tabulated
+altitude range, using the bundled data offline.
 
 ## Scientific source
 
@@ -49,11 +44,8 @@ program:
 - speed of sound: two digits after the decimal;
 - mean molecular speed: two digits after the decimal.
 
-This rounding is part of the current numerical contract. Panel Solver does not
-replace the published table values with higher-precision intermediate binary
-results.
+The published rounded values are part of the numerical contract and are used
+directly for interpolation.
 
-The root `THIRD_PARTY_NOTICES.md` is the authoritative consolidated rights and
-source-identity notice. Maintainer regeneration steps, source-hash verification,
-and full audit evidence are repository and source-distribution materials rather
-than part of the installed offline help.
+Maintainer regeneration steps, source-hash verification, and full audit evidence
+are included in the repository and source distribution.

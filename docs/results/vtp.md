@@ -17,9 +17,6 @@ define every supported field. Per-case paths are in
 [Case files](../user-guide/case-files.md#paths-vtp-destinations-and-components),
 and write failures are covered by
 [Batch execution and recovery](../user-guide/batch-execution-and-recovery.md).
-The [Python API reference](../reference/python-api.md)
-distinguishes in-memory local traction from the area-weighted `C_face_stl`
-stored in VTP.
 
 ## Guaranteed VTP contents
 
@@ -52,13 +49,13 @@ triangle cells.
 | Array | Shape | Stored dtype | Unit | Meaning | Role in integration |
 |---|---:|---|---|---|---|
 | `C_face_stl` | `(n_faces, 3)` | `float64` | dimensionless | Per-face force-coefficient contribution in STL axes after multiplying local traction by `area_m2 / Aref_m2`. | **Integrated value.** Summing all rows gives the total STL-frame force coefficient; summing one `stl_index` subset gives that component's force coefficient. Moments use the same face force with the configured lever arm. |
-| `area_m2` | `(n_faces,)` | `float64` | m² | Triangle area used by the calculation. | Supplies the area factor already incorporated into `C_face_stl`; do not multiply `C_face_stl` by area again. |
+| `area_m2` | `(n_faces,)` | `float64` | m² | Triangle area used by the calculation. | Supplies the area factor incorporated into `C_face_stl`. |
 | `center_x_stl_m` | `(n_faces,)` | `float64` | m | Face-centroid X coordinate in the STL frame. | Geometry/provenance; the three center arrays define the moment lever arm with the configured reference point. |
 | `center_y_stl_m` | `(n_faces,)` | `float64` | m | Face-centroid Y coordinate in the STL frame. | Geometry/provenance; used with the other center coordinates for moments. |
 | `center_z_stl_m` | `(n_faces,)` | `float64` | m | Face-centroid Z coordinate in the STL frame. | Geometry/provenance; used with the other center coordinates for moments. |
 | `shielded` | `(n_faces,)` | `uint8` | `0` or `1` | [Ray-occlusion](../reference/ray-shielding.md) mask. `1` means the panel was geometrically shielded for this case. | Shielded panels have exact-zero local traction and therefore exact-zero `C_face_stl`. A Hypersonic leeward `shield` selector is a different pressure rule and does not set this mask. |
 | `stl_index` | `(n_faces,)` | `int32` | zero-based component ID | Input-STL/component assignment in ordered `stl_path` order. | Selects the faces used for each component row in the Summary CSV. |
-| `theta_deg` | `(n_faces,)` | `float64` | degrees | Angle `acos(n_out_stl · Vhat_stl)` between the outward panel normal and the resolved flow direction, in the range 0–180 degrees. | Diagnostic/model geometry scalar. It is not summed or separately integrated. |
+| `theta_deg` | `(n_faces,)` | `float64` | degrees | Angle `acos(n_out_stl · Vhat_stl)` between the outward panel normal and the resolved flow direction, in the range 0–180 degrees. | Diagnostic/model geometry scalar. |
 
 The relationship between `C_face_stl`, whole-case coefficients, frames, signs,
 and moments is defined in
@@ -70,7 +67,7 @@ and moments is defined in
 
 | Array | Shape | Stored dtype | Unit | Meaning | Role in integration |
 |---|---:|---|---|---|---|
-| `cp` | `(n_faces,)` | `float64` | dimensionless | Local pressure coefficient selected by the panel's windward or leeward pressure method. It may be negative for Prandtl–Meyer expansion and is zero on ray-shielded faces. | Source diagnostic for the pressure-only local traction `-cp * n_out_stl`. The engine integrates the resulting traction vector, not this scalar directly. |
+| `cp` | `(n_faces,)` | `float64` | dimensionless | Local pressure coefficient selected by the panel's windward or leeward pressure method. It may be negative for Prandtl–Meyer expansion and is zero on ray-shielded faces. | Defines local traction as `-cp * n_out_stl`, which is area-weighted for integration. |
 
 See [Hypersonic Panel Methods](../solvers/hypersonic.md) for each pressure
 equation and its limits.
@@ -79,13 +76,11 @@ equation and its limits.
 
 | Array | Shape | Stored dtype | Unit | Meaning | Role in integration |
 |---|---:|---|---|---|---|
-| `normal_traction_coeff` | `(n_faces,)` | `float64` | dimensionless | Component of the local Sentman traction opposite the outward normal, `-tau · n_out_stl`, before multiplying by panel area or dividing by reference area. | Visualization/diagnostic scalar derived from the local `traction_coeff_stl` before area/reference-area weighting. It is not independently integrated. |
-| `tangential_traction_coeff` | `(n_faces,)` | `float64` | dimensionless | Component of local Sentman traction along the resolved flow direction projected into the panel plane, before area/reference-area scaling. It is exactly zero where that in-plane direction is undefined at normal incidence. | Visualization/diagnostic scalar derived from the local `traction_coeff_stl` before area/reference-area weighting. It is not independently integrated. |
+| `normal_traction_coeff` | `(n_faces,)` | `float64` | dimensionless | Component of the local Sentman traction opposite the outward normal, `-tau · n_out_stl`, before multiplying by panel area or dividing by reference area. | Visualization/diagnostic scalar derived from local traction. |
+| `tangential_traction_coeff` | `(n_faces,)` | `float64` | dimensionless | Component of local Sentman traction along the resolved flow direction projected into the panel plane, before area/reference-area scaling. It is exactly zero where that in-plane direction is undefined at normal incidence. | Visualization/diagnostic scalar derived from local traction. |
 
 See [Free Molecular Flow](../solvers/fmf.md) for the Sentman equation and the
 exact normal and tangential components.
-
-`Cp_n` is not emitted by either domain.
 
 ## Common field data
 
@@ -116,8 +111,7 @@ Each Hypersonic-only field has shape `(1,)` and string storage.
 | `windward_eq_used` | normalized selector or semicolon-separated selectors | Normalized windward pressure-method specification used by the model. One selector applies to all components; otherwise entries correspond to components in `stl_index` order. |
 | `leeward_eq_used` | normalized selector or semicolon-separated selectors | Normalized leeward pressure-method specification used by the model, with the same one-or-per-component rule. |
 
-FMF does not add model-specific VTP field data. Its resolved `mode`, `out_S`,
-and `out_Ti_K` are recorded in the
+FMF records its resolved `mode`, `out_S`, and `out_Ti_K` in the
 [Summary CSV reference](summary-csv.md#fmf-resolved-state-fields).
 
 ## Relating VTP to Summary CSV
@@ -129,13 +123,10 @@ For a VTP file saved during the current run:
   correspond to the case's Summary CSV values.
 - Summary `vtp_path` points to the VTP only on the `total` row.
 - `stl_index` partitions `C_face_stl` into the Summary component scopes.
-- Summing `C_face_stl` over every face produces the STL-frame force coefficient
-  from which `CA`, `CY`, `CN`, `CD`, and `CL` are transformed. The moment
-  coefficients additionally use face centers, the moment reference, and the
-  three reference lengths.
+- Force and moment totals follow the integration roles in
+  [Common cell data](#common-cell-data).
 - A blank Summary `vtp_path` means no VTP was successfully written for that case
   during the current run, even if an older file exists at the planned path.
 
-The GUI automatically displays an existing VTP for a selected case only when
-both `case_id` and `case_signature` match. Manual **Open VTP...** remains a
-generic inspection path; see the [GUI guide](../user-guide/gui.md).
+The [GUI guide](../user-guide/gui.md#select-a-result) explains automatic result
+matching and manual inspection.

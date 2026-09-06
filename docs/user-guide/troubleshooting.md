@@ -12,8 +12,8 @@ header, a non-finite value, a non-positive reference quantity, an incomplete FMF
 Mode A/B pair, an invalid equation selector, or an attitude outside the reader
 domain. See the solver-specific input reference.
 
-Excel 97–2003 `.xls` files are not a supported input format. Resave the workbook
-as `.xlsx` in Excel or another spreadsheet application, or export it as CSV.
+For an Excel 97–2003 `.xls` file, resave as `.xlsx` in a spreadsheet application
+or export as CSV before opening it.
 
 ## Embree is unavailable
 
@@ -21,8 +21,7 @@ For a wheel installation, reinstall the Panel Solver wheel with the `rayaccel`
 extra as shown in the [Installation guide](../getting-started/installation.md).
 From a checkout, use `uv sync --extra rayaccel` or
 `python -m pip install ".[rayaccel]"`. Alternatively, set the case's
-`ray_backend` to `rtree`. An explicit `embree` request intentionally does not
-fall back. See
+`ray_backend` to `rtree`. See
 [Ray-shielding backend behavior](../reference/ray-shielding.md#backend-behavior).
 
 ## The result path is rejected
@@ -45,7 +44,6 @@ for the cooperative boundary and how to recover completed artifacts.
 
 ## A Python import fails
 
-The installed distribution and Python package are both `panelsolver`; its
-version appears in newly generated FMF and Hypersonic Summary CSV/VTP artifacts.
-Use the documented package-root API rather than predecessor-product package
-names.
+The installed distribution and Python package are both `panelsolver`. Use the
+imports listed in the [Python API reference](../reference/python-api.md#supported-imports-and-scope).
+Code using predecessor-product package names must migrate to these imports.

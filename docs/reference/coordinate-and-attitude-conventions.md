@@ -13,10 +13,8 @@ The STL frame is the coordinate frame in which the input geometry is stored.
 The resolved unit freestream-velocity direction is written as
 $\hat{\boldsymbol V}_{\mathrm{STL}}=(V_x,V_y,V_z)$, or `Vhat_stl` /
 `velocity_hat_stl` in field and API names. It points in the direction in which
-the freestream travels, expressed in STL axes; it does not point upstream. At
-zero attitude it is $+X_{\mathrm{STL}}$. The model-neutral
-[ray-shielding method](ray-shielding.md#geometry-occlusion-method) traces in the
-opposite, upstream direction.
+the freestream travels, expressed in STL axes. At zero attitude it is
+$+X_{\mathrm{STL}}$.
 
 The fixed STL-to-body axis mapping is
 
@@ -32,8 +30,7 @@ and resolved `atan2` results are converted back to degrees.
 
 Every `attitude_input` representation resolves to the same
 $\hat{\boldsymbol V}_{\mathrm{STL}}$ and to the tangent angles $\alpha_t$ and
-$\beta_t$ before panel calculation. The original pair of input angles is not
-used directly after this resolution.
+$\beta_t$ used for panel calculation.
 
 Here
 $\operatorname{normalize}(\boldsymbol q)=\boldsymbol q/\lVert\boldsymbol q\rVert$.
@@ -97,13 +94,8 @@ $\sin\beta_s=-V_y$, while the X/Z components preserve
 $V_z/V_x=\tan\alpha_{\mathrm{in}}$ whenever $V_x\ne0$. The resulting vector is
 normalized to protect its unit length from floating-point roundoff.
 
-The common resolved angles are then
-
-```math
-\alpha_t=\operatorname{atan2}(V_z,V_x),
-\qquad
-\beta_t=\operatorname{atan2}(-V_y,V_x).
-```
+The common [resolved tangent angles](#resolved-tangent-angles) are calculated
+from this direction.
 
 For $|\sin\beta_s|<1$, resolved $\alpha_t$ equals the input tangent angle, but
 $\beta_t$ is generally not equal to $\beta_s$. At
@@ -120,7 +112,7 @@ $k$.
 ## Included-angle and bank input (`bank`)
 
 In this mode, `alpha_deg` is the included angle $i$ measured from the
-$+X_{\mathrm{STL}}$ axis, not a tangent angle of attack.
+$+X_{\mathrm{STL}}$ axis.
 `beta_or_bank_deg` is the bank angle $\phi$ around that axis:
 
 ```math
@@ -132,8 +124,7 @@ $+X_{\mathrm{STL}}$ axis, not a tangent angle of attack.
 \end{bmatrix}.
 ```
 
-At $i=0^\circ$, the direction is exactly $+X_{\mathrm{STL}}$ and bank has no
-effect. The zero-bank reference meridian is $+Z_{\mathrm{STL}}$: at
+The zero-bank reference meridian is $+Z_{\mathrm{STL}}$: at
 $\phi=0^\circ$, the direction is $(\cos i,0,\sin i)$, so a positive included
 angle has its transverse component toward $+Z_{\mathrm{STL}}$.
 
@@ -158,10 +149,7 @@ $\hat{\boldsymbol V}_{\mathrm{STL}}=(V_x,V_y,V_z)$, both domains use
 
 When $V_x\ne0$, these definitions give
 $\tan\alpha_t=V_z/V_x$ and $\tan\beta_t=-V_y/V_x$, while `atan2` retains the
-quadrant. Input-angle names and resolved-angle names are intentionally distinct:
-for example, `alpha_deg` in `bank` mode is the included angle $i$ and generally
-is not resolved $\alpha_t$; `beta_or_bank_deg` in `beta_sin` mode is $\beta_s$
-and generally is not resolved $\beta_t$.
+quadrant.
 
 The resolved $\alpha_t$ is also the angle used by the force-coefficient
 stability-axis transformation. See

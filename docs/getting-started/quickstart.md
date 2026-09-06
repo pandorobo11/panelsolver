@@ -5,9 +5,10 @@ After [installation](installation.md), choose the
 run its basic example below. Both examples use the same small plate, so you can
 learn the input and result workflow before preparing your own geometry.
 
-For the CLI, use a checkout or extract `panelsolver-examples-v<version>.zip`.
-Run commands from the directory containing the `examples/` folder. The GUI can
-also copy its bundled examples to a workspace.
+A checkout includes `examples/`. For a wheel installation, extract the matching
+`panelsolver-examples-v<version>.zip` from the release. Run CLI commands from
+the directory containing `examples/`. The GUI can copy bundled examples to a
+workspace as described below.
 
 ## What the basic case represents
 
@@ -38,8 +39,6 @@ panelsolver hypersonic --input examples/hypersonic/basic.csv
 
 This case uses `Mach=6` and `gamma=1.4`. Omitted equation columns select
 Newtonian on windward panels and `Cp = 0` (`shield`) on leeward panels.
-Zero pressure coefficient means pressure equal to freestream pressure; see the
-[pressure convention](../solvers/hypersonic.md#panel-geometry-and-local-pressure-convention).
 
 ## Use the GUI
 
@@ -54,8 +53,7 @@ Use **File > New from Example > Basic** to copy the table and geometry to a
 workspace, or **File > Open Input File...** to open the matching `basic.csv`.
 Select its row, choose **Run Selected Cases**, and accept the suggested Summary
 CSV destination. Leave the run settings at their defaults. After a successful
-run, the matching VTP appears in the Viewer. If you already ran the CLI example,
-opening that input table and selecting its row also loads the matching VTP.
+run, the matching VTP appears in the Viewer.
 
 ## Read the first results
 
@@ -71,10 +69,10 @@ A successful basic run writes these files under `examples/<domain>/outputs/`
 Each basic case produces one total row with finite coefficients and a VTP with
 two faces. `CA` is the body-axis axial coefficient; `CD` and `CL` are drag and
 lift in the documented stability axes. Both cases have positive `CA` and `CD`
-and negative `CL` for this attitude. They have near-zero moment coefficients (`Cl`, `Cm`, `Cn`) because the uniform plate
-load is centered on the moment reference. The two triangles have the same scalar
-values, so uniform coloring is expected. Hypersonic `cp` is about 1.94 for this
-orientation; FMF also has tangential traction.
+and negative `CL` for this attitude. They have near-zero moment coefficients
+(`Cl`, `Cm`, `Cn`) because the uniform plate load is centered on the moment
+reference. The two triangles have the same scalar values, so uniform coloring
+is expected. Hypersonic `cp` is about 1.94 for this orientation.
 
 These are dimensionless coefficients. Reference quantities and signs are
 defined in [Load and coefficient conventions](../reference/load-and-coefficient-conventions.md).

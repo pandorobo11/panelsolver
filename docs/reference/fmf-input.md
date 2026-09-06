@@ -37,26 +37,13 @@ Mode A requires both `S` and `Ti_K`; Mode B requires both `Mach` and
 `Altitude_km`. Specify exactly one complete pair. Every required or specified
 numeric field must be finite, and numeric booleans are rejected.
 
-For Mode A, `Ti_K` is the static translational temperature of the incident
-free-stream molecular population. Directed flow energy is represented
-separately by `S`, so do not supply total or stagnation temperature. The caller
-must ensure that `S` and `Ti_K` describe the same free-stream state. Here `R` in
-the speed-ratio definition is the specific gas constant of that incident gas.
+In Mode A, `S` and `Ti_K` must describe the same incident freestream state;
+`R` in the speed-ratio definition is that gas's specific gas constant.
+Mode B resolves speed ratio and static temperature from the bundled atmosphere.
+The [FMF solver page](../solvers/fmf.md#flow-inputs) explains that conversion
+and the wall-temperature assumption.
 
-For Mode B, the solver obtains `Ti_K` directly from the bundled atmosphere's
-temperature column at `Altitude_km`, computes `V_inf = Mach * c`, converts the
-tabulated mean molecular speed to the most-probable speed as
-`V_mp = sqrt(pi) / 2 * V_mean`, and resolves `S = V_inf / V_mp`. No total-
-temperature conversion is performed.
-
-The Sentman reflected term uses `sqrt(Tw_K / Ti_K)`. Because the input schema has
-no separate reflected-gas temperature or accommodation coefficient, the model
-uses `Tw_K` as the diffusely reflected molecular temperature (`T_r = T_w`).
-
-FMF and Hypersonic use the same attitude resolver. See
-[Case files](../user-guide/case-files.md#attitude-modes) for mode selection and
-accepted ranges, and
+See [Case files](../user-guide/case-files.md#attitude-modes) for attitude mode
+selection and accepted ranges, and
 [Coordinate and attitude conventions](coordinate-and-attitude-conventions.md)
-for the axes, signs, and geometric definitions. Path, case-ID, flag, and mesh
-rules are also in Case files. Model interpretation is in
-[Sentman local-load equation](../solvers/fmf.md#sentman-local-load-equation).
+for axes, signs, and geometric definitions.
