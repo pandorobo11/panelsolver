@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import errno
+import io
 import os
 import tempfile
 import unicodedata
@@ -200,6 +201,51 @@ def write_csv_atomic(
             temp_path.unlink(missing_ok=True)
 
 
+class CsvAppendRollbackError(OSError):
+    """A failed append could not restore the previous committed file length."""
+
+
+def append_csv(out_path: str | Path, projection: CsvProjection) -> None:
+    """Append complete rows, restoring the previous length on a caught failure.
+
+    The caller must initialize this run's CSV first. A rollback failure makes
+    further appends unsafe; an atomic final replacement can still be attempted.
+    Abrupt process termination can leave an incomplete tail.
+    """
+    if not isinstance(projection, CsvProjection):
+        raise ContractValueError("append_csv.projection", "must be CsvProjection")
+    out = Path(out_path)
+    with out.open(encoding=CSV_ENCODING, newline="") as reader:
+        if tuple(next(csv.reader(reader), ())) != projection.columns:
+            raise ValueError("checkpoint CSV columns do not match the pending results")
+    # Serialize before touching the file, and encode without another BOM.
+    text = io.StringIO(newline="")
+    _write_projection(text, projection, header=False)
+    pending = memoryview(text.getvalue().encode("utf-8"))
+    with out.open("r+b", buffering=0) as handle:
+        descriptor = handle.fileno()
+        original_size = handle.seek(0, os.SEEK_END)
+        try:
+            while pending:
+                written = os.write(descriptor, pending)
+                if written <= 0:
+                    raise OSError("checkpoint append made no write progress")
+                pending = pending[written:]
+            # Writes are unbuffered, so there is no Python buffer to flush.
+            os.fsync(descriptor)
+        except Exception as exc:
+            try:
+                os.ftruncate(descriptor, original_size)
+                os.fsync(descriptor)
+            except Exception as rollback_exc:
+                raise CsvAppendRollbackError(
+                    f"Checkpoint append failed: {exc}; rollback failed: "
+                    f"{rollback_exc}. Further checkpoint appends are disabled; "
+                    "the CSV tail may be incomplete."
+                ) from exc
+            raise
+
+
 @contextmanager
 def _temporary_csv_file(
     out: Path,
@@ -271,9 +317,12 @@ def validate_summary_output_path(
     return _resolved_path(out_path)
 
 
-def _write_projection(handle: TextIO, projection: CsvProjection) -> None:
+def _write_projection(
+    handle: TextIO, projection: CsvProjection, *, header: bool = True
+) -> None:
     writer = csv.writer(handle, lineterminator="\n")
-    writer.writerow(projection.columns)
+    if header:
+        writer.writerow(projection.columns)
     writer.writerows(
         tuple(row[name] for name in projection.columns) for row in projection.rows
     )
@@ -283,7 +332,9 @@ __all__ = (
     "CSV_ENCODING",
     "DURABLE_CSV_WRITE_POLICY",
     "AtomicCsvWritePolicy",
+    "CsvAppendRollbackError",
     "TempNameStyle",
+    "append_csv",
     "paths_collide",
     "portable_path_key",
     "validate_csv_output_path",

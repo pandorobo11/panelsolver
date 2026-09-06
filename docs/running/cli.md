@@ -26,7 +26,7 @@ Both commands read CSV, XLSX, and XLSM case tables and write
 | `-o`, `--output` | Summary CSV destination | `<input_dir>/outputs/<input_stem>_result.csv` |
 | `-j`, `--workers` | Spawn workers; must be at least 1 | `1` |
 | `--cases` | Space- or comma-separated case IDs | all cases |
-| `--checkpoint-every-cases` | Rewrite a Summary CSV snapshot after N completed cases; `0` disables | `2000` |
+| `--checkpoint-every-cases` | Append unsaved cases to the Summary CSV after N completed cases; final CSV uses input order; `0` disables intermediate saves | `2000` |
 | `--verbose` | Show case-level runtime messages in Rich mode | off |
 | `--plain` | Disable Rich run/progress output | off |
 | `--debug` | Show a Python traceback for CLI errors | off |

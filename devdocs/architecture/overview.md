@@ -69,7 +69,12 @@ root. Only the package-root API is a supported Python integration surface.
 The one-case engine loads ordered STL components, validates geometry, resolves
 shielding, evaluates a registered model, integrates totals/components, and
 returns a canonical signature with immutable results. The spawn scheduler wraps
-that engine and rebuilds snapshots in input order.
+that engine. The application retains input-indexed results for the final CSV and
+optional in-memory snapshots. Normal CSV checkpoint output uses a separate
+completed-case callback and a pending delta buffer, avoiding cumulative snapshot
+construction. It initializes one CSV atomically, appends unsaved cases in
+completion order, and atomically replaces it with the input-ordered final CSV.
+See [ADR 0016](../adr/0016-append-csv-checkpoints.md) for write failure handling.
 
 CSV and VTP projections receive explicit domain-owned policy. Shared code does
 not branch on a concrete model name to invent a universal schema. The shared
@@ -90,7 +95,8 @@ See [ADR 0011](../adr/0011-canonical-domain-naming.md).
 
 Both domain selectors use the same application-owned case-table
 dispatch, strict geometry and numeric validation, output collision checks,
-durable CSV writing, scheduler behavior, and input-ordered result reconstruction.
+CSV checkpoint and final writing, scheduler behavior, and input-ordered final
+result reconstruction.
 Domain schemas, physical equations, and domain-only artifact fields remain owned
 by their domain boundary. Core does not select behavior from a concrete product
 name.
