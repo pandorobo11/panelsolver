@@ -7,10 +7,11 @@ GUI.
 
 ## Prerequisites
 
+Use Python 3.12 or 3.13 on macOS while the Qt 6.9.0 workaround is in place.
 Prepare the locked local environment from the repository root:
 
 ```bash
-uv sync --locked --extra rayaccel --group docs
+uv sync --locked --python 3.12 --extra rayaccel --group docs
 ```
 
 The helper resolves the repository root from its own bundle location. It does
@@ -178,6 +179,34 @@ provides the native view required by the real interactor.
 Headless GUI tests should continue to inject a lightweight plotter/interactor
 where appropriate. The helper is for visual validation, not a production VTK
 workaround and not a replacement for focused automated tests.
+
+## macOS table accessibility dependency
+
+macOS uses PySide6/Qt 6.9.0 until the upstream fix for
+[QTBUG-149612](https://bugreports.qt.io/browse/QTBUG-149612) is released and
+validated. Newer Qt builds can delete a live table's accessibility interface
+when native synthesized rows/cells are inspected and the selection changes.
+This affects a plain `QTableWidget` as well as the Cases table; the native crash
+does not originate in the solver or VTK. The pending
+[Qt fix](https://codereview.qt-project.org/c/qt/qtbase/+/765434) corrects ownership
+of those synthesized elements. Other platforms retain the Qt 6 version range.
+
+PySide6 6.9.0 declares `Requires-Python: >=3.9,<3.14`, so the current macOS
+environment is Python 3.12–3.13. `pip` rejects macOS installation on Python
+3.14 or newer. Successful universal locking does not establish support for
+those versions; see the [uv caveat in setup and testing](setup-and-testing.md#set-up).
+
+`tests/gui/test_macos_accessibility.py` exercises the actual Cocoa bridge in an
+isolated normal-display process, including the pinned Case ID view and repeated
+model/selection changes. It requires WindowServer access, but does not require
+Computer Use or external accessibility permissions. The same probe crashes
+with Qt 6.11.2 and passes with Qt 6.9.0. Offscreen or Python-only accessibility
+checks do not exercise the failing native ownership path.
+
+Before lifting the macOS pin, verify that the candidate Qt release contains the
+upstream fix, run the native regression and full validation runner, and repeat
+the real FMF and Hypersonic run/save/scalar/export visual smoke with accessibility
+inspection. Keep normal table accessibility enabled.
 
 ## Scope of visual findings
 
