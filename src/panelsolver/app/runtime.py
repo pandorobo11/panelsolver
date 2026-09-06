@@ -34,7 +34,12 @@ from panelsolver.models import ModelRegistry
 
 from .artifact_io import write_vtp_projection
 from .case_adapter import AdaptedCase, ProductCasePolicy, adapt_case_row
-from .csv_writer import AtomicCsvWritePolicy, write_csv_atomic
+from .csv_writer import (
+    AtomicCsvWritePolicy,
+    CsvAppendRollbackError,
+    append_csv,
+    write_csv_atomic,
+)
 from .environment import resolve_parallel_chunk_environment
 from .output_status import OutputIssue, OutputKind, OutputPhase
 from .versioning import panelsolver_distribution_version
@@ -368,6 +373,7 @@ def run_product_cases(
     cancel_cb: CancelCallback | None = None,
     checkpoint_every_cases: int | None = DEFAULT_CHECKPOINT_CASES,
     snapshot_cb: SnapshotCallback | None = None,
+    case_completed_cb: Callable[[ProductCaseRunResult], None] | None = None,
     registry: ModelRegistry | None = None,
 ) -> ProductBatchRunResult:
     """Run cases with product-selected scheduler and checkpoint behavior."""
@@ -380,6 +386,8 @@ def run_product_cases(
         raise TypeError("cancel_cb must be callable")
     if snapshot_cb is not None and not callable(snapshot_cb):
         raise TypeError("snapshot_cb must be callable")
+    if case_completed_cb is not None and not callable(case_completed_cb):
+        raise TypeError("case_completed_cb must be callable")
     if isinstance(workers, bool) or not isinstance(workers, int):
         raise TypeError("workers must be an integer")
     checkpoint_every = int(checkpoint_every_cases or 0)
@@ -420,6 +428,8 @@ def run_product_cases(
         completed[index] = result
         done += 1
         completed_since_snapshot += 1
+        if case_completed_cb is not None:
+            case_completed_cb(result)
         snapshot(False)
         if parallel:
             logger(f"[OK] ({done}/{total}) case_id={cases[index].row['case_id']}")
@@ -481,51 +491,64 @@ def run_and_write_product_cases(
     checkpoint_every_cases: int = DEFAULT_CHECKPOINT_CASES,
     log_snapshots: bool = False,
 ) -> ProductBatchRunResult:
-    """Run cases and atomically rewrite checkpoint/final summary snapshots."""
+    """Append completed-case checkpoints, then atomically save input-order CSV."""
     logger = (lambda _message: None) if logfn is None else logfn
     output = Path(output_path)
     summary_issues: list[OutputIssue] = []
-    complete_summary_saved = False
-    last_successful_snapshot_done = 0
+    pending: list[CsvProjection] = []
+    checkpoint_initialized = False
+    append_disabled = False
+    done = 0
+    since_attempt = 0
+    total = len(rows)
 
-    def write_snapshot(
-        projection: CsvProjection,
-        done: int,
-        total: int,
-        is_final: bool,
-    ) -> None:
-        nonlocal complete_summary_saved, last_successful_snapshot_done
-        if is_final and done == total == last_successful_snapshot_done:
-            complete_summary_saved = True
-            if log_snapshots:
-                logger(
-                    f"[SAVE] final {done}/{total} -> {output} "
-                    "(complete checkpoint reused)"
-                )
+    def record_failure(exc: Exception, phase: OutputPhase) -> None:
+        issue = OutputIssue(
+            OutputKind.SUMMARY_CSV,
+            phase,
+            str(output),
+            str(exc) or type(exc).__name__,
+        )
+        summary_issues.append(issue)
+        logger(
+            f"[ERROR] Summary CSV {phase.value} output failed: "
+            f"path={output} reason={issue.message}"
+        )
+
+    def write_checkpoint() -> None:
+        nonlocal checkpoint_initialized, append_disabled, since_attempt
+        if not pending or append_disabled:
             return
-        phase = OutputPhase.FINAL if is_final else OutputPhase.CHECKPOINT
+        since_attempt = 0
+        count = len(pending)
         try:
-            write_csv_atomic(output, projection, policy.csv_write_policy)
+            projection = combine_csv_projections(tuple(pending))
+            if checkpoint_initialized:
+                append_csv(output, projection)
+            else:
+                write_csv_atomic(output, projection, policy.csv_write_policy)
         except Exception as exc:
-            issue = OutputIssue(
-                OutputKind.SUMMARY_CSV,
-                phase,
-                str(output),
-                str(exc) or type(exc).__name__,
-            )
-            summary_issues.append(issue)
-            label = "final" if is_final else "checkpoint"
-            logger(
-                f"[ERROR] Summary CSV {label} output failed: "
-                f"path={output} reason={issue.message}"
-            )
+            if isinstance(exc, CsvAppendRollbackError):
+                append_disabled = True
+            record_failure(exc, OutputPhase.CHECKPOINT)
             return
-        last_successful_snapshot_done = done
-        if done == total:
-            complete_summary_saved = True
+        checkpoint_initialized = True
+        pending.clear()
         if log_snapshots:
-            label = "final" if is_final else "checkpoint"
-            logger(f"[SAVE] {label} {done}/{total} -> {output}")
+            logger(
+                f"[SAVE] checkpoint {done}/{total} -> {output} "
+                f"(saved {count} new cases in completion order)"
+            )
+
+    def accept_completed(result: ProductCaseRunResult) -> None:
+        nonlocal done, since_attempt
+        done += 1
+        if not checkpoint_every_cases or append_disabled:
+            return
+        pending.append(result.csv)
+        since_attempt += 1
+        if since_attempt >= checkpoint_every_cases:
+            write_checkpoint()
 
     result = run_product_cases(
         rows,
@@ -535,8 +558,18 @@ def run_and_write_product_cases(
         progress_cb=progress_cb,
         cancel_cb=cancel_cb,
         checkpoint_every_cases=checkpoint_every_cases,
-        snapshot_cb=write_snapshot,
+        case_completed_cb=accept_completed,
     )
+    write_checkpoint()
+    complete_summary_saved = False
+    try:
+        write_csv_atomic(output, result.csv, policy.csv_write_policy)
+    except Exception as exc:
+        record_failure(exc, OutputPhase.FINAL)
+    else:
+        complete_summary_saved = True
+        if log_snapshots:
+            logger(f"[SAVE] final {done}/{total} -> {output} (input order)")
     issues = (*result.output_issues, *summary_issues)
     if issues:
         logger(f"[WARN] Run completed with {len(issues)} output error(s).")

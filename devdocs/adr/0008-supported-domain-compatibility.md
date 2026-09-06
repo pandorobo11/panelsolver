@@ -21,6 +21,10 @@ compatibility portions are superseded by
 files, CSV/VTP schemas, numerical behavior, and canonical signatures remain in
 force.
 
+The CSV checkpoint ordering and write-durability portions are superseded by
+[ADR 0016](0016-append-csv-checkpoints.md). Final Summary CSV schemas, values,
+and input ordering remain unchanged.
+
 ## Context
 
 Phase 1 correctly recorded every observable difference between the pinned FMF

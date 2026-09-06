@@ -256,10 +256,14 @@ class CasesPanel(QtWidgets.QWidget):
         self.spin_checkpoint_every_cases.setValue(DEFAULT_CHECKPOINT_CASES)
         self.spin_checkpoint_every_cases.setAccessibleName("Checkpoint every")
         self.spin_checkpoint_every_cases.setAccessibleDescription(
-            "Checkpoint interval in cases. Range 0 to 2147483647 cases."
+            "Checkpoint interval in cases. Range 0 to 2147483647 cases. "
+            "Append new results in completion order; final CSV uses input order. "
+            "Zero disables intermediate saves."
         )
         self.spin_checkpoint_every_cases.setToolTip(
-            "Checkpoint interval in cases (0 to 2,147,483,647)."
+            "Checkpoint interval in cases (0 to 2,147,483,647).\n"
+            "Append new results in completion order; final CSV uses input order.\n"
+            "0 disables intermediate saves."
         )
         self.spin_checkpoint_every_cases.setMaximumWidth(
             _bounded_spin_box_width(self.spin_checkpoint_every_cases, 6)

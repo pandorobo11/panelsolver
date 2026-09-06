@@ -104,7 +104,8 @@ def build_parser(policy: ProductCliPolicy) -> argparse.ArgumentParser:
         type=int,
         default=DEFAULT_CHECKPOINT_CASES,
         help=(
-            "Checkpoint output every N completed cases "
+            "Append new results to the Summary CSV every N completed cases; "
+            "save the final CSV in input order "
             f"(0 to disable, default: {DEFAULT_CHECKPOINT_CASES})."
         ),
     )

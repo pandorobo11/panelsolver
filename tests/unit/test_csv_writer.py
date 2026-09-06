@@ -10,6 +10,8 @@ from unittest.mock import patch
 from panelsolver.app.csv_writer import (
     CSV_ENCODING,
     DURABLE_CSV_WRITE_POLICY,
+    CsvAppendRollbackError,
+    append_csv,
     paths_collide,
     portable_path_key,
     write_csv_atomic,
@@ -41,6 +43,93 @@ def unicode_projection() -> CsvProjection:
 
 
 class CsvWriterTests(unittest.TestCase):
+    def test_append_preserves_header_bom_and_quoted_unicode_cells(self) -> None:
+        first = CsvProjection(
+            ("case_id", 'extra\n"column"'),
+            ({"case_id": "日本語", 'extra\n"column"': 'note,\n"quoted"'},),
+        )
+        with tempfile.TemporaryDirectory() as td:
+            output = Path(td) / "results.csv"
+            write_csv_atomic(output, first, DURABLE_CSV_WRITE_POLICY)
+            with patch("panelsolver.app.csv_writer.os.fsync", wraps=os.fsync) as sync:
+                for _ in range(2):
+                    append_csv(output, first)
+            self.assertEqual(2, sync.call_count)
+            self.assertEqual(1, output.read_bytes().count(b"\xef\xbb\xbf"))
+            with output.open(encoding=CSV_ENCODING, newline="") as handle:
+                self.assertEqual(
+                    [dict(first.rows[0])] * 3, list(csv.DictReader(handle))
+                )
+
+    def test_append_rejects_missing_file_or_changed_columns(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            output = Path(td) / "results.csv"
+            with self.assertRaises(FileNotFoundError):
+                append_csv(output, projection())
+            self.assertFalse(output.exists())
+            write_csv_atomic(output, projection(), DURABLE_CSV_WRITE_POLICY)
+            before = output.read_bytes()
+            with self.assertRaisesRegex(ValueError, "columns"):
+                append_csv(output, unicode_projection())
+            self.assertEqual(before, output.read_bytes())
+
+    def test_partial_append_or_sync_failure_rolls_back_and_can_retry(self) -> None:
+        real_write = os.write
+
+        def partial_failure(descriptor, payload):
+            real_write(descriptor, payload[:7])
+            raise OSError("partial write")
+
+        for failure in ("write", "fsync"):
+            with self.subTest(failure=failure), tempfile.TemporaryDirectory() as td:
+                output = Path(td) / "results.csv"
+                write_csv_atomic(output, projection(), DURABLE_CSV_WRITE_POLICY)
+                before = output.read_bytes()
+                target = f"panelsolver.app.csv_writer.os.{failure}"
+                effect = (
+                    partial_failure if failure == "write" else [OSError("sync"), None]
+                )
+                with patch(target, side_effect=effect), self.assertRaises(OSError):
+                    append_csv(output, projection())
+                self.assertEqual(before, output.read_bytes())
+                append_csv(output, projection())
+                with output.open(encoding=CSV_ENCODING, newline="") as handle:
+                    self.assertEqual(4, len(list(csv.DictReader(handle))))
+
+    def test_short_writes_are_completed(self) -> None:
+        real_write = os.write
+        with tempfile.TemporaryDirectory() as td:
+            output = Path(td) / "results.csv"
+            write_csv_atomic(output, unicode_projection(), DURABLE_CSV_WRITE_POLICY)
+            with patch(
+                "panelsolver.app.csv_writer.os.write",
+                side_effect=lambda fd, payload: real_write(fd, payload[:3]),
+            ):
+                append_csv(output, unicode_projection())
+            with output.open(encoding=CSV_ENCODING, newline="") as handle:
+                self.assertEqual(
+                    [dict(unicode_projection().rows[0])] * 2,
+                    list(csv.DictReader(handle)),
+                )
+
+    def test_rollback_truncate_or_sync_failure_is_distinct(self) -> None:
+        for failure in ("ftruncate", "fsync"):
+            with self.subTest(failure=failure), tempfile.TemporaryDirectory() as td:
+                output = Path(td) / "results.csv"
+                write_csv_atomic(output, projection(), DURABLE_CSV_WRITE_POLICY)
+                with (
+                    patch(
+                        "panelsolver.app.csv_writer.os.write",
+                        side_effect=OSError("write"),
+                    ),
+                    patch(
+                        f"panelsolver.app.csv_writer.os.{failure}",
+                        side_effect=OSError("rollback"),
+                    ),
+                    self.assertRaisesRegex(CsvAppendRollbackError, "rollback failed"),
+                ):
+                    append_csv(output, projection())
+
     def test_portable_path_key_handles_case_and_unicode_normalization(self) -> None:
         root = Path(tempfile.gettempdir()) / "portable-key" / "outputs"
         nfc = "caf\N{LATIN SMALL LETTER E WITH ACUTE}"

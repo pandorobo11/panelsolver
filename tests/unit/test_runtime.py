@@ -22,10 +22,16 @@ from panelsolver.app import (
     run_and_write_product_cases,
     run_product_cases,
 )
-from panelsolver.app.csv_writer import CSV_ENCODING, write_csv_atomic
+from panelsolver.app.csv_writer import (
+    CSV_ENCODING,
+    CsvAppendRollbackError,
+    append_csv,
+    write_csv_atomic,
+)
 from panelsolver.app.runtime import (
     _RAY_ACCEL_HINTED_PRODUCTS,
     _maybe_log_ray_accel_hint,
+    combine_csv_projections,
 )
 from panelsolver.app.runtime import (
     _run_prepared_product_case as _real_run_prepared_product_case,
@@ -78,6 +84,314 @@ def _assert_artifact_semantics_equal(
 
 
 class RuntimeTests(unittest.TestCase):
+    def test_checkpoint_deltas_and_final_order_have_linear_write_volume(self) -> None:
+        order = (3, 1, 4, 0, 2)
+
+        def parallel_results(cases, _workers, runner, **kwargs):
+            for index in order:
+                yield index, runner(cases[index], kwargs["logfn"])
+
+        for reader, filename, policy in (
+            (read_fmf_cases, "fmfsolver_cases.csv", FMF_POLICY),
+            (read_newt_cases, "newtsolver_cases.csv", NEWT_POLICY),
+        ):
+            frame = read_current_cases(reader, INPUTS / filename)
+            base = (
+                frame[frame["stl_path"].str.contains(";", regex=False)]
+                .iloc[0]
+                .to_dict()
+            )
+            for workers in (1, 2):
+                for interval in (0, 1, 2, 5, 10):
+                    with (
+                        self.subTest(
+                            domain=policy.product_id, workers=workers, interval=interval
+                        ),
+                        tempfile.TemporaryDirectory() as td,
+                    ):
+                        output = Path(td) / "summary.csv"
+                        output.write_text("previous run\n", encoding="utf-8")
+                        rows = tuple(
+                            {
+                                **base,
+                                "case_id": f"case_{i}",
+                                "save_vtp_on": 0,
+                                "out_dir": td,
+                                "fixture_note": '日本語,\n"quoted"',
+                            }
+                            for i in range(5)
+                        )
+                        writes = []
+
+                        def capture(writer, path, projection, *args, writes=writes):
+                            writer(path, projection, *args)
+                            with path.open(encoding=CSV_ENCODING, newline="") as handle:
+                                saved = list(csv.DictReader(handle))
+                            writes.append((len(projection.rows), saved))
+
+                        with (
+                            mock.patch(
+                                "panelsolver.app.runtime._execution_order",
+                                return_value=order,
+                            ),
+                            mock.patch(
+                                "panelsolver.app.runtime.iter_case_results_parallel",
+                                side_effect=parallel_results,
+                            ),
+                            mock.patch(
+                                "panelsolver.app.runtime.write_csv_atomic",
+                                side_effect=lambda *args: capture(
+                                    write_csv_atomic, *args
+                                ),
+                            ),
+                            mock.patch(
+                                "panelsolver.app.runtime.append_csv",
+                                side_effect=lambda *args: capture(append_csv, *args),
+                            ),
+                            mock.patch(
+                                "panelsolver.app.runtime.combine_csv_projections",
+                                wraps=combine_csv_projections,
+                            ) as combine,
+                        ):
+                            result = run_and_write_product_cases(
+                                rows,
+                                policy,
+                                output,
+                                workers=workers,
+                                checkpoint_every_cases=interval,
+                            )
+                        self.assertEqual((), result.output_issues)
+                        self.assertTrue(result.summary_csv_saved)
+                        row_count = len(result.csv.rows)
+                        self.assertGreater(row_count, len(rows))
+                        self.assertEqual(
+                            row_count * (2 if interval else 1),
+                            sum(count for count, _ in writes),
+                        )
+                        # Only deltas and one final projection are combined.
+                        self.assertEqual(
+                            5 * (2 if interval else 1),
+                            sum(len(call.args[0]) for call in combine.call_args_list),
+                        )
+                        for _, saved in writes[:-1]:
+                            ids = [
+                                row["case_id"]
+                                for row in saved
+                                if row["scope"] == "total"
+                            ]
+                            self.assertEqual(
+                                [f"case_{i}" for i in order[: len(ids)]], ids
+                            )
+                        final = writes[-1][1]
+                        self.assertEqual(
+                            [
+                                {
+                                    name: "" if value is None else str(value)
+                                    for name, value in row.items()
+                                }
+                                for row in result.csv.rows
+                            ],
+                            final,
+                        )
+                        self.assertEqual(
+                            [f"case_{i}" for i in range(5)],
+                            [
+                                row["case_id"]
+                                for row in final
+                                if row["scope"] == "total"
+                            ],
+                        )
+                        self.assertEqual(
+                            [str(row["scope"]) for row in result.csv.rows],
+                            [row["scope"] for row in final],
+                        )
+                        self.assertTrue(
+                            all(
+                                row["fixture_note"] == '日本語,\n"quoted"'
+                                for row in final
+                            )
+                        )
+                        self.assertEqual(1, output.read_bytes().count(b"\xef\xbb\xbf"))
+
+    def test_failed_append_retries_all_unsaved_cases_without_duplicates(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            output = Path(td) / "summary.csv"
+            rows = self._fmf_rows(Path(td), 7)
+            attempts = []
+
+            def fail_first_append(path, projection):
+                attempts.append(len(projection.rows))
+                if len(attempts) == 1:
+                    real_write = os.write
+
+                    def fail(fd, data):
+                        real_write(fd, data[:11])
+                        raise OSError("partial write")
+
+                    with mock.patch(
+                        "panelsolver.app.csv_writer.os.write", side_effect=fail
+                    ):
+                        append_csv(path, projection)
+                else:
+                    append_csv(path, projection)
+                    with path.open(encoding=CSV_ENCODING, newline="") as handle:
+                        self.assertEqual(
+                            [
+                                f"case_{i}"
+                                for i in range(6 if len(attempts) == 2 else 7)
+                            ],
+                            [row["case_id"] for row in csv.DictReader(handle)],
+                        )
+
+            with mock.patch(
+                "panelsolver.app.runtime.append_csv", side_effect=fail_first_append
+            ):
+                result = run_and_write_product_cases(
+                    rows, FMF_POLICY, output, checkpoint_every_cases=2
+                )
+            self.assertEqual([2, 4, 1], attempts)
+            self.assertTrue(result.summary_csv_saved)
+            self.assertEqual(
+                [OutputPhase.CHECKPOINT],
+                [issue.phase for issue in result.output_issues],
+            )
+            with output.open(encoding=CSV_ENCODING, newline="") as handle:
+                self.assertEqual(
+                    [f"case_{i}" for i in range(7)],
+                    [row["case_id"] for row in csv.DictReader(handle)],
+                )
+
+    def test_rollback_failure_disables_appends_but_attempts_final_save(self) -> None:
+        for final_fails in (False, True):
+            with (
+                self.subTest(final_fails=final_fails),
+                tempfile.TemporaryDirectory() as td,
+            ):
+                output = Path(td) / "summary.csv"
+                rows = self._fmf_rows(Path(td), 5)
+                saved = []
+
+                def atomic(
+                    path, projection, policy, *, saved=saved, final_fails=final_fails
+                ):
+                    if saved and final_fails:
+                        raise OSError("final denied")
+                    write_csv_atomic(path, projection, policy)
+                    saved.append(path.read_bytes())
+
+                with (
+                    mock.patch(
+                        "panelsolver.app.runtime.append_csv",
+                        side_effect=CsvAppendRollbackError("rollback failed"),
+                    ) as append,
+                    mock.patch(
+                        "panelsolver.app.runtime.write_csv_atomic", side_effect=atomic
+                    ) as write,
+                ):
+                    result = run_and_write_product_cases(
+                        rows, FMF_POLICY, output, checkpoint_every_cases=1
+                    )
+                self.assertEqual(1, append.call_count)
+                self.assertEqual(2, write.call_count)
+                self.assertEqual(not final_fails, result.summary_csv_saved)
+                self.assertEqual(2 if final_fails else 1, len(result.output_issues))
+                self.assertEqual(saved[-1], output.read_bytes())
+
+    def test_cancel_or_calculation_failure_keeps_only_committed_checkpoint(
+        self,
+    ) -> None:
+        for cancel in (False, True):
+            with self.subTest(cancel=cancel), tempfile.TemporaryDirectory() as td:
+                output = Path(td) / "summary.csv"
+                rows = self._fmf_rows(Path(td), 5)
+                completed = [0]
+
+                def progress(done, _total, *, completed=completed):
+                    completed[0] = done
+
+                def calculate(case, logger, *, completed=completed):
+                    if completed[0] == 3:
+                        raise RuntimeError("calculation failed")
+                    return _real_run_prepared_product_case(case, logger)
+
+                with (
+                    mock.patch(
+                        "panelsolver.app.runtime._run_prepared_product_case",
+                        side_effect=calculate,
+                    ),
+                    mock.patch(
+                        "panelsolver.app.runtime.append_csv", wraps=append_csv
+                    ) as append,
+                    self.assertRaises(SchedulerCancelled if cancel else RuntimeError),
+                ):
+                    run_and_write_product_cases(
+                        rows,
+                        FMF_POLICY,
+                        output,
+                        checkpoint_every_cases=2,
+                        progress_cb=progress,
+                        cancel_cb=lambda cancel=cancel, completed=completed: (
+                            cancel and completed[0] == 3
+                        ),
+                    )
+                append.assert_not_called()
+                with output.open(encoding=CSV_ENCODING, newline="") as handle:
+                    self.assertEqual(
+                        ["case_0", "case_1"],
+                        [row["case_id"] for row in csv.DictReader(handle)],
+                    )
+
+    @pytest.mark.slow
+    def test_real_parallel_checkpoints_follow_reported_completion_order(self) -> None:
+        for reader, filename, policy in (
+            (read_fmf_cases, "fmfsolver_cases.csv", FMF_POLICY),
+            (read_newt_cases, "newtsolver_cases.csv", NEWT_POLICY),
+        ):
+            with (
+                self.subTest(domain=policy.product_id),
+                tempfile.TemporaryDirectory() as td,
+            ):
+                frame = read_current_cases(reader, INPUTS / filename).iloc[:4].copy()
+                frame["save_vtp_on"] = 0
+                frame["out_dir"] = td
+                output = Path(td) / "summary.csv"
+                reported = []
+
+                def log(message, *, reported=reported):
+                    if message.startswith("[OK]"):
+                        reported.append(message.split("case_id=", 1)[1])
+
+                def progress(_done, _total, *, output=output, reported=reported):
+                    with output.open(encoding=CSV_ENCODING, newline="") as handle:
+                        self.assertEqual(
+                            reported,
+                            [
+                                row["case_id"]
+                                for row in csv.DictReader(handle)
+                                if row["scope"] == "total"
+                            ],
+                        )
+
+                result = run_and_write_product_cases(
+                    tuple(frame.to_dict(orient="records")),
+                    policy,
+                    output,
+                    workers=2,
+                    checkpoint_every_cases=1,
+                    logfn=log,
+                    progress_cb=progress,
+                )
+                self.assertEqual((), result.output_issues)
+                with output.open(encoding=CSV_ENCODING, newline="") as handle:
+                    self.assertEqual(
+                        list(frame["case_id"]),
+                        [
+                            row["case_id"]
+                            for row in csv.DictReader(handle)
+                            if row["scope"] == "total"
+                        ],
+                    )
+
     def test_ray_accel_hint_is_distribution_channel_neutral(self) -> None:
         logs: list[str] = []
         product_id = FMF_POLICY.product_id
@@ -286,7 +600,7 @@ class RuntimeTests(unittest.TestCase):
                 [row["case_id"] for row in saved if row["scope"] == "total"],
             )
 
-    def test_complete_checkpoint_is_reused_as_final_summary(self) -> None:
+    def test_complete_checkpoint_is_rewritten_as_final_summary(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             rows = self._fmf_rows(root, 3)
@@ -306,12 +620,10 @@ class RuntimeTests(unittest.TestCase):
                     logfn=logs.append,
                 )
 
-            self.assertEqual(1, write.call_count)
+            self.assertEqual(2, write.call_count)
             self.assertTrue(result.summary_csv_saved)
             self.assertEqual((), result.output_issues)
-            self.assertTrue(
-                any("complete checkpoint reused" in message for message in logs)
-            )
+            self.assertTrue(any("(input order)" in message for message in logs))
             with summary.open(encoding=CSV_ENCODING, newline="") as stream:
                 saved = tuple(csv.DictReader(stream))
             self.assertEqual(
@@ -319,7 +631,7 @@ class RuntimeTests(unittest.TestCase):
                 [row["case_id"] for row in saved if row["scope"] == "total"],
             )
 
-    def test_partial_checkpoint_does_not_mask_final_summary_failure(self) -> None:
+    def test_tail_checkpoint_does_not_mask_final_summary_failure(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             rows = self._fmf_rows(root, 3)
@@ -351,7 +663,7 @@ class RuntimeTests(unittest.TestCase):
             with summary.open(encoding=CSV_ENCODING, newline="") as stream:
                 saved = tuple(csv.DictReader(stream))
             self.assertEqual(
-                ["case_0", "case_1"],
+                ["case_0", "case_1", "case_2"],
                 [row["case_id"] for row in saved if row["scope"] == "total"],
             )
 

@@ -52,9 +52,11 @@ Each domain writes exactly its listed result columns.
 
 Every calculated case emits one `total` row. A case with multiple ordered STL
 components then emits one `component` row per component in ascending zero-based
-component-ID order. A single-STL case emits only its `total` row. Across a batch,
-cases remain in input-table order even when workers complete them in another
-order.
+component-ID order. A single-STL case emits only its `total` row. In the final
+Summary CSV, cases remain in input-table order even when workers complete them
+in another order. During execution, checkpoints append whole cases in completion
+order. Each case's total and component rows stay together; the final save rewrites
+the file in input-table order.
 
 Input cells and case-level run fields are repeated on component rows. Coefficients,
 face counts, shielding counts, `component_id`, and `component_stl_path` describe
