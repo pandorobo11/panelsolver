@@ -125,9 +125,9 @@ class ReleaseToolTests(unittest.TestCase):
         documentation = {
             "docs": (
                 "index.md",
-                "solvers/fmf.md",
-                "solvers/hypersonic.md",
-                "reference/python-api.md",
+                "methods/fmf.md",
+                "methods/hypersonic.md",
+                "running/python-api.md",
             ),
             "devdocs": (
                 "README.md",
@@ -164,8 +164,8 @@ class ReleaseToolTests(unittest.TestCase):
         )
         docs = {
             "index.html": b"home",
-            "solvers/fmf.html": b"fmf",
-            "solvers/hypersonic.html": b"hypersonic",
+            "methods/fmf.html": b"fmf",
+            "methods/hypersonic.html": b"hypersonic",
             "assets/javascripts/panelsolver-docs.js": b"project script\n",
             "assets/stylesheets/panelsolver-docs.css": b"project styles\n",
             "LICENSE": b"license\n",
@@ -654,11 +654,11 @@ class ReleaseToolTests(unittest.TestCase):
             incomplete = self.write_sdist(
                 repository,
                 complete=True,
-                omitted_documentation="docs/reference/python-api.md",
+                omitted_documentation="docs/running/python-api.md",
             )
             with self.assertRaisesRegex(
                 RuntimeError,
-                "docs/reference/python-api.md",
+                "docs/running/python-api.md",
             ):
                 verify_sdist_contents(repository, incomplete)
 

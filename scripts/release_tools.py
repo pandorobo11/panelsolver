@@ -426,8 +426,8 @@ def _verify_release_zip(kind: str, archive_path: Path) -> None:
         if kind == "docs":
             required = {
                 "index.html",
-                "solvers/fmf.html",
-                "solvers/hypersonic.html",
+                "methods/fmf.html",
+                "methods/hypersonic.html",
                 "LICENSE",
                 "THIRD_PARTY_NOTICES.md",
                 *_DOCS_SCREENSHOTS,
@@ -852,8 +852,8 @@ def verify_wheel_contents(repository: Path, wheel: Path) -> None:
             raise RuntimeError(f"wheel console scripts changed: {scripts!r}")
         required_docs = {
             "panelsolver/_docs_site/index.html",
-            "panelsolver/_docs_site/solvers/fmf.html",
-            "panelsolver/_docs_site/solvers/hypersonic.html",
+            "panelsolver/_docs_site/methods/fmf.html",
+            "panelsolver/_docs_site/methods/hypersonic.html",
             "panelsolver/_docs_site/LICENSE",
             "panelsolver/_docs_site/THIRD_PARTY_NOTICES.md",
             *(f"panelsolver/_docs_site/{path}" for path in _DOCS_SCREENSHOTS),
@@ -1029,7 +1029,7 @@ def _smoke_rebuilt_wheel(repository: Path, wheel: Path, root: Path) -> None:
         "assert m.version('panelsolver') == "
         f"{project_identity(repository)[1]!r}; "
         "site=DocumentationSite(); assert site.resolve().is_file(); "
-        "assert site.resolve('solvers/fmf.html').is_file(); site.close()"
+        "assert site.resolve('methods/fmf.html').is_file(); site.close()"
     )
     subprocess.run([str(python), "-c", smoke], cwd=root, check=True)
     for command, arguments in (

@@ -6,7 +6,7 @@ Panel Solver supports:
 - GUI commands `panelsolver-gui fmf` and `panelsolver-gui hypersonic`;
 - normal launcher-driven GUI operation;
 - only the seven package-root imports described in the
-  [Python API reference](python-api.md);
+  [Python API reference](../running/python-api.md);
 - documented CSV, XLSX, and XLSM case files and their domain schemas/defaults;
 - documented [Summary CSV](../results/summary-csv.md) and
   [VTP](../results/vtp.md) semantics;

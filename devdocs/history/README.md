@@ -13,11 +13,11 @@ representative surfaces have since changed:
   `panelsolver` identity;
 - historical `--flush-every-cases` is superseded by the current
   `--checkpoint-every-cases` option described in the
-  [CLI guide](../../docs/user-guide/cli.md);
+  [CLI guide](../../docs/running/cli.md);
 - `.xls` is not a current supported input format;
 - NPZ is not a current output format;
 - legacy direct-Python modules are not part of the current public
-  [Python API](../../docs/reference/python-api.md).
+  [Python API](../../docs/running/python-api.md).
 
 Do not rewrite the record pages to match current behavior. Their hashes,
 goldens, tolerances, source commits, observed differences, execution records,

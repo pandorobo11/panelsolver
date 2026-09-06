@@ -3,8 +3,8 @@
 Both domains accept CSV, XLSX, and XLSM. Excel input uses the first worksheet.
 Convert Excel 97–2003 BIFF `.xls` files to `.xlsx` or CSV before opening them.
 Column names and defaults are defined in the
-[FMF input reference](../reference/fmf-input.md) and
-[Hypersonic input reference](../reference/hypersonic-input.md).
+[FMF input reference](fmf-input.md) and
+[Hypersonic input reference](hypersonic-input.md).
 
 CSV case tables use UTF-8, with or without a byte-order mark (BOM).
 
@@ -22,11 +22,11 @@ spreadsheet or text editor, then open it again in the GUI or pass it to CLI
    conditions. For FMF, supply either `S` and `Ti_K` or `Mach` and
    `Altitude_km`, plus `Tw_K`. For Hypersonic, supply `Mach`, `gamma`, and the
    pressure methods appropriate to your surfaces. Check the assumptions on the
-   [FMF](../solvers/fmf.md) or [Hypersonic](../solvers/hypersonic.md) method page.
+   [FMF](../methods/fmf.md) or [Hypersonic](../methods/hypersonic.md) method page.
 4. Set your reference area, moment reference point, and reference lengths;
    use values appropriate to your geometry and comparison convention.
 5. Choose whether geometry can block upstream flow to other panels and set
-   `shielding_on` accordingly; see [Ray shielding](../reference/ray-shielding.md).
+   `shielding_on` accordingly; see [Ray shielding](../methods/ray-shielding.md).
    Choose `out_dir` if you want a separate VTP location. Keep `save_vtp_on=1`
    for surface inspection.
 6. Run one case first. Inspect the geometry and surface scalars in the GUI,
@@ -42,7 +42,7 @@ face has its outward normal pointing toward −X. Body axes are
 With the default `beta_tan` attitude, positive alpha tilts flow toward +Z_STL
 and positive sideslip tilts it toward −Y_STL. Panel Solver uses the exported
 coordinates and orientation as supplied.
-See [Coordinate and attitude conventions](../reference/coordinate-and-attitude-conventions.md)
+See [Coordinate and attitude conventions](../methods/coordinate-and-attitude-conventions.md)
 for the full definitions.
 
 STL coordinates carry no reliable unit declaration. Set
@@ -76,13 +76,13 @@ to compare with, and keep them consistent across the comparison.
 
 Component coefficients use these same global references, so they add to the
 total within numerical tolerance. The exact equations and signs are in
-[Load and coefficient conventions](../reference/load-and-coefficient-conventions.md).
+[Load and coefficient conventions](../methods/load-and-coefficient-conventions.md).
 
 ## Columns and defaults
 
 Input columns may appear in any order: headers identify the fields. Use the
-exact names in the [FMF](../reference/fmf-input.md) or
-[Hypersonic](../reference/hypersonic-input.md) input reference. The order shown
+exact names in the [FMF](fmf-input.md) or
+[Hypersonic](hypersonic-input.md) input reference. The order shown
 there is the order of the standard input columns in the **Summary CSV**, not an
 input ordering requirement.
 
@@ -102,7 +102,7 @@ specified, and `~` is expanded. When VTP saving is enabled, the per-case path is
 `<resolved_out_dir>/<case_id>.vtp`. The domain input references define the
 `out_dir` and `save_vtp_on` defaults and accepted values; the
 [VTP reference](../results/vtp.md) defines the saved content, and
-[Batch execution and recovery](batch-execution-and-recovery.md) explains write
+[Batch execution and recovery](../running/batch-execution-and-recovery.md) explains write
 failures.
 
 Use semicolons to list multiple STL components in input order:
@@ -116,7 +116,7 @@ IDs are zero-based positions in that list.
 
 For Hypersonic, a surface-equation cell may contain one selector applied to all
 components or exactly one semicolon-separated selector per STL. See
-[Hypersonic](../solvers/hypersonic.md).
+[Hypersonic](../methods/hypersonic.md).
 
 ## Attitude modes
 
@@ -136,7 +136,7 @@ FMF and Hypersonic and become a unit STL-frame freestream vector and resolved
 tangent angles before panel calculation. The table above lists the accepted
 ranges; the coordinate axes, signs, reference directions, periodicity, and
 transformations are defined in
-[Coordinate and attitude conventions](../reference/coordinate-and-attitude-conventions.md).
+[Coordinate and attitude conventions](../methods/coordinate-and-attitude-conventions.md).
 
 ## Common validation
 

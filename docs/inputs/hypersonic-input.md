@@ -3,9 +3,9 @@
 This page defines the Hypersonic case-table schema. Input columns may be in any
 order. The standard input columns are written to Summary CSV in the order shown
 below, followed by extra input columns in their original relative order.
-[Case files](../user-guide/case-files.md) defines accepted formats, path
-resolution, and [common validation](../user-guide/case-files.md#common-validation).
-See [Columns and defaults](../user-guide/case-files.md#columns-and-defaults) for
+[Case files](case-files.md) defines accepted formats, path
+resolution, and [common validation](case-files.md#common-validation).
+See [Columns and defaults](case-files.md#columns-and-defaults) for
 omitted-column and empty-cell behavior.
 
 | Column | Required | Default | Unit / values | Meaning |
@@ -27,9 +27,9 @@ omitted-column and empty-cell behavior.
 | `Lref_Cl_m` | yes | — | m, > 0 | Roll-moment reference length |
 | `Lref_Cm_m` | yes | — | m, > 0 | Pitch-moment reference length |
 | `Lref_Cn_m` | yes | — | m, > 0 | Yaw-moment reference length |
-| `shielding_on` | no | `0` | `0` or `1` | Enable the [ray-occlusion shielding method](ray-shielding.md) |
-| `ray_backend` | no | `auto` | `auto`, `rtree`, `embree` | [Ray-shielding backend](ray-shielding.md#backend-behavior) |
-| `out_dir` | no | `outputs` | path | Per-case VTP directory; resolution and path rules are in [Case files](../user-guide/case-files.md#paths-vtp-destinations-and-components) |
+| `shielding_on` | no | `0` | `0` or `1` | Enable the [ray-occlusion shielding method](../methods/ray-shielding.md) |
+| `ray_backend` | no | `auto` | `auto`, `rtree`, `embree` | [Ray-shielding backend](../methods/ray-shielding.md#backend-behavior) |
+| `out_dir` | no | `outputs` | path | Per-case VTP directory; resolution and path rules are in [Case files](case-files.md#paths-vtp-destinations-and-components) |
 | `save_vtp_on` | no | `1` | `0` or `1` | `1` writes the case VTP; `0` skips it |
 
 Windward values are `newtonian`, `modified_newtonian`, `tangent_wedge`, and
@@ -38,9 +38,9 @@ applies to all STL components; otherwise the number of semicolon-separated
 entries must equal the STL count. Modified Newtonian, tangent wedge, tangent
 cone, and Prandtl–Meyer require `Mach > 1`.
 
-See [Case files](../user-guide/case-files.md#attitude-modes) for mode selection and
+See [Case files](case-files.md#attitude-modes) for mode selection and
 accepted ranges, and
-[Coordinate and attitude conventions](coordinate-and-attitude-conventions.md)
+[Coordinate and attitude conventions](../methods/coordinate-and-attitude-conventions.md)
 for axes, signs, and geometric definitions. The Hypersonic
-[pressure-model equations](../solvers/hypersonic.md#pressure-model-equations)
+[pressure-model equations](../methods/hypersonic.md#pressure-model-equations)
 explain the method choices and physical applicability.

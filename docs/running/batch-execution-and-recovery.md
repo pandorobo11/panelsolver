@@ -33,7 +33,7 @@ checkpoint stores results rather than resumable calculation state. Use CLI
 ## Cancellation and calculation failures
 
 Cancellation is cooperative. Panel Solver observes it between cases; an active
-[ray-shielding query](../reference/ray-shielding.md) or physical-model solve may
+[ray-shielding query](../methods/ray-shielding.md) or physical-model solve may
 finish before the request is observed.
 
 After cancellation, use the most recent successful checkpoint and VTP files

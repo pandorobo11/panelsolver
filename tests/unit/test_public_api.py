@@ -30,7 +30,7 @@ from panelsolver.domains.hypersonic import read_cases as read_hypersonic_cases
 from tests.current_case_fixtures import read_current_cases
 
 INPUTS = Path(__file__).parents[1] / "fixtures" / "phase1" / "inputs"
-PYTHON_API_DOC = Path(__file__).parents[2] / "docs" / "reference" / "python-api.md"
+PYTHON_API_DOC = Path(__file__).parents[2] / "docs" / "running" / "python-api.md"
 
 
 def _paths(row) -> tuple[str, ...]:

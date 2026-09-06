@@ -2,7 +2,7 @@
 
 This page is the maintainer record for the FMF/Sentman Mode B atmosphere table.
 Scientific and model-facing provenance is documented in
-[the user reference](../../docs/reference/us1976-data-provenance.md). The
+[the user reference](../../docs/appendix/us1976-data-provenance.md). The
 authoritative consolidated rights and source-identity notice is
 [`THIRD_PARTY_NOTICES.md`](../../THIRD_PARTY_NOTICES.md).
 

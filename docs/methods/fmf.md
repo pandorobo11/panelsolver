@@ -19,7 +19,7 @@ Both modes also require positive wall temperature `Tw_K`. The model assumes
 complete thermal accommodation, using the wall temperature as the diffusely
 reflected molecular temperature (`T_r = T_w`).
 
-The [FMF input reference](../reference/fmf-input.md) lists columns, defaults,
+The [FMF input reference](../inputs/fmf-input.md) lists columns, defaults,
 and validity requirements.
 
 ## Sentman local-load equation
@@ -27,7 +27,7 @@ and validity requirements.
 For each panel, the model computes a local nondimensional traction vector
 $\boldsymbol\tau$. Panel-area weighting and whole-vehicle force/moment
 integration are defined in
-[Load and coefficient conventions](../reference/load-and-coefficient-conventions.md#local-traction-and-panel-contributions).
+[Load and coefficient conventions](load-and-coefficient-conventions.md#local-traction-and-panel-contributions).
 
 ### Geometry and symbols
 
@@ -169,14 +169,14 @@ complete diffuse reflection. FMF fixes the reflected temperature to the wall
 temperature as described under [Flow inputs](#flow-inputs); specular or mixed
 reflection and adjustable thermal accommodation are outside this model's scope.
 
-[Ray shielding](../reference/ray-shielding.md) approximates geometric occlusion
+[Ray shielding](ray-shielding.md) approximates geometric occlusion
 by setting a hidden panel's entire traction vector to zero. Multiple reflections
 between surfaces are outside this approximation.
 
 Mode B uses the same free-molecular model. Its bundled atmosphere table provides
 conditions within the tabulated altitude range. Table sources, rounding, and
 reproducibility are documented in
-[US1976 data provenance](../reference/us1976-data-provenance.md).
+[US1976 data provenance](../appendix/us1976-data-provenance.md).
 
 ## Outputs and scope
 

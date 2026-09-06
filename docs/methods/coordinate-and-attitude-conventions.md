@@ -4,7 +4,7 @@ FMF and Hypersonic use the coordinate and attitude calculations defined on this
 page. It explains what each attitude representation means geometrically and how
 all representations resolve to one freestream direction. Accepted input values
 and ranges are listed in the
-[Case files guide](../user-guide/case-files.md#attitude-modes). Required fields
+[Case files guide](../inputs/case-files.md#attitude-modes). Required fields
 and defaults are listed in the domain input references.
 
 ## Frames, direction, and angle units
@@ -39,7 +39,7 @@ $\operatorname{normalize}(\boldsymbol q)=\boldsymbol q/\lVert\boldsymbol q\rVert
 
 In this mode, `alpha_deg` is the tangent angle of attack $\alpha_t$, and
 `beta_or_bank_deg` is the tangent sideslip angle $\beta_t$. For inputs in the
-principal domain specified by [Case files](../user-guide/case-files.md#attitude-modes),
+principal domain specified by [Case files](../inputs/case-files.md#attitude-modes),
 
 ```math
 \hat{\boldsymbol V}_{\mathrm{STL}}

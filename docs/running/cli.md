@@ -59,5 +59,5 @@ return a nonzero status after the
 Output-path validation rejects collisions with the input table, any STL, and
 any planned VTP before execution, even when that case has VTP saving disabled.
 The check also rejects portable case/Unicode variants and aliases of an existing
-protected file. See [Case files](case-files.md#paths-vtp-destinations-and-components)
+protected file. See [Case files](../inputs/case-files.md#paths-vtp-destinations-and-components)
 for per-case VTP destinations.
