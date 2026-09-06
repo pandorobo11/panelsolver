@@ -46,8 +46,6 @@ then sums the contributions:
 =\sum_j\boldsymbol C_{\mathrm{face},j,\mathrm{STL}}.
 ```
 
-Moment integration uses these same weighted face contributions.
-
 Hypersonic traction is normal to the surface; Sentman traction also includes a
 tangential contribution. Integration uses the full vector in both domains.
 The scalar outputs `cp`, `normal_traction_coeff`, and
@@ -96,11 +94,6 @@ C_L=-C_A\sin\alpha_t+C_N\cos\alpha_t.
 ```
 
 Here $\alpha_t$ is the [resolved tangent angle of attack](coordinate-and-attitude-conventions.md#resolved-tangent-angles).
-The stability frame is a right-handed rotation of the body force vector about
-$+Y_{\mathrm{body}}$ by $\alpha_t$, with
-$C_D=-C_{X,\mathrm{stability}}$ and $C_L=-C_{Z,\mathrm{stability}}$.
-These coefficients retain the stability-axis definition at nonzero sideslip;
-sideslip affects the panel loads through the resolved freestream direction.
 
 ## Moment coefficients
 
@@ -133,10 +126,7 @@ C_n=\frac{\overline C_{M,Z,\mathrm{body}}}{L_{\mathrm{ref},Cn}}.
 ```
 
 These are the public `Cl`, `Cm`, and `Cn` roll-, pitch-, and yaw-moment
-coefficients. Input units and validity for the reference point, `Aref_m2`, and
-the three reference lengths are listed in the
-[FMF input reference](fmf-input.md) and
-[Hypersonic input reference](hypersonic-input.md).
+coefficients.
 
 ## Total and component coefficients
 

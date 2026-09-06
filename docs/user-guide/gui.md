@@ -105,11 +105,6 @@ Set **Min** and **Max** to choose color limits; leave either endpoint blank for
 an automatic limit. The colorbar shows the actual range. Invalid numeric text
 falls back to automatic, with the input marked and a tooltip explaining why.
 
-A constant continuous scalar with both endpoints automatic shows one color and
-one value, such as **Cp = 0.134**. Categorical fields and manually specified ranges
-use a color scale. Small nonzero variations use a gradient with enough label
-precision to distinguish the ticks.
-
 **Background** offers **Follow theme** (initial), **White**, and **Black**.
 Following the theme uses white in light mode and black in dark mode. An explicit
 color stays selected across theme changes for the current window. Text and axes

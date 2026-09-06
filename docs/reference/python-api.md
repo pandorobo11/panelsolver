@@ -6,7 +6,7 @@ memory.
 
 Use this API to work directly with coefficients and per-panel arrays.
 The [CLI](../user-guide/cli.md) and [GUI](../user-guide/gui.md) provide case-table
-workflows for writing result files and deriving FMF Mode B atmosphere inputs.
+workflows for writing result files.
 
 ## Minimal examples
 

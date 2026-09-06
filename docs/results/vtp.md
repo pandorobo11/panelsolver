@@ -6,6 +6,8 @@ VTK-capable tool to see where the surface load acts. The GUI normally loads a
 selected case's matching result automatically; **Open VTP...** also allows
 manual inspection.
 
+<a id="relating-vtp-to-summary-csv"></a>
+
 For Hypersonic, start with `cp`, the local pressure coefficient. For FMF, inspect
 `normal_traction_coeff` and `tangential_traction_coeff`, the local Sentman
 traction components. These surface scalars describe individual panels; use the
@@ -67,7 +69,7 @@ and moments is defined in
 
 | Array | Shape | Stored dtype | Unit | Meaning | Role in integration |
 |---|---:|---|---|---|---|
-| `cp` | `(n_faces,)` | `float64` | dimensionless | Local pressure coefficient selected by the panel's windward or leeward pressure method. It may be negative for Prandtl–Meyer expansion and is zero on ray-shielded faces. | Defines local traction as `-cp * n_out_stl`, which is area-weighted for integration. |
+| `cp` | `(n_faces,)` | `float64` | dimensionless | Local pressure coefficient selected by the panel's windward or leeward pressure method. It may be negative for Prandtl–Meyer expansion and is zero on ray-shielded faces. | Pressure-load input used to calculate `C_face_stl`. |
 
 See [Hypersonic Panel Methods](../solvers/hypersonic.md) for each pressure
 equation and its limits.
@@ -113,20 +115,3 @@ Each Hypersonic-only field has shape `(1,)` and string storage.
 
 FMF records its resolved `mode`, `out_S`, and `out_Ti_K` in the
 [Summary CSV reference](summary-csv.md#fmf-resolved-state-fields).
-
-## Relating VTP to Summary CSV
-
-For a VTP file saved during the current run:
-
-- VTP `case_id`, `case_signature`, `solver_version`,
-  `alpha_t_deg_resolved`, `beta_t_deg_resolved`, and `ray_backend_used`
-  correspond to the case's Summary CSV values.
-- Summary `vtp_path` points to the VTP only on the `total` row.
-- `stl_index` partitions `C_face_stl` into the Summary component scopes.
-- Force and moment totals follow the integration roles in
-  [Common cell data](#common-cell-data).
-- A blank Summary `vtp_path` means no VTP was successfully written for that case
-  during the current run, even if an older file exists at the planned path.
-
-The [GUI guide](../user-guide/gui.md#select-a-result) explains automatic result
-matching and manual inspection.

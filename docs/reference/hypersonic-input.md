@@ -4,8 +4,8 @@ This page defines the Hypersonic case-table schema. Input columns may be in any
 order. The standard input columns are written to Summary CSV in the order shown
 below, followed by extra input columns in their original relative order.
 [Case files](../user-guide/case-files.md) defines accepted formats, path
-resolution, case-ID rules, and reserved-field rejection. See
-[Columns and defaults](../user-guide/case-files.md#columns-and-defaults) for
+resolution, and [common validation](../user-guide/case-files.md#common-validation).
+See [Columns and defaults](../user-guide/case-files.md#columns-and-defaults) for
 omitted-column and empty-cell behavior.
 
 | Column | Required | Default | Unit / values | Meaning |
@@ -37,11 +37,6 @@ Windward values are `newtonian`, `modified_newtonian`, `tangent_wedge`, and
 applies to all STL components; otherwise the number of semicolon-separated
 entries must equal the STL count. Modified Newtonian, tangent wedge, tangent
 cone, and Prandtl–Meyer require `Mach > 1`.
-
-Use `leeward_eq` to choose leeward pressure and `shielding_on` to enable
-[geometric occlusion](ray-shielding.md#ray-shielding-versus-leeward_eqshield).
-
-Every required numeric field must be finite, and numeric booleans are rejected.
 
 See [Case files](../user-guide/case-files.md#attitude-modes) for mode selection and
 accepted ranges, and

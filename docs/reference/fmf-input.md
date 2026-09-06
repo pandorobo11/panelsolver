@@ -4,8 +4,8 @@ This page defines the FMF case-table schema. Input columns may be in any
 order. The standard input columns are written to Summary CSV in the order shown
 below, followed by extra input columns in their original relative order.
 [Case files](../user-guide/case-files.md) defines accepted formats, path
-resolution, case-ID rules, and reserved-field rejection. See
-[Columns and defaults](../user-guide/case-files.md#columns-and-defaults) for
+resolution, and [common validation](../user-guide/case-files.md#common-validation).
+See [Columns and defaults](../user-guide/case-files.md#columns-and-defaults) for
 omitted-column and empty-cell behavior.
 
 | Column | Required | Default | Unit / values | Meaning |
@@ -13,7 +13,7 @@ omitted-column and empty-cell behavior.
 | `case_id` | yes | — | portable text | Unique case ID and VTP filename stem |
 | `stl_path` | yes | — | path; `;` separates components | Ordered STL sources |
 | `stl_scale_m_per_unit` | yes | — | m / STL unit, > 0 | Geometry scale |
-| `S` | Mode A | blank | dimensionless, > 0 | Molecular speed ratio, `V_inf / sqrt(2 R Ti)` |
+| `S` | Mode A | blank | dimensionless, > 0 | Molecular speed ratio, `V_inf / sqrt(2 R Ti)`; `R` is the incident gas's specific gas constant |
 | `Ti_K` | Mode A | blank | K, > 0 | Free-stream incident translational (static) temperature; not total/stagnation temperature |
 | `Mach` | Mode B | blank | dimensionless, > 0 | Mach used to derive `S` |
 | `Altitude_km` | Mode B | blank | km, 0–1000 inclusive | Geometric altitude for the bundled-atmosphere lookup |
@@ -34,14 +34,10 @@ omitted-column and empty-cell behavior.
 | `save_vtp_on` | no | `1` | `0` or `1` | `1` writes the case VTP; `0` skips it |
 
 Mode A requires both `S` and `Ti_K`; Mode B requires both `Mach` and
-`Altitude_km`. Specify exactly one complete pair. Every required or specified
-numeric field must be finite, and numeric booleans are rejected.
+`Altitude_km`. Specify exactly one complete pair.
 
-In Mode A, `S` and `Ti_K` must describe the same incident freestream state;
-`R` in the speed-ratio definition is that gas's specific gas constant.
-Mode B resolves speed ratio and static temperature from the bundled atmosphere.
-The [FMF solver page](../solvers/fmf.md#flow-inputs) explains that conversion
-and the wall-temperature assumption.
+The [FMF solver page](../solvers/fmf.md#flow-inputs) explains the Mode B
+atmosphere conversion and the wall-temperature assumption.
 
 See [Case files](../user-guide/case-files.md#attitude-modes) for attitude mode
 selection and accepted ranges, and

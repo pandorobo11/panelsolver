@@ -30,9 +30,6 @@ excludes multiple reflections and flow interactions between surfaces.
 | `shielding_on=1` | FMF and Hypersonic | Tests upstream geometric occlusion and zeros the entire traction vector on hidden panels, regardless of their orientation or selected pressure equation. |
 | `leeward_eq=shield` | Hypersonic | Assigns `Cp = 0` to active leeward panels based on their orientation. |
 
-The Hypersonic [leeward pressure equation](../solvers/hypersonic.md#leeward-shield)
-can be used with ray shielding either on or off.
-
 ## Backend behavior
 
 `auto` selects an available ray-intersection implementation. `rtree` explicitly

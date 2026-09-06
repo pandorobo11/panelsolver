@@ -71,43 +71,22 @@ In this mode, `alpha_deg` is a tangent angle of attack, denoted
 $\alpha_{\mathrm{in}}$ to distinguish the input from the resolved result.
 `beta_or_bank_deg` is the sine-definition sideslip $\beta_s$.
 
-Define
+With $t=\tan\alpha_{\mathrm{in}}$ and $s=\sin\beta_s$, the unit direction is
 
 ```math
-t=\tan\alpha_{\mathrm{in}},
-\qquad
-s=\sin\beta_s.
+\hat{\boldsymbol V}_{\mathrm{STL}}
+=\operatorname{normalize}\!\begin{bmatrix}
+\sqrt{\dfrac{1-s^2}{1+t^2}}\\
+-s\\
+t\sqrt{\dfrac{1-s^2}{1+t^2}}
+\end{bmatrix}.
 ```
 
-The unit direction is defined by
-
-```math
-V_y=-s,
-\qquad
-V_x=\sqrt{\frac{1-s^2}{1+t^2}},
-\qquad
-V_z=tV_x,
-```
-
-using the nonnegative square root for $V_x$. Thus
-$\sin\beta_s=-V_y$, while the X/Z components preserve
-$V_z/V_x=\tan\alpha_{\mathrm{in}}$ whenever $V_x\ne0$. The resulting vector is
-normalized to protect its unit length from floating-point roundoff.
-
-The common [resolved tangent angles](#resolved-tangent-angles) are calculated
-from this direction.
-
-For $|\sin\beta_s|<1$, resolved $\alpha_t$ equals the input tangent angle, but
-$\beta_t$ is generally not equal to $\beta_s$. At
-$|\sin\beta_s|=1$, the direction lies on the Y axis with $V_x=V_z=0$; that
-direction contains no information about the input angle of attack, and the
-resolved value is determined by the `atan2` definition rather than recovered
-from $\alpha_{\mathrm{in}}$.
-
-Only $\sin\beta_s$ enters the direction. Inputs with the same sine are therefore
-equivalent: in particular, $\beta_s+360^\circ k$ and
-$180^\circ-\beta_s+360^\circ k$ produce the same direction for any integer
-$k$.
+For $|\sin\beta_s|<1$, resolved $\alpha_t$ equals the input tangent angle, while
+$\beta_t$ follows the [resolved-angle definition](#resolved-tangent-angles).
+At $|\sin\beta_s|=1$, the flow lies on the Y axis and the angle of attack is
+geometrically undetermined. Panel Solver returns $\alpha_t=0^\circ$ and
+$\beta_t=+90^\circ$ for $\sin\beta_s=1$, or $-90^\circ$ for $\sin\beta_s=-1$.
 
 ## Included-angle and bank input (`bank`)
 
@@ -130,9 +109,7 @@ angle has its transverse component toward $+Z_{\mathrm{STL}}$.
 
 Positive bank rotates that transverse component from $+Z_{\mathrm{STL}}$
 toward $-Y_{\mathrm{STL}}$. Equivalently, it is a right-hand-rule positive
-rotation about $+X_{\mathrm{STL}}$. Bank is 360-degree periodic,
-$\hat{\boldsymbol V}(i,\phi+360^\circ k)=\hat{\boldsymbol V}(i,\phi)$; the
-included angle is likewise evaluated periodically through its sine and cosine.
+rotation about $+X_{\mathrm{STL}}$.
 When $\sin i=0$, the direction lies on the X axis and bank is geometrically
 immaterial.
 

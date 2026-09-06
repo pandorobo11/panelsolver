@@ -70,7 +70,7 @@ number.
 | Column | Domain | Type / format | Unit | Rows | Blank when | Meaning |
 |---|---|---|---|---|---|---|
 | `solver_version` | common | text | — | all | never | Installed `panelsolver` distribution version that generated the result. |
-| `case_signature` | common | 64-character lowercase hexadecimal SHA-256 | — | all | never | SHA-256 value that identifies the current case and associates its output files. It incorporates the numerical geometry, normalized common and model case, model algorithm version, and shielding configuration including the effective backend. The GUI uses it with `case_id` to match a VTP to a current case. It is not a complete-result cache key. |
+| `case_signature` | common | 64-character lowercase hexadecimal SHA-256 | — | all | never | SHA-256 value that identifies the current case and associates its output files. It incorporates the numerical geometry, normalized common and model case, model algorithm version, and shielding configuration including the effective backend. The GUI uses it with `case_id` to match a VTP to a current case. |
 | `run_started_at_utc` | common | ISO 8601 UTC timestamp ending in `Z` | — | all | never | Time at which this case began execution. |
 | `run_finished_at_utc` | common | ISO 8601 UTC timestamp ending in `Z` | — | all | never | Time after this case's calculation and optional VTP write attempt completed. |
 | `run_elapsed_s` | common | floating-point number | s | all | never | Monotonic elapsed time over the same per-case interval, including optional VTP handling and excluding the final batch Summary CSV write. |
@@ -106,7 +106,7 @@ The exact axes and angle transformations are defined in
 |---|---|---|---|---|---|---|
 | `ray_backend_used` | common | text | `not_used`, `rtree`, or `embree` | all | never | Effective backend for the [ray-shielding method](../reference/ray-shielding.md). It is `not_used` when ray shielding is disabled; for input `auto`, it records the backend actually selected. |
 | `faces` | common | non-negative integer | panel count | all | never | Number of triangular panels represented by the row's scope. |
-| `shielded_faces` | common | non-negative integer | panel count | all | never | Number of panels in the row's scope marked geometrically occluded by [ray shielding](../reference/ray-shielding.md). A Hypersonic leeward `shield` pressure selector does not increment this count. |
+| `shielded_faces` | common | non-negative integer | panel count | all | never | Number of panels in the row's scope marked geometrically occluded by [ray shielding](../reference/ray-shielding.md). |
 | `vtp_path` | common | absolute path text | — | total | VTP saving was disabled, output-directory preparation failed, or the current VTP write failed | VTP successfully written for this case during the current run. Component rows are always blank because one case VTP contains every component. |
 
 Use `vtp_path` to identify files written by the current run. For handling older
