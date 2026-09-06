@@ -6,6 +6,28 @@ migration baselines and runtime artifact version semantics are recorded in ADR
 
 ## [Unreleased]
 
+- Append only unsaved cases at Summary CSV checkpoints. The first successful
+  checkpoint atomically replaces the previous CSV; later checkpoints append in
+  completion order. The final save atomically rewrites all cases in input-table
+  order, keeping each total row and its ascending component rows together.
+  Failed appends attempt to roll back to the previous file length and retry
+  unsaved cases at a later checkpoint. A rollback failure disables further
+  appends but still allows the final atomic save. Forced termination or power
+  loss can leave a partial trailing record or case; automatic repair and
+  calculation resumption are not provided. Cancellation and calculation failure
+  do not trigger an extra save. The default remains 2000 cases, and interval
+  zero disables all intermediate checkpoints.
+- Improve the GUI workspace with a pinned Case ID column, per-domain saved
+  window placement, split position, column widths and Diagnostics visibility,
+  and **View > Reset Layout**. Keep related controls together when the window
+  narrows. Clarify result provenance and run status, add theme-following, white
+  and black Viewer backgrounds, and show constant scalar values directly in the
+  legend.
+- Organize user documentation by task: getting started, methods and conventions,
+  inputs, running calculations, results and product reference. Complete the
+  Summary CSV, VTP and stable Python API references, centralize batch recovery
+  guidance, and update the first-use workflow and GUI screenshots in the
+  bundled offline site and release documentation archive.
 - **Breaking:** Remove the six predecessor-product commands, their two Python
   package trees, compatibility-only tuning-variable aliases, and legacy VTP
   signature reconstruction/fallback before the first Panel Solver release.
