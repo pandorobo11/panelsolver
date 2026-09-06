@@ -1,22 +1,20 @@
 # Python API reference
 
 Panel Solver provides a small synchronous API for one-case, in-memory
-calculation. It reads the requested STL files and returns results in memory;
-**it does not write Summary CSV or VTP files**.
+calculation. It reads the requested STL files and returns a `SolveResult` in
+memory.
 
-**FMF input:** public `FMFCase` represents resolved Mode A input (speed ratio,
-incident static temperature, and wall temperature). For atmosphere-derived
-Mode B using `Mach` and `Altitude_km`, use a [CLI](../user-guide/cli.md) or
-[GUI](../user-guide/gui.md) case table. Those workflows also write result files.
+Use this API to work directly with coefficients and per-panel arrays.
+The [CLI](../user-guide/cli.md) and [GUI](../user-guide/gui.md) provide case-table
+workflows for writing result files.
 
 ## Minimal examples
 
 Both examples assume that a readable, valid `model.stl` already exists in the
 process working directory. To try them with the supplied geometry, copy
 `examples/geometry/plate.stl` from the [Quickstart](../getting-started/quickstart.md)
-examples to `model.stl` there. All imports below use the supported package root.
-The returned coefficients describe the whole case, while the scalar arrays
-provide one value per triangular panel.
+examples to `model.stl` there. The returned coefficients describe the whole case,
+while the scalar arrays provide one value per triangular panel.
 
 ### FMF
 
@@ -92,12 +90,10 @@ from panelsolver import (
 )
 ```
 
-`panelsolver.api`, `panelsolver.core`, `panelsolver.app`,
-`panelsolver.models`, domain adapters, registries, execution requests,
-lower-level solvers and helpers, and predecessor-product modules are not covered
-by the package-root compatibility guarantee. Objects nested inside `SolveResult`
-are documented below so callers can use the returned values; their defining
-module paths and direct constructors are not part of the supported API.
+Compatibility covers these package-root imports and the returned fields
+documented below. Nested result objects are accessed through `SolveResult`;
+their defining modules and direct constructors remain implementation details.
+See [Compatibility policy](compatibility.md) for the full support boundary.
 
 ## Attitude resolution
 
@@ -121,9 +117,7 @@ trimmed and normalized case-insensitively. `None` and blank text select
 
 The resolver converts every mode to the tangent-angle values used by both solve
 functions. The equations, axes, signs, and periodic
-behavior are in [Coordinate and attitude conventions](coordinate-and-attitude-conventions.md);
-the concise accepted-input rules are also listed in
-[Case files](../user-guide/case-files.md#attitude-modes).
+behavior are in [Coordinate and attitude conventions](coordinate-and-attitude-conventions.md).
 
 ### `ResolvedAttitude`
 
@@ -134,8 +128,7 @@ the concise accepted-input rules are also listed in
 | `beta_t_deg` | `float` | degrees | Resolved tangent sideslip. |
 | `input_mode` | `str` | `beta_tan`, `beta_sin`, or `bank` | Normalized representation used for the input pair. |
 
-`ResolvedAttitude` is itself part of the package-root API and supports direct
-construction:
+`ResolvedAttitude` also supports direct construction:
 
 ```text
 ResolvedAttitude(
@@ -180,7 +173,7 @@ is required.
 | Field | Type | Default | Unit / values | Meaning |
 |---|---|---|---|---|
 | `case_id` | `str` | — | portable text | Case ID. It is normalized to Unicode NFC and must satisfy the portable filename rules described under [Shared case requirements](#shared-case-requirements). |
-| `stl_paths` | non-empty sequence of `str` or `Path` | — | ordered paths | STL components in component-ID order. A single string or `Path` is not a sequence-of-components value; wrap it in a tuple or list. |
+| `stl_paths` | non-empty sequence of `str` or `Path` | — | ordered paths | STL components in component-ID order. Supply a tuple or list even for one component. |
 | `stl_scale_m_per_unit` | real number | — | m / STL unit, > 0 | Scale applied to every input STL coordinate. |
 | `attitude` | `ResolvedAttitude` | — | — | Resolved flow direction and tangent angles used by the calculation. |
 | `Aref_m2` | real number | — | m², > 0 | Global reference area used for total and component integration. |
@@ -194,12 +187,10 @@ is required.
 | `shielding` | `bool` | `False` | `False` or `True` | Enables the common ray-occlusion shielding calculation. Corresponds to `shielding_on`. |
 | `ray_backend` | `str` | `"auto"` | `auto`, `rtree`, or `embree` | Requested shielding backend. It is still validated when shielding is disabled. |
 
-The package-root `FMFCase` accepts resolved Sentman **Mode A only**:
-`speed_ratio`, `translational_temperature_k`, and `wall_temperature_k`. The
-case-table Mode B workflow derives speed ratio and temperature from `Mach` and
-`Altitude_km`; it is available through the CLI and GUI, not as another
-`FMFCase` constructor mode. See the [FMF input reference](fmf-input.md) and
-[FMF solver page](../solvers/fmf.md).
+`FMFCase` accepts resolved Sentman **Mode A** inputs: speed ratio, incident
+static temperature, and wall temperature. For Mode B (`Mach` and `Altitude_km`),
+use a CLI or GUI case table. See the [FMF solver page](../solvers/fmf.md#flow-inputs)
+for the physical meaning of both modes.
 
 For comparison with a case table, `stl_paths` is the ordered in-memory form of
 semicolon-separated `stl_path`, and `moment_reference_stl_m` combines
@@ -265,8 +256,7 @@ As with `FMFCase`, `stl_paths` corresponds to ordered `stl_path`, while
 - `stl_paths` must be a non-empty ordered sequence whose entries are non-empty
   `str` or `pathlib.Path` values. Component ID zero corresponds to the first
   path, ID one to the second, and so on. Relative API paths are resolved from
-  the process working directory; unlike case-table paths, there is no
-  case-table directory to use as an anchor.
+  the process working directory.
 - `stl_scale_m_per_unit`, `Aref_m2`, and all three reference lengths must be
   finite and strictly positive. `moment_reference_stl_m` must contain exactly
   three finite coordinates in metres in the STL frame. Numeric booleans are
@@ -280,11 +270,8 @@ As with `FMFCase`, `stl_paths` corresponds to ordered `stl_path`, while
   above. Meshes must be readable, non-empty, finite, consistently orientable,
   and free of degenerate faces after applying the STL scale.
 
-The case constructors normalize and validate the portable ID, require a
-non-empty path sequence, require a three-value moment reference, and require a
-`ResolvedAttitude`. Common numerical, model, backend, and mesh validation can
-occur while solving. Callers must satisfy all validity requirements; do not
-depend on more specific validation timing.
+Validation occurs during construction and solving as described under
+[Validation and errors](#validation-and-errors).
 
 ## Solve functions
 
@@ -300,8 +287,6 @@ equivalent documented case-table calculation. It returns the result in memory,
 so equivalent inputs produce the same numerical result as the CLI/GUI
 case-table workflow.
 
-These functions do not expose registry, request, or cache controls.
-
 ## `SolveResult`
 
 Either solve function returns a `SolveResult` with the following fields:
@@ -316,9 +301,6 @@ Either solve function returns a `SolveResult` with the following fields:
 | `case_signature` | `str` | 64 lowercase hexadecimal characters | SHA-256 value that identifies the evaluated geometry, normalized case, model algorithm, and resolved shielding configuration. |
 | `ray_backend_used` | `str` | `not_used`, `rtree`, or `embree` | Effective ray backend. `not_used` means shielding was disabled. |
 | `warnings` | tuple of `str` | possibly empty | User-visible warnings produced while loading/executing the case. Exact warning text is not a stable taxonomy, and warnings are not fields in Summary CSV or VTP. |
-
-The nested objects are result values reached through `SolveResult`; callers do
-not need to import their private implementation classes.
 
 ### Coefficients
 
@@ -352,9 +334,6 @@ exposes:
 | `face_count` | non-negative `int` | Number of triangular faces in the component. |
 | `shielded_face_count` | non-negative `int` | Number of its faces geometrically ray-shielded. |
 
-The high-level solvers do not populate component-specific metadata. That
-implementation field is not a separately supported user schema.
-
 ### Geometry
 
 | `result.geometry` field | Type / shape | Unit / values | Meaning |
@@ -366,8 +345,6 @@ implementation field is not a separately supported user schema.
 | `n_faces` | `int` | positive count | Number of faces represented by every per-face result. |
 | `unique_component_ids` | tuple of `int` | ascending IDs | Component IDs present in the geometry. |
 
-`result.geometry` does not expose the VTP point array or triangle connectivity.
-
 ### Flow state
 
 | `result.flow_state` field | Type / shape | Unit / values | Meaning |
@@ -376,8 +353,8 @@ implementation field is not a separately supported user schema.
 | `shielded` | NumPy boolean array `(n_faces,)` | `False` or `True` | Geometric ray-occlusion mask. Shielded faces have exact-zero local traction. |
 | `n_faces` | `int` | positive count | Number of entries in `shielded`. |
 
-See [Ray shielding](ray-shielding.md) for the method, backend behavior, and its
-distinction from Hypersonic `leeward_equation="shield"`.
+See [Ray shielding](ray-shielding.md) for the geometric method and backend
+behavior.
 
 ### Local loads
 
@@ -409,12 +386,8 @@ FMF metadata contains `mode` (always `A` for this API), `S`, `Ti_K`, and
 `leeward_eq`; equation values are their normalized one-or-per-component
 strings.
 
-**Important: local traction is not VTP `C_face_stl`.**
-
-`result.local_loads.traction_coeff_stl` is the unweighted local model result.
-The per-face force-coefficient contribution stored in VTP includes panel area
-and reference-area normalization. For example, with the solved `case` and
-`result`:
+To obtain the per-face force-coefficient contribution stored as VTP
+`C_face_stl`, apply panel-area/reference-area weighting to the local traction:
 
 ```python
 C_face_stl = (
@@ -424,9 +397,8 @@ C_face_stl = (
 )
 ```
 
-`SolveResult` does not directly expose `C_face_stl`. Do not treat these two
-arrays as identical or apply panel area twice. See
-[Load and coefficient conventions](load-and-coefficient-conventions.md#local-traction-and-panel-contributions).
+Use the resulting `C_face_stl` for force summation and moment integration, as
+specified in [Load and coefficient conventions](load-and-coefficient-conventions.md#local-traction-and-panel-contributions).
 
 ### Arrays and mutability
 
@@ -434,10 +406,6 @@ Result arrays are C-contiguous, read-only NumPy buffers: central floating arrays
 use `float64`, component IDs use `int64`, and the shielding mask uses boolean
 dtype. Nested result objects and scalar/metadata mappings are also read-only.
 Make an explicit copy when mutable working data is needed, for example `result.geometry.centers_stl_m.copy()`.
-
-Some VTP arrays use a different stored dtype: `stl_index` uses `int32`, and
-`shielded` uses `uint8`. The [VTP reference](../results/vtp.md) lists the stored
-dtype for every array.
 
 ## API ↔ Summary CSV / VTP correspondence
 
@@ -473,23 +441,15 @@ ranges, shielding configuration, missing/unreadable STL sources, and invalid
 mesh geometry are rejected with value errors from the relevant validation
 boundary.
 
-Some checks happen during case or attitude construction and others require the
-loaded geometry and therefore happen during solve. Private exception subclasses,
-exact messages, and more specific validation timing are not stable package-root
-API. Callers may catch built-in `TypeError` or `ValueError` as appropriate; do
-not import lower-level exception classes as part of normal API use.
+Case construction normalizes and validates the portable ID, path sequence,
+three-value moment reference, and `ResolvedAttitude` type. Numerical, model,
+backend, and mesh checks can occur during solving. Callers should handle
+built-in `TypeError` and `ValueError` around both stages; finer validation timing,
+private exception subclasses, and exact messages are outside the stable API.
 
 ## Filesystem and side-effect boundary
 
-The solve functions read every path in `stl_paths`; the API is therefore not
-file-I/O free. They perform calculation and return `SolveResult` without:
-
-- writing Summary CSV;
-- writing VTP;
-- writing PNG;
-- writing checkpoints;
-- creating an output directory; or
-- producing other result-file side effects.
-
-Use the [CLI](../user-guide/cli.md) or [GUI](../user-guide/gui.md) case-table
-workflow when output files or atmosphere-derived FMF Mode B are required.
+The solve functions read every path in `stl_paths` and return their results in
+memory. They create no output directories or result files (Summary CSV, VTP,
+PNG, or checkpoints). Use the [CLI](../user-guide/cli.md) or
+[GUI](../user-guide/gui.md) to write calculation outputs.

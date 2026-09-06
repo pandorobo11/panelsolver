@@ -23,9 +23,8 @@ geometry, continue with [Case files](user-guide/case-files.md).
 | Input/method choices | Two ways to specify the same Sentman model: Mode A or atmosphere-derived Mode B | Per-component windward/leeward equations |
 | Read next | [FMF](solvers/fmf.md) | [Hypersonic](solvers/hypersonic.md) |
 
-These are engineering panel methods, not general-purpose CFD. Confirm that the
-assumptions documented on the solver page match the intended flow regime and
-geometry before interpreting coefficients.
+Choose a model whose assumptions match your flow regime and geometry. Each
+solver page explains its equations and applicability.
 
 ## Choose a path by task
 
@@ -58,9 +57,7 @@ checkpoints, cancellation, or partial failures, use
 
 Use the [Summary CSV reference](results/summary-csv.md) for integrated total
 and component rows, and the [VTP reference](results/vtp.md) for mesh,
-per-panel, and provenance data. Those result pages link to the applicable
-method and convention definitions when a field requires its equation, frame,
-sign, or normalization.
+per-panel, and provenance data.
 
 ### Diagnose a problem or check support
 

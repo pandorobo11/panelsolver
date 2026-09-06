@@ -11,21 +11,14 @@ panelsolver hypersonic --input PATH [--output PATH] [--workers N]
                        [--verbose] [--plain] [--debug]
 ```
 
-Here `fmf` means the free-molecular-flow domain selector. The selected physical
-model is Sentman; the stable Python API names the domain as `FMFCase` and
-`solve_fmf()`.
-
 | Selector | Flow regime | Method | Input table |
 |---|---|---|---|
 | `fmf` | free molecular flow | Sentman | FMF case table |
 | `hypersonic` | hypersonic pressure approximation | Newtonian-family methods | Hypersonic case table |
 
-Both commands accept CSV, XLSX, and XLSM case tables. Summary CSV and optional
-per-case VTP are the only supported result files; Excel 97–2003 BIFF `.xls`
-input and NPZ output are not supported. Their field names, types, units, and
-meanings are in the
-[Summary CSV reference](../results/summary-csv.md) and
-[VTP reference](../results/vtp.md).
+Both commands read CSV, XLSX, and XLSM case tables and write
+[Summary CSV](../results/summary-csv.md) and optional per-case
+[VTP](../results/vtp.md).
 
 | Option | Meaning | Default |
 |---|---|---|
@@ -45,20 +38,26 @@ panelsolver fmf -i cases.csv --cases mode_a,mode_b -j 2
 panelsolver hypersonic -i cases.xlsx -o results.csv --cases baseline -j 1
 ```
 
-Selected rows retain input-table order. Unknown case IDs reject the request.
-`--cases` requires at least one value. On an interactive TTY, the default display
-uses a Rich summary and live progress while suppressing case-level `[RUN]` and
-`[OK]` messages; `--verbose` shows those messages. Use `--plain` for plain-text
-run output. Redirected or piped stdout and CI environments automatically use
-plain output. Validation and calculation failures show a concise error and
-return a nonzero exit status; `--debug` shows the Python traceback. Output-file
-failures are also reported with a nonzero exit status after Panel Solver has
-applied the documented continuation and recovery rules. See
-[Batch execution and recovery](batch-execution-and-recovery.md).
+## Case selection
+
+`--cases` requires at least one value. Selected rows retain input-table order;
+unknown case IDs reject the request.
+
+## Progress and errors
+
+On an interactive TTY, the default Rich display shows a summary and live
+progress. `--verbose` adds case-level `[RUN]` and `[OK]` messages. Use `--plain`
+for plain-text output; redirected or piped stdout and CI use it automatically.
+
+Validation and calculation failures show a concise error and return a nonzero
+exit status; `--debug` adds the Python traceback. Output-file failures also
+return a nonzero status after the
+[continuation and recovery rules](batch-execution-and-recovery.md) are applied.
+
+## Output destinations
 
 Output-path validation rejects collisions with the input table, any STL, and
 any planned VTP before execution, even when that case has VTP saving disabled.
 The check also rejects portable case/Unicode variants and aliases of an existing
-protected file. See [Case files](case-files.md) for per-case VTP destinations
-and [Ray shielding](../reference/ray-shielding.md) for the geometry-occlusion
-method.
+protected file. See [Case files](case-files.md#paths-vtp-destinations-and-components)
+for per-case VTP destinations.

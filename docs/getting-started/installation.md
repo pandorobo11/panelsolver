@@ -7,9 +7,6 @@
   PyVista/VTK, Trimesh, SciPy, pandas, and rtree
 - A normal desktop display for the GUI
 
-You can start with the supplied example mesh and case table; you do not need to
-prepare your own STL before trying the software.
-
 ## Install a wheel
 
 Install the Panel Solver v0.1.0 wheel from the directory containing the file:
@@ -51,13 +48,8 @@ python -c "from importlib.metadata import version; print(version('panelsolver'))
 ```
 
 The version printed by the final command is the installed `panelsolver`
-distribution version. Newly generated FMF and Hypersonic Summary CSV/VTP
-artifacts record that value as `solver_version`.
+distribution version.
 
 ## Run your first case
 
-Continue with [Quickstart](quickstart.md). A checkout already contains
-`examples/`. For a wheel installation, extract the matching
-`panelsolver-examples-v<version>.zip` from the release alongside your working
-files, or use **File > New from Example > Basic** in the GUI to copy a bundled
-example to a workspace.
+Continue with [Quickstart](quickstart.md) to run a supplied example.

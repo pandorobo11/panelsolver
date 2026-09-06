@@ -4,8 +4,8 @@ This page defines the FMF case-table schema. Input columns may be in any
 order. The standard input columns are written to Summary CSV in the order shown
 below, followed by extra input columns in their original relative order.
 [Case files](../user-guide/case-files.md) defines accepted formats, path
-resolution, case-ID rules, and reserved-field rejection. See
-[Columns and defaults](../user-guide/case-files.md#columns-and-defaults) for
+resolution, and [common validation](../user-guide/case-files.md#common-validation).
+See [Columns and defaults](../user-guide/case-files.md#columns-and-defaults) for
 omitted-column and empty-cell behavior.
 
 | Column | Required | Default | Unit / values | Meaning |
@@ -13,7 +13,7 @@ omitted-column and empty-cell behavior.
 | `case_id` | yes | — | portable text | Unique case ID and VTP filename stem |
 | `stl_path` | yes | — | path; `;` separates components | Ordered STL sources |
 | `stl_scale_m_per_unit` | yes | — | m / STL unit, > 0 | Geometry scale |
-| `S` | Mode A | blank | dimensionless, > 0 | Molecular speed ratio, `V_inf / sqrt(2 R Ti)` |
+| `S` | Mode A | blank | dimensionless, > 0 | Molecular speed ratio, `V_inf / sqrt(2 R Ti)`; `R` is the incident gas's specific gas constant |
 | `Ti_K` | Mode A | blank | K, > 0 | Free-stream incident translational (static) temperature; not total/stagnation temperature |
 | `Mach` | Mode B | blank | dimensionless, > 0 | Mach used to derive `S` |
 | `Altitude_km` | Mode B | blank | km, 0–1000 inclusive | Geometric altitude for the bundled-atmosphere lookup |
@@ -34,29 +34,12 @@ omitted-column and empty-cell behavior.
 | `save_vtp_on` | no | `1` | `0` or `1` | `1` writes the case VTP; `0` skips it |
 
 Mode A requires both `S` and `Ti_K`; Mode B requires both `Mach` and
-`Altitude_km`. Specify exactly one complete pair. Every required or specified
-numeric field must be finite, and numeric booleans are rejected.
+`Altitude_km`. Specify exactly one complete pair.
 
-For Mode A, `Ti_K` is the static translational temperature of the incident
-free-stream molecular population. Directed flow energy is represented
-separately by `S`, so do not supply total or stagnation temperature. The caller
-must ensure that `S` and `Ti_K` describe the same free-stream state. Here `R` in
-the speed-ratio definition is the specific gas constant of that incident gas.
+The [FMF solver page](../solvers/fmf.md#flow-inputs) explains the Mode B
+atmosphere conversion and the wall-temperature assumption.
 
-For Mode B, the solver obtains `Ti_K` directly from the bundled atmosphere's
-temperature column at `Altitude_km`, computes `V_inf = Mach * c`, converts the
-tabulated mean molecular speed to the most-probable speed as
-`V_mp = sqrt(pi) / 2 * V_mean`, and resolves `S = V_inf / V_mp`. No total-
-temperature conversion is performed.
-
-The Sentman reflected term uses `sqrt(Tw_K / Ti_K)`. Because the input schema has
-no separate reflected-gas temperature or accommodation coefficient, the model
-uses `Tw_K` as the diffusely reflected molecular temperature (`T_r = T_w`).
-
-FMF and Hypersonic use the same attitude resolver. See
-[Case files](../user-guide/case-files.md#attitude-modes) for mode selection and
-accepted ranges, and
+See [Case files](../user-guide/case-files.md#attitude-modes) for attitude mode
+selection and accepted ranges, and
 [Coordinate and attitude conventions](coordinate-and-attitude-conventions.md)
-for the axes, signs, and geometric definitions. Path, case-ID, flag, and mesh
-rules are also in Case files. Model interpretation is in
-[Sentman local-load equation](../solvers/fmf.md#sentman-local-load-equation).
+for axes, signs, and geometric definitions.
