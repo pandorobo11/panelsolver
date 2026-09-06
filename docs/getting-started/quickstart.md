@@ -75,7 +75,7 @@ reference. The two triangles have the same scalar values, so uniform coloring
 is expected. Hypersonic `cp` is about 1.94 for this orientation.
 
 These are dimensionless coefficients. Reference quantities and signs are
-defined in [Load and coefficient conventions](../reference/load-and-coefficient-conventions.md).
+defined in [Load and coefficient conventions](../methods/load-and-coefficient-conventions.md).
 Use the [Summary CSV reference](../results/summary-csv.md) and
 [VTP reference](../results/vtp.md) when you need every field's meaning.
 
@@ -92,7 +92,7 @@ Compare `outputs/alpha20_result.csv` with `outputs/basic_result.csv` and inspect
 Hypersonic case `cp` decreases to about 1.77 as the flow becomes less normal to
 the plate. The distinct case ID keeps the original VTP available for comparison.
 
-Next, follow [Case files](../user-guide/case-files.md#adapt-an-example-to-your-own-case)
+Next, follow [Case files](../inputs/case-files.md#adapt-an-example-to-your-own-case)
 to replace the plate with your STL, flow conditions, and reference quantities.
 
 ## Try the feature examples next
@@ -101,4 +101,4 @@ The repository and examples archive include `examples/README.md`, which collects
 commands, main inputs, and expected relationships for each feature example:
 FMF flow modes, Hypersonic pressure methods, shielding, components, and attitude
 representations. Use those examples for the feature you need. For larger runs,
-see [Batch execution and recovery](../user-guide/batch-execution-and-recovery.md).
+see [Batch execution and recovery](../running/batch-execution-and-recovery.md).

@@ -18,6 +18,26 @@ from panelsolver.docs_site import (
 
 ROOT = Path(__file__).resolve().parents[2]
 
+LEGACY_PAGES = {
+    "reference/coordinate-and-attitude-conventions.md": "methods/coordinate-and-attitude-conventions.md",
+    "reference/load-and-coefficient-conventions.md": "methods/load-and-coefficient-conventions.md",
+    "reference/ray-shielding.md": "methods/ray-shielding.md",
+    "solvers/fmf.md": "methods/fmf.md",
+    "solvers/hypersonic.md": "methods/hypersonic.md",
+    "user-guide/case-files.md": "inputs/case-files.md",
+    "reference/fmf-input.md": "inputs/fmf-input.md",
+    "reference/hypersonic-input.md": "inputs/hypersonic-input.md",
+    "user-guide/gui.md": "running/gui.md",
+    "user-guide/cli.md": "running/cli.md",
+    "reference/python-api.md": "running/python-api.md",
+    "user-guide/batch-execution-and-recovery.md": "running/batch-execution-and-recovery.md",
+    "user-guide/troubleshooting.md": "running/troubleshooting.md",
+    "reference/environment-variables.md": "product-reference/environment-variables.md",
+    "reference/compatibility.md": "product-reference/compatibility.md",
+    "reference/us1976-data-provenance.md": "appendix/us1976-data-provenance.md",
+    "reference/license-and-third-party-notices.md": "appendix/license-and-third-party-notices.md",
+}
+
 
 def _css_declarations(stylesheet: str, selector: str) -> dict[str, str]:
     stylesheet = re.sub(r"/\*.*?\*/", "", stylesheet, flags=re.DOTALL)
@@ -81,18 +101,76 @@ class DocumentationSiteTests(unittest.TestCase):
     def tearDownClass(cls) -> None:
         cls.temporary.cleanup()
 
+    def test_navigation_matches_canonical_directories(self) -> None:
+        from mkdocs.config import load_config
+
+        sections = {
+            "Getting started": "getting-started",
+            "Methods and conventions": "methods",
+            "Inputs": "inputs",
+            "Running calculations": "running",
+            "Results": "results",
+            "Product reference": "product-reference",
+            "Appendix": "appendix",
+        }
+        nav = load_config(config_file=str(ROOT / "mkdocs.yml"))["nav"]
+        canonical = {"index.md"}
+        home = _ResourceParser()
+        home.feed((self.site / "index.html").read_text(encoding="utf-8"))
+        for section in nav:
+            for label, pages in section.items():
+                if label == "Panel Solver":
+                    self.assertEqual("index.md", pages)
+                    continue
+                for page in pages:
+                    for path in page.values():
+                        self.assertEqual(sections[label], str(Path(path).parent))
+                        self.assertNotIn(path, canonical)
+                        canonical.add(path)
+                        self.assertIn(str(Path(path).with_suffix(".html")), home.links)
+        sources = {
+            str(path.relative_to(ROOT / "docs"))
+            for path in (ROOT / "docs").rglob("*.md")
+        }
+        self.assertEqual(
+            set(LEGACY_PAGES) | {"reference/output-formats.md"}, sources - canonical
+        )
+        self.assertTrue(set(LEGACY_PAGES.values()) <= canonical)
+
+    def test_legacy_guides_preserve_canonical_anchor_handoffs(self) -> None:
+        for old, new in LEGACY_PAGES.items():
+            old_page = self.site / Path(old).with_suffix(".html")
+            new_page = self.site / Path(new).with_suffix(".html")
+            guide, current = _ResourceParser(), _ResourceParser()
+            guide.feed(old_page.read_text(encoding="utf-8"))
+            current.feed(new_page.read_text(encoding="utf-8"))
+            with self.subTest(page=old):
+                legacy_ids = guide.ids - {"page-moved"}
+                self.assertTrue(legacy_ids)
+                self.assertTrue(legacy_ids <= current.ids)
+                self.assertNotIn("<math", old_page.read_text(encoding="utf-8"))
+                handoffs = {
+                    unquote(split.fragment)
+                    for link in guide.links
+                    for split in (urlsplit(link),)
+                    if split.path
+                    and (old_page.parent / unquote(split.path)).resolve()
+                    == new_page.resolve()
+                }
+                self.assertTrue(legacy_ids <= handoffs)
+
     def test_strict_site_has_current_pages_and_legal_files(self) -> None:
         for relative in (
             "index.html",
-            "solvers/fmf.html",
-            "solvers/hypersonic.html",
-            "reference/fmf-input.html",
-            "reference/hypersonic-input.html",
-            "reference/coordinate-and-attitude-conventions.html",
-            "reference/load-and-coefficient-conventions.html",
-            "reference/ray-shielding.html",
+            "methods/fmf.html",
+            "methods/hypersonic.html",
+            "inputs/fmf-input.html",
+            "inputs/hypersonic-input.html",
+            "methods/coordinate-and-attitude-conventions.html",
+            "methods/load-and-coefficient-conventions.html",
+            "methods/ray-shielding.html",
             "reference/output-formats.html",
-            "user-guide/batch-execution-and-recovery.html",
+            "running/batch-execution-and-recovery.html",
             "assets/screenshots/gui-overview.png",
             "assets/screenshots/gui-result.png",
             "LICENSE",
@@ -300,7 +378,7 @@ class DocumentationSiteTests(unittest.TestCase):
                         self.assertIn(unquote(split.fragment), parsed[target].ids)
 
     def test_math_is_prerendered_as_self_contained_mathml(self) -> None:
-        for relative in ("solvers/fmf.html", "solvers/hypersonic.html"):
+        for relative in ("methods/fmf.html", "methods/hypersonic.html"):
             html = (self.site / relative).read_text(encoding="utf-8")
             with self.subTest(relative=relative):
                 self.assertIn("<math", html)
@@ -312,8 +390,8 @@ class DocumentationSiteTests(unittest.TestCase):
 
     def test_page_validation_accepts_only_normalized_relative_html(self) -> None:
         self.assertEqual(
-            "solvers/fmf.html",
-            validate_documentation_page(" solvers/fmf.html "),
+            "methods/fmf.html",
+            validate_documentation_page(" methods/fmf.html "),
         )
         for value in (
             None,
@@ -324,7 +402,7 @@ class DocumentationSiteTests(unittest.TestCase):
             "solvers/../index.html",
             "solvers\\index.html",
             "solvers//fmf.html",
-            "solvers/fmf.md",
+            "methods/fmf.md",
         ):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 validate_documentation_page(value)
@@ -335,8 +413,8 @@ class DocumentationSiteTests(unittest.TestCase):
         root = index.parent
         self.assertTrue(index.is_file())
         self.assertEqual(root, site.resolve().parent)
-        self.assertTrue(site.resolve("solvers/hypersonic.html").is_file())
-        self.assertTrue(site.resolve("reference/fmf-input.html").is_file())
+        self.assertTrue(site.resolve("methods/hypersonic.html").is_file())
+        self.assertTrue(site.resolve("inputs/fmf-input.html").is_file())
         self.assertTrue(site.resolve("reference/output-formats.html").is_file())
         site.close()
         self.assertFalse(root.exists())

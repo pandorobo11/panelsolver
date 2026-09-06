@@ -68,7 +68,7 @@ input for compatibility.
 
 Results are written below each example's `outputs/` directory. The
 [quickstart](docs/getting-started/quickstart.md) explains what to inspect and how
-to change and rerun the example. See the [CLI guide](docs/user-guide/cli.md) for
+to change and rerun the example. See the [CLI guide](docs/running/cli.md) for
 command options.
 
 ## Documentation
@@ -86,7 +86,7 @@ server or network access.
   [run calculations](docs/index.md#run-calculations),
   [interpret results](docs/index.md#interpret-results), or
   [diagnose a problem](docs/index.md#diagnose-a-problem-or-check-support).
-- Review the [compatibility and versioning policy](docs/reference/compatibility.md)
+- Review the [compatibility and versioning policy](docs/product-reference/compatibility.md)
   for the supported commands, file formats, and Python API.
 - [Developer documentation](devdocs/README.md)
 
@@ -95,7 +95,7 @@ server or network access.
 One `panelsolver` distribution provides command entry points for both flow
 domains. Summary CSV and VTP files record the installed distribution
 version. The package-root Python API is stable. See the
-[compatibility policy](docs/reference/compatibility.md) and
+[compatibility policy](docs/product-reference/compatibility.md) and
 [CHANGELOG.md](CHANGELOG.md) for compatibility guarantees and release changes.
 
 ## License
