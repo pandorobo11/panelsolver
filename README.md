@@ -16,7 +16,15 @@ modified Newtonian, tangent-wedge, tangent-cone, or Prandtl–Meyer methods. See
 
 ## Requirements and installation
 
-Python 3.12 or newer is required. To install the Panel Solver v0.1.0 wheel:
+Python 3.12 or newer is required; **on macOS, use Python 3.12 or 3.13**.
+macOS temporarily uses PySide6/Qt 6.9.0 to avoid QTBUG-149612. This version
+does not support Python 3.14 or newer, so `pip` rejects that combination during
+dependency resolution. Windows/Linux retain the current dependency range
+without this macOS-specific Python upper limit. The macOS pin will be
+reassessed when the upstream Qt fix is available and validated; see the
+[installation requirements](docs/getting-started/installation.md#requirements).
+
+To install the Panel Solver v0.1.0 wheel:
 
 ```bash
 python -m pip install ./panelsolver-0.1.0-py3-none-any.whl

@@ -7,10 +7,11 @@ GUI.
 
 ## Prerequisites
 
+Use Python 3.12 or 3.13 on macOS while the Qt 6.9.0 workaround is in place.
 Prepare the locked local environment from the repository root:
 
 ```bash
-uv sync --locked --extra rayaccel --group docs
+uv sync --locked --python 3.12 --extra rayaccel --group docs
 ```
 
 The helper resolves the repository root from its own bundle location. It does
@@ -189,6 +190,11 @@ This affects a plain `QTableWidget` as well as the Cases table; the native crash
 does not originate in the solver or VTK. The pending
 [Qt fix](https://codereview.qt-project.org/c/qt/qtbase/+/765434) corrects ownership
 of those synthesized elements. Other platforms retain the Qt 6 version range.
+
+PySide6 6.9.0 declares `Requires-Python: >=3.9,<3.14`, so the current macOS
+environment is Python 3.12–3.13. `pip` rejects macOS installation on Python
+3.14 or newer. Successful universal locking does not establish support for
+those versions; see the [uv caveat in setup and testing](setup-and-testing.md#set-up).
 
 `tests/gui/test_macos_accessibility.py` exercises the actual Cocoa bridge in an
 isolated normal-display process, including the pinned Case ID view and repeated

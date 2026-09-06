@@ -2,15 +2,21 @@
 
 ## Requirements
 
-- Python 3.12 or newer
+- Python 3.12 or newer; **macOS currently requires Python 3.12 or 3.13**
 - A platform supported by the required Python dependencies, including Qt,
   PyVista/VTK, Trimesh, SciPy, pandas, and rtree
 - A normal desktop display for the GUI
 
-On macOS, installation selects PySide6/Qt 6.9.0 to avoid a table-accessibility
-crash in newer Qt versions. Keep the dependency version selected by Panel
-Solver; do not independently upgrade PySide6 in this environment. Other
-platforms use the supported Qt 6 dependency range.
+On macOS, installation selects PySide6/Qt 6.9.0 to avoid the QTBUG-149612
+table-accessibility crash. That dependency does not support Python 3.14 or
+newer, and `pip` rejects installation on those Python versions during dependency
+resolution. Use Python 3.12 or 3.13 and keep the selected PySide6 version.
+The macOS pin will be reassessed when the upstream Qt fix is available and
+validated.
+
+Panel Solver's package requirement remains Python 3.12+. Windows/Linux use the
+current Qt 6 dependency range without the macOS-specific Python upper limit;
+installation still requires compatible versions of all dependencies.
 
 ## Install a wheel
 
