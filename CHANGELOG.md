@@ -31,8 +31,9 @@ migration baselines and runtime artifact version semantics are recorded in ADR
   Read the Docs theme, improving technical tables, navigation, and code
   readability. Add complete license texts and release-gate coverage for the
   newly bundled theme assets; numerical behavior and public APIs are unchanged.
-- Allow PySide6 6.9.3 through the Qt 6 series and require PyVistaQt 0.12 or
-  newer, removing the obsolete cross-platform PySide6 6.9.3 exact pin.
+- Use PySide6 6.9.0 on macOS to avoid an upstream Qt table-accessibility crash
+  when assistive or automation tools inspect selected cases. Other platforms
+  allow PySide6 6.9.3 through the Qt 6 series. Require PyVistaQt 0.12 or newer.
 - Improve GUI file workflows by remembering the last successfully opened input
   directory for the current GUI session, resolving relative Summary CSV, VTP,
   image, and `out_dir` paths from the input table's directory, and adding

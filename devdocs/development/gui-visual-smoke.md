@@ -179,6 +179,29 @@ Headless GUI tests should continue to inject a lightweight plotter/interactor
 where appropriate. The helper is for visual validation, not a production VTK
 workaround and not a replacement for focused automated tests.
 
+## macOS table accessibility dependency
+
+macOS uses PySide6/Qt 6.9.0 until the upstream fix for
+[QTBUG-149612](https://bugreports.qt.io/browse/QTBUG-149612) is released and
+validated. Newer Qt builds can delete a live table's accessibility interface
+when native synthesized rows/cells are inspected and the selection changes.
+This affects a plain `QTableWidget` as well as the Cases table; the native crash
+does not originate in the solver or VTK. The pending
+[Qt fix](https://codereview.qt-project.org/c/qt/qtbase/+/765434) corrects ownership
+of those synthesized elements. Other platforms retain the Qt 6 version range.
+
+`tests/gui/test_macos_accessibility.py` exercises the actual Cocoa bridge in an
+isolated normal-display process, including the pinned Case ID view and repeated
+model/selection changes. It requires WindowServer access, but does not require
+Computer Use or external accessibility permissions. The same probe crashes
+with Qt 6.11.2 and passes with Qt 6.9.0. Offscreen or Python-only accessibility
+checks do not exercise the failing native ownership path.
+
+Before lifting the macOS pin, verify that the candidate Qt release contains the
+upstream fix, run the native regression and full validation runner, and repeat
+the real FMF and Hypersonic run/save/scalar/export visual smoke with accessibility
+inspection. Keep normal table accessibility enabled.
+
 ## Scope of visual findings
 
 Record visual findings without silently expanding the implementation under

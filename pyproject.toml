@@ -17,7 +17,9 @@ dependencies = [
   "numpy",
   "openpyxl",
   "pandas",
-  "pyside6>=6.9.3,<7",
+  # QTBUG-149612: newer Cocoa table accessibility can delete live interfaces.
+  "pyside6==6.9.0; sys_platform == 'darwin'",
+  "pyside6>=6.9.3,<7; sys_platform != 'darwin'",
   "pyvista",
   "pyvistaqt>=0.12",
   "rich>=15,<16",

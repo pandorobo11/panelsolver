@@ -7,6 +7,11 @@
   PyVista/VTK, Trimesh, SciPy, pandas, and rtree
 - A normal desktop display for the GUI
 
+On macOS, installation selects PySide6/Qt 6.9.0 to avoid a table-accessibility
+crash in newer Qt versions. Keep the dependency version selected by Panel
+Solver; do not independently upgrade PySide6 in this environment. Other
+platforms use the supported Qt 6 dependency range.
+
 ## Install a wheel
 
 Install the Panel Solver v0.1.0 wheel from the directory containing the file:
