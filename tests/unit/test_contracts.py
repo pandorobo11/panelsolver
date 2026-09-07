@@ -178,6 +178,11 @@ class GeometryAndFlowValidationTests(unittest.TestCase):
                 NonFiniteError,
             ),
             (
+                "nonfinite normal",
+                {**valid, "normals_out_stl": np.array([[-1.0, 0.0, np.inf]] * 2)},
+                NonFiniteError,
+            ),
+            (
                 "non-unit normal",
                 {**valid, "normals_out_stl": np.array([[-2.0, 0.0, 0.0]] * 2)},
                 ContractValueError,
@@ -220,6 +225,11 @@ class GeometryAndFlowValidationTests(unittest.TestCase):
 
         invalid = (
             (np.array([1.0, 0.0]), np.array([False, True]), ShapeError),
+            (
+                np.array([True, False, False]),
+                np.array([False, True]),
+                ContractValueError,
+            ),
             (np.array([2.0, 0.0, 0.0]), np.array([False, True]), ContractValueError),
             (np.array([np.inf, 0.0, 0.0]), np.array([False, True]), NonFiniteError),
             (np.array([1.0, 0.0, 0.0]), np.array([0, 1]), ContractValueError),
@@ -387,6 +397,9 @@ class CaseAndResultTests(unittest.TestCase):
 
         invalid = (
             ({"Aref_m2": 0.0}, ContractValueError),
+            ({"Aref_m2": -1.0}, ContractValueError),
+            ({"Aref_m2": np.nan}, NonFiniteError),
+            ({"Aref_m2": np.inf}, NonFiniteError),
             ({"Lref_Cm_m": -1.0}, ContractValueError),
             ({"alpha_t_deg": np.inf}, NonFiniteError),
             ({"moment_reference_stl_m": np.zeros(2)}, ShapeError),
