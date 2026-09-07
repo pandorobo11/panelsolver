@@ -28,106 +28,106 @@ resolved-angle result fields are in degrees. Trigonometric functions in the
 equations use radian arguments; input degrees are converted before evaluation,
 and resolved `atan2` results are converted back to degrees.
 
-Every `attitude_input` representation resolves to the same
-$\hat{\boldsymbol V}_{\mathrm{STL}}$ and to the tangent angles $\alpha_t$ and
-$\beta_t$ used for panel calculation.
-
-Here
-$\mathrm{normalize}(\boldsymbol q)=\boldsymbol q/\lVert\boldsymbol q\rVert$.
+Every representation resolves directly to one unit flow direction. Physical
+loads and shielding use that vector. The stability angle is derived separately;
+flow is never reconstructed from resolved tangent angles.
 
 ## Tangent-angle input (`beta_tan`)
 
-In this mode, `alpha_deg` is the tangent angle of attack $\alpha_t$, and
-`beta_or_bank_deg` is the tangent sideslip angle $\beta_t$. For inputs in the
-principal domain specified by [Case files](../inputs/case-files.md#attitude-modes),
+`alpha_deg` is the angle of the XZ projection, and `beta_or_bank_deg` is
+sideslip measured relative to the absolute X component:
 
 ```math
-\hat{\boldsymbol V}_{\mathrm{STL}}
-=\mathrm{normalize}\!\begin{bmatrix}
-\cos\alpha_t\cos\beta_t\\
--\sin\beta_t\cos\alpha_t\\
-\sin\alpha_t\cos\beta_t
-\end{bmatrix}
-=\mathrm{normalize}\!\begin{bmatrix}
-1\\-\tan\beta_t\\\tan\alpha_t
+\beta_t=\mathrm{atan2}(-V_y,|V_x|).
+```
+
+For input angles $\alpha$ and $\beta_t$, the forward map is
+
+```math
+\hat{\boldsymbol V}_{\mathrm{STL}}=\mathrm{normalize}
+\begin{bmatrix}
+\cos\alpha\cos\beta_t\\
+-|\cos\alpha|\sin\beta_t\\
+\sin\alpha\cos\beta_t
 \end{bmatrix}.
 ```
 
-The principal input domain makes $V_x>0$, so the definitions can also be read
-from the component ratios:
+Alpha is any finite periodic angle; sideslip is in [-90°, 90°], including
+endpoints. Positive sideslip points toward -Y for both forward and backward
+flow. Unlike a signed-X tangent ratio, its lateral sign does not reverse when
+alpha passes 90°.
 
-```math
-\frac{V_z}{V_x}=\tan\alpha_t,
-\qquad
-\frac{-V_y}{V_x}=\tan\beta_t.
-```
+The forward map extends to single-angle poles even though the original pair
+cannot always be recovered:
 
-Positive $\alpha_t$ points the freestream toward $+Z_{\mathrm{STL}}$; positive
-$\beta_t$ points it toward $-Y_{\mathrm{STL}}$.
+| Inputs | Direction and interpretation |
+|---|---|
+| Alpha = ±90° modulo 360°, abs(beta) < 90° | ±Z; input beta does not affect direction and cannot be recovered. |
+| Beta = ±90°, cos(alpha) != 0 | ∓Y; input alpha cannot be recovered. |
+| Alpha an odd multiple of 90° and beta = ±90° | Undefined zero vector; rejected. Use beta_sin or bank to specify Y/Z proportions. |
 
 ## Sine-definition sideslip input (`beta_sin`)
 
-In this mode, `alpha_deg` is a tangent angle of attack, denoted
-$\alpha_{\mathrm{in}}$ to distinguish the input from the resolved result.
-`beta_or_bank_deg` is the sine-definition sideslip $\beta_s$.
-
-With $t=\tan\alpha_{\mathrm{in}}$ and $s=\sin\beta_s$, the unit direction is
+For `alpha_deg` $\alpha$ and `beta_or_bank_deg` $\beta_s$:
 
 ```math
-\hat{\boldsymbol V}_{\mathrm{STL}}
-=\mathrm{normalize}\!\begin{bmatrix}
-\sqrt{\dfrac{1-s^2}{1+t^2}}\\
--s\\
-t\sqrt{\dfrac{1-s^2}{1+t^2}}
+\hat{\boldsymbol V}_{\mathrm{STL}}=
+\begin{bmatrix}
+\cos\alpha\cos\beta_s\\
+-\sin\beta_s\\
+\sin\alpha\cos\beta_s
 \end{bmatrix}.
 ```
 
-For $|\sin\beta_s|<1$, resolved $\alpha_t$ equals the input tangent angle, while
-$\beta_t$ follows the [resolved-angle definition](#resolved-tangent-angles).
-At $|\sin\beta_s|=1$, the flow lies on the Y axis and the angle of attack is
-geometrically undetermined. Panel Solver returns $\alpha_t=0^\circ$ and
-$\beta_t=+90^\circ$ for $\sin\beta_s=1$, or $-90^\circ$ for $\sin\beta_s=-1$.
+Alpha is any finite periodic angle; sideslip is in [-90°, 90°], including
+endpoints. This covers every direction, including backward flow. Positive
+sideslip always points toward -Y. At beta = ±90°, direction is ∓Y regardless
+of input alpha. The geometric angle of attack is then undetermined.
 
 ## Included-angle and bank input (`bank`)
 
-In this mode, `alpha_deg` is the included angle $i$ measured from the
-$+X_{\mathrm{STL}}$ axis.
-`beta_or_bank_deg` is the bank angle $\phi$ around that axis:
+`alpha_deg` is the included angle $i$ from +X_STL and `beta_or_bank_deg` is
+the bank angle $\phi$ about +X_STL:
 
 ```math
-\hat{\boldsymbol V}_{\mathrm{STL}}
-=\begin{bmatrix}
+\hat{\boldsymbol V}_{\mathrm{STL}}=
+\begin{bmatrix}
 \cos i\\
 -\sin i\sin\phi\\
 \sin i\cos\phi
 \end{bmatrix}.
 ```
 
-The zero-bank reference meridian is $+Z_{\mathrm{STL}}$: at
-$\phi=0^\circ$, the direction is $(\cos i,0,\sin i)$, so a positive included
-angle has its transverse component toward $+Z_{\mathrm{STL}}$.
+Both inputs are finite periodic angles. Zero bank is the +Z meridian;
+positive bank rotates toward -Y, following a positive right-hand rotation
+about +X. When sin(i) = 0 the direction is on the X axis and bank is immaterial.
+The included angle is not generally the stability angle.
 
-Positive bank rotates that transverse component from $+Z_{\mathrm{STL}}$
-toward $-Y_{\mathrm{STL}}$. Equivalently, it is a right-hand-rule positive
-rotation about $+X_{\mathrm{STL}}$.
-When $\sin i=0$, the direction lies on the X axis and bank is geometrically
-immaterial.
+## Stability angle and numerical boundaries
 
-## Resolved tangent angles
-
-For every resolved unit direction
-$\hat{\boldsymbol V}_{\mathrm{STL}}=(V_x,V_y,V_z)$, both domains use
+Every mode uses the same stability angle:
 
 ```math
-\alpha_t=\mathrm{atan2}(V_z,V_x),
-\qquad
-\beta_t=\mathrm{atan2}(-V_y,V_x).
+\alpha_{\mathrm{stab}}=\mathrm{atan2}(V_z,V_x).
 ```
 
-When $V_x\ne0$, these definitions give
-$\tan\alpha_t=V_z/V_x$ and $\tan\beta_t=-V_y/V_x$, while `atan2` retains the
-quadrant.
+The result `alpha_stability_deg` is in [-180°, 180°); +180° is represented as
+-180°. For a normalized flow direction, if hypot(Vx, Vz) is at or below
+64 times float64 machine epsilon (approximately 1.42e-14), the stability angle
+is defined as 0°. This fallback does not change the physical flow vector.
+It uses the body axes as the representative stability frame for lateral flow.
+There is no globally continuous choice across every approach to lateral flow.
+No angle-source flag or resolved sine-sideslip field is saved; the direction
+and this rule specify how to interpret the recorded angle.
 
-The resolved $\alpha_t$ is also the angle used by the force-coefficient
-stability-axis transformation. See
-[Load and coefficient conventions](load-and-coefficient-conventions.md#stability-axis-force-coefficients).
+Finite periodic angles are reduced before trigonometric evaluation. Exact
+multiples of 90° use exact sine/cosine values of 0 or ±1. Adjacent floating-point
+values are not rounded to these boundaries. Tiny nonzero tangent vectors are
+scaled before normalization; only the exact zero-direction corner is rejected.
+Zero components and zero stability angle use positive zero.
+
+Original numeric input angles are retained before periodic reduction in Summary
+CSV and VTP, together with the normalized mode. Resolved output stores the unit
+STL direction and the stability angle used by the
+[coefficient transformation](load-and-coefficient-conventions.md#stability-axis-force-coefficients).
+A resolved vector is authoritative; non-invertible angle pairs are not recovered.

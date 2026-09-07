@@ -715,8 +715,8 @@ class RuntimeTests(unittest.TestCase):
             prepared = prepare_product_cases(rows, FMF_POLICY)
             requests = tuple(case.adapted.request for case in prepared)
             self.assertEqual(
-                round(requests[0].common_case.beta_t_deg, 12),
-                round(requests[1].common_case.beta_t_deg, 12),
+                round(float(requests[0].velocity_hat_stl[1]), 12),
+                round(float(requests[1].velocity_hat_stl[1]), 12),
             )
             self.assertFalse(
                 np.array_equal(

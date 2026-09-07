@@ -31,7 +31,7 @@ Columns are written in this order:
 ```text
 solver_version, case_signature, run_started_at_utc, run_finished_at_utc,
 run_elapsed_s, mode, out_S, out_Ti_K, out_attitude_input,
-alpha_t_deg_resolved, beta_t_deg_resolved, scope, component_id,
+alpha_stability_deg, velocity_hat_x_stl, velocity_hat_y_stl, velocity_hat_z_stl, scope, component_id,
 component_stl_path, ray_backend_used, CA, CY, CN, Cl, Cm, Cn, CD, CL,
 faces, shielded_faces, vtp_path
 ```
@@ -40,8 +40,8 @@ faces, shielded_faces, vtp_path
 
 ```text
 solver_version, case_signature, run_started_at_utc, run_finished_at_utc,
-run_elapsed_s, out_attitude_input, alpha_t_deg_resolved,
-beta_t_deg_resolved, scope, component_id, component_stl_path,
+run_elapsed_s, out_attitude_input, alpha_stability_deg,
+velocity_hat_x_stl, velocity_hat_y_stl, velocity_hat_z_stl, scope, component_id, component_stl_path,
 ray_backend_used, CA, CY, CN, Cl, Cm, Cn, CD, CL, faces,
 shielded_faces, vtp_path
 ```
@@ -93,8 +93,10 @@ resolved mode, speed ratio, and incident temperature.
 | Column | Domain | Type / format | Unit / values | Rows | Blank when | Meaning |
 |---|---|---|---|---|---|---|
 | `out_attitude_input` | common | text | `beta_tan`, `beta_sin`, or `bank` | all | never | Normalized attitude input mode used to interpret the two input angles. The corresponding VTP field is `attitude_input_used`. |
-| `alpha_t_deg_resolved` | common | floating-point number | degrees | all | never | Resolved tangent angle of attack used by integration and stability-frame conversion. |
-| `beta_t_deg_resolved` | common | floating-point number | degrees | all | never | Resolved tangent sideslip angle associated with the evaluated flow direction. |
+| `alpha_stability_deg` | common | floating-point number | degrees | all | never | Common stability angle in [-180°, 180°), including the documented zero fallback. |
+| `velocity_hat_x_stl` | common | floating-point number | dimensionless | all | never | X component of the evaluated unit STL flow direction. |
+| `velocity_hat_y_stl` | common | floating-point number | dimensionless | all | never | Y component of the evaluated unit STL flow direction. |
+| `velocity_hat_z_stl` | common | floating-point number | dimensionless | all | never | Z component of the evaluated unit STL flow direction. |
 | `scope` | common | text | `total` or `component` | all | never | Identifies whether the row covers the complete case geometry or one STL component. |
 | `component_id` | common | non-negative integer | zero-based STL index | component | `scope=total` | Component identifier in input `stl_path` order. |
 | `component_stl_path` | common | absolute path text | — | component | `scope=total` | Resolved STL source path used to load this component. |
@@ -136,3 +138,11 @@ body-to-stability rotation, signs, and moment calculation are defined in
 [Load and coefficient conventions](../methods/load-and-coefficient-conventions.md).
 Per-panel contributions from which these coefficients are integrated are stored
 as `C_face_stl` in the [VTP reference](vtp.md).
+
+The original numeric angle inputs are retained before periodic reduction.
+No stability-angle source flag or resolved sine-sideslip field is exported.
+See [attitude conventions](../methods/coordinate-and-attitude-conventions.md#stability-angle-and-numerical-boundaries)
+for the common fallback threshold. The former `alpha_t_deg_resolved` and
+`beta_t_deg_resolved` fields have been replaced; consumers must use the direction
+and stability-angle fields above. Signatures now use `panelsolver.case` v2;
+old artifacts are available for manual inspection but do not automatically match.

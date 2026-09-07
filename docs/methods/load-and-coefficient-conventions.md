@@ -88,12 +88,16 @@ Drag and lift are stability-axis coefficients obtained from the body-axis
 axial and normal coefficients:
 
 ```math
-C_D=C_A\cos\alpha_t+C_N\sin\alpha_t,
+C_D=C_A\cos\alpha_{\mathrm{stab}}+C_N\sin\alpha_{\mathrm{stab}},
 \qquad
-C_L=-C_A\sin\alpha_t+C_N\cos\alpha_t.
+C_L=-C_A\sin\alpha_{\mathrm{stab}}+C_N\cos\alpha_{\mathrm{stab}}.
 ```
 
-Here $\alpha_t$ is the [resolved tangent angle of attack](coordinate-and-attitude-conventions.md#resolved-tangent-angles).
+Here $\alpha_{\mathrm{stab}}$ is the [common stability angle](coordinate-and-attitude-conventions.md#stability-angle-and-numerical-boundaries).
+
+These are stability-axis components, not the full wind-axis force decomposition
+when sideslip is nonzero. At lateral flow the documented zero-angle fallback
+selects a representative frame; body-axis forces and moments are unaffected.
 
 ## Moment coefficients
 

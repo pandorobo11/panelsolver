@@ -53,8 +53,7 @@ def fixture(
         Lref_Cl_m=1.0,
         Lref_Cm_m=1.0,
         Lref_Cn_m=1.0,
-        alpha_t_deg=0.0,
-        beta_t_deg=0.0,
+        alpha_stability_deg=0.0,
     )
     mesh = PanelMesh(
         [[0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0]],
@@ -83,8 +82,7 @@ def results_for_mesh(mesh: PanelMesh, *, case_id: str = "artifact") -> object:
         Lref_Cl_m=1.0,
         Lref_Cm_m=1.0,
         Lref_Cn_m=1.0,
-        alpha_t_deg=0.0,
-        beta_t_deg=0.0,
+        alpha_stability_deg=0.0,
     )
     return assemble_common_results(
         case,

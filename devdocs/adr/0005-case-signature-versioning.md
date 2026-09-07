@@ -11,6 +11,9 @@ The ordered legacy-hash fallback and migration-test requirements are superseded
 by [ADR 0015](0015-remove-legacy-product-identities.md). The canonical schema,
 construction, digest, and current-signature artifact matching remain in force.
 
+The attitude/output/API and signature changes explicitly listed in
+[ADR 0017](0017-full-direction-attitudes.md) supersede those portions of this decision.
+
 ## Context
 
 Both legacy applications used case signatures for cached results and VTP matching,

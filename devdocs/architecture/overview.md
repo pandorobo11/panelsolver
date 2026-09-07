@@ -82,7 +82,7 @@ application records the installed distribution version as artifact provenance.
 The in-memory API stops at the common execution result and performs no artifact
 serialization.
 
-GUI artifact matching constructs the current `panelsolver.case` v1 signature and
+GUI artifact matching constructs the current `panelsolver.case` v2 signature and
 requires both that signature and the current case ID for automatic display.
 Manual **Open VTP...** remains a generic inspection path and does not establish a
 historical artifact compatibility contract.
