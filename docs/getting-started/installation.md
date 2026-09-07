@@ -14,6 +14,9 @@ resolution. Use Python 3.12 or 3.13 and keep the selected PySide6 version.
 The macOS pin will be reassessed when the upstream Qt fix is available and
 validated.
 
+The pinned version still has a known
+[macOS accessibility limitation](../running/troubleshooting.md#macos-gui-crashes-during-accessibility-inspection).
+
 Panel Solver's package requirement remains Python 3.12+. Windows/Linux use the
 current Qt 6 dependency range without the macOS-specific Python upper limit;
 installation still requires compatible versions of all dependencies.

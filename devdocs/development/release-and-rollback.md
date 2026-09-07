@@ -106,8 +106,20 @@ Before publishing, CI verifies:
   exact protected-main target, and a successful latest `CI` workflow run for
   the exact commit from a normal `main` push; tag and pull-request runs and
   obsolete earlier runs are not release-acceptance inputs;
-- repository identity `pandorobo11/panelsolver`, zero open non-PR issues, and
+- repository identity `pandorobo11/panelsolver`, zero unaccepted open non-PR issues, and
   zero open pull requests.
+
+An open issue may carry `release-accepted` only after an explicit maintainer
+decision records the affected release, known impact, evidence, user-facing
+documentation, and reassessment conditions. The release gate excludes that
+label from its non-PR issue query; it never excludes pull requests. Review all
+such acceptances for each release and remove the label if the acceptance no
+longer applies. A passing gate does not mean these defects have been fixed.
+
+For v0.1.0, #284 is accepted under this policy as the documented macOS Qt
+table-accessibility limitation. Other failures and unaccepted issues remain
+release blockers; protected-main, CI, artifact and validation requirements are
+unchanged.
 
 Only after those gates does the release job publish the downloaded verified set.
 The matching CHANGELOG section supplies release notes. A version containing an

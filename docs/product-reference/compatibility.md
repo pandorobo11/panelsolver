@@ -18,6 +18,9 @@ Private implementation details—including invalid-input quirks, exact exception
 text and tracebacks, object identity, pickle globals, and cache internals—are
 outside this guarantee.
 
+Known limitations include the
+[macOS table-accessibility crash](../running/troubleshooting.md#macos-gui-crashes-during-accessibility-inspection).
+
 ## Updating predecessor workflows
 
 Use the canonical `panelsolver` package and commands in place of predecessor

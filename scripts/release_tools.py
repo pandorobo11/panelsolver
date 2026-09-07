@@ -1119,7 +1119,7 @@ def verify_github_release_state(
     repository_name: str = _REPOSITORY_NAME,
     expected_commit: str | None = None,
 ) -> None:
-    """Require the release repository, green main, and zero open trackers."""
+    """Require green main, no unaccepted open issues, and no open PRs."""
     if repository_name != _REPOSITORY_NAME:
         raise RuntimeError(
             f"release repository mismatch: {repository_name!r} != {_REPOSITORY_NAME!r}"
@@ -1131,7 +1131,10 @@ def verify_github_release_state(
     ):
         raise RuntimeError("GitHub API did not resolve the release repository")
     queries = {
-        "issue": f"search/issues?q=repo:{repository_name}+is:issue+is:open&per_page=1",
+        "issue": (
+            f"search/issues?q=repo:{repository_name}+is:issue+is:open"
+            "+-label:release-accepted&per_page=1"
+        ),
         "pull request": f"search/issues?q=repo:{repository_name}+is:pr+is:open&per_page=1",
     }
     counts: dict[str, int] = {}
@@ -1144,7 +1147,8 @@ def verify_github_release_state(
         counts[kind] = payload["total_count"]
     if counts != {"issue": 0, "pull request": 0}:
         raise RuntimeError(
-            "release requires zero open non-PR issues and zero open pull requests: "
+            "release requires zero open unaccepted non-PR issues "
+            "and zero open pull requests: "
             f"issues={counts['issue']}, pull_requests={counts['pull request']}"
         )
     if expected_commit is not None:
