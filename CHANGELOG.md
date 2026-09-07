@@ -6,6 +6,11 @@ migration baselines and runtime artifact version semantics are recorded in ADR
 
 ## [Unreleased]
 
+- Recover unit normals for positive-area STL faces that Trimesh rounds to zero
+  after scaling, including millimetre-to-metre conversion with scale 0.001.
+  Use repaired face winding without dropping panels or relaxing geometry
+  validation. Existing nonzero normals, physical formulas, and file schemas
+  remain unchanged; the mesh loader algorithm version advances to v2.
 - Append only unsaved cases at Summary CSV checkpoints. The first successful
   checkpoint atomically replaces the previous CSV; later checkpoints append in
   completion order. The final save atomically rewrites all cases in input-table
