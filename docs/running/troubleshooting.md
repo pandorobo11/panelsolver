@@ -42,6 +42,22 @@ Panel Solver when automatic loading is required; they are unsupported.
 See [Cancellation and calculation failures](batch-execution-and-recovery.md#cancellation-and-calculation-failures)
 for the cooperative boundary and how to recover completed artifacts.
 
+## macOS GUI crashes during accessibility inspection
+
+The pinned PySide6/Qt 6.9.0 has a known native table-accessibility bug
+(QTBUG-134784). The GUI can crash after an accessibility tool reads table-cell
+values. This was observed with Computer Use and reproduced in an isolated Qt
+test. It has not been reproduced with ordinary mouse and keyboard use alone;
+the frequency in everyday use is unknown. A VoiceOver-specific reproduction
+has not been established.
+
+This is a known limitation of v0.1.0. Keep the documented dependency version:
+Qt 6.9.1 fixes this defect but fails a separate selected-cell accessibility
+regression. A replacement will be evaluated when both defects are addressed.
+After a crash, restart the GUI and inspect saved outputs using the
+[recovery guidance](batch-execution-and-recovery.md). Include the Qt version
+and any active accessibility or automation tools when reporting a crash.
+
 ## A Python import fails
 
 The installed distribution and Python package are both `panelsolver`. Use the

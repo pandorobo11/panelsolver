@@ -57,6 +57,9 @@ migration baselines and runtime artifact version semantics are recorded in ADR
   when assistive or automation tools inspect selected cases. This temporary
   macOS pin requires Python 3.12–3.13. Windows/Linux retain PySide6 6.9.3 through
   the Qt 6 series without this Python upper limit. Require PyVistaQt 0.12 or newer.
+- Document the remaining macOS Qt 6.9.0 table-cell lifetime crash
+  (QTBUG-134784) during accessibility inspection as an accepted known limitation
+  of v0.1.0; reproduction with ordinary mouse and keyboard use alone is unconfirmed.
 - Improve GUI file workflows by remembering the last successfully opened input
   directory for the current GUI session, resolving relative Summary CSV, VTP,
   image, and `out_dir` paths from the input table's directory, and adding

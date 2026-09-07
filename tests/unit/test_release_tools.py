@@ -860,13 +860,22 @@ class ReleaseToolTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "no release section"):
                 verify_release_tag(repository, "v2.3.4")
 
-    def test_zero_open_tracker_gate_separates_issues_and_pull_requests(self) -> None:
+    def test_open_tracker_gate_exempts_only_accepted_issues(self) -> None:
         repository_payload = {"full_name": "pandorobo11/panelsolver"}
         with patch(
             "scripts.release_tools._github_api_json",
             side_effect=[repository_payload, {"total_count": 0}, {"total_count": 0}],
-        ):
+        ) as api:
             verify_github_release_state()
+        self.assertEqual(
+            "search/issues?q=repo:pandorobo11/panelsolver+is:issue+is:open"
+            "+-label:release-accepted&per_page=1",
+            api.call_args_list[1].args[0],
+        )
+        self.assertEqual(
+            "search/issues?q=repo:pandorobo11/panelsolver+is:pr+is:open&per_page=1",
+            api.call_args_list[2].args[0],
+        )
         for counts in ((1, 0), (0, 1)):
             with (
                 self.subTest(counts=counts),
