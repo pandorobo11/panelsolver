@@ -26,7 +26,7 @@ the original pair cannot be recovered. Exact quadrants are evaluated exactly;
 adjacent representable angles are not snapped to the boundary. Scale before
 normalization so a tiny but nonzero tangent vector remains valid.
 
-Every mode derives alpha_stability_deg = atan2(Vz, Vx), in [-180, 180).
+Every mode derives alpha_stability_deg = atan2(Vz, Vx), canonicalized to (-180, 180].
 If hypot(Vx, Vz) <= 64 * float64 epsilon for the normalized direction, use 0.
 Do not modify the physical flow vector to choose this representative axis.
 No source/status field or resolved sine-sideslip field is exported. Original
