@@ -367,7 +367,7 @@ def build_case_signature(
     *,
     registry: ModelRegistry | None = None,
 ) -> CaseSignature:
-    """Build the current panelsolver.case v1 artifact identity."""
+    """Build the current panelsolver.case v2 artifact identity."""
     return prepare_case_signature(adapt_row(row, registry=registry).request)
 
 
@@ -380,8 +380,10 @@ CSV_PROJECTION_POLICY = CsvProjectionPolicy(
         "run_finished_at_utc",
         "run_elapsed_s",
         "out_attitude_input",
-        "alpha_t_deg_resolved",
-        "beta_t_deg_resolved",
+        "alpha_stability_deg",
+        "velocity_hat_x_stl",
+        "velocity_hat_y_stl",
+        "velocity_hat_z_stl",
         "scope",
         "component_id",
         "component_stl_path",

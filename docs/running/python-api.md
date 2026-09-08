@@ -111,12 +111,12 @@ trimmed and normalized case-insensitively. `None` and blank text select
 
 | Mode | First value | Second value | Accepted domain |
 |---|---|---|---|
-| `beta_tan` | tangent angle of attack | tangent sideslip | both strictly between -90° and 90° |
-| `beta_sin` | tangent angle of attack | sine-definition sideslip | first strictly between -90° and 90°; second any finite angle |
+| `beta_tan` | tangent angle of attack | tangent sideslip | first any finite periodic angle; second -90° to 90° inclusive; simultaneous tangent poles rejected |
+| `beta_sin` | tangent angle of attack | sine-definition sideslip | first any finite periodic angle; second -90° to 90° inclusive |
 | `bank` | included angle | bank angle | both any finite angle |
 
-The resolver converts every mode to the tangent-angle values used by both solve
-functions. The equations, axes, signs, and periodic
+The resolver converts every mode directly to a unit flow vector and a common
+stability angle used by both solve functions. The equations, axes, signs, and periodic
 behavior are in [Coordinate and attitude conventions](../methods/coordinate-and-attitude-conventions.md).
 
 ### `ResolvedAttitude`
@@ -124,8 +124,9 @@ behavior are in [Coordinate and attitude conventions](../methods/coordinate-and-
 | Field | Type / shape | Unit / values | Meaning |
 |---|---|---|---|
 | `velocity_hat_stl` | NumPy `float64` vector `(3,)` | unit vector | Resolved direction in which the freestream travels, expressed in STL axes. |
-| `alpha_t_deg` | `float` | degrees | Resolved tangent angle of attack. |
-| `beta_t_deg` | `float` | degrees | Resolved tangent sideslip. |
+| `alpha_deg` | `float` | degrees | Original first input value before periodic reduction. |
+| `alpha_stability_deg` | `float` | degrees | Derived stability angle; read-only constructor result. |
+| `beta_or_bank_deg` | `float` | degrees | Original second input value before periodic reduction. |
 | `input_mode` | `str` | `beta_tan`, `beta_sin`, or `bank` | Normalized representation used for the input pair. |
 
 `ResolvedAttitude` also supports direct construction:
@@ -133,18 +134,18 @@ behavior are in [Coordinate and attitude conventions](../methods/coordinate-and-
 ```text
 ResolvedAttitude(
     velocity_hat_stl: np.ndarray,
-    alpha_t_deg: float,
-    beta_t_deg: float,
+    alpha_deg: float,
+    beta_or_bank_deg: float,
     input_mode: str,
 )
 ```
 
 The vector must be a finite, nonzero real vector with shape `(3,)`; construction
-normalizes it to a read-only unit vector. Both resolved angles must be finite,
-and the mode is normalized with the same rules as `resolve_attitude()`. A solve
-also requires the vector and resolved tangent angles to describe the same
-direction. Prefer `resolve_attitude()` for ordinary use because it establishes
-that relationship from one documented input representation.
+normalizes it to a read-only unit vector. Both original angle fields must be
+finite and provide provenance; the mode is normalized. The supplied vector is
+authoritative for direct construction, and alpha_stability_deg is always derived
+from it using the common fallback rule. Prefer resolve_attitude() to construct
+the vector from validated input angles and preserve their relationship.
 
 ## `FMFCase`
 
@@ -293,6 +294,7 @@ Either solve function returns a `SolveResult` with the following fields:
 
 | Field | Type / shape | Unit / values | Meaning |
 |---|---|---|---|
+| `attitude` | `ResolvedAttitude` | original inputs and resolved state | Original numeric angles, normalized mode, unit direction and stability angle. |
 | `coefficients` | nested coefficient result | see below | Integrated whole-case force and moment coefficients. |
 | `components` | ordered tuple of component results | one per STL | Per-component integrated coefficients and counts, in ascending component-ID/input-STL order. |
 | `geometry` | nested per-face geometry | `n_faces` rows | SI-scaled geometry used by the calculation. |
@@ -311,7 +313,7 @@ and scalar properties:
 |---|---|---|---|
 | `force_coeff_stl` | NumPy `float64` vector `(3,)` | dimensionless, STL frame | Integrated force-coefficient vector before frame transformation. |
 | `force_coeff_body` | NumPy `float64` vector `(3,)` | dimensionless, body frame | Integrated force coefficient after the fixed STL-to-body transform. |
-| `force_coeff_stability` | NumPy `float64` vector `(3,)` | dimensionless, stability frame | Body force rotated using resolved `alpha_t_deg`. |
+| `force_coeff_stability` | NumPy `float64` vector `(3,)` | dimensionless, stability frame | Body force rotated using derived `alpha_stability_deg`. |
 | `moment_area_coeff_body_m` | NumPy `float64` vector `(3,)` | m, body frame | Area-normalized moment numerator before division by the three reference lengths. |
 | `moment_coeff_body` | NumPy `float64` vector `(3,)` | dimensionless, body frame | Roll-, pitch-, and yaw-axis moment coefficients after reference-length division. |
 | `CA`, `CY`, `CN` | `float` | dimensionless | Axial, side, and normal force coefficients. |

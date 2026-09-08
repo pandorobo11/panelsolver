@@ -15,8 +15,10 @@ type CsvCell = None | bool | int | float | str
 
 _CALCULATED_RESULT_COLUMNS = frozenset(
     {
-        "alpha_t_deg_resolved",
-        "beta_t_deg_resolved",
+        "alpha_stability_deg",
+        "velocity_hat_x_stl",
+        "velocity_hat_y_stl",
+        "velocity_hat_z_stl",
         "scope",
         "component_id",
         "component_stl_path",
@@ -156,8 +158,8 @@ def project_summary_csv(
     total_values.update(
         _calculated_row(
             results.total,
-            alpha_t_deg=results.case.alpha_t_deg,
-            beta_t_deg=results.case.beta_t_deg,
+            alpha_stability_deg=results.case.alpha_stability_deg,
+            velocity_hat_stl=results.flow_state.velocity_hat_stl,
             scope="total",
             component_id=None,
             component_stl_path=None,
@@ -172,8 +174,8 @@ def project_summary_csv(
             component_values.update(
                 _calculated_row(
                     component.integrated,
-                    alpha_t_deg=results.case.alpha_t_deg,
-                    beta_t_deg=results.case.beta_t_deg,
+                    alpha_stability_deg=results.case.alpha_stability_deg,
+                    velocity_hat_stl=results.flow_state.velocity_hat_stl,
                     scope="component",
                     component_id=component.component_id,
                     component_stl_path=sources[component.component_id],
@@ -207,8 +209,8 @@ def project_summary_csv(
 def _calculated_row(
     integrated: IntegratedCoefficients,
     *,
-    alpha_t_deg: float,
-    beta_t_deg: float,
+    alpha_stability_deg: float,
+    velocity_hat_stl: np.ndarray,
     scope: str,
     component_id: int | None,
     component_stl_path: str | None,
@@ -216,8 +218,10 @@ def _calculated_row(
     shielded_faces: int,
 ) -> dict[str, CsvCell]:
     return {
-        "alpha_t_deg_resolved": alpha_t_deg,
-        "beta_t_deg_resolved": beta_t_deg,
+        "alpha_stability_deg": alpha_stability_deg,
+        "velocity_hat_x_stl": float(velocity_hat_stl[0]),
+        "velocity_hat_y_stl": float(velocity_hat_stl[1]),
+        "velocity_hat_z_stl": float(velocity_hat_stl[2]),
         "scope": scope,
         "component_id": component_id,
         "component_stl_path": component_stl_path,

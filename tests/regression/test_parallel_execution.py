@@ -46,8 +46,7 @@ def _request_for(path: Path):
         Lref_Cl_m=normalized["Lref_Cl_m"],
         Lref_Cm_m=normalized["Lref_Cm_m"],
         Lref_Cn_m=normalized["Lref_Cn_m"],
-        alpha_t_deg=float(_npz_array(golden, "alpha_t_deg_resolved")),
-        beta_t_deg=float(_npz_array(golden, "beta_t_deg_resolved")),
+        alpha_stability_deg=float(_npz_array(golden, "alpha_t_deg_resolved")),
     )
     source_names = [
         Path(value).name for value in str(normalized["stl_path"]).split(";")

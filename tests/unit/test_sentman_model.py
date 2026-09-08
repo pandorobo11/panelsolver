@@ -176,8 +176,7 @@ class SentmanModelTests(unittest.TestCase):
                     Lref_Cl_m=1.0,
                     Lref_Cm_m=1.0,
                     Lref_Cn_m=1.0,
-                    alpha_t_deg=alpha_deg,
-                    beta_t_deg=0.0,
+                    alpha_stability_deg=alpha_deg,
                 )
                 integrated = integrate_panel_loads(geometry, loads, common_case)
                 expected_cn, expected_ca = _flat_plate_reference(
@@ -369,8 +368,7 @@ class SentmanModelTests(unittest.TestCase):
             Lref_Cl_m=1.0,
             Lref_Cm_m=1.0,
             Lref_Cn_m=1.0,
-            alpha_t_deg=0.0,
-            beta_t_deg=0.0,
+            alpha_stability_deg=0.0,
         )
         all_shielded = SentmanModel().evaluate(
             geometry,

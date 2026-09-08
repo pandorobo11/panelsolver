@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import unittest
 from pathlib import Path
@@ -100,8 +101,7 @@ class CaseSignatureCompatibilityTests(unittest.TestCase):
                     Lref_Cl_m=normalized["Lref_Cl_m"],
                     Lref_Cm_m=normalized["Lref_Cm_m"],
                     Lref_Cn_m=normalized["Lref_Cn_m"],
-                    alpha_t_deg=float(_array(golden, "alpha_t_deg_resolved")),
-                    beta_t_deg=float(_array(golden, "beta_t_deg_resolved")),
+                    alpha_stability_deg=float(_array(golden, "alpha_t_deg_resolved")),
                 )
                 if path.parent.name == "fmfsolver":
                     model = SentmanModel()
@@ -121,15 +121,36 @@ class CaseSignatureCompatibilityTests(unittest.TestCase):
                 signature = build_case_signature(
                     geometry_fingerprint=loaded.geometry_fingerprint,
                     common_case=common_case,
+                    velocity_hat_stl=_array(golden, "Vhat_stl").reshape(3),
                     model_id=model.model_id,
                     model_algorithm_version=model.algorithm_version,
                     model_case_payload=model.signature_payload(model_case),
                     shielding_config=shielding,
                 )
                 signature_key = f"{path.parent.name}/{path.stem}"
+                # The checked-in v1 digests remain frozen historical evidence.
+                # Reconstruct that envelope independently, then verify v2 cannot
+                # auto-match the old artifacts (ADR 0017).
+                old = json.loads(signature.canonical_payload)
+                old["schema"]["version"] = 1
+                old_common = old["common_case"]
+                old_common["alpha_t_deg"] = old_common.pop("alpha_stability_deg")
+                old_common["beta_t_deg"] = float(_array(golden, "beta_t_deg_resolved"))
+                del old_common["velocity_hat_stl"]
+                payload = json.dumps(
+                    old,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                    ensure_ascii=True,
+                    allow_nan=False,
+                )
                 self.assertEqual(
                     EXPECTED_SIGNATURES[signature_key],
-                    signature.digest,
+                    hashlib.sha256(payload.encode()).hexdigest(),
+                )
+                self.assertEqual(2, signature.envelope["schema"]["version"])
+                self.assertNotEqual(
+                    EXPECTED_SIGNATURES[signature_key], signature.digest
                 )
 
 

@@ -142,9 +142,11 @@ def project_vtp_artifact(
 
     sources = tuple(component.source for component in mesh.components)
     field_data: dict[str, object] = {
-        "alpha_t_deg_resolved": [results.case.alpha_t_deg],
+        "alpha_stability_deg": [results.case.alpha_stability_deg],
         "attitude_input_used": [policy.attitude_input_used],
-        "beta_t_deg_resolved": [results.case.beta_t_deg],
+        "velocity_hat_x_stl": [results.flow_state.velocity_hat_stl[0]],
+        "velocity_hat_y_stl": [results.flow_state.velocity_hat_stl[1]],
+        "velocity_hat_z_stl": [results.flow_state.velocity_hat_stl[2]],
         "case_id": [results.case.case_id],
         "case_signature": [policy.case_signature],
         "ray_backend_used": [policy.ray_backend_used],

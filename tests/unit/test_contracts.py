@@ -47,8 +47,7 @@ def common_case() -> CommonCasePayload:
         Lref_Cl_m=1.0,
         Lref_Cm_m=2.0,
         Lref_Cn_m=3.0,
-        alpha_t_deg=90.0,
-        beta_t_deg=-90.0,
+        alpha_stability_deg=90.0,
     )
 
 
@@ -391,8 +390,7 @@ class CaseAndResultTests(unittest.TestCase):
     def test_common_case_validates_only_shared_numerical_rules(self) -> None:
         case = common_case()
         self.assertEqual("synthetic-ケース", case.case_id)
-        self.assertEqual(90.0, case.alpha_t_deg)
-        self.assertEqual(-90.0, case.beta_t_deg)
+        self.assertEqual(90.0, case.alpha_stability_deg)
         self.assertFalse(case.moment_reference_stl_m.flags.writeable)
 
         invalid = (
@@ -401,7 +399,7 @@ class CaseAndResultTests(unittest.TestCase):
             ({"Aref_m2": np.nan}, NonFiniteError),
             ({"Aref_m2": np.inf}, NonFiniteError),
             ({"Lref_Cm_m": -1.0}, ContractValueError),
-            ({"alpha_t_deg": np.inf}, NonFiniteError),
+            ({"alpha_stability_deg": np.inf}, NonFiniteError),
             ({"moment_reference_stl_m": np.zeros(2)}, ShapeError),
             ({"Aref_m2": True}, ContractValueError),
             ({"case_id": " spaced "}, ContractValueError),
@@ -413,8 +411,7 @@ class CaseAndResultTests(unittest.TestCase):
             "Lref_Cl_m": 1.0,
             "Lref_Cm_m": 1.0,
             "Lref_Cn_m": 1.0,
-            "alpha_t_deg": 0.0,
-            "beta_t_deg": 0.0,
+            "alpha_stability_deg": 0.0,
         }
         for update, expected_error in invalid:
             with self.subTest(update=update), self.assertRaises(expected_error):

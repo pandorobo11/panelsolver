@@ -149,6 +149,41 @@ class LegacyRuntimeGoldenTests(unittest.TestCase):
                             },
                             "vtp": copy.deepcopy(golden["vtp"]),
                         }
+                        # ADR 0017 migrates only the in-memory schema expectation;
+                        # physical golden values and tolerances remain frozen.
+                        vector = _npz_array(golden, "Vhat_stl").reshape(3)
+                        vector_fields = {
+                            f"velocity_hat_{axis}_stl": float(value)
+                            for axis, value in zip("xyz", vector, strict=True)
+                        }
+                        columns = []
+                        for name in expected["csv"]["columns"]:
+                            if name == "alpha_t_deg_resolved":
+                                columns.append("alpha_stability_deg")
+                            elif name == "beta_t_deg_resolved":
+                                columns.extend(vector_fields)
+                            else:
+                                columns.append(name)
+                        expected["csv"]["columns"] = columns
+                        for expected_row in expected["csv"]["rows"]:
+                            expected_row["alpha_stability_deg"] = expected_row.pop(
+                                "alpha_t_deg_resolved"
+                            )
+                            del expected_row["beta_t_deg_resolved"]
+                            expected_row.update(vector_fields)
+                        field_data = expected["vtp"]["field_data"]
+                        field_data["alpha_stability_deg"] = field_data.pop(
+                            "alpha_t_deg_resolved"
+                        )
+                        del field_data["beta_t_deg_resolved"]
+                        for name, value in {
+                            **vector_fields,
+                            "alpha_deg": row["alpha_deg"],
+                            "beta_or_bank_deg": row["beta_or_bank_deg"],
+                        }.items():
+                            field_data[name] = _array_record(
+                                np.asarray([value], dtype=np.float64)
+                            )
                         # Phase 1 remains immutable historical evidence. Adjust only
                         # the in-memory expectation for the accepted current artifact
                         # provenance contract.
