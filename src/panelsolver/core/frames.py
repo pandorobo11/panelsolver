@@ -22,8 +22,8 @@ def stability_alpha_deg(velocity_hat_stl: object) -> float:
     if math.hypot(x, z) <= 64.0 * np.finfo(np.float64).eps:
         return 0.0
     angle = math.degrees(math.atan2(z, x))
-    if angle >= 180.0:
-        angle = -180.0
+    if angle <= -180.0:
+        angle = 180.0
     return 0.0 if angle == 0.0 else angle
 
 

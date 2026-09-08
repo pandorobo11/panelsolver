@@ -111,8 +111,8 @@ Every mode uses the same stability angle:
 \alpha_{\mathrm{stab}}=\mathrm{atan2}(V_z,V_x).
 ```
 
-The result `alpha_stability_deg` is in [-180°, 180°); +180° is represented as
--180°. For a normalized flow direction, if hypot(Vx, Vz) is at or below
+The result `alpha_stability_deg` is canonicalized to (-180°, 180°]; -180° is represented as
++180°. For a normalized flow direction, if hypot(Vx, Vz) is at or below
 64 times float64 machine epsilon (approximately 1.42e-14), the stability angle
 is defined as 0°. This fallback does not change the physical flow vector.
 It uses the body axes as the representative stability frame for lateral flow.

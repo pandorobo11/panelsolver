@@ -93,7 +93,7 @@ resolved mode, speed ratio, and incident temperature.
 | Column | Domain | Type / format | Unit / values | Rows | Blank when | Meaning |
 |---|---|---|---|---|---|---|
 | `out_attitude_input` | common | text | `beta_tan`, `beta_sin`, or `bank` | all | never | Normalized attitude input mode used to interpret the two input angles. The corresponding VTP field is `attitude_input_used`. |
-| `alpha_stability_deg` | common | floating-point number | degrees | all | never | Common stability angle in [-180°, 180°), including the documented zero fallback. |
+| `alpha_stability_deg` | common | floating-point number | degrees | all | never | Common stability angle in (-180°, 180°], including the documented zero fallback. |
 | `velocity_hat_x_stl` | common | floating-point number | dimensionless | all | never | X component of the evaluated unit STL flow direction. |
 | `velocity_hat_y_stl` | common | floating-point number | dimensionless | all | never | Y component of the evaluated unit STL flow direction. |
 | `velocity_hat_z_stl` | common | floating-point number | dimensionless | all | never | Z component of the evaluated unit STL flow direction. |
@@ -108,7 +108,7 @@ The exact axes and angle transformations are defined in
 
 | Column | Domain | Type / format | Unit / values | Rows | Blank when | Meaning |
 |---|---|---|---|---|---|---|
-| `ray_backend_used` | common | text | `not_used`, `rtree`, or `embree` | all | never | Effective backend for the [ray-shielding method](../methods/ray-shielding.md). It is `not_used` when ray shielding is disabled; for input `auto`, it records the backend actually selected. |
+| `ray_backend_used` | common | text | `not_used`, `rtree`, or `embree` | all | never | Effective backend for the [ray-shielding method](../methods/ray-shielding.md). It is `not_used` when ray shielding was disabled; for input `auto`, it records the backend actually selected. |
 | `faces` | common | non-negative integer | panel count | all | never | Number of triangular panels represented by the row's scope. |
 | `shielded_faces` | common | non-negative integer | panel count | all | never | Number of panels in the row's scope marked geometrically occluded by [ray shielding](../methods/ray-shielding.md). |
 | `vtp_path` | common | absolute path text | — | total | VTP saving was disabled, output-directory preparation failed, or the current VTP write failed | VTP successfully written for this case during the current run. Component rows are always blank because one case VTP contains every component. |

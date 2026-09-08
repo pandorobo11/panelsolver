@@ -18,12 +18,17 @@ class ResolvedAttitudeTests(unittest.TestCase):
             ([1, 0, 0], 0),
             ([0, 0, 1], 90),
             ([0, 0, -1], -90),
-            ([-1, 0, 0], -180),
+            ([-1, 0, 0], 180),
             ([0, 1, 0], 0),
             ([0, -1, 0], 0),
         ):
             with self.subTest(vector=vector):
                 self.assertEqual(angle, stability_alpha_deg(vector))
+
+    def test_backward_axis_canonicalizes_signed_zero_to_positive_180(self) -> None:
+        for z in (0.0, -0.0):
+            with self.subTest(z_signbit=np.signbit(z)):
+                self.assertEqual(180, stability_alpha_deg([-1.0, 0.0, z]))
 
     def test_fallback_threshold_does_not_modify_direction(self) -> None:
         threshold = 64 * np.finfo(np.float64).eps

@@ -171,7 +171,12 @@ class ResolvedAttitudeInvariantTests(unittest.TestCase):
         self.assertEqual(460, result.alpha_deg)
         self.assertAlmostEqual(100, result.alpha_stability_deg)
         for mode in ("beta_tan", "beta_sin", "bank"):
-            self.assertEqual(-180, resolve_attitude(180, 0, mode).alpha_stability_deg)
+            for alpha in (-540, -180, 180, 540):
+                with self.subTest(mode=mode, alpha=alpha):
+                    self.assertEqual(
+                        180,
+                        resolve_attitude(alpha, 0, mode).alpha_stability_deg,
+                    )
             result = resolve_attitude(1e308, 0, mode)
             self.assertTrue(np.isfinite(result.velocity_hat_stl).all())
 
