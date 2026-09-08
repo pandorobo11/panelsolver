@@ -116,7 +116,7 @@ def build_case_signature(
     model_case_payload: Mapping[str, object],
     shielding_config: ResolvedShieldingConfig,
 ) -> CaseSignature:
-    """Build the exact canonical signature envelope defined by ADR 0005."""
+    """Build the exact canonical signature envelope defined by ADRs 0005 and 0017."""
     geometry_digest = _validate_digest(
         geometry_fingerprint,
         field="geometry_fingerprint",

@@ -39,8 +39,8 @@ Export the mesh in the coordinate frame you intend to use throughout the case.
 At zero attitude, freestream travels along **+X in STL axes**, so an upstream
 face has its outward normal pointing toward −X. Body axes are
 `(X_body, Y_body, Z_body) = (−X_stl, +Y_stl, −Z_stl)`.
-With the default `beta_tan` attitude, positive alpha tilts flow toward +Z_STL
-and positive sideslip tilts it toward −Y_STL. Panel Solver uses the exported
+Near zero attitude in the default `beta_tan` mode, increasing alpha tilts flow
+toward +Z_STL and increasing sideslip tilts it toward −Y_STL. Panel Solver uses the exported
 coordinates and orientation as supplied.
 See [Coordinate and attitude conventions](../methods/coordinate-and-attitude-conventions.md)
 for the full definitions.

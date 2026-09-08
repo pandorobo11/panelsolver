@@ -40,7 +40,8 @@ and beta_or_bank_deg field data containing the original finite numeric inputs.
 The public ResolvedAttitude exposes velocity_hat_stl, alpha_deg,
 beta_or_bank_deg, input_mode and derived alpha_stability_deg. The direct
 constructor treats the supplied direction as authoritative; original angle
-fields provide provenance. Both solve entry points use the same derived frame.
+fields provide provenance. Both solve entry points use the same derived frame
+and expose the attitude through SolveResult.attitude.
 
 Core retains only the stability angle in the common integration case. It
 validates that angle against the authoritative execution direction; it must not
