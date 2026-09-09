@@ -25,6 +25,81 @@ class MeshLoadingTests(unittest.TestCase):
     def setUp(self) -> None:
         clear_mesh_cache()
 
+    def test_small_closed_mesh_normals_follow_repaired_winding_at_both_scales(
+        self,
+    ) -> None:
+        vertices = np.array([[0, 0, 0], [1e-4, 0, 0], [0, 1e-4, 0], [0, 0, 1e-4]])
+        outward_faces = np.array([[0, 2, 1], [0, 1, 3], [0, 3, 2], [1, 2, 3]])
+        expected = np.array(
+            [[0, 0, -1], [0, -1, 0], [-1, 0, 0], np.ones(3) / np.sqrt(3)]
+        )
+        inconsistent_faces = outward_faces.copy()
+        inconsistent_faces[1] = inconsistent_faces[1, ::-1]
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "small.stl"
+            for faces in (outward_faces, outward_faces[:, ::-1], inconsistent_faces):
+                trimesh.Trimesh(vertices=vertices, faces=faces, process=False).export(
+                    path
+                )
+                unscaled = load_panel_mesh([path], 1.0).mesh
+                for scale in (1.0, 0.001):
+                    with self.subTest(faces=faces.tolist(), scale=scale):
+                        mesh = load_panel_mesh([path], scale).mesh
+                        self.assertEqual(mesh.n_faces, 4)
+                        np.testing.assert_allclose(
+                            mesh.geometry.normals_out_stl, expected, rtol=0, atol=1e-12
+                        )
+                        np.testing.assert_allclose(
+                            mesh.geometry.areas_m2,
+                            unscaled.geometry.areas_m2 * scale**2,
+                            rtol=1e-14,
+                            atol=0,
+                        )
+                        # Every repaired normal points away from the solid centre.
+                        offsets = mesh.geometry.centers_stl_m - np.mean(
+                            mesh.vertices_stl_m, axis=0
+                        )
+                        self.assertTrue(
+                            np.all(
+                                np.sum(offsets * mesh.geometry.normals_out_stl, axis=1)
+                                > 0
+                            )
+                        )
+
+    def test_small_open_face_and_regular_faces_have_unit_normals_and_components(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "small.stl"
+            trimesh.Trimesh(
+                vertices=[[0, 0, 0], [1e-4, 0, 0], [0, 1e-4, 0]],
+                faces=[[0, 2, 1]],
+                process=False,
+            ).export(path)
+            regular = load_panel_mesh([FIXTURE_STL / "cube.stl"], 0.001).mesh
+            combined = load_panel_mesh([FIXTURE_STL / "cube.stl", path], 0.001).mesh
+            self.assertEqual(combined.n_faces, regular.n_faces + 1)
+            np.testing.assert_allclose(
+                np.linalg.norm(combined.geometry.normals_out_stl, axis=1),
+                1.0,
+                rtol=0,
+                atol=1e-12,
+            )
+            # The regular cube is centred on the origin; normals point outward.
+            np.testing.assert_allclose(
+                combined.geometry.normals_out_stl[:-1],
+                np.sign(regular.geometry.centers_stl_m)
+                * (np.abs(regular.geometry.centers_stl_m) == 0.0005),
+                rtol=0,
+                atol=1e-12,
+            )
+            np.testing.assert_allclose(
+                combined.geometry.normals_out_stl[-1], [0, 0, -1], rtol=0, atol=1e-12
+            )
+            np.testing.assert_array_equal(
+                combined.face_component_ids, [0] * regular.n_faces + [1]
+            )
+
     def test_loads_ordered_components_into_immutable_contract(self) -> None:
         loaded = load_panel_mesh(
             [FIXTURE_STL / "plate.stl", FIXTURE_STL / "plate_offset_x2.stl"],

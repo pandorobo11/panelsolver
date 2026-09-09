@@ -24,6 +24,7 @@ Accepted ADRs are retained as the rationale for architectural decisions:
     fallback](0015-remove-legacy-product-identities.md)
 16. [Append CSV checkpoints](0016-append-csv-checkpoints.md)
 17. [Full-direction attitudes and explicit stability axes](0017-full-direction-attitudes.md)
+18. [Generate every face normal from repaired geometry](0018-uniform-face-normal-generation.md)
 
 ADRs describe why the current contracts exist. Migration execution records and
 phase evidence are indexed separately in [History](../history/README.md).
