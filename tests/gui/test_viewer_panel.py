@@ -173,7 +173,14 @@ class ViewerPanelTests(unittest.TestCase):
         viewer.load_vtp("/tmp/case.vtp", FakePoly({"cp": [0.2, 0.5]}))
         root_margins = viewer._root_layout.contentsMargins()
         self.assertEqual(
-            (0, 0, 0, 0),
+            (
+                0,
+                0,
+                0,
+                viewer.style().pixelMetric(
+                    QtWidgets.QStyle.PixelMetric.PM_LayoutBottomMargin, None, viewer
+                ),
+            ),
             (
                 root_margins.left(),
                 root_margins.top(),

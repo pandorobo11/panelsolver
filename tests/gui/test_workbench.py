@@ -66,6 +66,65 @@ class WorkbenchTests(unittest.TestCase):
         )
         viewer.close()
 
+    def test_diagnostics_controls_fit_all_ancestors_when_wrapped(self):
+        previous_qss = self.app.styleSheet()
+        try:
+            for mode in (ThemeMode.LIGHT, ThemeMode.DARK):
+                self.app.setStyleSheet(render_application_qss(resolve_theme(mode)))
+                panel = self.panel()
+                try:
+                    panel.show()
+                    for counted in (False, True):
+                        if counted:
+                            panel.logln("[WARN] example warning")
+                            panel.logln("[ERROR] example error")
+                        for expanded in (False, True):
+                            panel.btn_diagnostics.setChecked(expanded)
+                            for width in (480, 340):
+                                with self.subTest(
+                                    theme=mode,
+                                    counted=counted,
+                                    expanded=expanded,
+                                    width=width,
+                                ):
+                                    panel.resize(width, 740)
+                                    for _ in range(3):
+                                        self.app.processEvents()
+                                    buttons = (
+                                        panel.btn_diagnostics,
+                                        panel.btn_clear_diagnostics,
+                                    )
+                                    for button in buttons:
+                                        ancestor = button.parentWidget()
+                                        while ancestor is not None:
+                                            rect = QtCore.QRect(
+                                                button.mapTo(ancestor, QtCore.QPoint()),
+                                                button.size(),
+                                            )
+                                            self.assertTrue(
+                                                ancestor.rect().contains(rect),
+                                                f"{button.text()}: {rect} outside "
+                                                f"{ancestor.rect()}",
+                                            )
+                                            ancestor = ancestor.parentWidget()
+                                    required = max(
+                                        b.geometry().bottom() + 1 for b in buttons
+                                    )
+                                    row = panel.diagnostics_row
+                                    self.assertGreaterEqual(
+                                        row.layout().heightForWidth(row.width()),
+                                        required,
+                                    )
+                                    if counted and width == 340:
+                                        self.assertGreater(
+                                            buttons[1].y(),
+                                            buttons[0].geometry().bottom(),
+                                        )
+                finally:
+                    panel.close()
+        finally:
+            self.app.setStyleSheet(previous_qss)
+
     def layout_diagnostics(self, window):
         panel, viewer = window.cases_panel, window.viewer_panel
         objects = {
