@@ -329,7 +329,7 @@ def _validate_attitude(frame: pd.DataFrame, add_issue: AddIssue) -> None:
         add_issue(
             int(index),
             "attitude_input",
-            "must be one of: beta_tan, beta_sin, bank.",
+            "must be one of: beta_sin, beta_tan, bank.",
         )
 
 

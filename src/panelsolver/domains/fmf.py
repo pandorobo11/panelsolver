@@ -548,10 +548,10 @@ def _attitude_fields(row: Mapping[str, object]) -> tuple[tuple[str, object], ...
     alpha = row.get("alpha_deg")
     beta = row.get("beta_or_bank_deg")
     if attitude == "beta_sin":
-        return (("alpha_t", alpha), ("beta_s", beta))
+        return (("alpha", alpha), ("beta_s", beta))
     if attitude == "bank":
         return (("alpha_i", alpha), ("phi", beta))
-    return (("alpha_t", alpha), ("beta_t", beta))
+    return (("alpha", alpha), ("beta_t", beta))
 
 
 def format_case(row: Mapping[str, object]) -> str:
@@ -582,7 +582,6 @@ def format_case(row: Mapping[str, object]) -> str:
         "beta": "Beta [deg]",
         "alpha_i": "Incidence [deg]",
         "phi": "Bank [deg]",
-        "alpha_t": "Alpha_t [deg]",
         "beta_t": "Beta_t [deg]",
         "beta_s": "Beta_s [deg]",
         "shield": "Shielding",
@@ -591,7 +590,7 @@ def format_case(row: Mapping[str, object]) -> str:
     groups = (
         {"case_id"},
         {"mode", "S", "Ti", "Mach", "Alt_km", "Tw"},
-        {"alpha", "beta", "alpha_i", "phi", "alpha_t", "beta_t", "beta_s"},
+        {"alpha", "beta", "alpha_i", "phi", "beta_t", "beta_s"},
         {"shield", "ray"},
     )
     lines = [

@@ -125,8 +125,8 @@ Angles in case files are degrees. `attitude_input` controls the meaning of
 
 | Mode | `alpha_deg` | `beta_or_bank_deg` |
 |---|---|---|
-| `beta_tan` | angle of attack; any finite periodic angle | absolute-X tangent sideslip; -90° to 90° inclusive |
 | `beta_sin` | angle of attack; any finite periodic angle | sine-definition sideslip; -90° to 90° inclusive |
+| `beta_tan` | angle of attack; any finite periodic angle | absolute-X tangent sideslip; -90° to 90° inclusive |
 | `bank` | included angle; any finite angle | bank angle; any finite angle |
 
 Omitted or blank `attitude_input` selects `beta_sin` in both domains, including
@@ -134,8 +134,8 @@ existing case files. To reproduce the previous default, explicitly set
 `attitude_input=beta_tan`; otherwise the same angle pair can produce different
 flow directions, coefficients, and case signatures.
 
-Use `beta_tan` for two tangent-angle inputs, `beta_sin` when the sideslip source
-uses the sine definition, and `bank` when attitude is expressed as an included
+Use `beta_sin` when the sideslip source uses the sine definition, `beta_tan`
+for two tangent-angle inputs, and `bank` when attitude is expressed as an included
 angle plus a circumferential orientation. All modes use the same resolver for
 FMF and Hypersonic and become a unit STL-frame freestream vector plus a separately derived
 stability angle. The beta_tan pair with alpha an odd multiple of 90° and

@@ -112,8 +112,8 @@ trimmed and normalized case-insensitively. `None` and blank text select
 
 | Mode | First value | Second value | Accepted domain |
 |---|---|---|---|
-| `beta_tan` | angle of attack | absolute-X tangent sideslip | first any finite periodic angle; second -90° to 90° inclusive; simultaneous tangent poles rejected |
 | `beta_sin` | angle of attack | sine-definition sideslip | first any finite periodic angle; second -90° to 90° inclusive |
+| `beta_tan` | angle of attack | absolute-X tangent sideslip | first any finite periodic angle; second -90° to 90° inclusive; simultaneous tangent poles rejected |
 | `bank` | included angle | bank angle | both any finite angle |
 
 The resolver converts every mode directly to a unit flow vector and a common
@@ -128,7 +128,7 @@ behavior are in [Coordinate and attitude conventions](../methods/coordinate-and-
 | `alpha_deg` | `float` | degrees | Original first input value before periodic reduction. |
 | `alpha_stability_deg` | `float` | degrees | Derived stability angle in (-180°, 180°], with the documented zero fallback for lateral flow; read-only constructor result. |
 | `beta_or_bank_deg` | `float` | degrees | Original second input value before periodic reduction. |
-| `input_mode` | `str` | `beta_tan`, `beta_sin`, or `bank` | Normalized representation used for the input pair. |
+| `input_mode` | `str` | `beta_sin`, `beta_tan`, or `bank` | Normalized representation used for the input pair. |
 
 `ResolvedAttitude` also supports direct construction:
 
