@@ -96,7 +96,8 @@ class ViewerPanel(QtWidgets.QWidget):
         self._process_events = process_events
         self._root_layout = QtWidgets.QVBoxLayout(self)
         self._root_layout.setSpacing(6)
-        self._root_layout.setContentsMargins(0, 0, 0, 0)
+        # Match the Cases pane's native bottom inset below its last control.
+        self._root_layout.setContentsMargins(0, 0, 0, -1)
         self._artifact_view_state = ArtifactViewState(ArtifactViewStatus.EMPTY)
         self._init_artifact_status()
 
