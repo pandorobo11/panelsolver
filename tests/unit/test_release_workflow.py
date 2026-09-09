@@ -59,33 +59,15 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertIn("fail-fast: false", source)
         self.assertIn("uv sync --locked --extra rayaccel --group docs", source)
         self.assertIn("if not ray.has_embree else None", source)
-        self.assertRegex(
-            source,
-            r"run: uv run --no-sync pytest tests/gui --durations=30\s*\n",
-        )
-        self.assertRegex(
-            source,
-            r"run: uv run --no-sync pytest --ignore=tests/gui -n 2 --dist loadfile "
-            r"--max-worker-restart=0 --durations=30\s*\n",
-        )
-        self.assertNotIn("scripts/probe_scheduler_lifecycle.py", source)
+        self.assertRegex(source, r"run: uv run --no-sync pytest --durations=30\s*\n")
+        self.assertIn("scripts/probe_scheduler_lifecycle.py", source)
+        self.assertIn("--iterations 10 --timeout-seconds 90", source)
         for distribution_step in (
             "download-artifact",
             "reinstall-wheel",
             "smoke_installed_wheel.py",
         ):
             self.assertNotIn(distribution_step, source)
-
-    def test_scheduler_runs_independently_on_every_platform(self) -> None:
-        scheduler = self.job("scheduler")
-        self.assertFalse(self.needs("scheduler"))
-        for platform in ("ubuntu-latest", "windows-latest", "macos-15"):
-            self.assertIn(f"- {platform}", scheduler)
-        self.assertIn("fail-fast: false", scheduler)
-        self.assertIn("scripts/probe_scheduler_lifecycle.py", scheduler)
-        self.assertIn("--iterations 10 --timeout-seconds 90", scheduler)
-        self.assertIn("timeout-minutes: 3", scheduler)
-        self.assertIn("uv sync --locked --extra rayaccel --group docs", scheduler)
 
     def test_build_job_is_the_only_distribution_producer(self) -> None:
         producers = [name for name in self.job_names() if "uv build" in self.job(name)]
@@ -173,13 +155,7 @@ class ReleaseWorkflowTests(unittest.TestCase):
         gate = self.job("artifact")
         prerequisites = self.needs("artifact")
         self.assertTrue(
-            {
-                "quality",
-                "distribution-build",
-                "installed-wheel",
-                "clean-install",
-                "scheduler",
-            }
+            {"quality", "distribution-build", "installed-wheel", "clean-install"}
             <= prerequisites
         )
         self.assertIn("if: ${{ always() }}", gate)

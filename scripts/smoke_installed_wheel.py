@@ -16,10 +16,8 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import threading
 import tomllib
 import zipfile
-from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import numpy as np
@@ -201,12 +199,10 @@ def _smoke_gui_entrypoint() -> None:
         raise RuntimeError(f"Panel Solver GUI identity changed: {constructed!r}")
 
 
-def _smoke_subprocess_environment(
-    staging: Path, source: dict[str, str] | None = None
-) -> dict[str, str]:
+def _smoke_subprocess_environment(staging: Path) -> dict[str, str]:
     environment = {
         name: value
-        for name, value in (os.environ if source is None else source).items()
+        for name, value in os.environ.items()
         if not name.startswith(_TUNING_PREFIXES)
     }
     cache_root = staging / "subprocess-cache"
@@ -377,13 +373,6 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("repository", type=Path)
     parser.add_argument("--dist-dir", type=Path)
-    parser.add_argument(
-        "--jobs",
-        type=int,
-        choices=(1, 2),
-        default=1,
-        help="concurrent independent smoke commands (default: 1)",
-    )
     return parser.parse_args(argv)
 
 
@@ -455,8 +444,6 @@ def _smoke_release_examples(
     examples_root: Path,
     staging: Path,
     environment: dict[str, str],
-    *,
-    jobs: int = 1,
 ) -> None:
     cases = (
         ("fmf", "basic.csv"),
@@ -471,80 +458,31 @@ def _smoke_release_examples(
     command = _command_path("panelsolver")
     results = staging / "release-example-results"
     results.mkdir()
-
-    def run_example(case: tuple[str, str]) -> None:
-        domain, filename = case
-        work = results / f"{domain}-{Path(filename).stem}"
-        archive = work / "archive"
-        # Keep original relative paths with private outputs. A worker runs one
-        # command at a time, so its cache is reusable without concurrent writers.
-        shutil.copytree(examples_root, archive)
-        cache = results / "workers" / str(threading.get_ident())
-        isolated_environment = _smoke_subprocess_environment(cache, environment)
+    for domain, filename in cases:
         result = subprocess.run(
             [
                 command,
                 domain,
                 "--input",
-                archive / "examples" / domain / filename,
+                examples_root / "examples" / domain / filename,
                 "--output",
-                work / "results.csv",
+                results / f"{domain}-{Path(filename).stem}.csv",
                 "--workers",
                 "1",
                 "--checkpoint-every-cases",
                 "0",
             ],
-            cwd=archive,
+            cwd=examples_root,
             capture_output=True,
             text=True,
             check=False,
-            env=isolated_environment,
+            env=environment,
         )
         if result.returncode != 0:
             raise RuntimeError(
                 f"release example failed: {domain}/{filename}\n"
                 f"stdout={result.stdout!r}\nstderr={result.stderr!r}"
             )
-
-    with ThreadPoolExecutor(max_workers=jobs) as executor:
-        # Consume every result so a child failure cannot become a passing smoke.
-        futures = [executor.submit(run_example, case) for case in cases]
-        for future in futures:
-            future.result()
-
-
-def _run_help_commands(
-    panel_solver: Path,
-    panel_solver_gui: Path,
-    staging: Path,
-    environment: dict[str, str],
-    *,
-    jobs: int,
-) -> dict[tuple[Path | str, ...], subprocess.CompletedProcess[str]]:
-    commands = tuple(
-        (command, *arguments)
-        for command in (panel_solver_gui, panel_solver)
-        for arguments in (("--help",), ("fmf", "--help"), ("hypersonic", "--help"))
-    )
-
-    def run_help(item: tuple[int, tuple[Path | str, ...]]):
-        index, command = item
-        work = staging / "help-commands" / str(index)
-        work.mkdir(parents=True)
-        cache = staging / "help-workers" / str(threading.get_ident())
-        isolated_environment = _smoke_subprocess_environment(cache, environment)
-        result = subprocess.run(
-            command,
-            cwd=work,
-            capture_output=True,
-            text=True,
-            check=False,
-            env=isolated_environment,
-        )
-        return command, result
-
-    with ThreadPoolExecutor(max_workers=jobs) as executor:
-        return dict(executor.map(run_help, enumerate(commands)))
 
 
 def _cli_input_for_available_backends(
@@ -672,26 +610,31 @@ def main(argv: list[str] | None = None) -> int:
         _smoke_gui_entrypoint()
         if dist_dir is not None:
             release_examples = _extract_release_archives(repository, dist_dir, staging)
-            _smoke_release_examples(
-                release_examples, staging, subprocess_environment, jobs=args.jobs
-            )
+            _smoke_release_examples(release_examples, staging, subprocess_environment)
         panel_solver = _command_path("panelsolver")
         panel_solver_gui = _command_path("panelsolver-gui")
-        help_results = _run_help_commands(
-            panel_solver,
-            panel_solver_gui,
-            staging,
-            subprocess_environment,
-            jobs=args.jobs,
-        )
         for arguments in (("--help",), ("fmf", "--help"), ("hypersonic", "--help")):
-            gui_help = help_results[(panel_solver_gui, *arguments)]
+            gui_help = subprocess.run(
+                [panel_solver_gui, *arguments],
+                cwd=staging,
+                capture_output=True,
+                text=True,
+                check=False,
+                env=subprocess_environment,
+            )
             if gui_help.returncode != 0 or "panelsolver-gui" not in gui_help.stdout:
                 raise RuntimeError(
                     f"Panel Solver GUI help failed for {arguments!r}:\n"
                     f"stdout={gui_help.stdout!r}\nstderr={gui_help.stderr!r}"
                 )
-        panel_solver_help = help_results[(panel_solver, "--help")]
+        panel_solver_help = subprocess.run(
+            [panel_solver, "--help"],
+            cwd=staging,
+            capture_output=True,
+            text=True,
+            check=False,
+            env=subprocess_environment,
+        )
         panel_solver_help_required = (
             "Run Panel Solver for an FMF or Hypersonic flow domain.",
             "{fmf,hypersonic}",
@@ -729,7 +672,14 @@ def main(argv: list[str] | None = None) -> int:
             description,
             domain_module,
         ) in domain_cases.items():
-            domain_help = help_results[(panel_solver, domain, "--help")]
+            domain_help = subprocess.run(
+                [panel_solver, domain, "--help"],
+                cwd=staging,
+                capture_output=True,
+                text=True,
+                check=False,
+                env=subprocess_environment,
+            )
             if (
                 domain_help.returncode != 0
                 or f"usage: panelsolver {domain}" not in domain_help.stdout.casefold()

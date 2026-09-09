@@ -5,8 +5,6 @@ from __future__ import annotations
 import copy
 import importlib.util
 import json
-import subprocess
-import threading
 from pathlib import Path
 
 import numpy as np
@@ -21,91 +19,6 @@ SPEC = importlib.util.spec_from_file_location(
 assert SPEC is not None and SPEC.loader is not None
 SMOKE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(SMOKE)
-
-
-@pytest.mark.parametrize("jobs", [1, 2])
-def test_release_examples_keep_all_commands_and_isolate_writes(
-    tmp_path, monkeypatch, jobs
-):
-    archive = tmp_path / "source"
-    archive.mkdir()
-    (archive / "unchanged.txt").write_text("release archive")
-    staging = tmp_path / "staging"
-    staging.mkdir()
-    calls = []
-    barrier = threading.Barrier(jobs)
-
-    def run(command, **kwargs):
-        barrier.wait(timeout=30)
-        work = kwargs["cwd"]
-        assert (work / "unchanged.txt").read_text() == "release archive"
-        (work / "same-output.txt").write_text("private result")
-        assert kwargs["env"]["EXPERIMENT_SENTINEL"] == "preserved"
-        assert command[-4:] == ["--workers", "1", "--checkpoint-every-cases", "0"]
-        calls.append((command, kwargs))
-        return subprocess.CompletedProcess(command, 0, "", "")
-
-    monkeypatch.setattr(SMOKE.subprocess, "run", run)
-    SMOKE._smoke_release_examples(
-        archive, staging, {"EXPERIMENT_SENTINEL": "preserved"}, jobs=jobs
-    )
-    expected = {
-        ("fmf", "basic.csv"),
-        ("fmf", "flow_modes.csv"),
-        ("fmf", "attitude_modes.csv"),
-        ("fmf", "shielding.csv"),
-        ("hypersonic", "basic.csv"),
-        ("hypersonic", "pressure_models.csv"),
-        ("hypersonic", "attitude_modes.csv"),
-        ("hypersonic", "shielding.csv"),
-    }
-    assert {(command[1], command[3].name) for command, _ in calls} == expected
-    assert len(calls) == len({kwargs["cwd"] for _, kwargs in calls}) == 8
-    assert len({kwargs["env"]["XDG_CACHE_HOME"] for _, kwargs in calls}) == jobs
-    assert not (archive / "same-output.txt").exists()
-
-
-def test_parallel_release_example_failure_is_not_lost(tmp_path, monkeypatch):
-    archive = tmp_path / "source"
-    archive.mkdir()
-    calls = []
-
-    def run(command, **kwargs):
-        calls.append(command)
-        failed = command[1] == "fmf" and command[3].name == "basic.csv"
-        return subprocess.CompletedProcess(command, 7 if failed else 0, "", "sentinel")
-
-    monkeypatch.setattr(SMOKE.subprocess, "run", run)
-    with pytest.raises(RuntimeError, match="release example failed: fmf/basic.csv"):
-        SMOKE._smoke_release_examples(archive, tmp_path, {}, jobs=2)
-    assert len(calls) == 8
-
-
-@pytest.mark.parametrize("jobs", [1, 2])
-def test_help_batch_keeps_every_result_including_failure(tmp_path, monkeypatch, jobs):
-    calls = []
-    barrier = threading.Barrier(jobs)
-
-    def run(command, **kwargs):
-        barrier.wait(timeout=30)
-        calls.append(kwargs)
-        return subprocess.CompletedProcess(command, 7, "stdout", "stderr")
-
-    monkeypatch.setattr(SMOKE.subprocess, "run", run)
-    results = SMOKE._run_help_commands(
-        Path("cli"), Path("gui"), tmp_path, {}, jobs=jobs
-    )
-    assert set(results) == {
-        (command, *args)
-        for command in (Path("cli"), Path("gui"))
-        for args in (("--help",), ("fmf", "--help"), ("hypersonic", "--help"))
-    }
-    assert all(
-        result.returncode == 7 and result.stderr == "stderr"
-        for result in results.values()
-    )
-    assert len(calls) == len({call["cwd"] for call in calls}) == 6
-    assert len({call["env"]["XDG_CACHE_HOME"] for call in calls}) == jobs
 
 
 @pytest.mark.parametrize(

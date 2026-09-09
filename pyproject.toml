@@ -48,7 +48,6 @@ panelsolver-gui = "panelsolver.gui:main"
 dev = [
   "mypy",
   "pytest",
-  "pytest-xdist>=3.8.0",
   "ruff",
 ]
 docs = [
