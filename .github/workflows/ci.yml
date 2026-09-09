@@ -82,7 +82,7 @@ jobs:
 
       - name: Tests
         timeout-minutes: 10
-        run: uv run --no-sync pytest --durations=30
+        run: uv run --no-sync pytest -n 2 --dist loadfile --max-worker-restart=0 --durations=30
 
   scheduler:
     strategy:
