@@ -327,10 +327,29 @@ class SolverSpecTests(unittest.TestCase):
             self.assertEqual(label, fmf.scalar_labels[name])
             self.assertEqual(label, newt.scalar_labels[name])
 
+    def test_attitude_info_shows_original_inputs_for_both_domains(self) -> None:
+        for formatter in (format_fmf_case, format_newt_case):
+            for mode, first, second in (
+                ("beta_sin", "Alpha", "Beta_s"),
+                ("beta_tan", "Alpha", "Beta_t"),
+                ("bank", "Incidence", "Bank"),
+            ):
+                with self.subTest(domain=formatter.__module__, mode=mode):
+                    self.assertEqual(
+                        f"{first} [deg]  460.0  ·  {second} [deg]  30.0",
+                        formatter(
+                            {
+                                "alpha_deg": 460.0,
+                                "beta_or_bank_deg": 30.0,
+                                "attitude_input": mode,
+                            }
+                        ),
+                    )
+
     def test_product_case_formatting_remains_independent(self) -> None:
         self.assertEqual(
             "Case  f\nMode  A  ·  S  5.0  ·  Ti [K]  300.0  ·  Tw [K]  400.0\n"
-            "Alpha_t [deg]  1.0  ·  Beta_s [deg]  2.0\nShielding  1  ·  Ray backend  rtree",
+            "Alpha [deg]  1.0  ·  Beta_s [deg]  2.0\nShielding  1  ·  Ray backend  rtree",
             format_fmf_case(
                 {
                     "case_id": "f",

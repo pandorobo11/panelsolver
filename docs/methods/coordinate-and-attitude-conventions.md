@@ -35,6 +35,24 @@ flow is never reconstructed from resolved tangent angles.
 The default input mode is `beta_sin` when the mode is omitted or blank.
 Explicit `beta_tan` and `bank` selections retain their definitions below.
 
+## Sine-definition sideslip input (`beta_sin`)
+
+For `alpha_deg` $\alpha$ and `beta_or_bank_deg` $\beta_s$:
+
+```math
+\hat{\boldsymbol V}_{\mathrm{STL}}=
+\begin{bmatrix}
+\cos\alpha\cos\beta_s\\
+-\sin\beta_s\\
+\sin\alpha\cos\beta_s
+\end{bmatrix}.
+```
+
+Alpha is any finite periodic angle; sideslip is in [-90°, 90°], including
+endpoints. This covers every direction, including backward flow. Positive
+sideslip always points toward -Y. At beta = ±90°, direction is ∓Y regardless
+of input alpha. The geometric angle of attack is then undetermined.
+
 ## Tangent-angle input (`beta_tan`)
 
 `alpha_deg` is the angle of the XZ projection, and `beta_or_bank_deg` is
@@ -69,24 +87,6 @@ cannot always be recovered:
 | Beta = ±90°, cos(alpha) != 0 | ∓Y; input alpha cannot be recovered. |
 | Alpha an odd multiple of 90° and beta = ±90° | Undefined zero vector; rejected. Use beta_sin or bank to specify Y/Z proportions. |
 
-## Sine-definition sideslip input (`beta_sin`)
-
-For `alpha_deg` $\alpha$ and `beta_or_bank_deg` $\beta_s$:
-
-```math
-\hat{\boldsymbol V}_{\mathrm{STL}}=
-\begin{bmatrix}
-\cos\alpha\cos\beta_s\\
--\sin\beta_s\\
-\sin\alpha\cos\beta_s
-\end{bmatrix}.
-```
-
-Alpha is any finite periodic angle; sideslip is in [-90°, 90°], including
-endpoints. This covers every direction, including backward flow. Positive
-sideslip always points toward -Y. At beta = ±90°, direction is ∓Y regardless
-of input alpha. The geometric angle of attack is then undetermined.
-
 ## Included-angle and bank input (`bank`)
 
 `alpha_deg` is the included angle $i$ from +X_STL and `beta_or_bank_deg` is
@@ -108,29 +108,43 @@ The included angle is not generally the stability angle.
 
 ## Stability angle and numerical boundaries
 
-Every mode uses the same stability angle:
+The stability angle describes the direction of the flow projected onto the
+STL XZ plane. Panel Solver derives it from the flow vector in every mode and
+uses it for the
+[coefficient transformation](load-and-coefficient-conventions.md#stability-axis-force-coefficients):
 
 ```math
 \alpha_{\mathrm{stab}}=\mathrm{atan2}(V_z,V_x).
 ```
 
-The result `alpha_stability_deg` is canonicalized to (-180°, 180°]; -180° is represented as
-+180°. For a normalized flow direction, if hypot(Vx, Vz) is at or below
-64 times float64 machine epsilon (approximately 1.42e-14), the stability angle
-is defined as 0°. This fallback does not change the physical flow vector.
-It uses the body axes as the representative stability frame for lateral flow.
-There is no globally continuous choice across every approach to lateral flow.
-No angle-source flag or resolved sine-sideslip field is saved; the direction
-and this rule specify how to interpret the recorded angle.
+The result is saved as `alpha_stability_deg`, in the range (-180°, 180°].
+For example, -180° is reported as +180°. This derived angle is separate from
+`alpha_deg`, which records what you entered; in `bank` mode, that input is an
+included angle rather than the stability angle.
 
-Finite periodic angles are reduced before trigonometric evaluation. Exact
-multiples of 90° use exact sine/cosine values of 0 or ±1. Adjacent floating-point
-values are not rounded to these boundaries. Tiny nonzero tangent vectors are
-scaled before normalization; only the exact zero-direction corner is rejected.
-Zero components and zero stability angle use positive zero.
+When the flow points along or very close to ±Y, its XZ projection is too small
+to define a useful stability angle. Panel Solver uses 0° for the coefficient
+transformation in this case, so the stability axes coincide with the body axes.
+This convention does not change the flow direction used to calculate loads
+and shielding.
 
-Original numeric input angles are retained before periodic reduction in Summary
-CSV and VTP, together with the normalized mode. Resolved output stores the unit
-STL direction and the stability angle used by the
-[coefficient transformation](load-and-coefficient-conventions.md#stability-axis-force-coefficients).
-A resolved vector is authoritative; non-invertible angle pairs are not recovered.
+## Input angles and saved results
+
+Summary CSV and VTP keep both the original inputs and the calculated attitude:
+
+| Saved information | Meaning |
+|---|---|
+| `alpha_deg`, `beta_or_bank_deg` | The angles you entered, before removing full turns. |
+| Attitude mode | The mode used to interpret those angles: `beta_sin`, `beta_tan`, or `bank`. |
+| Unit STL flow vector | The calculated direction used for loads and shielding. |
+| `alpha_stability_deg` | The angle used to transform coefficients into stability axes. |
+
+For example, an input `alpha_deg` of 460° gives the same direction as 100°,
+but the saved input remains 460°. The calculated direction and stability angle
+are saved separately. See the [Summary CSV](../results/summary-csv.md) and
+[VTP](../results/vtp.md) references for the field names.
+
+The flow vector does not always identify the original angle pair. For example,
+with `beta_sin` and sideslip 90°, every input alpha gives the same -Y direction.
+Panel Solver therefore keeps your original angles instead of trying to recover
+them from the calculated direction.
