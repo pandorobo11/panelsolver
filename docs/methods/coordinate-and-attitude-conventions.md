@@ -122,19 +122,10 @@ For example, -180° is reported as +180°. This derived angle is separate from
 `alpha_deg`, which records what you entered; in `bank` mode, that input is an
 included angle rather than the stability angle.
 
-For a normalized flow direction, if `hypot(Vx, Vz)` is at or below 64 times
-float64 machine epsilon (approximately 1.42e-14), the XZ projection is treated
-as too small to define a useful stability angle. Panel Solver uses 0° for the
-coefficient transformation in this case, so the stability axes coincide with
-the body axes. This convention does not change the flow direction used to
-calculate loads and shielding, and there is no globally continuous stability
-frame across every approach to lateral flow.
-
-Finite periodic angles are reduced before trigonometric evaluation. Exact
-multiples of 90° use exact sine/cosine values of 0 or ±1. Adjacent floating-point
-values are not rounded to these boundaries. Tiny nonzero tangent vectors are
-scaled before normalization; only the exact zero-direction corner is rejected.
-Zero components and zero stability angle use positive zero.
+When the XZ projection is numerically too small to define a useful stability
+angle, Panel Solver uses 0° for the coefficient transformation, so the stability
+axes coincide with the body axes. This convention does not change the flow
+direction used to calculate loads and shielding.
 
 ## Input angles and saved results
 
