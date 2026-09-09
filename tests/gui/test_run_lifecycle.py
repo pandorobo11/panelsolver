@@ -13,6 +13,7 @@ from unittest.mock import patch
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6 import QtCore, QtGui, QtWidgets
+from shiboken6 import delete, isValid
 
 from panelsolver.app import (
     DEFAULT_CHECKPOINT_CASES,
@@ -102,6 +103,28 @@ class RunLifecycleTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
+    def own_widget(self, widget):
+        # Keep every fixture alive (including earlier subTest iterations) until
+        # unittest cleanup. Worker-triggered cyclic GC must never own Qt teardown.
+        self.addCleanup(self.dispose_widget, widget)
+        return widget
+
+    def dispose_widget(self, widget) -> None:
+        if not isValid(widget):
+            return  # A registered parent has already deleted this child.
+        self.assertEqual(QtCore.QThread.currentThread(), self.app.thread())
+        panels = widget.findChildren(CasesPanel)
+        if isinstance(widget, CasesPanel):
+            panels.append(widget)
+        for panel in panels:
+            if panel.is_running():
+                panel.cancel_run()
+                self.wait_until(lambda active=panel: not active.is_running())
+        widget.close()
+        # close() only hides a widget; processEvents() need not deliver deferred
+        # deletes outside exec(). Destroy now, with Python layout state intact.
+        delete(widget)
+
     def wait_until(self, predicate, timeout: float = 3.0) -> None:
         deadline = time.monotonic() + timeout
         while not predicate():
@@ -127,6 +150,7 @@ class RunLifecycleTests(unittest.TestCase):
             spec_factory(adapters=adapters),
             artifact_reader=artifact_reader or (lambda _path: object()),
         )
+        self.own_widget(panel)
         panel.case_rows = rows
         panel.input_path = Path("cases.csv")
         panel.btn_run.setEnabled(True)
@@ -160,6 +184,7 @@ class RunLifecycleTests(unittest.TestCase):
                 fmf_solver_spec(adapters=adapters),
                 artifact_reader=lambda _path: artifact,
             )
+            self.own_widget(panel)
             panel.case_rows = rows
             loaded = []
             finished = []
@@ -297,11 +322,13 @@ class RunLifecycleTests(unittest.TestCase):
                 fmf_solver_spec(adapters=adapters),
                 artifact_reader=lambda _path: artifact,
             )
+            self.own_widget(panel)
             panel.case_rows = rows
             panel.input_path = root / "cases.csv"
             panel._populate_case_table()
             viewer = _FakeViewer()
             window = MainWindow(panel.spec, cases_panel=panel, viewer_panel=viewer)
+            self.own_widget(window)
 
             panel.case_table.selectRow(0)
             self.assertEqual(vtp_path.resolve(), viewer.loaded_path)
@@ -556,6 +583,7 @@ class RunLifecycleTests(unittest.TestCase):
                     cases_panel=panel,
                     viewer_panel=viewer,
                 )
+                self.own_widget(window)
                 window.show()
                 self.assertEqual((1480, 900), (window.width(), window.height()))
                 self.assertTrue(
@@ -599,6 +627,7 @@ class RunLifecycleTests(unittest.TestCase):
             cases_panel=restarted_panel,
             viewer_panel=_FakeViewer(),
         )
+        self.own_widget(restarted)
         restarted.show()
         self.assertTrue(restarted.isVisible())
         restarted.close()
@@ -618,6 +647,7 @@ class RunLifecycleTests(unittest.TestCase):
             cases_panel=panel,
             viewer_panel=_FakeViewer(),
         )
+        self.own_widget(window)
         window.show()
         self.assertTrue(
             panel.start_run(rows, 1, DEFAULT_CHECKPOINT_CASES, "results.csv")
@@ -639,6 +669,7 @@ class RunLifecycleTests(unittest.TestCase):
             cases_panel=panel,
             viewer_panel=_FakeViewer(),
         )
+        self.own_widget(window)
         window.show()
         normal_event = QtGui.QCloseEvent()
         window.closeEvent(normal_event)
@@ -651,6 +682,7 @@ class RunLifecycleTests(unittest.TestCase):
         panel.case_table.selectRow(1)
         viewer = _FakeViewer()
         window = MainWindow(panel.spec, cases_panel=panel, viewer_panel=viewer)
+        self.own_widget(window)
         viewer.save_selected_images_requested.emit()
         self.assertEqual([[rows[1]]], viewer.saved_rows)
         window.close()
