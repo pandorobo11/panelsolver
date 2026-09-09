@@ -9,6 +9,9 @@ The command-only packages, six command entry points, GUI identities, compatibili
 versions, and artifact-signature fallback retained by this decision are
 superseded by [ADR 0015](0015-remove-legacy-product-identities.md).
 
+The attitude/output/API and signature changes explicitly listed in
+[ADR 0017](0017-full-direction-attitudes.md) supersede those portions of this decision.
+
 ## Context
 
 The migration retained most modules and functions from the pinned `fmfsolver`

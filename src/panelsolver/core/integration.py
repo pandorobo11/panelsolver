@@ -115,7 +115,7 @@ def _integrated_coefficients(
     force_coeff_body = stl_to_body(force_coeff_stl)
     force_coeff_stability = body_to_stability(
         force_coeff_body,
-        alpha_t_deg=case.alpha_t_deg,
+        alpha_stability_deg=case.alpha_stability_deg,
     )
     moment_coeff_body = moment_area_coeff_body_m / np.array(
         [case.Lref_Cl_m, case.Lref_Cm_m, case.Lref_Cn_m],

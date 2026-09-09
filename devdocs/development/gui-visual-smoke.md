@@ -203,8 +203,23 @@ Computer Use or external accessibility permissions. The same probe crashes
 with Qt 6.11.2 and passes with Qt 6.9.0. Offscreen or Python-only accessibility
 checks do not exercise the failing native ownership path.
 
+Qt 6.9.0 also has a separate cell-lifetime defect, QTBUG-134784: reading native
+cell values and then destroying the table can release an already-freed Cocoa
+element. Issue #284 records a plain-QTableWidget reproducer and diagnostic
+evidence. The existing selected-cell regression passes on 6.9.0 but does not
+cover this destruction/autorelease path. Qt 6.9.1 passes the lifetime probe but
+fails the selected-cell probe, so neither result alone establishes a safe
+replacement.
+
+For v0.1.0, #284 is an explicitly accepted, non-blocking known limitation;
+see the [user-facing scope](../../docs/running/troubleshooting.md#macos-gui-crashes-during-accessibility-inspection).
+Continue recording native smoke results accurately, including crashes. This
+acceptance does not mean the defect is fixed, waive other GUI failures, or
+authorize disabling accessibility. Reassess it if ordinary manual use reproduces
+the crash or its observed impact broadens.
+
 Before lifting the macOS pin, verify that the candidate Qt release contains the
-upstream fix, run the native regression and full validation runner, and repeat
+fixes for both defects, run both native probes and the full validation runner, and repeat
 the real FMF and Hypersonic run/save/scalar/export visual smoke with accessibility
 inspection. Keep normal table accessibility enabled.
 

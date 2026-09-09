@@ -20,7 +20,6 @@ from panelsolver.core import (
     compute_shielding,
     load_panel_mesh,
     shielding_cache_stats,
-    velocity_hat_stl_from_tangent_angles,
 )
 
 from .test_mesh_loading import FIXTURE_STL
@@ -151,11 +150,9 @@ class ShieldingTests(unittest.TestCase):
         self,
     ) -> None:
         mesh = _grazing_two_face_mesh()
-        direction_a = velocity_hat_stl_from_tangent_angles(0.0, 0.0)
-        direction_b = velocity_hat_stl_from_tangent_angles(
-            0.0,
-            -2.291831180523293e-11,
-        )
+        direction_a = np.array([1.0, 0.0, 0.0])
+        direction_b = np.array([1.0, 4.0e-13, 0.0])
+        direction_b /= np.linalg.norm(direction_b)
         uncached = ShieldingConfig(ray_backend="rtree", batch_size=2)
         cold_a = compute_shielding(mesh, direction_a, uncached)
         clear_shielding_cache()

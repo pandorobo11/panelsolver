@@ -68,8 +68,7 @@ def _common_case(**updates) -> CommonCasePayload:
         "Lref_Cl_m": 1.0,
         "Lref_Cm_m": 1.0,
         "Lref_Cn_m": 1.0,
-        "alpha_t_deg": 0.0,
-        "beta_t_deg": 0.0,
+        "alpha_stability_deg": 0.0,
     }
     values.update(updates)
     return CommonCasePayload(**values)
@@ -127,8 +126,8 @@ class ExecutionTests(unittest.TestCase):
         first_c = execute_case(request_c)
         repeated_b = execute_case(request_b)
 
-        self.assertEqual(first_a.signature.digest, first_b.signature.digest)
-        self.assertEqual(first_a.signature.digest, first_c.signature.digest)
+        self.assertNotEqual(first_a.signature.digest, first_b.signature.digest)
+        self.assertNotEqual(first_a.signature.digest, first_c.signature.digest)
         self.assertEqual(4, model.evaluate_calls)
         np.testing.assert_array_equal(
             first_b.results.local_loads.traction_coeff_stl[:, 1],
@@ -189,8 +188,8 @@ class ExecutionTests(unittest.TestCase):
     def test_request_rejects_mismatched_identity_and_flow_direction(self) -> None:
         with self.assertRaisesRegex(ExecutionModelError, "does not match"):
             _request(model_case=ModelCasePayload("other", {}))
-        with self.assertRaisesRegex(ExecutionError, "tangent angles"):
-            _request(velocity_hat_stl=np.array([0.0, 1.0, 0.0]))
+        with self.assertRaisesRegex(ExecutionError, "alpha_stability_deg"):
+            _request(velocity_hat_stl=np.array([0.0, 0.0, 1.0]))
         accepted = _request(
             velocity_hat_stl=np.array([1.0, 1.0e-12, 0.0]),
         )
@@ -198,8 +197,8 @@ class ExecutionTests(unittest.TestCase):
             accepted.velocity_hat_stl,
             np.array([1.0, 1.0e-12, 0.0]),
         )
-        with self.assertRaisesRegex(ExecutionError, "tangent angles"):
-            _request(velocity_hat_stl=np.array([1.0, 2.0e-12, 0.0]))
+        with self.assertRaisesRegex(ExecutionError, "alpha_stability_deg"):
+            _request(velocity_hat_stl=np.array([1.0, 0.0, 2.0e-12]))
 
     def test_app_assembles_both_models_without_core_branching(self) -> None:
         registry = default_model_registry()

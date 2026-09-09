@@ -23,6 +23,8 @@ dependency resolution. Windows/Linux retain the current dependency range
 without this macOS-specific Python upper limit. The macOS pin will be
 reassessed when the upstream Qt fix is available and validated; see the
 [installation requirements](docs/getting-started/installation.md#requirements).
+The pinned Qt version still has a known
+[macOS accessibility limitation](docs/running/troubleshooting.md#macos-gui-crashes-during-accessibility-inspection).
 
 To install the Panel Solver v0.1.0 wheel:
 

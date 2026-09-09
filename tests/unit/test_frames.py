@@ -7,38 +7,47 @@ from panelsolver.core import (
     NonFiniteError,
     ShapeError,
     body_to_stability,
+    stability_alpha_deg,
     stl_to_body,
-    velocity_hat_stl_from_tangent_angles,
 )
 
 
 class ResolvedAttitudeTests(unittest.TestCase):
-    def test_zero_tangent_angles_point_along_positive_stl_x(self) -> None:
-        np.testing.assert_array_equal(
-            np.array([1.0, 0.0, 0.0]),
-            velocity_hat_stl_from_tangent_angles(0.0, 0.0),
-        )
+    def test_axes_and_backwards_flow(self) -> None:
+        for vector, angle in (
+            ([1, 0, 0], 0),
+            ([0, 0, 1], 90),
+            ([0, 0, -1], -90),
+            ([-1, 0, 0], 180),
+            ([0, 1, 0], 0),
+            ([0, -1, 0], 0),
+        ):
+            with self.subTest(vector=vector):
+                self.assertEqual(angle, stability_alpha_deg(vector))
 
-    def test_signs_and_unit_length_follow_tangent_convention(self) -> None:
-        velocity = velocity_hat_stl_from_tangent_angles(30.0, 20.0)
-        self.assertGreater(velocity[0], 0.0)
-        self.assertLess(velocity[1], 0.0)
-        self.assertGreater(velocity[2], 0.0)
-        self.assertAlmostEqual(1.0, float(np.linalg.norm(velocity)), places=15)
+    def test_backward_axis_canonicalizes_signed_zero_to_positive_180(self) -> None:
+        for z in (0.0, -0.0):
+            with self.subTest(z_signbit=np.signbit(z)):
+                self.assertEqual(180, stability_alpha_deg([-1.0, 0.0, z]))
 
-    def test_resolved_angles_do_not_apply_a_product_input_domain(self) -> None:
-        velocity = velocity_hat_stl_from_tangent_angles(100.0, 0.0)
-        self.assertLess(velocity[0], 0.0)
-        self.assertGreater(velocity[2], 0.0)
-        self.assertAlmostEqual(1.0, float(np.linalg.norm(velocity)), places=15)
+    def test_fallback_threshold_does_not_modify_direction(self) -> None:
+        threshold = 64 * np.finfo(np.float64).eps
+        for radius, expected in (
+            (threshold / 2, 0),
+            (threshold, 0),
+            (threshold * 2, 90),
+        ):
+            vector = np.array([0.0, 1.0, radius])
+            original = vector.copy()
+            self.assertEqual(expected, stability_alpha_deg(vector))
+            np.testing.assert_array_equal(vector, original)
 
-    def test_angles_reject_booleans_and_nonfinite_values(self) -> None:
-        with self.assertRaises(ContractValueError):
-            velocity_hat_stl_from_tangent_angles(True, 0.0)
+    def test_invalid_directions_are_rejected(self) -> None:
+        for vector in ([0, 0, 0], [2, 0, 0], [True, False, False]):
+            with self.assertRaises(ContractValueError):
+                stability_alpha_deg(vector)
         with self.assertRaises(NonFiniteError):
-            velocity_hat_stl_from_tangent_angles(0.0, np.inf)
-        with self.assertRaises(NonFiniteError):
-            body_to_stability([1.0, 0.0, 0.0], alpha_t_deg=np.nan)
+            stability_alpha_deg([np.nan, 0, 0])
 
 
 class FrameTransformTests(unittest.TestCase):
@@ -64,7 +73,7 @@ class FrameTransformTests(unittest.TestCase):
     def test_body_to_stability_uses_positive_y_rotation(self) -> None:
         transformed = body_to_stability(
             np.array([1.0, 2.0, 3.0]),
-            alpha_t_deg=90.0,
+            alpha_stability_deg=90.0,
         )
         np.testing.assert_allclose(
             np.array([3.0, 2.0, -1.0]),
@@ -81,11 +90,11 @@ class FrameTransformTests(unittest.TestCase):
         with self.assertRaises(ContractValueError):
             stl_to_body([True, False, True])
         with self.assertRaises(ContractValueError):
-            body_to_stability(["1", "2", "3"], alpha_t_deg=0.0)
+            body_to_stability(["1", "2", "3"], alpha_stability_deg=0.0)
         with self.assertRaises(ContractValueError):
             stl_to_body([[1.0, 2.0, 3.0], [4.0, 5.0]])
         with self.assertRaises(NonFiniteError):
-            body_to_stability([1.0, np.nan, 3.0], alpha_t_deg=0.0)
+            body_to_stability([1.0, np.nan, 3.0], alpha_stability_deg=0.0)
 
 
 if __name__ == "__main__":

@@ -22,7 +22,7 @@ while the scalar arrays provide one value per triangular panel.
 ```python
 from panelsolver import FMFCase, resolve_attitude, solve_fmf
 
-attitude = resolve_attitude(5.0, 0.0, "beta_tan")
+attitude = resolve_attitude(5.0, 0.0)
 case = FMFCase(
     case_id="fmf-example",
     stl_paths=("model.stl",),
@@ -107,16 +107,17 @@ resolve_attitude(
 
 Both input angles are finite real numbers in degrees. `attitude_input` is
 trimmed and normalized case-insensitively. `None` and blank text select
-`beta_tan`.
+`beta_sin`. To preserve calculations that previously omitted the mode, pass
+`"beta_tan"` explicitly.
 
 | Mode | First value | Second value | Accepted domain |
 |---|---|---|---|
-| `beta_tan` | tangent angle of attack | tangent sideslip | both strictly between -90° and 90° |
-| `beta_sin` | tangent angle of attack | sine-definition sideslip | first strictly between -90° and 90°; second any finite angle |
+| `beta_tan` | angle of attack | absolute-X tangent sideslip | first any finite periodic angle; second -90° to 90° inclusive; simultaneous tangent poles rejected |
+| `beta_sin` | angle of attack | sine-definition sideslip | first any finite periodic angle; second -90° to 90° inclusive |
 | `bank` | included angle | bank angle | both any finite angle |
 
-The resolver converts every mode to the tangent-angle values used by both solve
-functions. The equations, axes, signs, and periodic
+The resolver converts every mode directly to a unit flow vector and a common
+stability angle used by both solve functions. The equations, axes, signs, and periodic
 behavior are in [Coordinate and attitude conventions](../methods/coordinate-and-attitude-conventions.md).
 
 ### `ResolvedAttitude`
@@ -124,8 +125,9 @@ behavior are in [Coordinate and attitude conventions](../methods/coordinate-and-
 | Field | Type / shape | Unit / values | Meaning |
 |---|---|---|---|
 | `velocity_hat_stl` | NumPy `float64` vector `(3,)` | unit vector | Resolved direction in which the freestream travels, expressed in STL axes. |
-| `alpha_t_deg` | `float` | degrees | Resolved tangent angle of attack. |
-| `beta_t_deg` | `float` | degrees | Resolved tangent sideslip. |
+| `alpha_deg` | `float` | degrees | Original first input value before periodic reduction. |
+| `alpha_stability_deg` | `float` | degrees | Derived stability angle in (-180°, 180°], with the documented zero fallback for lateral flow; read-only constructor result. |
+| `beta_or_bank_deg` | `float` | degrees | Original second input value before periodic reduction. |
 | `input_mode` | `str` | `beta_tan`, `beta_sin`, or `bank` | Normalized representation used for the input pair. |
 
 `ResolvedAttitude` also supports direct construction:
@@ -133,18 +135,18 @@ behavior are in [Coordinate and attitude conventions](../methods/coordinate-and-
 ```text
 ResolvedAttitude(
     velocity_hat_stl: np.ndarray,
-    alpha_t_deg: float,
-    beta_t_deg: float,
+    alpha_deg: float,
+    beta_or_bank_deg: float,
     input_mode: str,
 )
 ```
 
 The vector must be a finite, nonzero real vector with shape `(3,)`; construction
-normalizes it to a read-only unit vector. Both resolved angles must be finite,
-and the mode is normalized with the same rules as `resolve_attitude()`. A solve
-also requires the vector and resolved tangent angles to describe the same
-direction. Prefer `resolve_attitude()` for ordinary use because it establishes
-that relationship from one documented input representation.
+normalizes it to a read-only unit vector. Both original angle fields must be
+finite and provide provenance; the mode is normalized. The supplied vector is
+authoritative for direct construction, and alpha_stability_deg is always derived
+from it using the common fallback rule. Prefer resolve_attitude() to construct
+the vector from validated input angles and preserve their relationship.
 
 ## `FMFCase`
 
@@ -175,7 +177,7 @@ is required.
 | `case_id` | `str` | — | portable text | Case ID. It is normalized to Unicode NFC and must satisfy the portable filename rules described under [Shared case requirements](#shared-case-requirements). |
 | `stl_paths` | non-empty sequence of `str` or `Path` | — | ordered paths | STL components in component-ID order. Supply a tuple or list even for one component. |
 | `stl_scale_m_per_unit` | real number | — | m / STL unit, > 0 | Scale applied to every input STL coordinate. |
-| `attitude` | `ResolvedAttitude` | — | — | Resolved flow direction and tangent angles used by the calculation. |
+| `attitude` | `ResolvedAttitude` | — | — | Authoritative unit flow direction, original input angles, and derived stability angle. |
 | `Aref_m2` | real number | — | m², > 0 | Global reference area used for total and component integration. |
 | `moment_reference_stl_m` | sequence of 3 real numbers | — | m, STL frame | Moment reference point `(x, y, z)`. |
 | `Lref_Cl_m` | real number | — | m, > 0 | Roll-moment reference length. |
@@ -223,7 +225,7 @@ HypersonicCase(
 | `case_id` | `str` | — | portable text | Case ID, normalized to Unicode NFC. |
 | `stl_paths` | non-empty sequence of `str` or `Path` | — | ordered paths | STL components in component-ID order. |
 | `stl_scale_m_per_unit` | real number | — | m / STL unit, > 0 | Scale applied to every input STL coordinate. |
-| `attitude` | `ResolvedAttitude` | — | — | Resolved flow direction and tangent angles used by the calculation. |
+| `attitude` | `ResolvedAttitude` | — | — | Authoritative unit flow direction, original input angles, and derived stability angle. |
 | `Aref_m2` | real number | — | m², > 0 | Global reference area used for total and component integration. |
 | `moment_reference_stl_m` | sequence of 3 real numbers | — | m, STL frame | Moment reference point `(x, y, z)`. |
 | `Lref_Cl_m` | real number | — | m, > 0 | Roll-moment reference length. |
@@ -261,8 +263,10 @@ As with `FMFCase`, `stl_paths` corresponds to ordered `stl_path`, while
   finite and strictly positive. `moment_reference_stl_m` must contain exactly
   three finite coordinates in metres in the STL frame. Numeric booleans are
   not accepted as real-number inputs.
-- `attitude` must be a `ResolvedAttitude`. Its unit vector and resolved tangent
-  angles are used by shielding, model evaluation, and integration.
+- `attitude` must be a `ResolvedAttitude`. Its unit vector is used by shielding
+  and model evaluation. Its derived stability angle is used to transform the
+  integrated body-axis force coefficients into stability axes; original angles
+  are retained as provenance.
 - `shielding` must be boolean. `ray_backend` accepts `auto`, `rtree`, or
   `embree`; `auto` selects an available supported backend when shielding is
   enabled. See [Ray shielding](../methods/ray-shielding.md#backend-behavior).
@@ -293,6 +297,7 @@ Either solve function returns a `SolveResult` with the following fields:
 
 | Field | Type / shape | Unit / values | Meaning |
 |---|---|---|---|
+| `attitude` | `ResolvedAttitude` | original inputs and resolved state | Original numeric angles, normalized mode, unit direction and stability angle. |
 | `coefficients` | nested coefficient result | see below | Integrated whole-case force and moment coefficients. |
 | `components` | ordered tuple of component results | one per STL | Per-component integrated coefficients and counts, in ascending component-ID/input-STL order. |
 | `geometry` | nested per-face geometry | `n_faces` rows | SI-scaled geometry used by the calculation. |
@@ -311,7 +316,7 @@ and scalar properties:
 |---|---|---|---|
 | `force_coeff_stl` | NumPy `float64` vector `(3,)` | dimensionless, STL frame | Integrated force-coefficient vector before frame transformation. |
 | `force_coeff_body` | NumPy `float64` vector `(3,)` | dimensionless, body frame | Integrated force coefficient after the fixed STL-to-body transform. |
-| `force_coeff_stability` | NumPy `float64` vector `(3,)` | dimensionless, stability frame | Body force rotated using resolved `alpha_t_deg`. |
+| `force_coeff_stability` | NumPy `float64` vector `(3,)` | dimensionless, stability frame | Body force rotated using derived `alpha_stability_deg`. |
 | `moment_area_coeff_body_m` | NumPy `float64` vector `(3,)` | m, body frame | Area-normalized moment numerator before division by the three reference lengths. |
 | `moment_coeff_body` | NumPy `float64` vector `(3,)` | dimensionless, body frame | Roll-, pitch-, and yaw-axis moment coefficients after reference-length division. |
 | `CA`, `CY`, `CN` | `float` | dimensionless | Axial, side, and normal force coefficients. |
@@ -418,6 +423,10 @@ that exists only in output files.
 | `coefficients.CA`, `CY`, `CN`, `Cl`, `Cm`, `Cn`, `CD`, `CL` | Same-named Summary CSV columns on the `total` row. |
 | `components[*].integrated` | Same coefficient fields on Summary `component` rows. |
 | Component IDs and counts | Summary `component_id`, `faces`, and `shielded_faces`; components use input-STL order. |
+| `attitude.alpha_deg`, `attitude.beta_or_bank_deg` | Same-named Summary CSV input columns and VTP field data; original numeric angles before periodic reduction. |
+| `attitude.input_mode` | Summary `out_attitude_input` and VTP `attitude_input_used`. |
+| Components of `attitude.velocity_hat_stl` (also `flow_state.velocity_hat_stl`) | Summary and VTP `velocity_hat_x_stl`, `velocity_hat_y_stl`, and `velocity_hat_z_stl`. |
+| `attitude.alpha_stability_deg` | Summary and VTP `alpha_stability_deg`. |
 | `case_signature` | Summary and VTP `case_signature`. |
 | `ray_backend_used` | Summary and VTP `ray_backend_used`. |
 | `geometry.areas_m2` | VTP `area_m2`. |

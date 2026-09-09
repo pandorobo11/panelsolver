@@ -29,8 +29,7 @@ def fixture():
         Lref_Cl_m=1,
         Lref_Cm_m=1,
         Lref_Cn_m=1,
-        alpha_t_deg=0,
-        beta_t_deg=0,
+        alpha_stability_deg=0,
     )
     return assemble_common_results(
         case,

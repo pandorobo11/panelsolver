@@ -285,7 +285,11 @@ def _run_prepared_product_case(
                 case_signature=execution.signature.digest,
                 ray_backend_used=execution.shielding.config.effective_backend,
                 solver_version=solver_version,
-                vtp_field_data=additions.vtp_field_data,
+                vtp_field_data={
+                    **additions.vtp_field_data,
+                    "alpha_deg": [prepared.adapted.attitude.alpha_deg],
+                    "beta_or_bank_deg": [prepared.adapted.attitude.beta_or_bank_deg],
+                },
             )
             write_vtp_projection(
                 vtp_file,

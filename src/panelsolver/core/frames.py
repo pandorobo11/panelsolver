@@ -6,41 +6,25 @@ import math
 
 import numpy as np
 
-from ._validation import real_scalar
+from ._validation import float_array, real_scalar, validate_unit_vectors
 from .errors import ContractValueError, NonFiniteError, ShapeError
 
-_ZERO_DIRECTION_ATOL = 1.0e-14
 
+def stability_alpha_deg(velocity_hat_stl: object) -> float:
+    """Resolve the common stability angle from a unit STL flow direction.
 
-def velocity_hat_stl_from_tangent_angles(
-    alpha_t_deg: float,
-    beta_t_deg: float,
-) -> np.ndarray:
-    """Return the STL-frame unit direction for resolved tangent angles.
-
-    The arguments are already-resolved ``alpha_t`` and ``beta_t`` values. This
-    function deliberately does not parse a legacy attitude mode or impose
-    either product's public angle-domain policy.
+    A projection at or below 64 float64 eps uses the common zero-angle frame.
+    This does not modify the flow direction used for physical calculations.
     """
-    alpha = math.radians(real_scalar(alpha_t_deg, field="alpha_t_deg"))
-    beta = math.radians(real_scalar(beta_t_deg, field="beta_t_deg"))
-    cos_alpha = math.cos(alpha)
-    cos_beta = math.cos(beta)
-    velocity = np.array(
-        [
-            cos_alpha * cos_beta,
-            -math.sin(beta) * cos_alpha,
-            math.sin(alpha) * cos_beta,
-        ],
-        dtype=np.float64,
-    )
-    norm = float(np.linalg.norm(velocity))
-    if norm < _ZERO_DIRECTION_ATOL:
-        raise ContractValueError(
-            "velocity_hat_stl",
-            "resolved tangent angles must not produce a zero direction",
-        )
-    return velocity / norm
+    velocity = float_array(velocity_hat_stl, field="velocity_hat_stl", shape=(3,))
+    validate_unit_vectors(velocity, field="velocity_hat_stl")
+    x, _, z = (float(value) for value in velocity)
+    if math.hypot(x, z) <= 64.0 * np.finfo(np.float64).eps:
+        return 0.0
+    angle = math.degrees(math.atan2(z, x))
+    if angle <= -180.0:
+        angle = 180.0
+    return 0.0 if angle == 0.0 else angle
 
 
 def stl_to_body(vectors_stl: object) -> np.ndarray:
@@ -57,16 +41,16 @@ def stl_to_body(vectors_stl: object) -> np.ndarray:
 def body_to_stability(
     vectors_body: object,
     *,
-    alpha_t_deg: float,
+    alpha_stability_deg: float,
 ) -> np.ndarray:
-    """Rotate body-axis vectors into stability axes at resolved ``alpha_t``.
+    """Rotate body-axis vectors into stability axes at derived ``alpha_stability_deg``.
 
     The trailing dimension must have length three; any number of leading
-    dimensions is preserved. Positive ``alpha_t`` uses a right-handed rotation
+    dimensions is preserved. Positive ``alpha_stability_deg`` uses a right-handed rotation
     about ``+Y_body``.
     """
     vectors = _vector_array(vectors_body, field="vectors_body")
-    alpha = math.radians(real_scalar(alpha_t_deg, field="alpha_t_deg"))
+    alpha = math.radians(real_scalar(alpha_stability_deg, field="alpha_stability_deg"))
     cosine = math.cos(alpha)
     sine = math.sin(alpha)
     rotation = np.array(
@@ -116,6 +100,6 @@ def _vector_array(value: object, *, field: str) -> np.ndarray:
 __all__ = (
     "body_to_stability",
     "rotation_matrix_y_rad",
+    "stability_alpha_deg",
     "stl_to_body",
-    "velocity_hat_stl_from_tangent_angles",
 )
