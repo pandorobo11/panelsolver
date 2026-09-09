@@ -44,8 +44,8 @@ from .execution import (
 )
 from .frames import (
     body_to_stability,
+    stability_alpha_deg,
     stl_to_body,
-    velocity_hat_stl_from_tangent_angles,
 )
 from .integration import PanelIntegration, integrate_panel_loads
 from .mesh import MeshComponent, PanelMesh
@@ -181,6 +181,6 @@ __all__ = (
     "resolve_parallel_chunk_cases",
     "reuse_oriented_execution_order",
     "shielding_cache_stats",
+    "stability_alpha_deg",
     "stl_to_body",
-    "velocity_hat_stl_from_tangent_angles",
 )

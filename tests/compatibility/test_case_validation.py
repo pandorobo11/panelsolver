@@ -328,14 +328,14 @@ class CaseValidationMatrixTests(unittest.TestCase):
                 "fmfsolver",
                 read_fmf_cases,
                 "fmfsolver_cases.csv",
-                {"attitude_input": "beta_tan"},
+                {"attitude_input": "beta_sin"},
             ),
             (
                 "newtsolver",
                 read_newt_cases,
                 "newtsolver_cases.csv",
                 {
-                    "attitude_input": "beta_tan",
+                    "attitude_input": "beta_sin",
                     "windward_eq": "newtonian",
                     "leeward_eq": "shield",
                 },

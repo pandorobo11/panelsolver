@@ -25,6 +25,9 @@ The CSV checkpoint ordering and write-durability portions are superseded by
 [ADR 0016](0016-append-csv-checkpoints.md). Final Summary CSV schemas, values,
 and input ordering remain unchanged.
 
+The attitude/output/API and signature changes explicitly listed in
+[ADR 0017](0017-full-direction-attitudes.md) supersede those portions of this decision.
+
 ## Context
 
 Phase 1 correctly recorded every observable difference between the pinned FMF

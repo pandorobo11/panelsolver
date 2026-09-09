@@ -1,24 +1,28 @@
-"""Shared attitude parsing with one supported principal domain."""
+"""Full-direction attitude inputs with shared stability-axis resolution."""
 
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from dataclasses import field as dataclass_field
 
 import numpy as np
 
+from panelsolver.core.frames import stability_alpha_deg
+
+DEFAULT_ATTITUDE_INPUT = "beta_sin"
 ATTITUDE_INPUT_VALUES = frozenset({"beta_tan", "beta_sin", "bank"})
-_ZERO_DIRECTION_ATOL = 1.0e-14
 
 
 @dataclass(frozen=True, slots=True, eq=False)
 class ResolvedAttitude:
-    """One public attitude input resolved to the tangent-angle convention."""
+    """Authoritative unit direction, original inputs, and derived stability angle."""
 
     velocity_hat_stl: np.ndarray
-    alpha_t_deg: float
-    beta_t_deg: float
+    alpha_deg: float
+    beta_or_bank_deg: float
     input_mode: str
+    alpha_stability_deg: float = dataclass_field(init=False)
 
     def __post_init__(self) -> None:
         try:
@@ -40,7 +44,7 @@ class ResolvedAttitude:
         if not np.isfinite(velocity).all():
             raise ValueError("velocity_hat_stl must be a finite vector with shape (3,)")
         scale = float(np.max(np.abs(velocity)))
-        if scale < _ZERO_DIRECTION_ATOL:
+        if scale == 0.0:
             raise ValueError("velocity_hat_stl must have nonzero norm")
         scaled = velocity / scale
         scaled_norm = math.hypot(*(float(component) for component in scaled))
@@ -53,9 +57,10 @@ class ResolvedAttitude:
             abs_tol=1.0e-12,
         ):
             raise ValueError("velocity_hat_stl must normalize to a finite unit vector")
+        normalized[normalized == 0.0] = 0.0
         immutable = np.frombuffer(normalized.tobytes(), dtype=np.float64)
         object.__setattr__(self, "velocity_hat_stl", immutable)
-        for field in ("alpha_t_deg", "beta_t_deg"):
+        for field in ("alpha_deg", "beta_or_bank_deg"):
             value = getattr(self, field)
             if isinstance(value, (bool, np.bool_)):
                 raise ValueError(  # noqa: TRY004 - one public validation boundary
@@ -69,15 +74,16 @@ class ResolvedAttitude:
                 raise ValueError(f"{field} must be a finite real angle")
             object.__setattr__(self, field, angle)
         object.__setattr__(self, "input_mode", resolve_attitude_mode(self.input_mode))
+        object.__setattr__(self, "alpha_stability_deg", stability_alpha_deg(immutable))
 
 
 def resolve_attitude_mode(value: str | None) -> str:
     if value is None:
-        mode = "beta_tan"
+        mode = DEFAULT_ATTITUDE_INPUT
     elif not isinstance(value, str):
         raise TypeError("attitude_input must be text or None")
     else:
-        mode = value.strip().lower() or "beta_tan"
+        mode = value.strip().lower() or DEFAULT_ATTITUDE_INPUT
     if mode not in ATTITUDE_INPUT_VALUES:
         raise ValueError(
             f"Invalid attitude_input: '{value}'. "
@@ -86,12 +92,21 @@ def resolve_attitude_mode(value: str | None) -> str:
     return mode
 
 
-def _unit(values: tuple[float, float, float], *, message: str) -> np.ndarray:
-    velocity = np.asarray(values, dtype=np.float64)
-    norm = float(np.linalg.norm(velocity))
-    if norm < _ZERO_DIRECTION_ATOL:
-        raise ValueError(message)
-    return velocity / norm
+def _sincos_deg(angle_deg: float) -> tuple[float, float]:
+    # remainder avoids adding 180 before reduction, which can round a value
+    # immediately adjacent to 90 onto the singular boundary.
+    angle = math.remainder(angle_deg, 360.0)
+    exact = {
+        0.0: (0.0, 1.0),
+        90.0: (1.0, 0.0),
+        -90.0: (-1.0, 0.0),
+        180.0: (0.0, -1.0),
+        -180.0: (0.0, -1.0),
+    }
+    if angle in exact:
+        return exact[angle]
+    radians = math.radians(angle)
+    return math.sin(radians), math.cos(radians)
 
 
 def resolve_attitude(
@@ -99,72 +114,40 @@ def resolve_attitude(
     beta_or_bank_deg: float,
     attitude_input: str | None = None,
 ) -> ResolvedAttitude:
-    """Resolve a supported attitude to the shared tangent-angle convention."""
+    """Resolve original degree inputs without reconstructing flow from angles."""
     mode = resolve_attitude_mode(attitude_input)
     if isinstance(alpha_deg, (bool, np.bool_)) or isinstance(
         beta_or_bank_deg, (bool, np.bool_)
     ):
-        raise ValueError(  # noqa: TRY004 - one public validation boundary
-            "attitude angles must be finite real numbers"
-        )
+        raise ValueError("attitude angles must be finite real numbers")  # noqa: TRY004
     alpha_in = float(alpha_deg)
     beta_in = float(beta_or_bank_deg)
     if not math.isfinite(alpha_in) or not math.isfinite(beta_in):
         raise ValueError("attitude angles must be finite")
-
-    if mode == "beta_tan":
-        if not -90.0 < alpha_in < 90.0 or not -90.0 < beta_in < 90.0:
-            raise ValueError(
-                "attitude_input='beta_tan' requires alpha_deg and "
-                "beta_or_bank_deg to be strictly between -90 and 90 degrees."
-            )
-        alpha_rad = math.radians(alpha_in)
-        beta_rad = math.radians(beta_in)
-        cos_alpha = math.cos(alpha_rad)
-        velocity = _unit(
-            (
-                cos_alpha * math.cos(beta_rad),
-                -math.sin(beta_rad) * cos_alpha,
-                math.sin(alpha_rad) * math.cos(beta_rad),
-            ),
-            message="Invalid alpha/beta leading to zero direction.",
+    if mode != "bank" and not -90.0 <= beta_in <= 90.0:
+        raise ValueError(
+            "beta_or_bank_deg must be between -90 and 90 degrees inclusive "
+            "for beta_tan or beta_sin."
         )
-        return ResolvedAttitude(velocity, alpha_in, beta_in, mode)
-
+    sin_alpha, cos_alpha = _sincos_deg(alpha_in)
+    sin_beta, cos_beta = _sincos_deg(beta_in)
     if mode == "bank":
-        alpha_rad = math.radians(alpha_in)
-        bank_rad = math.radians(beta_in)
-        velocity = _unit(
-            (
-                math.cos(alpha_rad),
-                -math.sin(alpha_rad) * math.sin(bank_rad),
-                math.sin(alpha_rad) * math.cos(bank_rad),
-            ),
-            message="Invalid bank-angle inputs leading to zero direction.",
-        )
+        velocity = (cos_alpha, -sin_alpha * sin_beta, sin_alpha * cos_beta)
+    elif mode == "beta_sin":
+        velocity = (cos_alpha * cos_beta, -sin_beta, sin_alpha * cos_beta)
     else:
-        if not -90.0 < alpha_in < 90.0:
+        if cos_alpha == 0.0 and cos_beta == 0.0:
             raise ValueError(
-                "attitude_input='beta_sin' requires alpha_deg to be "
-                "strictly between -90 and 90 degrees."
+                "beta_tan direction is undefined when alpha_deg is an odd "
+                "multiple of 90 and beta_or_bank_deg is +90 or -90. "
+                "Use beta_sin or bank to specify the direction."
             )
-        alpha_rad = math.radians(alpha_in)
-        beta_sin_rad = math.radians(beta_in)
-        tangent_alpha = math.tan(alpha_rad)
-        sin_beta = math.sin(beta_sin_rad)
-        x_squared = (1.0 - sin_beta * sin_beta) / (1.0 + tangent_alpha * tangent_alpha)
-        if x_squared < -1.0e-14:
-            raise ValueError("Inconsistent alpha_t/beta_s inputs.")
-        x_squared = max(x_squared, 0.0)
-        x_value = (1.0 if math.cos(alpha_rad) >= 0.0 else -1.0) * math.sqrt(x_squared)
-        velocity = _unit(
-            (x_value, -sin_beta, tangent_alpha * x_value),
-            message="Invalid beta-sin inputs leading to zero direction.",
+        velocity = (
+            cos_alpha * cos_beta,
+            -abs(cos_alpha) * sin_beta,
+            sin_alpha * cos_beta,
         )
-
-    alpha_t_deg = math.degrees(math.atan2(float(velocity[2]), float(velocity[0])))
-    beta_t_deg = math.degrees(math.atan2(float(-velocity[1]), float(velocity[0])))
-    return ResolvedAttitude(velocity, alpha_t_deg, beta_t_deg, mode)
+    return ResolvedAttitude(np.asarray(velocity), alpha_in, beta_in, mode)
 
 
 __all__ = (

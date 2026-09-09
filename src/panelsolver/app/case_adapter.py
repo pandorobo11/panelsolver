@@ -88,8 +88,7 @@ def adapt_case_row(
         Lref_Cl_m=float(row["Lref_Cl_m"]),
         Lref_Cm_m=float(row["Lref_Cm_m"]),
         Lref_Cn_m=float(row["Lref_Cn_m"]),
-        alpha_t_deg=attitude.alpha_t_deg,
-        beta_t_deg=attitude.beta_t_deg,
+        alpha_stability_deg=attitude.alpha_stability_deg,
     )
     model_case = ModelCasePayload(
         model_id=policy.model_id,

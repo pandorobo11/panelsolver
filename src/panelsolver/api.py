@@ -117,6 +117,7 @@ class HypersonicCase:
 class SolveResult:
     """In-memory integrated and per-face result with no artifact side effects."""
 
+    attitude: ResolvedAttitude
     coefficients: IntegratedCoefficients
     components: tuple[ComponentResult, ...]
     geometry: PanelGeometry
@@ -144,8 +145,7 @@ def _solve(
         Lref_Cl_m=case.Lref_Cl_m,
         Lref_Cm_m=case.Lref_Cm_m,
         Lref_Cn_m=case.Lref_Cn_m,
-        alpha_t_deg=attitude.alpha_t_deg,
-        beta_t_deg=attitude.beta_t_deg,
+        alpha_stability_deg=attitude.alpha_stability_deg,
     )
     model_case = ModelCasePayload(model.model_id, model_payload)
     request = request_from_registry(
@@ -163,6 +163,7 @@ def _solve(
     execution = execute_case(request)
     results = execution.results
     return SolveResult(
+        attitude=attitude,
         coefficients=results.total,
         components=results.components,
         geometry=results.geometry,

@@ -11,6 +11,27 @@ migration baselines and runtime artifact version semantics are recorded in ADR
   Use repaired face winding without dropping panels or relaxing geometry
   validation. Existing nonzero normals, physical formulas, and file schemas
   remain unchanged; the mesh loader algorithm version advances to v2.
+- **Breaking:** default attitude input to `beta_sin` across API, CLI, and GUI.
+  Omitted or blank modes in existing inputs now use sine sideslip and may produce
+  different directions, coefficients, and signatures. Specify `beta_tan`
+  explicitly to reproduce the previous default. Explicit modes, stability-axis
+  rules, and CSV/VTP and signature schemas are unchanged.
+
+- Support backward flow and single-angle poles in all attitude modes. Tangent
+  sideslip uses the absolute X component; both sideslip modes now require
+  beta in [-90, 90]. The simultaneous tangent pole remains invalid. All modes
+  derive a common stability angle from the actual flow vector, with a documented
+  zero-angle fallback for lateral flow, fixing backward-bank execution failures.
+  The stability angle is in (-180°, 180°], with exact backward flow reported as +180°.
+- **Breaking:** replace CSV/VTP `alpha_t_deg_resolved` and `beta_t_deg_resolved`
+  with `alpha_stability_deg` and three `velocity_hat_*_stl` components. Preserve
+  original input angles in CSV and add them to VTP field data. No angle-source
+  flag or resolved sine-sideslip column is exported. `ResolvedAttitude` now stores
+  original `alpha_deg`/`beta_or_bank_deg` and derives `alpha_stability_deg`.
+  `SolveResult.attitude` exposes these inputs and the resolved state.
+  Case signatures use v2 and encode the evaluated vector; old VTP signatures
+  no longer auto-match. Physical model equations and body-axis signs are unchanged.
+
 - Append only unsaved cases at Summary CSV checkpoints. The first successful
   checkpoint atomically replaces the previous CSV; later checkpoints append in
   completion order. The final save atomically rewrites all cases in input-table

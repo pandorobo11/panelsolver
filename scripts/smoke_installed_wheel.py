@@ -285,8 +285,56 @@ def _float_array_record(value: np.ndarray) -> dict[str, object]:
     }
 
 
+def _current_expected_columns(historical: list[str]) -> list[str]:
+    """Migrate frozen historical schema names under ADR 0017."""
+    columns: list[str] = []
+    for name in historical:
+        if name in {"save_npz_on", "npz_path"}:
+            continue
+        if name == "alpha_t_deg_resolved":
+            columns.append("alpha_stability_deg")
+        elif name == "beta_t_deg_resolved":
+            columns.extend(f"velocity_hat_{axis}_stl" for axis in "xyz")
+        else:
+            columns.append(name)
+    return columns
+
+
+def _expected_direction_fields(golden: dict[str, object]) -> dict[str, float]:
+    velocity = _record_array(golden["npz"]["arrays"]["Vhat_stl"]).reshape(3)
+    return {
+        f"velocity_hat_{axis}_stl": float(value)
+        for axis, value in zip("xyz", velocity, strict=True)
+    }
+
+
+def _current_expected_csv_rows(golden: dict[str, object]) -> list[dict[str, object]]:
+    rows = []
+    for original in golden["csv"]["rows"]:
+        row = {
+            name: value
+            for name, value in original.items()
+            if name not in {"save_npz_on", "npz_path", "beta_t_deg_resolved"}
+        }
+        row["alpha_stability_deg"] = row.pop("alpha_t_deg_resolved")
+        row.update(_expected_direction_fields(golden))
+        rows.append(row)
+    return rows
+
+
 def _current_expected_vtp(product: str, golden: dict[str, object]) -> dict[str, object]:
     expected = copy.deepcopy(golden["vtp"])
+    # Preserve the historical numerical evidence; migrate only its in-memory
+    # schema, including the original angle provenance newly exported to VTP.
+    fields = expected["field_data"]
+    fields["alpha_stability_deg"] = fields.pop("alpha_t_deg_resolved")
+    del fields["beta_t_deg_resolved"]
+    for name, value in {
+        **_expected_direction_fields(golden),
+        "alpha_deg": golden["normalized_input"]["alpha_deg"],
+        "beta_or_bank_deg": golden["normalized_input"]["beta_or_bank_deg"],
+    }.items():
+        fields[name] = _float_array_record(np.asarray([value], dtype=np.float64))
     cell_data = expected["cell_data"]
     legacy_normal = cell_data.pop("Cp_n")
     if product == "newtsolver":
@@ -784,11 +832,7 @@ def main(argv: list[str] | None = None) -> int:
                 rows = list(reader)
                 columns = list(reader.fieldnames or ())
             contract = contract_data[product]["cli_run"]
-            expected_columns = [
-                name
-                for name in contract["result_csv_columns"]
-                if name not in {"save_npz_on", "npz_path"}
-            ]
+            expected_columns = _current_expected_columns(contract["result_csv_columns"])
             if columns != expected_columns:
                 raise RuntimeError(f"{product} result columns changed")
             if "save_npz_on" in columns or "npz_path" in columns:
@@ -822,14 +866,7 @@ def main(argv: list[str] | None = None) -> int:
                 expected = {
                     "csv": {
                         "columns": expected_columns,
-                        "rows": [
-                            {
-                                name: value
-                                for name, value in row.items()
-                                if name not in {"save_npz_on", "npz_path"}
-                            }
-                            for row in golden["csv"]["rows"]
-                        ],
+                        "rows": _current_expected_csv_rows(golden),
                     },
                     "vtp": _current_expected_vtp(product, golden),
                 }

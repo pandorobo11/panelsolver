@@ -189,8 +189,7 @@ class CommonCasePayload:
     Lref_Cl_m: float
     Lref_Cm_m: float
     Lref_Cn_m: float
-    alpha_t_deg: float
-    beta_t_deg: float
+    alpha_stability_deg: float
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -226,7 +225,7 @@ class CommonCasePayload:
                     positive=True,
                 ),
             )
-        for name in ("alpha_t_deg", "beta_t_deg"):
+        for name in ("alpha_stability_deg",):
             object.__setattr__(
                 self,
                 name,

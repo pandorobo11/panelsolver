@@ -24,6 +24,7 @@ from panelsolver.app import (
     run_and_write_product_cases,
     run_product_cases,
 )
+from panelsolver.app.attitude import DEFAULT_ATTITUDE_INPUT
 from panelsolver.app.case_adapter import AdaptedCase, ProductCasePolicy, adapt_case_row
 from panelsolver.app.case_io import (
     AddIssue,
@@ -243,7 +244,7 @@ DEFAULTS = {
     "shielding_on": 0,
     "save_vtp_on": 1,
     "ray_backend": "auto",
-    "attitude_input": "beta_tan",
+    "attitude_input": DEFAULT_ATTITUDE_INPUT,
     "windward_eq": "newtonian",
     "leeward_eq": "shield",
     "out_dir": "outputs",
@@ -367,7 +368,7 @@ def build_case_signature(
     *,
     registry: ModelRegistry | None = None,
 ) -> CaseSignature:
-    """Build the current panelsolver.case v1 artifact identity."""
+    """Build the current panelsolver.case v2 artifact identity."""
     return prepare_case_signature(adapt_row(row, registry=registry).request)
 
 
@@ -380,8 +381,10 @@ CSV_PROJECTION_POLICY = CsvProjectionPolicy(
         "run_finished_at_utc",
         "run_elapsed_s",
         "out_attitude_input",
-        "alpha_t_deg_resolved",
-        "beta_t_deg_resolved",
+        "alpha_stability_deg",
+        "velocity_hat_x_stl",
+        "velocity_hat_y_stl",
+        "velocity_hat_z_stl",
         "scope",
         "component_id",
         "component_stl_path",
@@ -570,7 +573,7 @@ def _present(value: object) -> str | None:
 
 
 def _attitude_fields(row: Mapping[str, object]) -> tuple[tuple[str, object], ...]:
-    attitude = (_present(row.get("attitude_input")) or "beta_tan").lower()
+    attitude = (_present(row.get("attitude_input")) or DEFAULT_ATTITUDE_INPUT).lower()
     alpha = row.get("alpha_deg")
     beta = row.get("beta_or_bank_deg")
     if attitude == "beta_sin":

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Callable, Hashable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -26,7 +27,7 @@ from .contracts import (
     PanelLoadModel,
 )
 from .errors import PanelSolverError
-from .frames import velocity_hat_stl_from_tangent_angles
+from .frames import stability_alpha_deg
 from .mesh import PanelMesh
 from .mesh_loading import (
     LoadedPanelMesh,
@@ -156,13 +157,15 @@ class CaseExecutionRequest:
             validate_unit_vectors(velocity, field="velocity_hat_stl")
         except PanelSolverError as exc:
             raise ExecutionError(str(exc)) from exc
-        expected_velocity = velocity_hat_stl_from_tangent_angles(
-            self.common_case.alpha_t_deg,
-            self.common_case.beta_t_deg,
-        )
-        if not np.allclose(velocity, expected_velocity, rtol=0.0, atol=1.0e-12):
+        expected_alpha = stability_alpha_deg(velocity)
+        if not math.isclose(
+            self.common_case.alpha_stability_deg,
+            expected_alpha,
+            rel_tol=0.0,
+            abs_tol=1.0e-12,
+        ):
             raise ExecutionError(
-                "velocity_hat_stl must match the resolved common-case tangent angles."
+                "alpha_stability_deg must match the supplied flow direction."
             )
         if not isinstance(self.shielding, ShieldingConfig):
             raise TypeError("shielding must be a ShieldingConfig instance")
@@ -306,6 +309,7 @@ def _prepare_case_execution(
     signature = build_case_signature(
         geometry_fingerprint=loaded.geometry_fingerprint,
         common_case=request.common_case,
+        velocity_hat_stl=request.velocity_hat_stl,
         model_id=identity[0],
         model_algorithm_version=identity[1],
         model_case_payload=model_signature_payload,
