@@ -20,8 +20,7 @@ def _common_case(**updates) -> CommonCasePayload:
         "Lref_Cl_m": 1.0,
         "Lref_Cm_m": 2.0,
         "Lref_Cn_m": 3.0,
-        "alpha_t_deg": 10.0,
-        "beta_t_deg": -2.0,
+        "alpha_stability_deg": 10.0,
     }
     values.update(updates)
     return CommonCasePayload(**values)
@@ -42,6 +41,7 @@ def _signature(**updates):
     values = {
         "geometry_fingerprint": "a" * 64,
         "common_case": _common_case(),
+        "velocity_hat_stl": [1.0, 0.0, 0.0],
         "model_id": "sentman",
         "model_algorithm_version": "sentman-v1",
         "model_case_payload": {"S": 5.0, "nested": {"x": [1, 2]}},

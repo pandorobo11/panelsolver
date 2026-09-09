@@ -6,6 +6,7 @@ from dataclasses import asdict
 from pathlib import Path
 from unittest.mock import patch
 
+import numpy as np
 import pandas as pd
 
 from panelsolver.app.csv_writer import CSV_ENCODING
@@ -151,15 +152,15 @@ class CaseReaderCompatibilityTests(unittest.TestCase):
             contract = json.loads((_GOLDEN / product / "contracts.json").read_text())
             for filename, expected in contract["invalid_inputs"].items():
                 with self.subTest(product=product, filename=filename):
+                    if filename == "fmf_beta_tan_90.csv":
+                        # ADR 0017 promotes this historical invalid input.
+                        actual = reader(_INPUTS / "invalid" / filename)
+                        self.assertEqual(90, abs(actual.iloc[0]["alpha_deg"]))
+                        continue
                     with self.assertRaises(Exception) as caught:
                         reader(_INPUTS / "invalid" / filename)
                     error = caught.exception
                     self.assertEqual("InputValidationError", type(error).__name__)
-                    if filename == "fmf_beta_tan_90.csv":
-                        self.assertEqual(
-                            ["alpha_deg"], [issue.field for issue in error.issues]
-                        )
-                        continue
                     self.assertEqual(expected["message"], str(error))
                     self.assertEqual(
                         expected["issues"],
@@ -341,16 +342,17 @@ class CaseReaderCompatibilityTests(unittest.TestCase):
             (read_newt_cases, "newtsolver_cases.csv"),
         )
         rejected = (
-            ("beta_tan", "alpha_deg", -90.0),
-            ("beta_tan", "alpha_deg", 90.0),
-            ("beta_tan", "beta_or_bank_deg", -90.0),
-            ("beta_tan", "beta_or_bank_deg", 90.0),
-            ("beta_sin", "alpha_deg", -90.0),
-            ("beta_sin", "alpha_deg", 90.0),
+            ("beta_tan", "beta_or_bank_deg", -90.001),
+            ("beta_tan", "beta_or_bank_deg", 90.001),
+            ("beta_sin", "beta_or_bank_deg", -90.001),
+            ("beta_sin", "beta_or_bank_deg", 90.001),
         )
         accepted = (
             ("beta_tan", 89.999, -89.999),
-            ("beta_sin", 89.999, 90.0),
+            ("beta_tan", 90.0, 30.0),
+            ("beta_tan", 100.0, 90.0),
+            ("beta_sin", 90.0, 30.0),
+            ("beta_sin", 460.0, 90.0),
             ("bank", 180.0, 1080.0),
         )
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -429,7 +431,7 @@ class ProductCaseAdapterTests(unittest.TestCase):
                 result = execute_case(adapter(row).request)
                 self.assertEqual(result.signature, signature)
 
-    def test_beta_sin_endpoint_does_not_escape_beta_tan_principal_domain(self) -> None:
+    def test_single_sideslip_endpoint_runs_in_both_modes(self) -> None:
         frame = read_current_cases(read_newt_cases, _INPUTS / "newtsolver_cases.csv")
         beta_sin = (
             frame.loc[frame["case_id"] == "newt_beta_sin_boundary"].iloc[0].to_dict()
@@ -439,8 +441,11 @@ class ProductCaseAdapterTests(unittest.TestCase):
 
         adapted_sin = adapt_newt_row(beta_sin)
         execute_case(adapted_sin.request)
-        with self.assertRaisesRegex(ValueError, "strictly between -90 and 90"):
-            adapt_newt_row(beta_tan)
+        adapted_tan = adapt_newt_row(beta_tan)
+        execute_case(adapted_tan.request)
+        np.testing.assert_array_equal(
+            adapted_sin.attitude.velocity_hat_stl, adapted_tan.attitude.velocity_hat_stl
+        )
 
 
 if __name__ == "__main__":

@@ -141,8 +141,7 @@ class HypersonicModelTests(unittest.TestCase):
                     Lref_Cl_m=1.0,
                     Lref_Cm_m=1.0,
                     Lref_Cn_m=1.0,
-                    alpha_t_deg=alpha_deg,
-                    beta_t_deg=0.0,
+                    alpha_stability_deg=alpha_deg,
                 ),
             )
             with self.subTest(alpha_deg=alpha_deg):

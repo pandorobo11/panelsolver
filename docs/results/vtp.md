@@ -90,9 +90,13 @@ Every common field-data array has shape `(1,)`.
 
 | Field | Stored dtype / format | Unit / values | Meaning |
 |---|---|---|---|
-| `alpha_t_deg_resolved` | `float64` | degrees | Resolved tangent angle of attack used for this calculation. It matches the Summary CSV field of the same name. |
+| `alpha_stability_deg` | `float64` | degrees | Common stability angle in (-180°, 180°] used for coefficient conversion, including the documented zero fallback. It matches the Summary CSV field of the same name. |
 | `attitude_input_used` | string | `beta_tan`, `beta_sin`, or `bank` | Normalized attitude representation used to interpret the two input angles. The corresponding Summary CSV field is `out_attitude_input`. |
-| `beta_t_deg_resolved` | `float64` | degrees | Resolved tangent sideslip angle used for this calculation. It matches the Summary CSV field of the same name. |
+| `velocity_hat_x_stl` | `float64` | dimensionless | X component of the evaluated unit STL flow direction; matches Summary CSV. |
+| `velocity_hat_y_stl` | `float64` | dimensionless | Y component of the evaluated unit STL flow direction; matches Summary CSV. |
+| `velocity_hat_z_stl` | `float64` | dimensionless | Z component of the evaluated unit STL flow direction; matches Summary CSV. |
+| `alpha_deg` | `float64` | degrees | Original first input value before periodic reduction. |
+| `beta_or_bank_deg` | `float64` | degrees | Original second input value before periodic reduction. |
 | `case_id` | string | portable case text | Case identifier and planned VTP basename. |
 | `case_signature` | string; 64-character lowercase hexadecimal SHA-256 | — | SHA-256 value that identifies the current case and associates its output files. It corresponds to the Summary CSV value, and the GUI compares it with the currently loaded case for automatic display. |
 | `ray_backend_used` | string | `not_used`, `rtree`, or `embree` | Effective [ray-shielding backend](../methods/ray-shielding.md#backend-behavior). `not_used` means ray shielding was disabled. |
@@ -115,3 +119,11 @@ Each Hypersonic-only field has shape `(1,)` and string storage.
 
 FMF records its resolved `mode`, `out_S`, and `out_Ti_K` in the
 [Summary CSV reference](summary-csv.md#fmf-resolved-state-fields).
+
+The original numeric angle inputs are retained before periodic reduction.
+No stability-angle source flag or resolved sine-sideslip field is exported.
+See [attitude conventions](../methods/coordinate-and-attitude-conventions.md#stability-angle-and-numerical-boundaries)
+for the common fallback threshold. The former `alpha_t_deg_resolved` and
+`beta_t_deg_resolved` fields have been replaced; consumers must use the direction
+and stability-angle fields above. Signatures now use `panelsolver.case` v2;
+old artifacts are available for manual inspection but do not automatically match.

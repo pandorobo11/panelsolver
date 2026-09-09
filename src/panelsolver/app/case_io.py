@@ -11,7 +11,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from .attitude import ATTITUDE_INPUT_VALUES
+from .attitude import ATTITUDE_INPUT_VALUES, DEFAULT_ATTITUDE_INPUT, resolve_attitude
 from .case_identity import validate_case_id
 from .csv_writer import CSV_ENCODING
 from .path_resolution import absolute_input_path, resolve_input_relative_path
@@ -317,11 +317,11 @@ def _validate_attitude(frame: pd.DataFrame, add_issue: AddIssue) -> None:
             mode = normalize_optional_text(
                 value,
                 field="attitude_input",
-                default="beta_tan",
+                default=DEFAULT_ATTITUDE_INPUT,
             ).lower()
         except (TypeError, ValueError) as exc:
             add_issue(int(index), "attitude_input", str(exc))
-            mode = "beta_tan"
+            mode = DEFAULT_ATTITUDE_INPUT
         normalized.append(mode)
     frame["attitude_input"] = pd.Series(normalized, index=frame.index)
     invalid = ~frame["attitude_input"].isin(ATTITUDE_INPUT_VALUES)
@@ -334,22 +334,25 @@ def _validate_attitude(frame: pd.DataFrame, add_issue: AddIssue) -> None:
 
 
 def _validate_attitude_domain(frame: pd.DataFrame, add_issue: AddIssue) -> None:
-    beta_tan = frame["attitude_input"] == "beta_tan"
-    beta_sin = frame["attitude_input"] == "beta_sin"
-    invalid_alpha = (beta_tan | beta_sin) & (frame["alpha_deg"].abs() >= 90.0)
-    invalid_beta = beta_tan & (frame["beta_or_bank_deg"].abs() >= 90.0)
-    for index in frame.index[invalid_alpha]:
-        add_issue(
-            int(index),
-            "alpha_deg",
-            "must satisfy abs(alpha_deg) < 90 for beta_tan or beta_sin.",
-        )
-    for index in frame.index[invalid_beta]:
-        add_issue(
-            int(index),
-            "beta_or_bank_deg",
-            "must satisfy abs(beta_or_bank_deg) < 90 for beta_tan.",
-        )
+    # Use the same boundary as the public API, including periodic tangent poles.
+    for index, row in frame.iterrows():
+        if row["attitude_input"] not in ATTITUDE_INPUT_VALUES:
+            continue
+        if not math.isfinite(row["alpha_deg"]) or not math.isfinite(
+            row["beta_or_bank_deg"]
+        ):
+            continue  # Numeric validation already provides field-aware diagnostics.
+        try:
+            resolve_attitude(
+                row["alpha_deg"], row["beta_or_bank_deg"], row["attitude_input"]
+            )
+        except ValueError as exc:
+            field = (
+                "beta_or_bank_deg"
+                if abs(row["beta_or_bank_deg"]) > 90.0
+                else "alpha_deg"
+            )
+            add_issue(int(index), field, str(exc))
 
 
 def _validate_out_dir(frame: pd.DataFrame, add_issue: AddIssue) -> None:

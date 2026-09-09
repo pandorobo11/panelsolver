@@ -8,13 +8,18 @@ import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 
-from ._validation import freeze_payload, nonempty_text
+from ._validation import (
+    float_array,
+    freeze_payload,
+    nonempty_text,
+    validate_unit_vectors,
+)
 from .contracts import CommonCasePayload
 from .errors import PanelSolverError
 from .shielding import ResolvedShieldingConfig
 
 CASE_SIGNATURE_SCHEMA_NAME = "panelsolver.case"
-CASE_SIGNATURE_SCHEMA_VERSION = 1
+CASE_SIGNATURE_SCHEMA_VERSION = 2
 _SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 
 
@@ -85,8 +90,7 @@ def _common_case_envelope(case: CommonCasePayload) -> dict[str, object]:
         "Lref_Cl_m": case.Lref_Cl_m,
         "Lref_Cm_m": case.Lref_Cm_m,
         "Lref_Cn_m": case.Lref_Cn_m,
-        "alpha_t_deg": case.alpha_t_deg,
-        "beta_t_deg": case.beta_t_deg,
+        "alpha_stability_deg": case.alpha_stability_deg,
     }
 
 
@@ -106,12 +110,13 @@ def build_case_signature(
     *,
     geometry_fingerprint: str,
     common_case: CommonCasePayload,
+    velocity_hat_stl: object,
     model_id: str,
     model_algorithm_version: str,
     model_case_payload: Mapping[str, object],
     shielding_config: ResolvedShieldingConfig,
 ) -> CaseSignature:
-    """Build the exact canonical signature envelope defined by ADR 0005."""
+    """Build the exact canonical signature envelope defined by ADRs 0005 and 0017."""
     geometry_digest = _validate_digest(
         geometry_fingerprint,
         field="geometry_fingerprint",
@@ -131,13 +136,18 @@ def build_case_signature(
     except PanelSolverError as exc:
         raise SignatureError(str(exc)) from exc
 
+    velocity = float_array(velocity_hat_stl, field="velocity_hat_stl", shape=(3,))
+    validate_unit_vectors(velocity, field="velocity_hat_stl")
     envelope = {
         "schema": {
             "name": CASE_SIGNATURE_SCHEMA_NAME,
             "version": CASE_SIGNATURE_SCHEMA_VERSION,
         },
         "geometry": {"fingerprint_sha256": geometry_digest},
-        "common_case": _common_case_envelope(common_case),
+        "common_case": {
+            **_common_case_envelope(common_case),
+            "velocity_hat_stl": velocity.tolist(),
+        },
         "model": {
             "id": validated_model_id,
             "algorithm_version": validated_algorithm,

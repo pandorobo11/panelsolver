@@ -19,8 +19,7 @@ def case(*, reference: object = (0.0, 0.0, 0.0)) -> CommonCasePayload:
         Lref_Cl_m=2.0,
         Lref_Cm_m=1.0,
         Lref_Cn_m=1.0,
-        alpha_t_deg=0.0,
-        beta_t_deg=0.0,
+        alpha_stability_deg=0.0,
     )
 
 
@@ -81,8 +80,7 @@ class PanelIntegrationTests(unittest.TestCase):
             Lref_Cl_m=1.0,
             Lref_Cm_m=1.0,
             Lref_Cn_m=1.0,
-            alpha_t_deg=0.0,
-            beta_t_deg=0.0,
+            alpha_stability_deg=0.0,
         )
 
         result = integrate_panel_loads(geometry, loads, scaled_case)

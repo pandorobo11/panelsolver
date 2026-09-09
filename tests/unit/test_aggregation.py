@@ -23,8 +23,7 @@ def case() -> CommonCasePayload:
         Lref_Cl_m=1.0,
         Lref_Cm_m=1.0,
         Lref_Cn_m=1.0,
-        alpha_t_deg=0.0,
-        beta_t_deg=0.0,
+        alpha_stability_deg=0.0,
     )
 
 
