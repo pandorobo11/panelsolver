@@ -142,24 +142,12 @@ class ViewerPanelTests(unittest.TestCase):
     def test_initial_empty_guidance_has_no_duplicate_status_row(self) -> None:
         viewer, _plotter = self.make_viewer()
         self.assertEqual(ArtifactViewStatus.EMPTY, viewer.artifact_view_state.status)
-        self.assertTrue(viewer.artifact_status_row.isHidden())
         self.assertFalse(viewer.empty_panel.isHidden())
         self.assertEqual("Inspect a result", viewer.empty_title.text())
-        self.assertEqual(
-            "Select a case or open a VTP.",
-            viewer.lbl_artifact_detail.text(),
-        )
-        self.assertEqual("neutral", viewer.lbl_artifact_state.property("fluentStatus"))
-        self.assertEqual(
-            QtCore.Qt.FocusPolicy.NoFocus,
-            viewer.artifact_status_row.focusPolicy(),
-        )
-        self.assertEqual(
-            "Viewer result status", viewer.lbl_artifact_state.accessibleName()
-        )
-        self.assertEqual(
-            QtWidgets.QSizePolicy.Policy.Ignored,
-            viewer.lbl_artifact_detail.sizePolicy().horizontalPolicy(),
+        self.assertIn("Run cases to generate results", viewer.empty_hint.text())
+        self.assertTrue(viewer.btn_show_diagnostics.isHidden())
+        self.assertIsNone(
+            viewer.findChild(QtWidgets.QWidget, "viewerArtifactStatusRow")
         )
 
     def test_all_frequent_controls_stay_visible_without_disclosure(self) -> None:
@@ -203,22 +191,16 @@ class ViewerPanelTests(unittest.TestCase):
         self.assertGreaterEqual(viewer._root_layout.indexOf(plotter.interactor), 0)
         self.assertIs(viewer, plotter.interactor.parentWidget())
 
-        artifact_margins = viewer.artifact_status_row.layout().contentsMargins()
         control_margins = viewer._controls_grid.contentsMargins()
-        self.assertGreater(artifact_margins.left(), 0)
-        self.assertEqual(artifact_margins.left(), artifact_margins.right())
-        self.assertEqual(control_margins.left(), artifact_margins.left())
-        self.assertEqual(control_margins.right(), artifact_margins.right())
+        self.assertGreater(control_margins.left(), 0)
+        self.assertEqual(control_margins.left(), control_margins.right())
 
         viewer.resize(max(800, viewer.minimumSizeHint().width()), 600)
         viewer.show()
         self.app.processEvents()
         self.assertEqual(0, plotter.interactor.mapTo(viewer, QtCore.QPoint()).x())
         self.assertEqual(viewer.width(), plotter.interactor.width())
-        self.assertGreater(
-            viewer.lbl_artifact_state.mapTo(viewer, QtCore.QPoint()).x(),
-            plotter.interactor.mapTo(viewer, QtCore.QPoint()).x(),
-        )
+        self.assertEqual(0, plotter.interactor.mapTo(viewer, QtCore.QPoint()).y())
         viewer.close()
 
     def test_runtime_long_labels_keep_viewer_actions_available(self) -> None:
@@ -282,13 +264,13 @@ class ViewerPanelTests(unittest.TestCase):
         for state, label, detail, severity in expected:
             with self.subTest(status=state.status):
                 viewer.set_artifact_view_state(state)
-                self.assertEqual(label, viewer.lbl_artifact_state.text())
-                self.assertEqual(detail, viewer.lbl_artifact_detail.text())
+                self.assertEqual(label, viewer.empty_title.text())
+                self.assertIn(detail, viewer.empty_title.toolTip())
                 self.assertEqual(
                     severity,
-                    viewer.lbl_artifact_state.property("fluentStatus"),
+                    viewer.empty_title.property("fluentStatus"),
                 )
-                self.assertIn(str(state.path), viewer.lbl_artifact_detail.toolTip())
+                self.assertIn(str(state.path), viewer.empty_title.toolTip())
 
     def test_dynamic_scalars_render_shield_groups_and_overlay(self) -> None:
         viewer, plotter = self.make_viewer()
@@ -332,18 +314,18 @@ class ViewerPanelTests(unittest.TestCase):
         )
         self.assertTrue(plotter.parallel_enabled)
         self.assertEqual(ArtifactViewStatus.CURRENT, viewer.artifact_view_state.status)
-        self.assertEqual("Current result", viewer.lbl_artifact_state.text())
-        self.assertTrue(viewer.artifact_status_row.isHidden())
+        viewer.resize(850, 650)
+        viewer.show()
+        self.app.processEvents()
+        before = plotter.interactor.geometry()
         viewer.chk_overlay_text.setChecked(False)
-        self.assertFalse(viewer.artifact_status_row.isHidden())
+        self.app.processEvents()
+        self.assertIsNone(viewer._overlay_actor)
+        self.assertEqual(before, plotter.interactor.geometry())
+        self.assertTrue(viewer.empty_panel.isHidden())
         viewer.chk_overlay_text.setChecked(True)
-        self.assertEqual("case · case.vtp", viewer.lbl_artifact_detail.text())
-        expected_path = str(Path("/tmp/case.vtp").resolve(strict=False))
-        self.assertIn(expected_path, viewer.lbl_artifact_detail.toolTip())
-        self.assertIn(
-            expected_path,
-            viewer.lbl_artifact_detail.accessibleDescription(),
-        )
+        self.assertIsNotNone(viewer._overlay_actor)
+        viewer.close()
 
     def test_semantic_action_roles_preserve_enabled_and_click_behavior(self) -> None:
         viewer, _plotter = self.make_viewer()
@@ -529,10 +511,9 @@ class ViewerPanelTests(unittest.TestCase):
             ArtifactViewStatus.MANUAL_UNMATCHED,
             viewer.artifact_view_state.status,
         )
-        self.assertEqual("Manual VTP", viewer.lbl_artifact_state.text())
-        self.assertEqual(
-            "Not matched to current input · stale.vtp",
-            viewer.lbl_artifact_detail.text(),
+        self.assertEqual("Manual VTP", viewer.empty_title.text())
+        self.assertIn(
+            "Not matched to current input · stale.vtp", viewer.empty_title.toolTip()
         )
         self.assertEqual("Case  case", plotter.text_calls[-1])
         with patch.object(
@@ -565,10 +546,9 @@ class ViewerPanelTests(unittest.TestCase):
             ArtifactViewStatus.MANUAL_MATCHED,
             viewer.artifact_view_state.status,
         )
-        self.assertEqual("Manual VTP", viewer.lbl_artifact_state.text())
-        self.assertEqual(
-            "Matched to case · manual-current.vtp",
-            viewer.lbl_artifact_detail.text(),
+        self.assertEqual("Manual VTP", viewer.empty_title.text())
+        self.assertIn(
+            "Matched to case · manual-current.vtp", viewer.empty_title.toolTip()
         )
 
     def test_manual_unmatched_refreshes_to_matching_rows_and_case_context(
@@ -608,9 +588,8 @@ class ViewerPanelTests(unittest.TestCase):
             viewer.artifact_view_state.status,
         )
         self.assertEqual(matching_row, viewer._display_case_row)
-        self.assertEqual(
-            "Matched to case · manual-current.vtp",
-            viewer.lbl_artifact_detail.text(),
+        self.assertIn(
+            "Matched to case · manual-current.vtp", viewer.empty_title.toolTip()
         )
         self.assertIs(poly, viewer._poly)
         self.assertEqual(manual_path, viewer._loaded_vtp_path)
@@ -664,9 +643,9 @@ class ViewerPanelTests(unittest.TestCase):
             viewer.artifact_view_state.status,
         )
         self.assertIsNone(viewer._display_case_row)
-        self.assertEqual(
+        self.assertIn(
             "Not matched to current input · manual-current.vtp",
-            viewer.lbl_artifact_detail.text(),
+            viewer.empty_title.toolTip(),
         )
         self.assertIs(poly, viewer._poly)
         self.assertEqual(manual_path, viewer._loaded_vtp_path)
@@ -775,8 +754,8 @@ class ViewerPanelTests(unittest.TestCase):
         self.assertEqual(
             ArtifactViewStatus.READ_ERROR, viewer.artifact_view_state.status
         )
-        self.assertEqual("VTP read error", viewer.lbl_artifact_state.text())
-        self.assertEqual("broken.vtp · see log", viewer.lbl_artifact_detail.text())
+        self.assertEqual("VTP read error", viewer.empty_title.text())
+        self.assertIn("broken.vtp · see log", viewer.empty_title.toolTip())
         self.assertIn("Failed to read VTP", messages[-1])
         self.assertGreaterEqual(plotter.clear_count, 2)
         self.assertFalse(
@@ -786,8 +765,8 @@ class ViewerPanelTests(unittest.TestCase):
             ArtifactViewStatus.INVALID_DATA,
             viewer.artifact_view_state.status,
         )
-        self.assertEqual("Invalid VTP data", viewer.lbl_artifact_state.text())
-        self.assertEqual("empty.vtp · see log", viewer.lbl_artifact_detail.text())
+        self.assertEqual("Invalid VTP data", viewer.empty_title.text())
+        self.assertIn("empty.vtp · see log", viewer.empty_title.toolTip())
         self.assertIn("Invalid VTP cell data", messages[-1])
 
     def test_dialog_manual_open_and_range_controls(self) -> None:
@@ -829,8 +808,8 @@ class ViewerPanelTests(unittest.TestCase):
             ArtifactViewStatus.WRITE_FAILED,
             viewer.artifact_view_state.status,
         )
-        self.assertEqual("Result unavailable", viewer.lbl_artifact_state.text())
-        self.assertIn("latest VTP write failed", viewer.lbl_artifact_detail.text())
+        self.assertEqual("Result unavailable", viewer.empty_title.text())
+        self.assertIn("latest VTP write failed", viewer.empty_title.toolTip())
 
         with patch.object(
             QtWidgets.QFileDialog,

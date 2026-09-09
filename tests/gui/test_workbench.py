@@ -501,7 +501,11 @@ class WorkbenchTests(unittest.TestCase):
 
     def test_empty_recovery_and_manual_state_do_not_claim_current_result(self):
         viewer = self.viewer()
-        self.assertEqual([], viewer.empty_panel.findChildren(QtWidgets.QPushButton))
+        self.assertEqual(
+            [viewer.btn_show_diagnostics],
+            viewer.empty_panel.findChildren(QtWidgets.QPushButton),
+        )
+        self.assertTrue(viewer.btn_show_diagnostics.isHidden())
         self.assertFalse(viewer.cmb_scalar.isEnabled())
         self.assertFalse(viewer.empty_panel.isHidden())
         called = []
@@ -509,11 +513,14 @@ class WorkbenchTests(unittest.TestCase):
         viewer.set_artifact_view_state(
             ArtifactViewState(ArtifactViewStatus.READ_ERROR, Path("/tmp/bad.vtp"))
         )
+        self.assertFalse(viewer.btn_show_diagnostics.isHidden())
         viewer.btn_show_diagnostics.click()
         self.assertEqual([True], called)
         self.assertIn("could not be read", viewer.empty_hint.text())
         viewer.load_vtp("/tmp/manual.vtp", FakePoly({"cp": [0.2, 0.5]}))
-        self.assertEqual("Manual VTP", viewer.lbl_artifact_state.text())
+        self.assertEqual(
+            ArtifactViewStatus.MANUAL_UNMATCHED, viewer.artifact_view_state.status
+        )
         self.assertTrue(viewer.cmb_scalar.isEnabled())
         self.assertTrue(viewer.empty_panel.isHidden())
         viewer.close()

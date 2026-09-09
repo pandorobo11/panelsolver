@@ -99,7 +99,6 @@ class ViewerPanel(QtWidgets.QWidget):
         # Match the Cases pane's native bottom inset below its last control.
         self._root_layout.setContentsMargins(0, 0, 0, -1)
         self._artifact_view_state = ArtifactViewState(ArtifactViewStatus.EMPTY)
-        self._init_artifact_status()
 
         self.plotter = plotter_factory(self)
         self._enable_parallel_projection()
@@ -118,6 +117,11 @@ class ViewerPanel(QtWidgets.QWidget):
         self.empty_hint.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         empty_layout.addWidget(self.empty_title)
         empty_layout.addWidget(self.empty_hint)
+        self.btn_show_diagnostics = QtWidgets.QPushButton("Diagnostics")
+        self.btn_show_diagnostics.clicked.connect(self.diagnostics_requested.emit)
+        empty_layout.addWidget(
+            self.btn_show_diagnostics, alignment=QtCore.Qt.AlignmentFlag.AlignHCenter
+        )
         empty_layout.addStretch(1)
         self._root_layout.addWidget(interactor, 6)
         interactor.installEventFilter(self)
@@ -238,51 +242,6 @@ class ViewerPanel(QtWidgets.QWidget):
             set_semantic_property(button, "fluentAppearance", "secondary")
         self.btn_save_image.setEnabled(False)
         self.btn_save_selected_images.setEnabled(False)
-
-    def _init_artifact_status(self) -> None:
-        self.artifact_status_row = QtWidgets.QWidget()
-        self.artifact_status_row.setObjectName("viewerArtifactStatusRow")
-        self.artifact_status_row.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
-        self.artifact_status_row.setAccessibleName("Viewer artifact provenance")
-        self.artifact_status_row.setSizePolicy(
-            QtWidgets.QSizePolicy.Policy.Preferred,
-            QtWidgets.QSizePolicy.Policy.Maximum,
-        )
-        row = QtWidgets.QHBoxLayout(self.artifact_status_row)
-        row.setContentsMargins(
-            _VIEWER_CHROME_HORIZONTAL_INSET,
-            0,
-            _VIEWER_CHROME_HORIZONTAL_INSET,
-            0,
-        )
-        row.setSpacing(8)
-
-        self.lbl_artifact_state = QtWidgets.QLabel()
-        self.lbl_artifact_state.setObjectName("viewerArtifactStateLabel")
-        self.lbl_artifact_state.setTextFormat(QtCore.Qt.TextFormat.PlainText)
-        self.lbl_artifact_state.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
-        self.lbl_artifact_state.setAccessibleName("Viewer result status")
-        state_font = self.lbl_artifact_state.font()
-        state_font.setBold(True)
-        self.lbl_artifact_state.setFont(state_font)
-
-        self.lbl_artifact_detail = QtWidgets.QLabel()
-        self.lbl_artifact_detail.setObjectName("viewerArtifactDetailLabel")
-        self.lbl_artifact_detail.setTextFormat(QtCore.Qt.TextFormat.PlainText)
-        self.lbl_artifact_detail.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
-        self.lbl_artifact_detail.setAccessibleName("Viewer result details")
-        self.lbl_artifact_detail.setMinimumWidth(0)
-        self.lbl_artifact_detail.setSizePolicy(
-            QtWidgets.QSizePolicy.Policy.Ignored,
-            QtWidgets.QSizePolicy.Policy.Preferred,
-        )
-
-        row.addWidget(self.lbl_artifact_state)
-        row.addWidget(self.lbl_artifact_detail, 1)
-        self.btn_show_diagnostics = QtWidgets.QPushButton("Diagnostics")
-        self.btn_show_diagnostics.clicked.connect(self.diagnostics_requested.emit)
-        row.addWidget(self.btn_show_diagnostics)
-        self._root_layout.addWidget(self.artifact_status_row)
 
     def _build_controls_layout(self) -> None:
         self.controls_chrome = QtWidgets.QWidget()
@@ -597,28 +556,22 @@ class ViewerPanel(QtWidgets.QWidget):
 
     @QtCore.Slot(object)
     def set_artifact_view_state(self, state: ArtifactViewState) -> None:
-        """Project trusted artifact facts onto the compact Viewer status row."""
+        """Explain unavailable results in the center of the empty Viewer."""
         if not isinstance(state, ArtifactViewState):
             raise TypeError("state must be an ArtifactViewState")
         self._artifact_view_state = state
-        self._update_status_visibility()
         label, detail, semantic_status = self._artifact_state_presentation(state)
-        self.lbl_artifact_state.setText(label)
-        self.lbl_artifact_detail.setText(detail)
         set_semantic_property(
-            self.lbl_artifact_state,
+            self.empty_title,
             "fluentStatus",
             semantic_status,
         )
         description = f"{label}. {detail}"
         if state.path is not None:
             description = f"{description}\n{state.path}"
-        self.artifact_status_row.setAccessibleDescription(description)
-        self.lbl_artifact_state.setAccessibleDescription(description)
-        self.lbl_artifact_detail.setAccessibleDescription(description)
+        self.empty_panel.setAccessibleDescription(description)
         tooltip = description if state.path is not None else ""
-        self.lbl_artifact_state.setToolTip(tooltip)
-        self.lbl_artifact_detail.setToolTip(tooltip)
+        self.empty_title.setToolTip(tooltip)
         needs_help = state.status in {
             ArtifactViewStatus.READ_ERROR,
             ArtifactViewStatus.INVALID_DATA,
@@ -1061,7 +1014,6 @@ class ViewerPanel(QtWidgets.QWidget):
             edit.setAccessibleDescription(description)
 
     def _update_overlay(self) -> None:
-        self._update_status_visibility()
         if self._overlay_actor is not None:
             try:
                 self.plotter.remove_actor(self._overlay_actor)
@@ -1106,16 +1058,6 @@ class ViewerPanel(QtWidgets.QWidget):
     def _viewer_font_size(self) -> int:
         # Use one Qt-derived size for VTK text instead of viewport-driven sizing.
         return max(10, round(self.font().pointSizeF()))
-
-    def _update_status_visibility(self) -> None:
-        status = self._artifact_view_state.status
-        self.artifact_status_row.setVisible(
-            status is not ArtifactViewStatus.EMPTY
-            and not (
-                status is ArtifactViewStatus.CURRENT
-                and self.chk_overlay_text.isChecked()
-            )
-        )
 
     def _capture_camera_state(self) -> dict[str, object] | None:
         try:
