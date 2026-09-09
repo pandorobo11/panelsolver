@@ -100,6 +100,13 @@ release-tag state, release archive/manifest orchestration, artifact transfer,
 and GitHub Release publication. The local runner does not
 attempt to reproduce those CI/release-only operations.
 
+CI runs the unfiltered pytest suite and the scheduler lifecycle probe on
+independent Linux, Windows, and macOS runners. The probe retains ten iterations
+and its 90-second deadline; the required `artifact` gate rejects a failed,
+cancelled, or skipped scheduler job. This removes the probe from the source-test
+job's elapsed time without dropping any checks. The measured alternatives and
+their tradeoffs are recorded in [CI performance measurements](ci-performance.md).
+
 For targeted troubleshooting, use the individual checks directly:
 
 ```bash
