@@ -1,4 +1,4 @@
 case_id,stl_path,stl_scale_m_per_unit,S,Ti_K,Tw_K,alpha_deg,beta_or_bank_deg,attitude_input,ref_x_m,ref_y_m,ref_z_m,Aref_m2,Lref_Cl_m,Lref_Cm_m,Lref_Cn_m,shielding_on,ray_backend,out_dir,save_vtp_on
-fmf_beta_tan,../geometry/cube.stl,1,5,300,300,0,10,beta_tan,0,0,0,1,1,1,1,0,rtree,outputs/attitude_modes,1
 fmf_beta_sin,../geometry/cube.stl,1,5,300,300,0,10,beta_sin,0,0,0,1,1,1,1,0,rtree,outputs/attitude_modes,1
+fmf_beta_tan,../geometry/cube.stl,1,5,300,300,0,10,beta_tan,0,0,0,1,1,1,1,0,rtree,outputs/attitude_modes,1
 fmf_bank,../geometry/cube.stl,1,5,300,300,10,90,bank,0,0,0,1,1,1,1,0,rtree,outputs/attitude_modes,1

@@ -20,7 +20,7 @@ omitted-column and empty-cell behavior.
 | `Tw_K` | yes | — | K, > 0 | Wall temperature, used as the diffusely reflected molecular temperature |
 | `alpha_deg` | yes | — | degrees | First attitude value; interpretation depends on `attitude_input` |
 | `beta_or_bank_deg` | yes | — | degrees | Second attitude value; interpretation depends on `attitude_input` |
-| `attitude_input` | no | `beta_sin` | `beta_tan`, `beta_sin`, `bank` | Attitude representation used to interpret the two values |
+| `attitude_input` | no | `beta_sin` | `beta_sin`, `beta_tan`, `bank` | Attitude representation used to interpret the two values |
 | `ref_x_m` | yes | — | m | Moment reference X in STL frame |
 | `ref_y_m` | yes | — | m | Moment reference Y in STL frame |
 | `ref_z_m` | yes | — | m | Moment reference Z in STL frame |

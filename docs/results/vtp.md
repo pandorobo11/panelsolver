@@ -91,7 +91,7 @@ Every common field-data array has shape `(1,)`.
 | Field | Stored dtype / format | Unit / values | Meaning |
 |---|---|---|---|
 | `alpha_stability_deg` | `float64` | degrees | Common stability angle in (-180°, 180°] used for coefficient conversion, including the documented zero fallback. It matches the Summary CSV field of the same name. |
-| `attitude_input_used` | string | `beta_tan`, `beta_sin`, or `bank` | Normalized attitude representation used to interpret the two input angles. The corresponding Summary CSV field is `out_attitude_input`. |
+| `attitude_input_used` | string | `beta_sin`, `beta_tan`, or `bank` | Normalized attitude representation used to interpret the two input angles. The corresponding Summary CSV field is `out_attitude_input`. |
 | `velocity_hat_x_stl` | `float64` | dimensionless | X component of the evaluated unit STL flow direction; matches Summary CSV. |
 | `velocity_hat_y_stl` | `float64` | dimensionless | Y component of the evaluated unit STL flow direction; matches Summary CSV. |
 | `velocity_hat_z_stl` | `float64` | dimensionless | Z component of the evaluated unit STL flow direction; matches Summary CSV. |
