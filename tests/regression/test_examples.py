@@ -213,6 +213,10 @@ class ExampleRegressionTests(unittest.TestCase):
         ):
             with self.subTest(domain=domain):
                 rows = self._total_rows(domain, "attitude_modes")
+                self.assertEqual(
+                    [row["out_attitude_input"] for row in rows],
+                    ["beta_sin", "beta_tan", "bank"],
+                )
                 reference = [rows[0][name] for name in COEFFICIENTS]
                 for row in rows[1:]:
                     np.testing.assert_allclose(

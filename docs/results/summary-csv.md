@@ -92,7 +92,7 @@ resolved mode, speed ratio, and incident temperature.
 
 | Column | Domain | Type / format | Unit / values | Rows | Blank when | Meaning |
 |---|---|---|---|---|---|---|
-| `out_attitude_input` | common | text | `beta_tan`, `beta_sin`, or `bank` | all | never | Normalized attitude input mode used to interpret the two input angles. The corresponding VTP field is `attitude_input_used`. |
+| `out_attitude_input` | common | text | `beta_sin`, `beta_tan`, or `bank` | all | never | Normalized attitude input mode used to interpret the two input angles. The corresponding VTP field is `attitude_input_used`. |
 | `alpha_stability_deg` | common | floating-point number | degrees | all | never | Common stability angle in (-180°, 180°], including the documented zero fallback. |
 | `velocity_hat_x_stl` | common | floating-point number | dimensionless | all | never | X component of the evaluated unit STL flow direction. |
 | `velocity_hat_y_stl` | common | floating-point number | dimensionless | all | never | Y component of the evaluated unit STL flow direction. |
