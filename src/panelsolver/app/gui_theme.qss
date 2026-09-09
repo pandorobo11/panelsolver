@@ -263,6 +263,19 @@ QTableView[workbenchCases="true"]::item {
 QTableView[workbenchCases="true"]::item:selected {
     border-bottom-color: transparent;
 }
+/* Item borders take over native painting; provide the selection fill too. */
+QTableView[workbenchCases="true"]::item:selected:active {
+    background-color: @{selection_background};
+    color: @{selection_text};
+}
+QTableView[workbenchCases="true"]::item:selected:!active {
+    background-color: @{inactive_selection_background};
+    color: @{inactive_selection_text};
+}
+QTableView[workbenchCases="true"]::item:selected:disabled {
+    background-color: @{disabled_background};
+    color: @{disabled_text};
+}
 QTableView[workbenchCases="true"] QHeaderView::section {
     background-color: @{secondary_surface};
     color: @{text_primary};

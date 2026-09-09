@@ -8,6 +8,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6 import QtCore, QtGui, QtTest, QtWidgets
 
+from panelsolver.app.gui_components import FrozenCaseTable
 from panelsolver.app.gui_theme import (
     SEMANTIC_PROPERTY_NAMES,
     SEMANTIC_TOKEN_NAMES,
@@ -176,7 +177,7 @@ class GuiThemeTests(unittest.TestCase):
                 "QWidget { color: @{missing_role}; }",
             )
 
-    def test_qss_leaves_complex_controls_and_item_selection_to_qt(self) -> None:
+    def test_qss_leaves_complex_controls_and_generic_item_selection_to_qt(self) -> None:
         for mode in (ThemeMode.LIGHT, ThemeMode.DARK):
             qss = render_application_qss(resolve_theme(mode))
             for control in (
@@ -191,6 +192,68 @@ class GuiThemeTests(unittest.TestCase):
             item_view_rule = qss.split("QAbstractItemView {", 1)[1].split("}", 1)[0]
             self.assertNotIn("selection-background-color", item_view_rule)
             self.assertNotIn("selection-color", item_view_rule)
+
+    def test_case_cell_paints_selection_without_native_row_background(self) -> None:
+        # Windows 11 draws the selection in CE_ItemViewItem, whereas other
+        # styles may already fill it in PE_PanelItemViewRow. Exercise the cell
+        # alone so that a native row fill cannot conceal missing QSS painting.
+        flag = QtWidgets.QStyle.StateFlag
+        for mode in (ThemeMode.LIGHT, ThemeMode.DARK):
+            theme = resolve_theme(mode)
+            self.app.setPalette(build_application_palette(theme))
+            self.app.setStyleSheet(render_application_qss(theme))
+            table = FrozenCaseTable()
+            try:
+                for view in (table, table.frozen):
+                    view.ensurePolished()
+                    for active in (True, False):
+                        for enabled in (True, False):
+                            with self.subTest(
+                                mode=mode,
+                                pinned=view is table.frozen,
+                                active=active,
+                                enabled=enabled,
+                            ):
+                                view.setEnabled(enabled)
+                                option = QtWidgets.QStyleOptionViewItem()
+                                option.initFrom(view)
+                                option.rect = QtCore.QRect(0, 0, 160, 32)
+                                option.state = flag.State_Selected
+                                if active:
+                                    option.state |= flag.State_Active
+                                if enabled:
+                                    option.state |= flag.State_Enabled
+                                option.showDecorationSelected = True
+                                option.viewItemPosition = QtWidgets.QStyleOptionViewItem.ViewItemPosition.OnlyOne
+                                image = QtGui.QImage(
+                                    160, 32, QtGui.QImage.Format.Format_ARGB32
+                                )
+                                image.fill(QtCore.Qt.GlobalColor.transparent)
+                                painter = QtGui.QPainter(image)
+                                try:
+                                    view.style().drawControl(
+                                        QtWidgets.QStyle.ControlElement.CE_ItemViewItem,
+                                        option,
+                                        painter,
+                                        view,
+                                    )
+                                finally:
+                                    painter.end()
+                                token = (
+                                    "disabled_background"
+                                    if not enabled
+                                    else "selection_background"
+                                    if active
+                                    else "inactive_selection_background"
+                                )
+                                self.assertEqual(
+                                    QtGui.QColor(theme.value(token)),
+                                    image.pixelColor(80, 16),
+                                )
+                    view.setEnabled(True)
+            finally:
+                table.close()
+                table.deleteLater()
 
     def test_progress_qss_is_bounded_and_resolves_semantic_statuses(self) -> None:
         for mode in (ThemeMode.LIGHT, ThemeMode.DARK):
