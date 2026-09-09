@@ -1,0 +1,1749 @@
+{
+  "controlled_base": "ac720271e9f867ce8706d54eeff95770b944c741",
+  "wall_definition": "first non-skipped job start to last non-skipped job completion; initial queue excluded",
+  "runner_definition": "sum of job elapsed seconds; not CPU seconds or billed cost",
+  "ci": [
+    {
+      "cohort": "screening",
+      "variant": "baseline",
+      "attempt": 1,
+      "head": "ec40825",
+      "url": "https://github.com/pandorobo11/panelsolver/actions/runs/34344017648/attempts/1",
+      "conclusion": "success",
+      "seconds": 269.0,
+      "runner_seconds": 1033.0,
+      "jobs": [
+        {
+          "name": "test (ubuntu-latest)",
+          "conclusion": "success",
+          "seconds": 184.0,
+          "steps": {
+            "Tests": {
+              "seconds": 111.0,
+              "conclusion": "success"
+            },
+            "Scheduler lifecycle stress": {
+              "seconds": 42.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "quality",
+          "conclusion": "success",
+          "seconds": 35.0,
+          "steps": {}
+        },
+        {
+          "name": "test (windows-latest)",
+          "conclusion": "success",
+          "seconds": 269.0,
+          "steps": {
+            "Tests": {
+              "seconds": 173.0,
+              "conclusion": "success"
+            },
+            "Scheduler lifecycle stress": {
+              "seconds": 54.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "test (macos-15)",
+          "conclusion": "success",
+          "seconds": 199.0,
+          "steps": {
+            "Tests": {
+              "seconds": 119.0,
+              "conclusion": "success"
+            },
+            "Scheduler lifecycle stress": {
+              "seconds": 42.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "distribution-build",
+          "conclusion": "success",
+          "seconds": 54.0,
+          "steps": {}
+        },
+        {
+          "name": "installed-wheel (macos-15)",
+          "conclusion": "success",
+          "seconds": 111.0,
+          "steps": {
+            "Smoke installed commands outside repository": {
+              "seconds": 75.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "installed-wheel (windows-latest)",
+          "conclusion": "success",
+          "seconds": 95.0,
+          "steps": {
+            "Smoke installed commands outside repository": {
+              "seconds": 67.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "clean-install",
+          "conclusion": "success",
+          "seconds": 82.0,
+          "steps": {
+            "Install exact wheel with dependencies into an empty environment": {
+              "seconds": 51.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "artifact",
+          "conclusion": "success",
+          "seconds": 4.0,
+          "steps": {}
+        }
+      ]
+    },
+    {
+      "cohort": "screening",
+      "variant": "baseline",
+      "attempt": 2,
+      "head": "ec40825",
+      "url": "https://github.com/pandorobo11/panelsolver/actions/runs/34344017648/attempts/2",
+      "conclusion": "failure",
+      "seconds": 264.0,
+      "runner_seconds": 906.0,
+      "jobs": [
+        {
+          "name": "test (ubuntu-latest)",
+          "conclusion": "success",
+          "seconds": 179.0,
+          "steps": {
+            "Tests": {
+              "seconds": 105.0,
+              "conclusion": "success"
+            },
+            "Scheduler lifecycle stress": {
+              "seconds": 40.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "distribution-build",
+          "conclusion": "success",
+          "seconds": 50.0,
+          "steps": {}
+        },
+        {
+          "name": "quality",
+          "conclusion": "success",
+          "seconds": 35.0,
+          "steps": {}
+        },
+        {
+          "name": "test (windows-latest)",
+          "conclusion": "success",
+          "seconds": 263.0,
+          "steps": {
+            "Tests": {
+              "seconds": 176.0,
+              "conclusion": "success"
+            },
+            "Scheduler lifecycle stress": {
+              "seconds": 50.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "test (macos-15)",
+          "conclusion": "failure",
+          "seconds": 73.0,
+          "steps": {
+            "Tests": {
+              "seconds": 39.0,
+              "conclusion": "failure"
+            },
+            "Scheduler lifecycle stress": {
+              "seconds": 0.0,
+              "conclusion": "skipped"
+            }
+          }
+        },
+        {
+          "name": "installed-wheel (windows-latest)",
+          "conclusion": "success",
+          "seconds": 113.0,
+          "steps": {
+            "Smoke installed commands outside repository": {
+              "seconds": 75.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "installed-wheel (macos-15)",
+          "conclusion": "success",
+          "seconds": 111.0,
+          "steps": {
+            "Smoke installed commands outside repository": {
+              "seconds": 78.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "clean-install",
+          "conclusion": "success",
+          "seconds": 80.0,
+          "steps": {
+            "Install exact wheel with dependencies into an empty environment": {
+              "seconds": 55.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "artifact",
+          "conclusion": "success",
+          "seconds": 2.0,
+          "steps": {}
+        }
+      ]
+    },
+    {
+      "cohort": "screening",
+      "variant": "scheduler",
+      "attempt": 1,
+      "head": "5008fb2",
+      "url": "https://github.com/pandorobo11/panelsolver/actions/runs/34348972289/attempts/1",
+      "conclusion": "failure",
+      "seconds": 193.0,
+      "runner_seconds": 1034.0,
+      "jobs": [
+        {
+          "name": "distribution-build",
+          "conclusion": "success",
+          "seconds": 53.0,
+          "steps": {}
+        },
+        {
+          "name": "test (ubuntu-latest)",
+          "conclusion": "success",
+          "seconds": 133.0,
+          "steps": {
+            "Tests": {
+              "seconds": 104.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "quality",
+          "conclusion": "success",
+          "seconds": 37.0,
+          "steps": {}
+        },
+        {
+          "name": "test (windows-latest)",
+          "conclusion": "success",
+          "seconds": 193.0,
+          "steps": {
+            "Tests": {
+              "seconds": 159.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "test (macos-15)",
+          "conclusion": "failure",
+          "seconds": 72.0,
+          "steps": {
+            "Tests": {
+              "seconds": 32.0,
+              "conclusion": "failure"
+            }
+          }
+        },
+        {
+          "name": "scheduler (macos-15)",
+          "conclusion": "success",
+          "seconds": 90.0,
+          "steps": {
+            "Scheduler lifecycle stress": {
+              "seconds": 57.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "scheduler (ubuntu-latest)",
+          "conclusion": "success",
+          "seconds": 65.0,
+          "steps": {
+            "Scheduler lifecycle stress": {
+              "seconds": 46.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "scheduler (windows-latest)",
+          "conclusion": "success",
+          "seconds": 86.0,
+          "steps": {
+            "Scheduler lifecycle stress": {
+              "seconds": 52.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "installed-wheel (macos-15)",
+          "conclusion": "success",
+          "seconds": 110.0,
+          "steps": {
+            "Smoke installed commands outside repository": {
+              "seconds": 84.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "installed-wheel (windows-latest)",
+          "conclusion": "success",
+          "seconds": 112.0,
+          "steps": {
+            "Smoke installed commands outside repository": {
+              "seconds": 75.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "clean-install",
+          "conclusion": "success",
+          "seconds": 81.0,
+          "steps": {
+            "Install exact wheel with dependencies into an empty environment": {
+              "seconds": 53.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "artifact",
+          "conclusion": "success",
+          "seconds": 2.0,
+          "steps": {}
+        }
+      ]
+    },
+    {
+      "cohort": "screening",
+      "variant": "scheduler",
+      "attempt": 2,
+      "head": "5008fb2",
+      "url": "https://github.com/pandorobo11/panelsolver/actions/runs/34348972289/attempts/2",
+      "conclusion": "success",
+      "seconds": 192.0,
+      "runner_seconds": 1141.0,
+      "jobs": [
+        {
+          "name": "test (macos-15)",
+          "conclusion": "success",
+          "seconds": 173.0,
+          "steps": {
+            "Tests": {
+              "seconds": 138.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "test (ubuntu-latest)",
+          "conclusion": "success",
+          "seconds": 135.0,
+          "steps": {
+            "Tests": {
+              "seconds": 105.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "test (windows-latest)",
+          "conclusion": "success",
+          "seconds": 182.0,
+          "steps": {
+            "Tests": {
+              "seconds": 146.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "quality",
+          "conclusion": "success",
+          "seconds": 31.0,
+          "steps": {}
+        },
+        {
+          "name": "scheduler (windows-latest)",
+          "conclusion": "success",
+          "seconds": 89.0,
+          "steps": {
+            "Scheduler lifecycle stress": {
+              "seconds": 49.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "scheduler (ubuntu-latest)",
+          "conclusion": "success",
+          "seconds": 51.0,
+          "steps": {
+            "Scheduler lifecycle stress": {
+              "seconds": 39.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "distribution-build",
+          "conclusion": "success",
+          "seconds": 50.0,
+          "steps": {}
+        },
+        {
+          "name": "scheduler (macos-15)",
+          "conclusion": "success",
+          "seconds": 100.0,
+          "steps": {
+            "Scheduler lifecycle stress": {
+              "seconds": 63.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "clean-install",
+          "conclusion": "success",
+          "seconds": 79.0,
+          "steps": {
+            "Install exact wheel with dependencies into an empty environment": {
+              "seconds": 48.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "installed-wheel (macos-15)",
+          "conclusion": "success",
+          "seconds": 115.0,
+          "steps": {
+            "Smoke installed commands outside repository": {
+              "seconds": 86.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "installed-wheel (windows-latest)",
+          "conclusion": "success",
+          "seconds": 134.0,
+          "steps": {
+            "Smoke installed commands outside repository": {
+              "seconds": 92.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "artifact",
+          "conclusion": "success",
+          "seconds": 2.0,
+          "steps": {}
+        }
+      ]
+    },
+    {
+      "cohort": "screening",
+      "variant": "all-xdist",
+      "attempt": 1,
+      "head": "1ee27f0",
+      "url": "https://github.com/pandorobo11/panelsolver/actions/runs/34349663801/attempts/1",
+      "conclusion": "failure",
+      "seconds": 258.0,
+      "runner_seconds": 1075.0,
+      "jobs": [
+        {
+          "name": "distribution-build",
+          "conclusion": "success",
+          "seconds": 64.0,
+          "steps": {}
+        },
+        {
+          "name": "test (macos-15)",
+          "conclusion": "success",
+          "seconds": 154.0,
+          "steps": {
+            "Tests": {
+              "seconds": 104.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "test (ubuntu-latest)",
+          "conclusion": "failure",
+          "seconds": 84.0,
+          "steps": {
+            "Tests": {
+              "seconds": 61.0,
+              "conclusion": "failure"
+            }
+          }
+        },
+        {
+          "name": "scheduler (ubuntu-latest)",
+          "conclusion": "success",
+          "seconds": 64.0,
+          "steps": {
+            "Scheduler lifecycle stress": {
+              "seconds": 44.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "quality",
+          "conclusion": "success",
+          "seconds": 133.0,
+          "steps": {}
+        },
+        {
+          "name": "scheduler (macos-15)",
+          "conclusion": "success",
+          "seconds": 73.0,
+          "steps": {
+            "Scheduler lifecycle stress": {
+              "seconds": 42.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "scheduler (windows-latest)",
+          "conclusion": "success",
+          "seconds": 83.0,
+          "steps": {
+            "Scheduler lifecycle stress": {
+              "seconds": 53.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "test (windows-latest)",
+          "conclusion": "success",
+          "seconds": 119.0,
+          "steps": {
+            "Tests": {
+              "seconds": 86.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "installed-wheel (macos-15)",
+          "conclusion": "success",
+          "seconds": 112.0,
+          "steps": {
+            "Smoke installed commands outside repository": {
+              "seconds": 78.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "installed-wheel (windows-latest)",
+          "conclusion": "success",
+          "seconds": 109.0,
+          "steps": {
+            "Smoke installed commands outside repository": {
+              "seconds": 70.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "clean-install",
+          "conclusion": "success",
+          "seconds": 78.0,
+          "steps": {
+            "Install exact wheel with dependencies into an empty environment": {
+              "seconds": 42.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "artifact",
+          "conclusion": "success",
+          "seconds": 2.0,
+          "steps": {}
+        }
+      ]
+    },
+    {
+      "cohort": "controlled",
+      "variant": "scheduler+non-GUI-xdist",
+      "attempt": 1,
+      "head": "745eda6",
+      "url": "https://github.com/pandorobo11/panelsolver/actions/runs/34350294905/attempts/1",
+      "conclusion": "success",
+      "seconds": 186.0,
+      "runner_seconds": 1047.0,
+      "jobs": [
+        {
+          "name": "quality",
+          "conclusion": "success",
+          "seconds": 42.0,
+          "steps": {}
+        },
+        {
+          "name": "scheduler (windows-latest)",
+          "conclusion": "success",
+          "seconds": 92.0,
+          "steps": {
+            "Scheduler lifecycle stress": {
+              "seconds": 53.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "distribution-build",
+          "conclusion": "success",
+          "seconds": 57.0,
+          "steps": {}
+        },
+        {
+          "name": "test (macos-15)",
+          "conclusion": "success",
+          "seconds": 180.0,
+          "steps": {
+            "GUI tests": {
+              "seconds": 39.0,
+              "conclusion": "success"
+            },
+            "Tests": {
+              "seconds": 104.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "test (ubuntu-latest)",
+          "conclusion": "success",
+          "seconds": 113.0,
+          "steps": {
+            "GUI tests": {
+              "seconds": 19.0,
+              "conclusion": "success"
+            },
+            "Tests": {
+              "seconds": 68.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "test (windows-latest)",
+          "conclusion": "success",
+          "seconds": 121.0,
+          "steps": {
+            "GUI tests": {
+              "seconds": 24.0,
+              "conclusion": "success"
+            },
+            "Tests": {
+              "seconds": 63.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "scheduler (ubuntu-latest)",
+          "conclusion": "success",
+          "seconds": 55.0,
+          "steps": {
+            "Scheduler lifecycle stress": {
+              "seconds": 38.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "scheduler (macos-15)",
+          "conclusion": "success",
+          "seconds": 98.0,
+          "steps": {
+            "Scheduler lifecycle stress": {
+              "seconds": 61.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "clean-install",
+          "conclusion": "success",
+          "seconds": 69.0,
+          "steps": {
+            "Install exact wheel with dependencies into an empty environment": {
+              "seconds": 41.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "installed-wheel (windows-latest)",
+          "conclusion": "success",
+          "seconds": 108.0,
+          "steps": {
+            "Smoke installed commands outside repository": {
+              "seconds": 75.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "installed-wheel (macos-15)",
+          "conclusion": "success",
+          "seconds": 109.0,
+          "steps": {
+            "Smoke installed commands outside repository": {
+              "seconds": 76.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "artifact",
+          "conclusion": "success",
+          "seconds": 3.0,
+          "steps": {}
+        }
+      ]
+    },
+    {
+      "cohort": "controlled",
+      "variant": "scheduler+non-GUI-xdist",
+      "attempt": 2,
+      "head": "745eda6",
+      "url": "https://github.com/pandorobo11/panelsolver/actions/runs/34350294905/attempts/2",
+      "conclusion": "success",
+      "seconds": 191.0,
+      "runner_seconds": 1050.0,
+      "jobs": [
+        {
+          "name": "distribution-build",
+          "conclusion": "success",
+          "seconds": 51.0,
+          "steps": {}
+        },
+        {
+          "name": "scheduler (ubuntu-latest)",
+          "conclusion": "success",
+          "seconds": 65.0,
+          "steps": {
+            "Scheduler lifecycle stress": {
+              "seconds": 42.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "scheduler (macos-15)",
+          "conclusion": "success",
+          "seconds": 88.0,
+          "steps": {
+            "Scheduler lifecycle stress": {
+              "seconds": 57.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "quality",
+          "conclusion": "success",
+          "seconds": 33.0,
+          "steps": {}
+        },
+        {
+          "name": "scheduler (windows-latest)",
+          "conclusion": "success",
+          "seconds": 86.0,
+          "steps": {
+            "Scheduler lifecycle stress": {
+              "seconds": 51.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "test (macos-15)",
+          "conclusion": "success",
+          "seconds": 152.0,
+          "steps": {
+            "GUI tests": {
+              "seconds": 40.0,
+              "conclusion": "success"
+            },
+            "Tests": {
+              "seconds": 81.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "test (windows-latest)",
+          "conclusion": "success",
+          "seconds": 142.0,
+          "steps": {
+            "GUI tests": {
+              "seconds": 29.0,
+              "conclusion": "success"
+            },
+            "Tests": {
+              "seconds": 79.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "test (ubuntu-latest)",
+          "conclusion": "success",
+          "seconds": 124.0,
+          "steps": {
+            "GUI tests": {
+              "seconds": 21.0,
+              "conclusion": "success"
+            },
+            "Tests": {
+              "seconds": 71.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "clean-install",
+          "conclusion": "success",
+          "seconds": 74.0,
+          "steps": {
+            "Install exact wheel with dependencies into an empty environment": {
+              "seconds": 41.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "installed-wheel (macos-15)",
+          "conclusion": "success",
+          "seconds": 106.0,
+          "steps": {
+            "Smoke installed commands outside repository": {
+              "seconds": 76.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "installed-wheel (windows-latest)",
+          "conclusion": "success",
+          "seconds": 125.0,
+          "steps": {
+            "Smoke installed commands outside repository": {
+              "seconds": 80.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "artifact",
+          "conclusion": "success",
+          "seconds": 4.0,
+          "steps": {}
+        }
+      ]
+    },
+    {
+      "cohort": "controlled",
+      "variant": "scheduler+non-GUI-xdist+smoke",
+      "attempt": 1,
+      "head": "9dfec8b",
+      "url": "https://github.com/pandorobo11/panelsolver/actions/runs/34351289607/attempts/1",
+      "conclusion": "success",
+      "seconds": 190.0,
+      "runner_seconds": 1053.0,
+      "jobs": [
+        {
+          "name": "distribution-build",
+          "conclusion": "success",
+          "seconds": 53.0,
+          "steps": {}
+        },
+        {
+          "name": "scheduler (ubuntu-latest)",
+          "conclusion": "success",
+          "seconds": 63.0,
+          "steps": {
+            "Scheduler lifecycle stress": {
+              "seconds": 42.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "test (ubuntu-latest)",
+          "conclusion": "success",
+          "seconds": 112.0,
+          "steps": {
+            "GUI tests": {
+              "seconds": 18.0,
+              "conclusion": "success"
+            },
+            "Tests": {
+              "seconds": 66.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "quality",
+          "conclusion": "success",
+          "seconds": 35.0,
+          "steps": {}
+        },
+        {
+          "name": "scheduler (windows-latest)",
+          "conclusion": "success",
+          "seconds": 91.0,
+          "steps": {
+            "Scheduler lifecycle stress": {
+              "seconds": 56.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "scheduler (macos-15)",
+          "conclusion": "success",
+          "seconds": 95.0,
+          "steps": {
+            "Scheduler lifecycle stress": {
+              "seconds": 60.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "test (windows-latest)",
+          "conclusion": "success",
+          "seconds": 137.0,
+          "steps": {
+            "GUI tests": {
+              "seconds": 28.0,
+              "conclusion": "success"
+            },
+            "Tests": {
+              "seconds": 78.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "test (macos-15)",
+          "conclusion": "success",
+          "seconds": 171.0,
+          "steps": {
+            "GUI tests": {
+              "seconds": 43.0,
+              "conclusion": "success"
+            },
+            "Tests": {
+              "seconds": 91.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "installed-wheel (macos-15)",
+          "conclusion": "success",
+          "seconds": 122.0,
+          "steps": {
+            "Smoke installed commands outside repository": {
+              "seconds": 86.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "installed-wheel (windows-latest)",
+          "conclusion": "success",
+          "seconds": 97.0,
+          "steps": {
+            "Smoke installed commands outside repository": {
+              "seconds": 62.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "clean-install",
+          "conclusion": "success",
+          "seconds": 75.0,
+          "steps": {
+            "Install exact wheel with dependencies into an empty environment": {
+              "seconds": 42.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "artifact",
+          "conclusion": "success",
+          "seconds": 2.0,
+          "steps": {}
+        }
+      ]
+    },
+    {
+      "cohort": "controlled",
+      "variant": "scheduler+non-GUI-xdist+smoke",
+      "attempt": 2,
+      "head": "9dfec8b",
+      "url": "https://github.com/pandorobo11/panelsolver/actions/runs/34351289607/attempts/2",
+      "conclusion": "success",
+      "seconds": 193.0,
+      "runner_seconds": 1057.0,
+      "jobs": [
+        {
+          "name": "quality",
+          "conclusion": "success",
+          "seconds": 34.0,
+          "steps": {}
+        },
+        {
+          "name": "test (macos-15)",
+          "conclusion": "success",
+          "seconds": 155.0,
+          "steps": {
+            "GUI tests": {
+              "seconds": 39.0,
+              "conclusion": "success"
+            },
+            "Tests": {
+              "seconds": 81.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "distribution-build",
+          "conclusion": "success",
+          "seconds": 67.0,
+          "steps": {}
+        },
+        {
+          "name": "scheduler (windows-latest)",
+          "conclusion": "success",
+          "seconds": 86.0,
+          "steps": {
+            "Scheduler lifecycle stress": {
+              "seconds": 53.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "scheduler (macos-15)",
+          "conclusion": "success",
+          "seconds": 81.0,
+          "steps": {
+            "Scheduler lifecycle stress": {
+              "seconds": 55.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "test (windows-latest)",
+          "conclusion": "success",
+          "seconds": 171.0,
+          "steps": {
+            "GUI tests": {
+              "seconds": 32.0,
+              "conclusion": "success"
+            },
+            "Tests": {
+              "seconds": 102.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "scheduler (ubuntu-latest)",
+          "conclusion": "success",
+          "seconds": 58.0,
+          "steps": {
+            "Scheduler lifecycle stress": {
+              "seconds": 46.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "test (ubuntu-latest)",
+          "conclusion": "success",
+          "seconds": 127.0,
+          "steps": {
+            "GUI tests": {
+              "seconds": 20.0,
+              "conclusion": "success"
+            },
+            "Tests": {
+              "seconds": 68.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "clean-install",
+          "conclusion": "success",
+          "seconds": 66.0,
+          "steps": {
+            "Install exact wheel with dependencies into an empty environment": {
+              "seconds": 42.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "installed-wheel (macos-15)",
+          "conclusion": "success",
+          "seconds": 112.0,
+          "steps": {
+            "Smoke installed commands outside repository": {
+              "seconds": 80.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "installed-wheel (windows-latest)",
+          "conclusion": "success",
+          "seconds": 97.0,
+          "steps": {
+            "Smoke installed commands outside repository": {
+              "seconds": 67.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "artifact",
+          "conclusion": "success",
+          "seconds": 3.0,
+          "steps": {}
+        }
+      ]
+    },
+    {
+      "cohort": "controlled",
+      "variant": "baseline",
+      "attempt": 1,
+      "head": "b72b9eb",
+      "url": "https://github.com/pandorobo11/panelsolver/actions/runs/34352066173/attempts/1",
+      "conclusion": "failure",
+      "seconds": 234.0,
+      "runner_seconds": 864.0,
+      "jobs": [
+        {
+          "name": "distribution-build",
+          "conclusion": "success",
+          "seconds": 51.0,
+          "steps": {}
+        },
+        {
+          "name": "test (windows-latest)",
+          "conclusion": "success",
+          "seconds": 233.0,
+          "steps": {
+            "Tests": {
+              "seconds": 154.0,
+              "conclusion": "success"
+            },
+            "Scheduler lifecycle stress": {
+              "seconds": 45.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "quality",
+          "conclusion": "success",
+          "seconds": 36.0,
+          "steps": {}
+        },
+        {
+          "name": "test (ubuntu-latest)",
+          "conclusion": "success",
+          "seconds": 188.0,
+          "steps": {
+            "Tests": {
+              "seconds": 113.0,
+              "conclusion": "success"
+            },
+            "Scheduler lifecycle stress": {
+              "seconds": 42.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "test (macos-15)",
+          "conclusion": "failure",
+          "seconds": 61.0,
+          "steps": {
+            "Tests": {
+              "seconds": 32.0,
+              "conclusion": "failure"
+            },
+            "Scheduler lifecycle stress": {
+              "seconds": 0.0,
+              "conclusion": "skipped"
+            }
+          }
+        },
+        {
+          "name": "clean-install",
+          "conclusion": "success",
+          "seconds": 64.0,
+          "steps": {
+            "Install exact wheel with dependencies into an empty environment": {
+              "seconds": 35.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "installed-wheel (macos-15)",
+          "conclusion": "success",
+          "seconds": 123.0,
+          "steps": {
+            "Smoke installed commands outside repository": {
+              "seconds": 84.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "installed-wheel (windows-latest)",
+          "conclusion": "success",
+          "seconds": 104.0,
+          "steps": {
+            "Smoke installed commands outside repository": {
+              "seconds": 71.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "artifact",
+          "conclusion": "success",
+          "seconds": 4.0,
+          "steps": {}
+        }
+      ]
+    },
+    {
+      "cohort": "controlled",
+      "variant": "baseline",
+      "attempt": 2,
+      "head": "b72b9eb",
+      "url": "https://github.com/pandorobo11/panelsolver/actions/runs/34352066173/attempts/2",
+      "conclusion": "success",
+      "seconds": 229.0,
+      "runner_seconds": 1044.0,
+      "jobs": [
+        {
+          "name": "quality",
+          "conclusion": "success",
+          "seconds": 37.0,
+          "steps": {}
+        },
+        {
+          "name": "test (windows-latest)",
+          "conclusion": "success",
+          "seconds": 226.0,
+          "steps": {
+            "Tests": {
+              "seconds": 140.0,
+              "conclusion": "success"
+            },
+            "Scheduler lifecycle stress": {
+              "seconds": 44.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "distribution-build",
+          "conclusion": "success",
+          "seconds": 50.0,
+          "steps": {}
+        },
+        {
+          "name": "test (ubuntu-latest)",
+          "conclusion": "success",
+          "seconds": 188.0,
+          "steps": {
+            "Tests": {
+              "seconds": 114.0,
+              "conclusion": "success"
+            },
+            "Scheduler lifecycle stress": {
+              "seconds": 42.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "test (macos-15)",
+          "conclusion": "success",
+          "seconds": 224.0,
+          "steps": {
+            "Tests": {
+              "seconds": 144.0,
+              "conclusion": "success"
+            },
+            "Scheduler lifecycle stress": {
+              "seconds": 53.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "clean-install",
+          "conclusion": "success",
+          "seconds": 67.0,
+          "steps": {
+            "Install exact wheel with dependencies into an empty environment": {
+              "seconds": 46.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "installed-wheel (macos-15)",
+          "conclusion": "success",
+          "seconds": 127.0,
+          "steps": {
+            "Smoke installed commands outside repository": {
+              "seconds": 87.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "installed-wheel (windows-latest)",
+          "conclusion": "success",
+          "seconds": 123.0,
+          "steps": {
+            "Smoke installed commands outside repository": {
+              "seconds": 87.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "artifact",
+          "conclusion": "success",
+          "seconds": 2.0,
+          "steps": {}
+        }
+      ]
+    },
+    {
+      "cohort": "controlled",
+      "variant": "scheduler",
+      "attempt": 1,
+      "head": "92aa144",
+      "url": "https://github.com/pandorobo11/panelsolver/actions/runs/34352996912/attempts/1",
+      "conclusion": "failure",
+      "seconds": 197.0,
+      "runner_seconds": 974.0,
+      "jobs": [
+        {
+          "name": "distribution-build",
+          "conclusion": "success",
+          "seconds": 55.0,
+          "steps": {}
+        },
+        {
+          "name": "test (ubuntu-latest)",
+          "conclusion": "success",
+          "seconds": 133.0,
+          "steps": {
+            "Tests": {
+              "seconds": 96.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "test (macos-15)",
+          "conclusion": "failure",
+          "seconds": 67.0,
+          "steps": {
+            "Tests": {
+              "seconds": 33.0,
+              "conclusion": "failure"
+            }
+          }
+        },
+        {
+          "name": "scheduler (windows-latest)",
+          "conclusion": "success",
+          "seconds": 70.0,
+          "steps": {
+            "Scheduler lifecycle stress": {
+              "seconds": 41.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "test (windows-latest)",
+          "conclusion": "success",
+          "seconds": 186.0,
+          "steps": {
+            "Tests": {
+              "seconds": 151.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "scheduler (macos-15)",
+          "conclusion": "success",
+          "seconds": 70.0,
+          "steps": {
+            "Scheduler lifecycle stress": {
+              "seconds": 45.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "quality",
+          "conclusion": "success",
+          "seconds": 33.0,
+          "steps": {}
+        },
+        {
+          "name": "scheduler (ubuntu-latest)",
+          "conclusion": "success",
+          "seconds": 48.0,
+          "steps": {
+            "Scheduler lifecycle stress": {
+              "seconds": 36.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "installed-wheel (macos-15)",
+          "conclusion": "success",
+          "seconds": 126.0,
+          "steps": {
+            "Smoke installed commands outside repository": {
+              "seconds": 92.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "clean-install",
+          "conclusion": "success",
+          "seconds": 82.0,
+          "steps": {
+            "Install exact wheel with dependencies into an empty environment": {
+              "seconds": 53.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "installed-wheel (windows-latest)",
+          "conclusion": "success",
+          "seconds": 102.0,
+          "steps": {
+            "Smoke installed commands outside repository": {
+              "seconds": 70.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "artifact",
+          "conclusion": "success",
+          "seconds": 2.0,
+          "steps": {}
+        }
+      ]
+    },
+    {
+      "cohort": "controlled",
+      "variant": "scheduler",
+      "attempt": 2,
+      "head": "92aa144",
+      "url": "https://github.com/pandorobo11/panelsolver/actions/runs/34352996912/attempts/2",
+      "conclusion": "failure",
+      "seconds": 210.0,
+      "runner_seconds": 1041.0,
+      "jobs": [
+        {
+          "name": "distribution-build",
+          "conclusion": "success",
+          "seconds": 54.0,
+          "steps": {}
+        },
+        {
+          "name": "test (macos-15)",
+          "conclusion": "failure",
+          "seconds": 70.0,
+          "steps": {
+            "Tests": {
+              "seconds": 33.0,
+              "conclusion": "failure"
+            }
+          }
+        },
+        {
+          "name": "scheduler (ubuntu-latest)",
+          "conclusion": "success",
+          "seconds": 59.0,
+          "steps": {
+            "Scheduler lifecycle stress": {
+              "seconds": 39.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "test (windows-latest)",
+          "conclusion": "success",
+          "seconds": 209.0,
+          "steps": {
+            "Tests": {
+              "seconds": 168.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "quality",
+          "conclusion": "success",
+          "seconds": 40.0,
+          "steps": {}
+        },
+        {
+          "name": "scheduler (windows-latest)",
+          "conclusion": "success",
+          "seconds": 87.0,
+          "steps": {
+            "Scheduler lifecycle stress": {
+              "seconds": 55.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "scheduler (macos-15)",
+          "conclusion": "success",
+          "seconds": 83.0,
+          "steps": {
+            "Scheduler lifecycle stress": {
+              "seconds": 55.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "test (ubuntu-latest)",
+          "conclusion": "success",
+          "seconds": 138.0,
+          "steps": {
+            "Tests": {
+              "seconds": 109.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "clean-install",
+          "conclusion": "success",
+          "seconds": 87.0,
+          "steps": {
+            "Install exact wheel with dependencies into an empty environment": {
+              "seconds": 54.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "installed-wheel (macos-15)",
+          "conclusion": "success",
+          "seconds": 110.0,
+          "steps": {
+            "Smoke installed commands outside repository": {
+              "seconds": 82.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "installed-wheel (windows-latest)",
+          "conclusion": "success",
+          "seconds": 101.0,
+          "steps": {
+            "Smoke installed commands outside repository": {
+              "seconds": 66.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "name": "artifact",
+          "conclusion": "success",
+          "seconds": 3.0,
+          "steps": {}
+        }
+      ]
+    }
+  ],
+  "local_smoke": [
+    {
+      "experiment": "benchmark",
+      "runs": [
+        {
+          "mode": "original",
+          "seconds": 75.919,
+          "returncode": 0,
+          "commands": 33,
+          "commands_sha256": "b2ef68545ea873d9ee37f77819226eb21dd0639322b404abe05f7739b4872876"
+        },
+        {
+          "mode": "parallel",
+          "seconds": 46.566,
+          "returncode": 0,
+          "commands": 33,
+          "commands_sha256": "b2ef68545ea873d9ee37f77819226eb21dd0639322b404abe05f7739b4872876"
+        },
+        {
+          "mode": "parallel",
+          "seconds": 45.927,
+          "returncode": 0,
+          "commands": 33,
+          "commands_sha256": "b2ef68545ea873d9ee37f77819226eb21dd0639322b404abe05f7739b4872876"
+        },
+        {
+          "mode": "original",
+          "seconds": 33.851,
+          "returncode": 0,
+          "commands": 33,
+          "commands_sha256": "b2ef68545ea873d9ee37f77819226eb21dd0639322b404abe05f7739b4872876"
+        }
+      ]
+    },
+    {
+      "experiment": "warm-benchmark",
+      "runs": [
+        {
+          "mode": "parallel",
+          "seconds": 46.174,
+          "returncode": 0,
+          "commands": 33,
+          "commands_sha256": "b2ef68545ea873d9ee37f77819226eb21dd0639322b404abe05f7739b4872876"
+        },
+        {
+          "mode": "original",
+          "seconds": 33.66,
+          "returncode": 0,
+          "commands": 33,
+          "commands_sha256": "b2ef68545ea873d9ee37f77819226eb21dd0639322b404abe05f7739b4872876"
+        },
+        {
+          "mode": "original",
+          "seconds": 33.691,
+          "returncode": 0,
+          "commands": 33,
+          "commands_sha256": "b2ef68545ea873d9ee37f77819226eb21dd0639322b404abe05f7739b4872876"
+        },
+        {
+          "mode": "parallel",
+          "seconds": 46.055,
+          "returncode": 0,
+          "commands": 33,
+          "commands_sha256": "b2ef68545ea873d9ee37f77819226eb21dd0639322b404abe05f7739b4872876"
+        }
+      ]
+    },
+    {
+      "experiment": "worker-benchmark",
+      "runs": [
+        {
+          "mode": "original",
+          "seconds": 33.411,
+          "returncode": 0,
+          "commands": 33,
+          "commands_sha256": "b2ef68545ea873d9ee37f77819226eb21dd0639322b404abe05f7739b4872876"
+        },
+        {
+          "mode": "parallel",
+          "seconds": 37.56,
+          "returncode": 0,
+          "commands": 33,
+          "commands_sha256": "b2ef68545ea873d9ee37f77819226eb21dd0639322b404abe05f7739b4872876"
+        },
+        {
+          "mode": "parallel",
+          "seconds": 38.035,
+          "returncode": 0,
+          "commands": 33,
+          "commands_sha256": "b2ef68545ea873d9ee37f77819226eb21dd0639322b404abe05f7739b4872876"
+        },
+        {
+          "mode": "original",
+          "seconds": 33.658,
+          "returncode": 0,
+          "commands": 33,
+          "commands_sha256": "b2ef68545ea873d9ee37f77819226eb21dd0639322b404abe05f7739b4872876"
+        }
+      ]
+    }
+  ]
+}

@@ -59,7 +59,15 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertIn("fail-fast: false", source)
         self.assertIn("uv sync --locked --extra rayaccel --group docs", source)
         self.assertIn("if not ray.has_embree else None", source)
-        self.assertRegex(source, r"run: uv run --no-sync pytest --durations=30\s*\n")
+        self.assertRegex(
+            source,
+            r"run: uv run --no-sync pytest tests/gui --durations=30\s*\n",
+        )
+        self.assertRegex(
+            source,
+            r"run: uv run --no-sync pytest --ignore=tests/gui -n 2 --dist loadfile "
+            r"--max-worker-restart=0 --durations=30\s*\n",
+        )
         self.assertNotIn("scripts/probe_scheduler_lifecycle.py", source)
         for distribution_step in (
             "download-artifact",

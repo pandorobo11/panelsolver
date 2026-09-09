@@ -100,12 +100,20 @@ release-tag state, release archive/manifest orchestration, artifact transfer,
 and GitHub Release publication. The local runner does not
 attempt to reproduce those CI/release-only operations.
 
-CI runs the unfiltered pytest suite and the scheduler lifecycle probe on
-independent Linux, Windows, and macOS runners. The probe retains ten iterations
-and its 90-second deadline; the required `artifact` gate rejects a failed,
-cancelled, or skipped scheduler job. This removes the probe from the source-test
-job's elapsed time without dropping any checks. The measured alternatives and
-their tradeoffs are recorded in [CI performance measurements](ci-performance.md).
+CI runs the complete pytest test set and the scheduler lifecycle probe on
+independent Linux, Windows, and macOS runners. GUI tests run serially with
+`pytest tests/gui`; the rest run with
+`pytest --ignore=tests/gui -n 2 --dist loadfile --max-worker-restart=0`.
+The complementary selections cover the full suite, including future test
+directories. File-level grouping keeps a file's fixtures in one worker; a worker
+crash fails the job without restart. `pytest-xdist` and its `execnet` dependency
+are development-only. The local standard runner retains unfiltered serial
+pytest as an independent regression gate.
+
+The scheduler probe retains ten iterations and its 90-second deadline; the
+required `artifact` gate rejects a failed, cancelled, or skipped scheduler job.
+The measured alternatives and their tradeoffs are recorded in
+[CI performance measurements](ci-performance.md).
 
 For targeted troubleshooting, use the individual checks directly:
 
@@ -132,8 +140,9 @@ runner and collects that suite without requiring a test-style rewrite.
 The `slow` marker identifies real process/subprocess lifecycle and other
 high-wall-time integration tests. The fast suite supplements rather than
 replaces the authoritative unfiltered pytest suite. Run the full suite before a
-push or pull request through the standard runner; CI continues to run it on
-every supported operating system.
+push or pull request through the standard runner; CI runs the same complete
+test set on every supported operating system using the complementary selections
+above.
 
 For installed-interface or packaging changes, install the built wheel into a
 clean environment and test imports, `panelsolver` and subcommand help,
