@@ -32,6 +32,9 @@ Every representation resolves directly to one unit flow direction. Physical
 loads and shielding use that vector. The stability angle is derived separately;
 flow is never reconstructed from resolved tangent angles.
 
+The default input mode is `beta_sin` when the mode is omitted or blank.
+Explicit `beta_tan` and `bank` selections retain their definitions below.
+
 ## Tangent-angle input (`beta_tan`)
 
 `alpha_deg` is the angle of the XZ projection, and `beta_or_bank_deg` is

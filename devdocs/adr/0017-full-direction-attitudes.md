@@ -14,6 +14,12 @@ alpha is finite and periodic. Both beta modes accept sideslip in [-90, 90]
 including endpoints. Bank retains finite periodic included and bank angles.
 Original numeric inputs are preserved separately from resolved state.
 
+The default is beta_sin across API, CLI, and GUI, including existing files with
+omitted or blank attitude_input. Explicit modes retain their definitions.
+To reproduce the former default, callers must specify beta_tan. This default
+change can alter directions, coefficients, and signatures; schema v2 remains
+unchanged because signatures already encode the evaluated direction.
+
 For alpha a and sideslip b, beta_sin is
 (cos(a) cos(b), -sin(b), sin(a) cos(b)). Beta_tan normalizes
 (cos(a) cos(b), -abs(cos(a)) sin(b), sin(a) cos(b)). Positive sideslip

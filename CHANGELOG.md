@@ -6,6 +6,12 @@ migration baselines and runtime artifact version semantics are recorded in ADR
 
 ## [Unreleased]
 
+- **Breaking:** default attitude input to `beta_sin` across API, CLI, and GUI.
+  Omitted or blank modes in existing inputs now use sine sideslip and may produce
+  different directions, coefficients, and signatures. Specify `beta_tan`
+  explicitly to reproduce the previous default. Explicit modes, stability-axis
+  rules, and CSV/VTP and signature schemas are unchanged.
+
 - Support backward flow and single-angle poles in all attitude modes. Tangent
   sideslip uses the absolute X component; both sideslip modes now require
   beta in [-90, 90]. The simultaneous tangent pole remains invalid. All modes

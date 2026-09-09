@@ -22,7 +22,7 @@ while the scalar arrays provide one value per triangular panel.
 ```python
 from panelsolver import FMFCase, resolve_attitude, solve_fmf
 
-attitude = resolve_attitude(5.0, 0.0, "beta_tan")
+attitude = resolve_attitude(5.0, 0.0)
 case = FMFCase(
     case_id="fmf-example",
     stl_paths=("model.stl",),
@@ -107,7 +107,8 @@ resolve_attitude(
 
 Both input angles are finite real numbers in degrees. `attitude_input` is
 trimmed and normalized case-insensitively. `None` and blank text select
-`beta_tan`.
+`beta_sin`. To preserve calculations that previously omitted the mode, pass
+`"beta_tan"` explicitly.
 
 | Mode | First value | Second value | Accepted domain |
 |---|---|---|---|

@@ -197,7 +197,7 @@ class ResolvedAttitudeInvariantTests(unittest.TestCase):
             with self.subTest(selector=repr(selector)):
                 resolved = resolve_attitude(0.0, 0.0, selector)
                 expected = (
-                    "beta_tan"
+                    "beta_sin"
                     if selector is None or not selector.strip()
                     else (selector.strip().lower())
                 )
