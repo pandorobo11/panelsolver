@@ -9,10 +9,14 @@ import numpy as np
 
 from panelsolver.core import (
     CommonCasePayload,
+    MeshComponent,
     ModelCasePayload,
+    PanelGeometry,
+    PanelMesh,
     ResolvedShieldingConfig,
     build_case_signature,
     clear_mesh_cache,
+    geometry_fingerprint,
     load_panel_mesh,
 )
 from panelsolver.models import HypersonicModel, SentmanModel
@@ -71,6 +75,27 @@ EXPECTED_SIGNATURES = {
 def _array(case: dict, name: str) -> np.ndarray:
     record = case["npz"]["arrays"][name]
     return np.asarray(record["values"]).reshape(record["shape"])
+
+
+def _historical_geometry_fingerprint(golden: dict) -> str:
+    # Frozen v1 signatures describe the checked-in geometry, not whichever
+    # rounding the current mesh loader uses. Never reload its source STL here.
+    component_ids = _array(golden, "face_stl_index")
+    mesh = PanelMesh(
+        vertices_stl_m=_array(golden, "vertices"),
+        faces=_array(golden, "faces"),
+        geometry=PanelGeometry(
+            centers_stl_m=_array(golden, "centers_stl_m"),
+            normals_out_stl=_array(golden, "normals_out_stl"),
+            areas_m2=_array(golden, "areas_m2"),
+            component_ids=component_ids,
+        ),
+        components=tuple(
+            MeshComponent(component_id=int(index), source=f"historical-{index}.stl")
+            for index in np.unique(component_ids)
+        ),
+    )
+    return geometry_fingerprint(mesh)
 
 
 class CaseSignatureCompatibilityTests(unittest.TestCase):
@@ -132,6 +157,9 @@ class CaseSignatureCompatibilityTests(unittest.TestCase):
                 # Reconstruct that envelope independently, then verify v2 cannot
                 # auto-match the old artifacts (ADR 0017).
                 old = json.loads(signature.canonical_payload)
+                old["geometry"]["fingerprint_sha256"] = (
+                    _historical_geometry_fingerprint(golden)
+                )
                 old["schema"]["version"] = 1
                 old_common = old["common_case"]
                 old_common["alpha_t_deg"] = old_common.pop("alpha_stability_deg")
@@ -149,6 +177,10 @@ class CaseSignatureCompatibilityTests(unittest.TestCase):
                     hashlib.sha256(payload.encode()).hexdigest(),
                 )
                 self.assertEqual(2, signature.envelope["schema"]["version"])
+                self.assertEqual(
+                    loaded.geometry_fingerprint,
+                    signature.envelope["geometry"]["fingerprint_sha256"],
+                )
                 self.assertNotEqual(
                     EXPECTED_SIGNATURES[signature_key], signature.digest
                 )

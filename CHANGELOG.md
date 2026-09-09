@@ -6,11 +6,14 @@ migration baselines and runtime artifact version semantics are recorded in ADR
 
 ## [Unreleased]
 
-- Recover unit normals for positive-area STL faces that Trimesh rounds to zero
-  after scaling, including millimetre-to-metre conversion with scale 0.001.
-  Use repaired face winding without dropping panels or relaxing geometry
-  validation. Existing nonzero normals, physical formulas, and file schemas
-  remain unchanged; the mesh loader algorithm version advances to v2.
+- Generate every STL face normal from repaired face cross products using
+  max-component scaling before normalization, avoiding Trimesh's absolute
+  cutoff for small faces after conversion to SI (for example, scale 0.001).
+  Keep strict geometry validation and all panels. Normal last-bit identity is
+  not preserved: geometry fingerprints and current case signatures may change,
+  requiring affected results to be regenerated for automatic artifact matching.
+  Physical equations, file schemas, and historical golden evidence are unchanged.
+  The mesh loader algorithm advances to v2; fingerprint encoding stays at v1.
 - **Breaking:** default attitude input to `beta_sin` across API, CLI, and GUI.
   Omitted or blank modes in existing inputs now use sine sideslip and may produce
   different directions, coefficients, and signatures. Specify `beta_tan`

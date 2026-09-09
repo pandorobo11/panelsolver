@@ -66,7 +66,9 @@ class MeshLoadingTests(unittest.TestCase):
                             )
                         )
 
-    def test_small_open_face_recovery_preserves_other_normals_and_components(self):
+    def test_small_open_face_and_regular_faces_have_unit_normals_and_components(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "small.stl"
             trimesh.Trimesh(
@@ -77,11 +79,22 @@ class MeshLoadingTests(unittest.TestCase):
             regular = load_panel_mesh([FIXTURE_STL / "cube.stl"], 0.001).mesh
             combined = load_panel_mesh([FIXTURE_STL / "cube.stl", path], 0.001).mesh
             self.assertEqual(combined.n_faces, regular.n_faces + 1)
-            np.testing.assert_array_equal(
-                combined.geometry.normals_out_stl[:-1], regular.geometry.normals_out_stl
+            np.testing.assert_allclose(
+                np.linalg.norm(combined.geometry.normals_out_stl, axis=1),
+                1.0,
+                rtol=0,
+                atol=1e-12,
             )
-            np.testing.assert_array_equal(
-                combined.geometry.normals_out_stl[-1], [0, 0, -1]
+            # The regular cube is centred on the origin; normals point outward.
+            np.testing.assert_allclose(
+                combined.geometry.normals_out_stl[:-1],
+                np.sign(regular.geometry.centers_stl_m)
+                * (np.abs(regular.geometry.centers_stl_m) == 0.0005),
+                rtol=0,
+                atol=1e-12,
+            )
+            np.testing.assert_allclose(
+                combined.geometry.normals_out_stl[-1], [0, 0, -1], rtol=0, atol=1e-12
             )
             np.testing.assert_array_equal(
                 combined.face_component_ids, [0] * regular.n_faces + [1]

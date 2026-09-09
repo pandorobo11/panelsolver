@@ -241,19 +241,12 @@ def _load_uncached(
             f"contains {count} degenerate or non-finite triangle face(s)."
         )
 
-    normals_out_stl = np.asarray(combined.face_normals, dtype=np.float64)
-    missing_normals = np.all(normals_out_stl == 0.0, axis=1)
-    if np.any(missing_normals):
-        # Trimesh treats cross products below an absolute threshold as zero,
-        # even for positive-area faces after conversion from millimetres to SI.
-        # Recover only those normals, using the repaired winding. Keep existing
-        # normals unchanged so successful cases retain their numerical identity.
-        crosses = np.asarray(combined.triangles_cross)[missing_normals]
-        scaled_crosses = crosses / np.max(np.abs(crosses), axis=1)[:, None]
-        normals_out_stl = normals_out_stl.copy()
-        normals_out_stl[missing_normals] = (
-            scaled_crosses / np.linalg.norm(scaled_crosses, axis=1)[:, None]
-        )
+    # Positive finite areas have been validated. Generate every normal from the
+    # repaired winding without Trimesh's absolute cross-product cutoff. Scaling
+    # first avoids underflow when normalizing small SI-converted faces.
+    crosses = np.asarray(combined.triangles_cross, dtype=np.float64)
+    scaled_crosses = crosses / np.max(np.abs(crosses), axis=1)[:, None]
+    normals_out_stl = scaled_crosses / np.linalg.norm(scaled_crosses, axis=1)[:, None]
 
     try:
         geometry = PanelGeometry(
