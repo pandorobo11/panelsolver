@@ -80,9 +80,13 @@ jobs:
           (_ for _ in ()).throw(SystemExit('Embree backend is required in CI but not available.'))
           if not ray.has_embree else None"
 
+      - name: GUI tests
+        timeout-minutes: 10
+        run: uv run --no-sync pytest tests/gui --durations=30
+
       - name: Tests
         timeout-minutes: 10
-        run: uv run --no-sync pytest -n 2 --dist loadfile --max-worker-restart=0 --durations=30
+        run: uv run --no-sync pytest --ignore=tests/gui -n 2 --dist loadfile --max-worker-restart=0 --durations=30
 
   scheduler:
     strategy:
