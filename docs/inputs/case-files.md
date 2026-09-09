@@ -39,8 +39,8 @@ Export the mesh in the coordinate frame you intend to use throughout the case.
 At zero attitude, freestream travels along **+X in STL axes**, so an upstream
 face has its outward normal pointing toward −X. Body axes are
 `(X_body, Y_body, Z_body) = (−X_stl, +Y_stl, −Z_stl)`.
-With the default `beta_tan` attitude, positive alpha tilts flow toward +Z_STL
-and positive sideslip tilts it toward −Y_STL. Panel Solver uses the exported
+Near zero attitude in the default `beta_sin` mode, increasing alpha tilts flow
+toward +Z_STL and increasing sideslip tilts it toward −Y_STL. Panel Solver uses the exported
 coordinates and orientation as supplied.
 See [Coordinate and attitude conventions](../methods/coordinate-and-attitude-conventions.md)
 for the full definitions.
@@ -125,12 +125,17 @@ Angles in case files are degrees. `attitude_input` controls the meaning of
 
 | Mode | `alpha_deg` | `beta_or_bank_deg` |
 |---|---|---|
-| `beta_tan` | angle of attack; any finite periodic angle | absolute-X tangent sideslip; -90° to 90° inclusive |
 | `beta_sin` | angle of attack; any finite periodic angle | sine-definition sideslip; -90° to 90° inclusive |
+| `beta_tan` | angle of attack; any finite periodic angle | absolute-X tangent sideslip; -90° to 90° inclusive |
 | `bank` | included angle; any finite angle | bank angle; any finite angle |
 
-Use `beta_tan` for two tangent-angle inputs, `beta_sin` when the sideslip source
-uses the sine definition, and `bank` when attitude is expressed as an included
+Omitted or blank `attitude_input` selects `beta_sin` in both domains, including
+existing case files. To reproduce the previous default, explicitly set
+`attitude_input=beta_tan`; otherwise the same angle pair can produce different
+flow directions, coefficients, and case signatures.
+
+Use `beta_sin` when the sideslip source uses the sine definition, `beta_tan`
+for two tangent-angle inputs, and `bank` when attitude is expressed as an included
 angle plus a circumferential orientation. All modes use the same resolver for
 FMF and Hypersonic and become a unit STL-frame freestream vector plus a separately derived
 stability angle. The beta_tan pair with alpha an odd multiple of 90° and

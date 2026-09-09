@@ -68,20 +68,20 @@ Basic example and its first results.
 When a case saves VTP, the first selected case's result loads automatically.
 Selecting a row also loads an existing `<out_dir>/<case_id>.vtp` when its
 `case_id` and `case_signature` match the selected case. For missing or mismatched
-files, the Viewer status explains why a matching result is unavailable.
+files, the center of the Viewer explains why a matching result is unavailable.
 
 ![Panel Solver Viewer showing the newt_pm cube result colored by Cp](../assets/screenshots/gui-result.png)
 
 *The `newt_pm` case with its matching VTP colored by `Cp`.*
 
 Use **File > Open VTP...** or the Viewer **Open VTP...** button to inspect a file
-manually. Its **Manual VTP** status says whether it matches a loaded case, so
-an unmatched file can be inspected independently of the selected row.
+manually, independently of the selected row. A file does not need to match a
+loaded case to be inspected.
 
 **Show info text** displays the case identity and conditions over the geometry.
-For a matching current result, enabling it hides the duplicate compact status
-row; disabling it restores that row. Manual, stale, and error states retain
-explicit status. An empty Viewer displays guidance for selecting a result.
+There is no separate status row above the display. An empty Viewer displays
+guidance for selecting a result or explains why a result is unavailable. Read
+and write errors include a **Diagnostics** button below the central explanation.
 
 ### Choose surface data and coloring
 
@@ -125,7 +125,7 @@ directory is `images/` under their common output directory, or
 `<input_dir>/outputs/images` if they use different output directories. Batch
 export preserves existing images by adding a numeric suffix to duplicate names.
 Manual export is also available for stale or unmatched VTPs, with the displayed
-result status preserved.
+result preserved.
 
 ## Diagnostics and run status
 

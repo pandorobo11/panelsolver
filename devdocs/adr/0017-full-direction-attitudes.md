@@ -14,6 +14,12 @@ alpha is finite and periodic. Both beta modes accept sideslip in [-90, 90]
 including endpoints. Bank retains finite periodic included and bank angles.
 Original numeric inputs are preserved separately from resolved state.
 
+The default is beta_sin across API, CLI, and GUI, including existing files with
+omitted or blank attitude_input. Explicit modes retain their definitions.
+To reproduce the former default, callers must specify beta_tan. This default
+change can alter directions, coefficients, and signatures; schema v2 remains
+unchanged because signatures already encode the evaluated direction.
+
 For alpha a and sideslip b, beta_sin is
 (cos(a) cos(b), -sin(b), sin(a) cos(b)). Beta_tan normalizes
 (cos(a) cos(b), -abs(cos(a)) sin(b), sin(a) cos(b)). Positive sideslip
@@ -40,7 +46,8 @@ and beta_or_bank_deg field data containing the original finite numeric inputs.
 The public ResolvedAttitude exposes velocity_hat_stl, alpha_deg,
 beta_or_bank_deg, input_mode and derived alpha_stability_deg. The direct
 constructor treats the supplied direction as authoritative; original angle
-fields provide provenance. Both solve entry points use the same derived frame.
+fields provide provenance. Both solve entry points use the same derived frame
+and expose the attitude through SolveResult.attitude.
 
 Core retains only the stability angle in the common integration case. It
 validates that angle against the authoritative execution direction; it must not

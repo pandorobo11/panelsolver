@@ -6,16 +6,32 @@ migration baselines and runtime artifact version semantics are recorded in ADR
 
 ## [Unreleased]
 
+- Generate every STL face normal from repaired face cross products using
+  max-component scaling before normalization, avoiding Trimesh's absolute
+  cutoff for small faces after conversion to SI (for example, scale 0.001).
+  Keep strict geometry validation and all panels. Normal last-bit identity is
+  not preserved: geometry fingerprints and current case signatures may change,
+  requiring affected results to be regenerated for automatic artifact matching.
+  Physical equations, file schemas, and historical golden evidence are unchanged.
+  The mesh loader algorithm advances to v2; fingerprint encoding stays at v1.
+- **Breaking:** default attitude input to `beta_sin` across API, CLI, and GUI.
+  Omitted or blank modes in existing inputs now use sine sideslip and may produce
+  different directions, coefficients, and signatures. Specify `beta_tan`
+  explicitly to reproduce the previous default. Explicit modes, stability-axis
+  rules, and CSV/VTP and signature schemas are unchanged.
+
 - Support backward flow and single-angle poles in all attitude modes. Tangent
   sideslip uses the absolute X component; both sideslip modes now require
   beta in [-90, 90]. The simultaneous tangent pole remains invalid. All modes
   derive a common stability angle from the actual flow vector, with a documented
   zero-angle fallback for lateral flow, fixing backward-bank execution failures.
+  The stability angle is in (-180°, 180°], with exact backward flow reported as +180°.
 - **Breaking:** replace CSV/VTP `alpha_t_deg_resolved` and `beta_t_deg_resolved`
   with `alpha_stability_deg` and three `velocity_hat_*_stl` components. Preserve
   original input angles in CSV and add them to VTP field data. No angle-source
   flag or resolved sine-sideslip column is exported. `ResolvedAttitude` now stores
   original `alpha_deg`/`beta_or_bank_deg` and derives `alpha_stability_deg`.
+  `SolveResult.attitude` exposes these inputs and the resolved state.
   Case signatures use v2 and encode the evaluated vector; old VTP signatures
   no longer auto-match. Physical model equations and body-axis signs are unchanged.
 

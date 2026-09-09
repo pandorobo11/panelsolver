@@ -10,6 +10,7 @@ import numpy as np
 
 from panelsolver.core.frames import stability_alpha_deg
 
+DEFAULT_ATTITUDE_INPUT = "beta_sin"
 ATTITUDE_INPUT_VALUES = frozenset({"beta_tan", "beta_sin", "bank"})
 
 
@@ -78,15 +79,15 @@ class ResolvedAttitude:
 
 def resolve_attitude_mode(value: str | None) -> str:
     if value is None:
-        mode = "beta_tan"
+        mode = DEFAULT_ATTITUDE_INPUT
     elif not isinstance(value, str):
         raise TypeError("attitude_input must be text or None")
     else:
-        mode = value.strip().lower() or "beta_tan"
+        mode = value.strip().lower() or DEFAULT_ATTITUDE_INPUT
     if mode not in ATTITUDE_INPUT_VALUES:
         raise ValueError(
             f"Invalid attitude_input: '{value}'. "
-            "Expected one of: beta_tan, beta_sin, bank."
+            "Expected one of: beta_sin, beta_tan, bank."
         )
     return mode
 
@@ -126,7 +127,7 @@ def resolve_attitude(
     if mode != "bank" and not -90.0 <= beta_in <= 90.0:
         raise ValueError(
             "beta_or_bank_deg must be between -90 and 90 degrees inclusive "
-            "for beta_tan or beta_sin."
+            "for beta_sin or beta_tan."
         )
     sin_alpha, cos_alpha = _sincos_deg(alpha_in)
     sin_beta, cos_beta = _sincos_deg(beta_in)

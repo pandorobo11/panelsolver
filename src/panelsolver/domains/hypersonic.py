@@ -24,6 +24,7 @@ from panelsolver.app import (
     run_and_write_product_cases,
     run_product_cases,
 )
+from panelsolver.app.attitude import DEFAULT_ATTITUDE_INPUT
 from panelsolver.app.case_adapter import AdaptedCase, ProductCasePolicy, adapt_case_row
 from panelsolver.app.case_io import (
     AddIssue,
@@ -243,7 +244,7 @@ DEFAULTS = {
     "shielding_on": 0,
     "save_vtp_on": 1,
     "ray_backend": "auto",
-    "attitude_input": "beta_tan",
+    "attitude_input": DEFAULT_ATTITUDE_INPUT,
     "windward_eq": "newtonian",
     "leeward_eq": "shield",
     "out_dir": "outputs",
@@ -572,14 +573,14 @@ def _present(value: object) -> str | None:
 
 
 def _attitude_fields(row: Mapping[str, object]) -> tuple[tuple[str, object], ...]:
-    attitude = (_present(row.get("attitude_input")) or "beta_tan").lower()
+    attitude = (_present(row.get("attitude_input")) or DEFAULT_ATTITUDE_INPUT).lower()
     alpha = row.get("alpha_deg")
     beta = row.get("beta_or_bank_deg")
     if attitude == "beta_sin":
-        return (("alpha_t", alpha), ("beta_s", beta))
+        return (("alpha", alpha), ("beta_s", beta))
     if attitude == "bank":
         return (("alpha_i", alpha), ("phi", beta))
-    return (("alpha_t", alpha), ("beta_t", beta))
+    return (("alpha", alpha), ("beta_t", beta))
 
 
 def format_case(row: Mapping[str, object]) -> str:
@@ -604,7 +605,6 @@ def format_case(row: Mapping[str, object]) -> str:
         "beta": "Beta [deg]",
         "alpha_i": "Incidence [deg]",
         "phi": "Bank [deg]",
-        "alpha_t": "Alpha_t [deg]",
         "beta_t": "Beta_t [deg]",
         "beta_s": "Beta_s [deg]",
         "shield": "Shielding",
@@ -614,7 +614,7 @@ def format_case(row: Mapping[str, object]) -> str:
         {"case_id"},
         {"Mach", "gamma"},
         {"w_eq", "l_eq"},
-        {"alpha", "beta", "alpha_i", "phi", "alpha_t", "beta_t", "beta_s"},
+        {"alpha", "beta", "alpha_i", "phi", "beta_t", "beta_s"},
         {"shield", "ray"},
     )
     lines = [

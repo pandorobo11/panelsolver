@@ -39,6 +39,9 @@ def test_csv_and_vtp_preserve_inputs_and_evaluated_state(domain, tmp_path):
         .to_dict()
     )
     inputs = [
+        (None, 60, 30),
+        ("", 90, 90),
+        ("   ", 60, 30),
         ("beta_tan", 460, 30),
         ("beta_sin", -260, 30),
         ("bank", 460, 390),
@@ -80,6 +83,7 @@ def test_csv_and_vtp_preserve_inputs_and_evaluated_state(domain, tmp_path):
             original["beta_or_bank_deg"],
             original["attitude_input"],
         )
+        assert row["out_attitude_input"] == attitude.input_mode
         assert row["alpha_deg"] == original["alpha_deg"]
         assert row["beta_or_bank_deg"] == original["beta_or_bank_deg"]
         np.testing.assert_allclose(
@@ -93,6 +97,7 @@ def test_csv_and_vtp_preserve_inputs_and_evaluated_state(domain, tmp_path):
         )
         poly = pv.read(tmp_path / f"{row['case_id']}.vtp")
         assert REMOVED_FIELDS.isdisjoint(poly.field_data)
+        assert poly.field_data["attitude_input_used"][0] == attitude.input_mode
         for key in (
             *DIRECTION_FIELDS,
             "alpha_stability_deg",
@@ -161,3 +166,47 @@ def test_equivalent_modes_have_the_same_loads_and_stability_axes(domain, shieldi
                 atol=1e-12,
                 rtol=1e-12,
             )
+
+
+@pytest.mark.parametrize("domain", [fmf, hypersonic], ids=["fmf", "hypersonic"])
+@pytest.mark.parametrize("angles", [(60, 30), (90, 90)])
+@pytest.mark.parametrize("mode", [None, "", "   "])
+def test_default_mode_matches_explicit_sine_across_entrypoints(
+    domain, angles, mode, tmp_path
+):
+    name = domain.__name__.rsplit(".", 1)[1]
+    row = (
+        domain.read_cases(ROOT / "examples" / name / "attitude_modes.csv")
+        .iloc[0]
+        .to_dict()
+    )
+    row.update(alpha_deg=angles[0], beta_or_bank_deg=angles[1])
+    row.pop("attitude_input")
+    if mode is not None:
+        row["attitude_input"] = mode
+    input_file = tmp_path / "default.csv"
+    pd.DataFrame([row]).to_csv(input_file, index=False)
+    expected = resolve_attitude(*angles, "beta_sin")
+    np.testing.assert_array_equal(
+        resolve_attitude(*angles).velocity_hat_stl, expected.velocity_hat_stl
+    )
+    np.testing.assert_array_equal(
+        resolve_attitude(*angles, mode).velocity_hat_stl, expected.velocity_hat_stl
+    )
+    explicit = {**row, "attitude_input": "beta_sin"}
+    assert domain.format_case(row) == domain.format_case(explicit)
+    for loaded in (
+        domain.read_cases(input_file).iloc[0].to_dict(),
+        domain.GUI_ADAPTERS.read_cases(input_file)[0],
+    ):
+        assert loaded["attitude_input"] == "beta_sin"
+        actual = domain.adapt_row(loaded).attitude
+        np.testing.assert_array_equal(
+            actual.velocity_hat_stl, expected.velocity_hat_stl
+        )
+        assert actual.alpha_stability_deg == expected.alpha_stability_deg
+    if angles == (60, 30):
+        assert not np.allclose(
+            expected.velocity_hat_stl,
+            resolve_attitude(*angles, "beta_tan").velocity_hat_stl,
+        )

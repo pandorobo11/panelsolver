@@ -93,12 +93,12 @@ remain directly under `outputs/`.
 
 ### `fmf/attitude_modes.csv`
 
-- Purpose: express one freestream direction through `beta_tan`, `beta_sin`,
+- Purpose: express one freestream direction through `beta_sin`, `beta_tan`,
   and `bank` inputs.
 - Run: `panelsolver fmf --input examples/fmf/attitude_modes.csv`
 - GUI file: `examples/fmf/attitude_modes.csv`
-- Main inputs: `cube.stl`; `(alpha, second angle, mode)` is `(0,10,beta_tan)`,
-  `(0,10,beta_sin)`, and `(10,90,bank)` with otherwise identical FMF inputs.
+- Main inputs: `cube.stl`; `(alpha, second angle, mode)` is `(0,10,beta_sin)`,
+  `(0,10,beta_tan)`, and `(10,90,bank)` with otherwise identical FMF inputs.
 - Observe: the resolved freestream direction and all eight coefficients agree
   within the Sentman tolerance.
 - Output: `examples/fmf/outputs/attitude_modes/`.
@@ -168,7 +168,7 @@ method and its exact-zero load consequence.
 
 ### `hypersonic/attitude_modes.csv`
 
-- Purpose: express one freestream direction through `beta_tan`, `beta_sin`,
+- Purpose: express one freestream direction through `beta_sin`, `beta_tan`,
   and `bank` inputs.
 - Run: `panelsolver hypersonic --input examples/hypersonic/attitude_modes.csv`
 - GUI file: `examples/hypersonic/attitude_modes.csv`

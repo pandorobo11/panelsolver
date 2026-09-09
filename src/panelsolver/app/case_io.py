@@ -11,7 +11,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from .attitude import ATTITUDE_INPUT_VALUES, resolve_attitude
+from .attitude import ATTITUDE_INPUT_VALUES, DEFAULT_ATTITUDE_INPUT, resolve_attitude
 from .case_identity import validate_case_id
 from .csv_writer import CSV_ENCODING
 from .path_resolution import absolute_input_path, resolve_input_relative_path
@@ -317,11 +317,11 @@ def _validate_attitude(frame: pd.DataFrame, add_issue: AddIssue) -> None:
             mode = normalize_optional_text(
                 value,
                 field="attitude_input",
-                default="beta_tan",
+                default=DEFAULT_ATTITUDE_INPUT,
             ).lower()
         except (TypeError, ValueError) as exc:
             add_issue(int(index), "attitude_input", str(exc))
-            mode = "beta_tan"
+            mode = DEFAULT_ATTITUDE_INPUT
         normalized.append(mode)
     frame["attitude_input"] = pd.Series(normalized, index=frame.index)
     invalid = ~frame["attitude_input"].isin(ATTITUDE_INPUT_VALUES)
@@ -329,7 +329,7 @@ def _validate_attitude(frame: pd.DataFrame, add_issue: AddIssue) -> None:
         add_issue(
             int(index),
             "attitude_input",
-            "must be one of: beta_tan, beta_sin, bank.",
+            "must be one of: beta_sin, beta_tan, bank.",
         )
 
 

@@ -19,7 +19,7 @@ from .contracts import PanelGeometry
 from .errors import PanelSolverError
 from .mesh import MeshComponent, PanelMesh
 
-MESH_LOADER_ALGORITHM_VERSION = "mesh-loader-v1"
+MESH_LOADER_ALGORITHM_VERSION = "mesh-loader-v2"
 GEOMETRY_FINGERPRINT_SCHEMA_VERSION = 1
 
 
@@ -241,10 +241,17 @@ def _load_uncached(
             f"contains {count} degenerate or non-finite triangle face(s)."
         )
 
+    # Positive finite areas have been validated. Generate every normal from the
+    # repaired winding without Trimesh's absolute cross-product cutoff. Scaling
+    # first avoids underflow when normalizing small SI-converted faces.
+    crosses = np.asarray(combined.triangles_cross, dtype=np.float64)
+    scaled_crosses = crosses / np.max(np.abs(crosses), axis=1)[:, None]
+    normals_out_stl = scaled_crosses / np.linalg.norm(scaled_crosses, axis=1)[:, None]
+
     try:
         geometry = PanelGeometry(
             centers_stl_m=np.asarray(combined.triangles_center, dtype=np.float64),
-            normals_out_stl=np.asarray(combined.face_normals, dtype=np.float64),
+            normals_out_stl=normals_out_stl,
             areas_m2=areas,
             component_ids=component_ids,
         )
