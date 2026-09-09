@@ -122,10 +122,10 @@ For example, -180° is reported as +180°. This derived angle is separate from
 `alpha_deg`, which records what you entered; in `bank` mode, that input is an
 included angle rather than the stability angle.
 
-When the XZ projection is numerically too small to define a useful stability
-angle, Panel Solver uses 0° for the coefficient transformation, so the stability
-axes coincide with the body axes. This convention does not change the flow
-direction used to calculate loads and shielding.
+When the XZ projection is numerically too small to define a useful stability angle,
+Panel Solver uses 0° for the coefficient transformation, so the stability axes
+coincide with the body axes. This convention does not change the flow direction
+used to calculate loads and shielding.
 
 ## Input angles and saved results
 
