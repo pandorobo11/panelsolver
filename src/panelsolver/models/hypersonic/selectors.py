@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-"""Surface-equation normalization and ';'-selector parsing helpers."""
+"""Surface-equation normalization helpers."""
 
 WINDWARD_EQUATION_VALUES = {
     "newtonian",
@@ -30,11 +30,3 @@ def normalize_leeward_equation(value: str | None) -> str:
             f"Invalid leeward_eq: '{value}'. Expected one of: shield, prandtl_meyer."
         )
     return eq
-
-
-def split_semicolon_tokens(value: str | None) -> list[str]:
-    """Split one cell by ';' while preserving empty-token detection."""
-    raw = str(value or "").strip()
-    if not raw:
-        return []
-    return [p.strip() for p in raw.split(";")]
