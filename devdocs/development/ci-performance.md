@@ -119,6 +119,18 @@ seconds. Workflow duration stayed at 190-193 seconds versus 186-191 without it.
 
 ## Validation and limitations
 
+The [final integration run](https://github.com/pandorobo11/panelsolver/actions/runs/34354439120)
+on the later `83d4b8f` main source passed every test, scheduler, and artifact job,
+but took 281 seconds. Its clean-install step took 147 seconds: uv reported
+106 seconds preparing downloaded dependencies, dominated by VTK, despite a
+setup-uv cache hit. The clean-install gate intentionally installs wheel runtime
+dependencies into an empty environment; it can resolve newer versions than the
+development lock. The remaining installed-smoke execution took about 40 seconds.
+This integration run is retained separately in the data and is not hidden by
+the faster controlled samples. Network/download variability can outweigh the
+pytest improvement. A separate follow-up could investigate download-cache
+reuse while preserving the empty-environment installation check.
+
 The retained option passed the standard local runner: locked dependency sync,
 formatting, lint, scoped typing, the complete pytest suite, generated-source and
 plot checks, strict documentation, and distribution builds. The experimental
