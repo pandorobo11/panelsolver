@@ -27,6 +27,12 @@ class FlowLayout(QtWidgets.QLayout):
         self.setSpacing(spacing)
 
     def addItem(self, item) -> None:
+        widget = item.widget()
+        if widget is not None:
+            # Native styles can inset layout-item rects (macOS buttons by
+            # 12px vertically). Flow rows must reserve the whole widget rect
+            # so controls cannot paint outside their parent or wrapped line.
+            widget.setAttribute(QtCore.Qt.WidgetAttribute.WA_LayoutUsesWidgetRect)
         self._items.append(item)
 
     def addLayout(self, layout) -> None:
