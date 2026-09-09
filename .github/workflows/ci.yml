@@ -244,7 +244,7 @@ jobs:
       - name: Smoke installed commands outside repository
         run: >-
           uv run --no-sync python scripts/smoke_installed_wheel.py .
-          --dist-dir dist
+          --dist-dir dist --jobs 2
 
   clean-install:
     needs: [distribution-build, quality]
@@ -283,7 +283,7 @@ jobs:
           cd "${RUNNER_TEMP}"
           QT_QPA_PLATFORM=offscreen "${CLEAN_VENV}/bin/python" \
             "${GITHUB_WORKSPACE}/scripts/smoke_installed_wheel.py" \
-            "${GITHUB_WORKSPACE}" --dist-dir "${GITHUB_WORKSPACE}/dist"
+            "${GITHUB_WORKSPACE}" --dist-dir "${GITHUB_WORKSPACE}/dist" --jobs 2
 
   # Keep the protected-main context, and fail closed even if a consumer is skipped.
   # Quality previously gated the required test jobs; retain it in this required gate.
