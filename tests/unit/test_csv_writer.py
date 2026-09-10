@@ -9,7 +9,6 @@ from unittest.mock import patch
 
 from panelsolver.app.csv_writer import (
     CSV_ENCODING,
-    DURABLE_CSV_WRITE_POLICY,
     CsvAppendRollbackError,
     append_csv,
     paths_collide,
@@ -50,7 +49,7 @@ class CsvWriterTests(unittest.TestCase):
         )
         with tempfile.TemporaryDirectory() as td:
             output = Path(td) / "results.csv"
-            write_csv_atomic(output, first, DURABLE_CSV_WRITE_POLICY)
+            write_csv_atomic(output, first)
             with patch("panelsolver.app.csv_writer.os.fsync", wraps=os.fsync) as sync:
                 for _ in range(2):
                     append_csv(output, first)
@@ -67,7 +66,7 @@ class CsvWriterTests(unittest.TestCase):
             with self.assertRaises(FileNotFoundError):
                 append_csv(output, projection())
             self.assertFalse(output.exists())
-            write_csv_atomic(output, projection(), DURABLE_CSV_WRITE_POLICY)
+            write_csv_atomic(output, projection())
             before = output.read_bytes()
             with self.assertRaisesRegex(ValueError, "columns"):
                 append_csv(output, unicode_projection())
@@ -83,7 +82,7 @@ class CsvWriterTests(unittest.TestCase):
         for failure in ("write", "fsync"):
             with self.subTest(failure=failure), tempfile.TemporaryDirectory() as td:
                 output = Path(td) / "results.csv"
-                write_csv_atomic(output, projection(), DURABLE_CSV_WRITE_POLICY)
+                write_csv_atomic(output, projection())
                 before = output.read_bytes()
                 target = f"panelsolver.app.csv_writer.os.{failure}"
                 effect = (
@@ -100,7 +99,7 @@ class CsvWriterTests(unittest.TestCase):
         real_write = os.write
         with tempfile.TemporaryDirectory() as td:
             output = Path(td) / "results.csv"
-            write_csv_atomic(output, unicode_projection(), DURABLE_CSV_WRITE_POLICY)
+            write_csv_atomic(output, unicode_projection())
             with patch(
                 "panelsolver.app.csv_writer.os.write",
                 side_effect=lambda fd, payload: real_write(fd, payload[:3]),
@@ -116,7 +115,7 @@ class CsvWriterTests(unittest.TestCase):
         for failure in ("ftruncate", "fsync"):
             with self.subTest(failure=failure), tempfile.TemporaryDirectory() as td:
                 output = Path(td) / "results.csv"
-                write_csv_atomic(output, projection(), DURABLE_CSV_WRITE_POLICY)
+                write_csv_atomic(output, projection())
                 with (
                     patch(
                         "panelsolver.app.csv_writer.os.write",
@@ -152,10 +151,53 @@ class CsvWriterTests(unittest.TestCase):
             )
         )
 
-    def test_products_use_one_durable_write_policy(self) -> None:
-        self.assertIs(DURABLE_CSV_WRITE_POLICY, fmf_csv.CSV_WRITE_POLICY)
-        self.assertIs(DURABLE_CSV_WRITE_POLICY, hypersonic_csv.CSV_WRITE_POLICY)
-        self.assertTrue(DURABLE_CSV_WRITE_POLICY.fsync_before_replace)
+    def test_atomic_writer_syncs_complete_csv_then_closes_before_replacement(
+        self,
+    ) -> None:
+        real_temporary_file = tempfile.NamedTemporaryFile
+        real_fsync = os.fsync
+        real_replace = os.replace
+        handles = []
+        events = []
+        expected = b"\xef\xbb\xbfcase_id,scope,blank\na,total,\na,component,\n"
+
+        def temporary_file(**kwargs):
+            handle = real_temporary_file(**kwargs)
+            handles.append(handle)
+            return handle
+
+        with tempfile.TemporaryDirectory() as td:
+            output = Path(td) / "results.csv"
+            output.write_bytes(b"previous run\n")
+
+            def sync(descriptor):
+                handle = handles[0]
+                self.assertFalse(handle.closed)
+                self.assertEqual(handle.fileno(), descriptor)
+                self.assertEqual(expected, Path(handle.name).read_bytes())
+                self.assertEqual(b"previous run\n", output.read_bytes())
+                events.append("sync")
+                real_fsync(descriptor)
+
+            def replace(source, destination):
+                self.assertTrue(handles[0].closed)
+                self.assertEqual(["sync"], events)
+                self.assertEqual(b"previous run\n", output.read_bytes())
+                events.append("replace")
+                real_replace(source, destination)
+
+            with (
+                patch(
+                    "panelsolver.app.csv_writer.tempfile.NamedTemporaryFile",
+                    side_effect=temporary_file,
+                ),
+                patch("panelsolver.app.csv_writer.os.fsync", side_effect=sync),
+                patch("panelsolver.app.csv_writer.os.replace", side_effect=replace),
+            ):
+                write_csv_atomic(output, projection())
+            self.assertEqual(["sync", "replace"], events)
+            self.assertEqual(expected, output.read_bytes())
+            self.assertEqual([output], list(Path(td).iterdir()))
 
     def test_both_products_flush_fsync_replace_and_preserve_semantic_csv(self) -> None:
         for adapter in (fmf_csv, hypersonic_csv):
@@ -200,51 +242,23 @@ class CsvWriterTests(unittest.TestCase):
                         list(csv.DictReader(handle)),
                     )
 
-    def test_both_policies_preserve_output_and_clean_temp_on_failure(self) -> None:
-        for policy in (fmf_csv.CSV_WRITE_POLICY, hypersonic_csv.CSV_WRITE_POLICY):
-            with self.subTest(policy=policy), tempfile.TemporaryDirectory() as td:
+    def test_atomic_writer_preserves_output_and_cleans_temp_on_failure(self) -> None:
+        for target, message in (
+            ("_write_projection", "disk error"),
+            ("os.replace", "replace error"),
+            ("os.fsync", "fsync error"),
+        ):
+            with self.subTest(target=target), tempfile.TemporaryDirectory() as td:
                 output = Path(td) / "results.csv"
                 output.write_text("original\n", encoding="utf-8")
                 with (
                     patch(
-                        "panelsolver.app.csv_writer._write_projection",
-                        side_effect=OSError("disk error"),
+                        f"panelsolver.app.csv_writer.{target}",
+                        side_effect=OSError(message),
                     ),
-                    self.assertRaisesRegex(OSError, "disk error"),
+                    self.assertRaisesRegex(OSError, message),
                 ):
-                    write_csv_atomic(output, projection(), policy)
-                self.assertEqual("original\n", output.read_text(encoding="utf-8"))
-                self.assertEqual([output], list(Path(td).iterdir()))
-
-    def test_both_policies_clean_temp_on_replace_failure(self) -> None:
-        for policy in (fmf_csv.CSV_WRITE_POLICY, hypersonic_csv.CSV_WRITE_POLICY):
-            with self.subTest(policy=policy), tempfile.TemporaryDirectory() as td:
-                output = Path(td) / "results.csv"
-                output.write_text("original\n", encoding="utf-8")
-                with (
-                    patch(
-                        "panelsolver.app.csv_writer.os.replace",
-                        side_effect=OSError("replace error"),
-                    ),
-                    self.assertRaisesRegex(OSError, "replace error"),
-                ):
-                    write_csv_atomic(output, projection(), policy)
-                self.assertEqual("original\n", output.read_text(encoding="utf-8"))
-                self.assertEqual([output], list(Path(td).iterdir()))
-
-    def test_both_policies_clean_temp_on_fsync_failure(self) -> None:
-        for policy in (fmf_csv.CSV_WRITE_POLICY, hypersonic_csv.CSV_WRITE_POLICY):
-            with self.subTest(policy=policy), tempfile.TemporaryDirectory() as td:
-                output = Path(td) / "results.csv"
-                output.write_text("original\n", encoding="utf-8")
-                with (
-                    patch(
-                        "panelsolver.app.csv_writer.os.fsync",
-                        side_effect=OSError("fsync error"),
-                    ),
-                    self.assertRaisesRegex(OSError, "fsync error"),
-                ):
-                    write_csv_atomic(output, projection(), policy)
+                    write_csv_atomic(output, projection())
                 self.assertEqual("original\n", output.read_text(encoding="utf-8"))
                 self.assertEqual([output], list(Path(td).iterdir()))
 

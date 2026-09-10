@@ -35,7 +35,6 @@ from panelsolver.models import ModelRegistry
 from .artifact_io import write_vtp_projection
 from .case_adapter import AdaptedCase, ProductCasePolicy, adapt_case_row
 from .csv_writer import (
-    AtomicCsvWritePolicy,
     CsvAppendRollbackError,
     append_csv,
     write_csv_atomic,
@@ -79,7 +78,6 @@ class ProductRuntimePolicy:
     product_id: str
     case_policy: ProductCasePolicy
     csv_projection_policy: CsvProjectionPolicy
-    csv_write_policy: AtomicCsvWritePolicy
     worker_log_policy: WorkerLogPolicy
     partial_result_policy: PartialResultPolicy
     build_projection_additions: ProjectionAdditionsBuilder
@@ -91,8 +89,6 @@ class ProductRuntimePolicy:
             raise ValueError("runtime and case policy product IDs must match")
         if not isinstance(self.csv_projection_policy, CsvProjectionPolicy):
             raise TypeError("csv_projection_policy must be a CsvProjectionPolicy")
-        if not isinstance(self.csv_write_policy, AtomicCsvWritePolicy):
-            raise TypeError("csv_write_policy must be an AtomicCsvWritePolicy")
         if not isinstance(self.worker_log_policy, WorkerLogPolicy):
             raise TypeError("worker_log_policy must be a WorkerLogPolicy")
         if not isinstance(self.partial_result_policy, PartialResultPolicy):
@@ -530,7 +526,7 @@ def run_and_write_product_cases(
             if checkpoint_initialized:
                 append_csv(output, projection)
             else:
-                write_csv_atomic(output, projection, policy.csv_write_policy)
+                write_csv_atomic(output, projection)
         except Exception as exc:
             if isinstance(exc, CsvAppendRollbackError):
                 append_disabled = True
@@ -567,7 +563,7 @@ def run_and_write_product_cases(
     write_checkpoint()
     complete_summary_saved = False
     try:
-        write_csv_atomic(output, result.csv, policy.csv_write_policy)
+        write_csv_atomic(output, result.csv)
     except Exception as exc:
         record_failure(exc, OutputPhase.FINAL)
     else:

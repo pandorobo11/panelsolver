@@ -37,7 +37,6 @@ from panelsolver.app.case_io import (
 )
 from panelsolver.app.cli import ProductCliPolicy
 from panelsolver.app.csv_writer import (
-    DURABLE_CSV_WRITE_POLICY,
     validate_summary_output_path,
     write_csv_atomic,
 )
@@ -378,7 +377,6 @@ CSV_PROJECTION_POLICY = CsvProjectionPolicy(
         "vtp_path",
     ),
 )
-CSV_WRITE_POLICY = DURABLE_CSV_WRITE_POLICY
 
 
 def project_csv(
@@ -406,7 +404,7 @@ def validate_results_output_path(
 
 
 def write_csv(out_path: str | Path, projection: CsvProjection) -> None:
-    write_csv_atomic(out_path, projection, CSV_WRITE_POLICY)
+    write_csv_atomic(out_path, projection)
 
 
 def _projection_additions(
@@ -427,7 +425,6 @@ RUNTIME_POLICY = ProductRuntimePolicy(
     product_id="fmf",
     case_policy=CASE_POLICY,
     csv_projection_policy=CSV_PROJECTION_POLICY,
-    csv_write_policy=CSV_WRITE_POLICY,
     worker_log_policy=WorkerLogPolicy.FORWARD,
     partial_result_policy=PartialResultPolicy.YIELD_COMPLETED,
     build_projection_additions=_projection_additions,
@@ -639,7 +636,6 @@ __all__ = (
     "CASE_READER_POLICY",
     "CLI_POLICY",
     "CSV_PROJECTION_POLICY",
-    "CSV_WRITE_POLICY",
     "DEFAULTS",
     "GUI_ADAPTERS",
     "INPUT_COLUMN_ORDER",
