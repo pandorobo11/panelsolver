@@ -1,4 +1,4 @@
-"""Policy-driven atomic CSV serialization for compatibility adapters."""
+"""Durable CSV serialization and shared output-path validation."""
 
 from __future__ import annotations
 
@@ -8,11 +8,8 @@ import io
 import os
 import tempfile
 import unicodedata
-import uuid
-from collections.abc import Iterable, Iterator, Mapping
-from contextlib import contextmanager
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from enum import Enum
 from pathlib import Path
 from typing import TextIO
 
@@ -22,39 +19,6 @@ from panelsolver.core.errors import ContractValueError
 from .path_resolution import resolve_case_vtp_path, resolve_input_relative_path
 
 CSV_ENCODING = "utf-8-sig"
-
-
-class TempNameStyle(str, Enum):
-    """Legacy same-directory temporary-file naming strategies."""
-
-    NAMED_RANDOM = "named_random"
-    UUID = "uuid"
-
-
-@dataclass(frozen=True, slots=True)
-class AtomicCsvWritePolicy:
-    """Explicit temporary-file and durability behavior for one product."""
-
-    temp_name_style: TempNameStyle
-    fsync_before_replace: bool
-
-    def __post_init__(self) -> None:
-        if not isinstance(self.temp_name_style, TempNameStyle):
-            raise ContractValueError(
-                "AtomicCsvWritePolicy.temp_name_style",
-                "must be a TempNameStyle",
-            )
-        if not isinstance(self.fsync_before_replace, bool):
-            raise ContractValueError(
-                "AtomicCsvWritePolicy.fsync_before_replace",
-                "must be a boolean",
-            )
-
-
-DURABLE_CSV_WRITE_POLICY = AtomicCsvWritePolicy(
-    temp_name_style=TempNameStyle.NAMED_RANDOM,
-    fsync_before_replace=True,
-)
 
 
 @dataclass(frozen=True, slots=True)
@@ -175,26 +139,27 @@ def _validate_no_output_collisions(candidates: Iterable[_CollisionPath]) -> None
 def write_csv_atomic(
     out_path: str | Path,
     projection: CsvProjection,
-    policy: AtomicCsvWritePolicy,
 ) -> None:
-    """Write a complete semantic CSV snapshot using the selected legacy policy."""
+    """Synchronize a complete CSV snapshot before replacing the previous file."""
     if not isinstance(projection, CsvProjection):
         raise ContractValueError("write_csv_atomic.projection", "must be CsvProjection")
-    if not isinstance(policy, AtomicCsvWritePolicy):
-        raise ContractValueError(
-            "write_csv_atomic.policy",
-            "must be AtomicCsvWritePolicy",
-        )
     out = Path(out_path)
     out.parent.mkdir(parents=True, exist_ok=True)
     temp_path: Path | None = None
     try:
-        with _temporary_csv_file(out, policy.temp_name_style) as (handle, created_path):
-            temp_path = created_path
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding=CSV_ENCODING,
+            newline="",
+            dir=out.parent,
+            prefix=f".{out.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as handle:
+            temp_path = Path(handle.name)
             _write_projection(handle, projection)
-            if policy.fsync_before_replace:
-                handle.flush()
-                os.fsync(handle.fileno())
+            handle.flush()
+            os.fsync(handle.fileno())
         os.replace(temp_path, out)
     finally:
         if temp_path is not None:
@@ -244,28 +209,6 @@ def append_csv(out_path: str | Path, projection: CsvProjection) -> None:
                     "the CSV tail may be incomplete."
                 ) from exc
             raise
-
-
-@contextmanager
-def _temporary_csv_file(
-    out: Path,
-    style: TempNameStyle,
-) -> Iterator[tuple[TextIO, Path]]:
-    if style is TempNameStyle.NAMED_RANDOM:
-        with tempfile.NamedTemporaryFile(
-            mode="w",
-            encoding=CSV_ENCODING,
-            newline="",
-            dir=out.parent,
-            prefix=f".{out.name}.",
-            suffix=".tmp",
-            delete=False,
-        ) as handle:
-            yield handle, Path(handle.name)
-        return
-    temp_path = out.with_name(f".{out.name}.{uuid.uuid4().hex}.tmp")
-    with temp_path.open("w", encoding=CSV_ENCODING, newline="") as handle:
-        yield handle, temp_path
 
 
 def validate_csv_output_path(
@@ -330,10 +273,7 @@ def _write_projection(
 
 __all__ = (
     "CSV_ENCODING",
-    "DURABLE_CSV_WRITE_POLICY",
-    "AtomicCsvWritePolicy",
     "CsvAppendRollbackError",
-    "TempNameStyle",
     "append_csv",
     "paths_collide",
     "portable_path_key",

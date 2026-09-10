@@ -271,12 +271,10 @@ class RuntimeTests(unittest.TestCase):
                 rows = self._fmf_rows(Path(td), 5)
                 saved = []
 
-                def atomic(
-                    path, projection, policy, *, saved=saved, final_fails=final_fails
-                ):
+                def atomic(path, projection, *, saved=saved, final_fails=final_fails):
                     if saved and final_fails:
                         raise OSError("final denied")
-                    write_csv_atomic(path, projection, policy)
+                    write_csv_atomic(path, projection)
                     saved.append(path.read_bytes())
 
                 with (
@@ -571,12 +569,12 @@ class RuntimeTests(unittest.TestCase):
             summary = root / "summary.csv"
             calls = 0
 
-            def fail_first_checkpoint(output, projection, policy):
+            def fail_first_checkpoint(output, projection):
                 nonlocal calls
                 calls += 1
                 if calls == 1:
                     raise OSError("checkpoint denied")
-                return write_csv_atomic(output, projection, policy)
+                return write_csv_atomic(output, projection)
 
             with mock.patch(
                 "panelsolver.app.runtime.write_csv_atomic",
@@ -638,12 +636,12 @@ class RuntimeTests(unittest.TestCase):
             summary = root / "summary.csv"
             calls = 0
 
-            def fail_final(output, projection, policy):
+            def fail_final(output, projection):
                 nonlocal calls
                 calls += 1
                 if calls == 2:
                     raise OSError("final denied")
-                return write_csv_atomic(output, projection, policy)
+                return write_csv_atomic(output, projection)
 
             with mock.patch(
                 "panelsolver.app.runtime.write_csv_atomic",
