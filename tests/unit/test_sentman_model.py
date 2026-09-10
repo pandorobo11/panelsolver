@@ -8,6 +8,7 @@ import numpy as np
 
 from panelsolver.core import (
     CommonCasePayload,
+    ContractError,
     ModelCasePayload,
     PanelFlowState,
     PanelGeometry,
@@ -23,7 +24,6 @@ from panelsolver.models import (
     resolve_sentman_case,
     sample_at_altitude_km,
 )
-from panelsolver.models.sentman import sentman_dC_dA_vector, sentman_dC_dA_vectors
 
 
 def _geometry(normals: np.ndarray) -> PanelGeometry:
@@ -322,109 +322,86 @@ class SentmanModelTests(unittest.TestCase):
             )
         )
 
-    def test_public_helpers_validate_before_shielded_zero(self) -> None:
+    def test_all_shielded_faces_still_require_valid_model_inputs(self) -> None:
         velocity = np.array([1.0, 0.0, 0.0])
         normals = np.array([[-1.0, 0.0, 0.0], [0.0, 0.0, 1.0]])
-        valid = {
-            "Vhat": velocity,
-            "n_out": normals,
-            "S": 5.0,
-            "Ti": 300.0,
-            "Tw": 450.0,
-            "Aref": 2.0,
-            "shielded": np.array([True, True]),
-        }
+        geometry = _geometry(normals)
+        flow = PanelFlowState(velocity, np.array([True, True]))
         invalid = (
-            ("Aref", 0.0, "Aref"),
-            ("Aref", -1.0, "Aref"),
-            ("Aref", np.nan, "Aref"),
-            ("Aref", np.inf, "Aref"),
-            ("Aref", True, "Aref"),
-            ("S", 0.0, "S"),
-            ("S", np.nan, "S"),
-            ("Ti", 0.0, "Ti"),
-            ("Ti", np.inf, "Ti"),
-            ("Tw", -1.0, "Tw"),
-            ("Tw", np.nan, "Tw"),
-            ("Vhat", [np.nan, 0.0, 0.0], "Vhat"),
-            ("Vhat", [1.0, 0.0], "Vhat"),
-            ("Vhat", [True, False, False], "Vhat"),
-            ("Vhat", [2.0, 0.0, 0.0], "Vhat"),
-            ("n_out", [[-1.0, 0.0]], "n_out"),
-            ("n_out", [[-2.0, 0.0, 0.0]], "n_out"),
-            ("n_out", [[-1.0, 0.0, np.inf]], "n_out"),
-            ("shielded", np.array([1, 1]), "shielded"),
-            ("shielded", np.array([True]), "shielded"),
-            ("shielded", [[True], [False, True]], "shielded"),
+            ("S", 0.0),
+            ("S", np.nan),
+            ("S", True),
+            ("Ti_K", 0.0),
+            ("Ti_K", np.inf),
+            ("Ti_K", True),
+            ("Tw_K", -1.0),
+            ("Tw_K", np.nan),
+            ("Tw_K", True),
         )
-        for name, value, field in invalid:
+        for name, value in invalid:
             with (
                 self.subTest(name=name, value=value),
-                self.assertRaises(SentmanCaseError) as caught,
+                self.assertRaises(ContractError) as caught,
             ):
-                sentman_dC_dA_vectors(**{**valid, name: value})
-            self.assertEqual(field, caught.exception.field)
-
-        for aref in (0.0, np.nan, np.inf):
-            with (
-                self.subTest(scalar_aref=aref),
-                self.assertRaises(SentmanCaseError) as caught,
-            ):
-                sentman_dC_dA_vector(
-                    velocity,
-                    normals[0],
-                    5.0,
-                    300.0,
-                    450.0,
-                    aref,
-                    True,
+                SentmanModel().evaluate(
+                    geometry,
+                    flow,
+                    _mode_a_case(**{name: value}),
                 )
-            self.assertEqual("Aref", caught.exception.field)
+            self.assertEqual(f"ModelCasePayload.payload.{name}", caught.exception.field)
 
-    def test_public_helpers_preserve_valid_shielded_and_unshielded_results(
-        self,
-    ) -> None:
+        with self.assertRaises(SentmanCaseError):
+            SentmanModel().evaluate(
+                geometry,
+                PanelFlowState(velocity, np.array([True])),
+                _mode_a_case(),
+            )
+
+    def test_shielded_and_mixed_loads_keep_reference_normalized_results(self) -> None:
         velocity = np.array([1.0, 0.0, 0.0])
         normals = np.array([[-1.0, 0.0, 0.0], [0.0, 0.0, 1.0]])
-        all_shielded = sentman_dC_dA_vectors(
-            velocity,
-            normals,
-            5.0,
-            300.0,
-            450.0,
-            2.0,
-            True,
+        geometry = _geometry(normals)
+        common_case = CommonCasePayload(
+            case_id="shielded-loads",
+            Aref_m2=2.0,
+            moment_reference_stl_m=np.zeros(3),
+            Lref_Cl_m=1.0,
+            Lref_Cm_m=1.0,
+            Lref_Cn_m=1.0,
+            alpha_stability_deg=0.0,
         )
-        np.testing.assert_array_equal(all_shielded, np.zeros((2, 3)))
-        self.assertEqual(np.dtype(np.float64), all_shielded.dtype)
+        all_shielded = SentmanModel().evaluate(
+            geometry,
+            PanelFlowState(velocity, np.array([True, True])),
+            _mode_a_case(),
+        )
+        np.testing.assert_array_equal(all_shielded.traction_coeff_stl, np.zeros((2, 3)))
+        self.assertEqual(np.dtype(np.float64), all_shielded.traction_coeff_stl.dtype)
+        for name in ("normal_traction_coeff", "tangential_traction_coeff"):
+            np.testing.assert_array_equal(all_shielded.cell_scalars[name], np.zeros(2))
+        np.testing.assert_array_equal(
+            all_shielded.cell_scalars["theta_deg"], [180.0, 90.0]
+        )
+        integrated_zero = integrate_panel_loads(geometry, all_shielded, common_case)
+        np.testing.assert_array_equal(
+            integrated_zero.face_force_coeff_stl, np.zeros((2, 3))
+        )
 
-        scalar_shielded = sentman_dC_dA_vector(
-            velocity,
-            normals[0],
-            5.0,
-            300.0,
-            450.0,
-            2.0,
-            True,
+        mixed = SentmanModel().evaluate(
+            geometry,
+            PanelFlowState(velocity, np.array([False, True])),
+            _mode_a_case(Tw_K=300.0),
         )
-        np.testing.assert_array_equal(scalar_shielded, np.zeros(3))
-
-        mixed = sentman_dC_dA_vectors(
-            velocity,
-            normals,
-            5.0,
-            300.0,
-            300.0,
-            2.0,
-            np.array([False, True]),
-        )
+        integrated_mixed = integrate_panel_loads(geometry, mixed, common_case)
         np.testing.assert_allclose(
-            mixed[0],
+            integrated_mixed.face_force_coeff_stl[0],
             np.array([1.1972453850905538, 0.0, 0.0]),
             rtol=0.0,
             atol=1.0e-15,
         )
-        np.testing.assert_array_equal(mixed[1], np.zeros(3))
+        np.testing.assert_array_equal(
+            integrated_mixed.face_force_coeff_stl[1], np.zeros(3)
+        )
 
 
 if __name__ == "__main__":

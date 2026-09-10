@@ -344,92 +344,11 @@ def _pressure_traction_coefficients(
     return traction, cp
 
 
-def panel_force_density(
-    Vhat: np.ndarray,
-    n_out: np.ndarray,
-    Aref: float,
-    shielded: np.ndarray | bool = False,
-    face_stl_index: np.ndarray | None = None,
-    cp_max: float = 2.0,
-    windward_eq: str = "newtonian",
-    leeward_eq: str = "shield",
-    windward_eq_by_component: list[str] | tuple[str, ...] | None = None,
-    leeward_eq_by_component: list[str] | tuple[str, ...] | None = None,
-    Mach: float | None = None,
-    gamma: float | None = None,
-) -> np.ndarray:
-    """Expose the frozen ``dC/dA`` call over the shared pressure evaluator."""
-    velocity = np.asarray(Vhat, dtype=np.float64)
-    normals = np.asarray(n_out, dtype=np.float64)
-    if velocity.shape != (3,):
-        raise ValueError("Vhat must have shape (3,).")
-    if normals.ndim != 2 or normals.shape[1] != 3:
-        raise ValueError("n_out must have shape (N, 3).")
-    n_faces = normals.shape[0]
-    if np.isscalar(shielded):
-        mask = np.full(n_faces, bool(shielded), dtype=np.bool_)
-    else:
-        mask = np.asarray(shielded, dtype=np.bool_)
-        if mask.shape != (n_faces,):
-            raise ValueError("shielded must be scalar or shape (N,).")
-    if face_stl_index is None:
-        component_ids = np.zeros(n_faces, dtype=np.int64)
-    else:
-        component_ids = np.asarray(face_stl_index, dtype=np.int64)
-        if component_ids.shape != (n_faces,):
-            raise ValueError("face_stl_index must have shape (N,).")
-        if np.any(component_ids < 0):
-            raise ValueError("face_stl_index must be non-negative.")
-    component_count = int(component_ids.max()) + 1 if n_faces else 1
-    single_windward = normalize_windward_equation(windward_eq)
-    single_leeward = normalize_leeward_equation(leeward_eq)
-    if windward_eq_by_component is None:
-        windward = [single_windward] * component_count
-    else:
-        if len(windward_eq_by_component) != component_count:
-            raise ValueError(
-                "windward_eq_by_component length must match component count."
-            )
-        windward = [
-            normalize_windward_equation(value) for value in windward_eq_by_component
-        ]
-    if leeward_eq_by_component is None:
-        leeward = [single_leeward] * component_count
-    else:
-        if len(leeward_eq_by_component) != component_count:
-            raise ValueError(
-                "leeward_eq_by_component length must match component count."
-            )
-        leeward = [
-            normalize_leeward_equation(value) for value in leeward_eq_by_component
-        ]
-    needs_flow = any(
-        value in {"tangent_wedge", "tangent_cone"} for value in windward
-    ) or any(value == "prandtl_meyer" for value in leeward)
-    if needs_flow and (Mach is None or gamma is None):
-        raise ValueError(
-            "Mach and gamma are required for the selected surface equation."
-        )
-    traction, _cp = _pressure_traction_coefficients(
-        velocity_hat_stl=velocity,
-        normals_out_stl=normals,
-        component_ids=component_ids,
-        shielded=mask,
-        mach=float("nan") if Mach is None else float(Mach),
-        gamma=float("nan") if gamma is None else float(gamma),
-        cp_max=float(cp_max),
-        windward_by_component=dict(enumerate(windward)),
-        leeward_by_component=dict(enumerate(leeward)),
-    )
-    return traction / float(Aref)
-
-
 __all__ = (
     "HYPERSONIC_ALGORITHM_VERSION",
     "HYPERSONIC_MODEL_ID",
     "HypersonicCaseError",
     "HypersonicModel",
     "ResolvedHypersonicCase",
-    "panel_force_density",
     "resolve_hypersonic_case",
 )
