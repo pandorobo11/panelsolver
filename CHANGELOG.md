@@ -6,6 +6,8 @@ migration baselines and runtime artifact version semantics are recorded in ADR
 
 ## [Unreleased]
 
+## [0.1.0rc1] - 2026-09-10
+
 - Generate every STL face normal from repaired face cross products using
   max-component scaling before normalization, avoiding Trimesh's absolute
   cutoff for small faces after conversion to SI (for example, scale 0.001).
@@ -131,7 +133,8 @@ migration baselines and runtime artifact version semantics are recorded in ADR
   domain-specific `FMFCase`/`HypersonicCase` in-memory solve API at the package
   root; it writes no artifacts. Stable API case IDs now share portable NFC
   validation with case tables, and attitude resolution rejects non-text
-  selectors and beta-sin alpha values outside the open principal interval.
+  selectors. The full-direction attitude contract above supersedes the earlier
+  principal-interval restriction on beta-sin alpha.
 - **Breaking:** Remove legacy Excel 97–2003 BIFF `.xls` input support and the
   `xlrd` runtime dependency. Convert `.xls` case files to `.xlsx` or CSV before
   using the current release. CSV, XLSX, and XLSM behavior is unchanged, and
