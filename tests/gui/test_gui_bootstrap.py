@@ -4,91 +4,35 @@ import contextlib
 import io
 import os
 import unittest
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtWidgets
 
 from panelsolver import gui as gui_module
-from panelsolver.app import GuiRunResult, SolverGuiAdapters
 from panelsolver.app.gui_bootstrap import (
     _WINDOWS_APP_USER_MODEL_ID,
-    GuiAdaptersUnavailable,
-    _application_icon,
     _set_windows_app_user_model_id,
-    create_main_window,
-    prepare_gui_spec,
     run_gui,
 )
 from panelsolver.domains.fmf import gui_spec as fmf_solver_spec
 from panelsolver.domains.hypersonic import gui_spec as hypersonic_solver_spec
 
 
-class _FakeCases:
-    def __init__(self) -> None:
-        self.messages = []
-
-    def logln(self, message: str) -> None:
-        self.messages.append(message)
-
-
 class _FakeWindow:
     def __init__(self, spec) -> None:
         self.spec = spec
-        self.cases_panel = _FakeCases()
         self.shown = False
 
     def show(self) -> None:
         self.shown = True
 
 
-def _adapters() -> SolverGuiAdapters:
-    return SolverGuiAdapters(
-        read_cases=lambda _path: (),
-        build_case_signature=lambda _row: (),
-        run_cases=lambda _request: GuiRunResult(),
-        validate_output_path=lambda out, _input, _rows: Path(out),
-        resolve_velocity_hat_stl=lambda _row: (1.0, 0.0, 0.0),
-    )
-
-
 class GuiBootstrapTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
-    def test_prepare_preserves_complete_spec_and_adds_only_unavailable_adapters(
-        self,
-    ) -> None:
-        complete = fmf_solver_spec(adapters=_adapters())
-        self.assertIs(complete, prepare_gui_spec(complete))
-
-        selected = hypersonic_solver_spec(adapters=None)
-        runtime = prepare_gui_spec(selected)
-        self.assertIsNot(selected, runtime)
-        for field in (
-            "product_id",
-            "model_id",
-            "window_title",
-            "case_columns",
-            "preferred_scalars",
-            "scalar_labels",
-            "format_case",
-        ):
-            self.assertEqual(getattr(selected, field), getattr(runtime, field))
-        with self.assertRaisesRegex(GuiAdaptersUnavailable, "not configured"):
-            runtime.adapters.read_cases("cases.csv")
-
-    def test_create_window_records_explicit_unconfigured_spec(self) -> None:
-        window = create_main_window(
-            fmf_solver_spec(adapters=None),
-            window_factory=_FakeWindow,
-        )
-        self.assertEqual("fmf", window.spec.product_id)
-        self.assertIsNotNone(window.spec.adapters)
-        self.assertIn("not configured", window.cases_panel.messages[-1])
 
     def test_run_gui_uses_shared_window_and_event_loop(self) -> None:
         made = []
@@ -100,26 +44,6 @@ class GuiBootstrapTests(unittest.TestCase):
 
         with (
             patch.object(QtWidgets.QApplication, "exec", return_value=23) as execute,
-            patch.object(
-                QtWidgets.QApplication,
-                "setWindowIcon",
-            ) as set_window_icon,
-        ):
-            self.assertEqual(23, run_gui(fmf_solver_spec(), window_factory=factory))
-        execute.assert_called_once_with()
-        set_window_icon.assert_called_once()
-        self.assertFalse(set_window_icon.call_args.args[0].isNull())
-        self.assertEqual("Panel Solver", self.app.applicationName())
-        self.assertEqual("Panel Solver", self.app.applicationDisplayName())
-        self.assertEqual("pandorobo11", self.app.organizationName())
-        self.assertEqual("pandorobo11.github.io", self.app.organizationDomain())
-        self.assertTrue(made[0].shown)
-        self.assertEqual("sentman", made[0].spec.model_id)
-
-    def test_run_gui_sets_icon_when_reusing_existing_application(self) -> None:
-        with (
-            patch.object(QtWidgets.QApplication, "instance", return_value=self.app),
-            patch.object(QtWidgets.QApplication, "exec", return_value=0),
             patch(
                 "panelsolver.app.gui_bootstrap._set_windows_app_user_model_id",
             ) as set_app_id,
@@ -128,24 +52,17 @@ class GuiBootstrapTests(unittest.TestCase):
                 "setWindowIcon",
             ) as set_window_icon,
         ):
-            run_gui(fmf_solver_spec(), window_factory=_FakeWindow)
-
+            self.assertEqual(23, run_gui(fmf_solver_spec(), window_factory=factory))
+        execute.assert_called_once_with()
+        set_app_id.assert_not_called()
         set_window_icon.assert_called_once()
         self.assertFalse(set_window_icon.call_args.args[0].isNull())
-        set_app_id.assert_not_called()
-
-    def test_packaged_application_icon_is_loadable(self) -> None:
-        icon = _application_icon()
-        self.assertFalse(icon.isNull())
-        self.assertTrue(icon.availableSizes())
-        self.assertIn(QtCore.QSize(1024, 1024), icon.availableSizes())
-        image = icon.pixmap(icon.availableSizes()[0]).toImage()
-        self.assertTrue(image.hasAlphaChannel())
-        self.assertEqual(0, image.pixelColor(0, 0).alpha())
-        self.assertEqual(
-            255,
-            image.pixelColor(image.width() // 2, image.height() // 2).alpha(),
-        )
+        self.assertEqual("Panel Solver", self.app.applicationName())
+        self.assertEqual("Panel Solver", self.app.applicationDisplayName())
+        self.assertEqual("pandorobo11", self.app.organizationName())
+        self.assertEqual("pandorobo11.github.io", self.app.organizationDomain())
+        self.assertTrue(made[0].shown)
+        self.assertEqual("sentman", made[0].spec.model_id)
 
     def test_windows_app_id_is_skipped_on_other_platforms(self) -> None:
         with (

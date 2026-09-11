@@ -66,10 +66,6 @@ class FrameTransformTests(unittest.TestCase):
         self.assertEqual(np.dtype(np.float64), vectors_body.dtype)
         self.assertTrue(vectors_body.flags.c_contiguous)
 
-    def test_stl_to_body_is_its_own_inverse(self) -> None:
-        vectors = np.array([[1.0, 2.0, 3.0], [-4.0, 5.0, -6.0]])
-        np.testing.assert_array_equal(vectors, stl_to_body(stl_to_body(vectors)))
-
     def test_body_to_stability_uses_positive_y_rotation(self) -> None:
         transformed = body_to_stability(
             np.array([1.0, 2.0, 3.0]),

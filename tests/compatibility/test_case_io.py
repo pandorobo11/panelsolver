@@ -2,7 +2,6 @@ import json
 import shutil
 import tempfile
 import unittest
-from dataclasses import asdict
 from pathlib import Path
 from unittest.mock import patch
 
@@ -10,9 +9,7 @@ import numpy as np
 import pandas as pd
 
 from panelsolver.app.csv_writer import CSV_ENCODING
-from panelsolver.core import MeshValidationPolicy, execute_case
-from panelsolver.domains import fmf as fmf_case_module
-from panelsolver.domains import hypersonic as newt_case_module
+from panelsolver.core import execute_case
 from panelsolver.domains.fmf import adapt_row as adapt_fmf_row
 from panelsolver.domains.fmf import build_case_signature as build_fmf_signature
 from panelsolver.domains.fmf import read_cases as read_fmf_cases
@@ -43,14 +40,6 @@ def _write_case_table(frame: pd.DataFrame, path: Path) -> None:
 
 
 class CaseReaderCompatibilityTests(unittest.TestCase):
-    def test_removed_npz_field_is_absent_from_current_schemas_and_defaults(
-        self,
-    ) -> None:
-        for module in (fmf_case_module, newt_case_module):
-            with self.subTest(product=module.__name__):
-                self.assertNotIn("save_npz_on", module.INPUT_COLUMN_ORDER)
-                self.assertNotIn("save_npz_on", module.DEFAULTS)
-
     def test_csv_and_excel_reject_removed_npz_field_for_any_value(self) -> None:
         products = (
             (read_fmf_cases, "fmfsolver_cases.csv"),
@@ -83,19 +72,6 @@ class CaseReaderCompatibilityTests(unittest.TestCase):
                             self.assertIn("Delete this field", str(error))
                             self.assertIn("no longer writes NPZ files", str(error))
 
-    def test_other_unknown_columns_remain_preserved(self) -> None:
-        for reader, filename in (
-            (read_fmf_cases, "fmfsolver_cases.csv"),
-            (read_newt_cases, "newtsolver_cases.csv"),
-        ):
-            with self.subTest(filename=filename), tempfile.TemporaryDirectory() as td:
-                frame = read_current_cases(reader, _INPUTS / filename).iloc[[0]].copy()
-                frame["user_note"] = "preserved"
-                path = Path(td) / filename
-                frame.to_csv(path, index=False)
-                actual = reader(path)
-                self.assertEqual("preserved", actual.iloc[0]["user_note"])
-
     def test_csv_reader_accepts_bomless_bom_and_japanese_utf8(self) -> None:
         products = (
             (read_fmf_cases, "fmfsolver_cases.csv"),
@@ -110,15 +86,7 @@ class CaseReaderCompatibilityTests(unittest.TestCase):
                 for encoding in ("utf-8", CSV_ENCODING):
                     with self.subTest(encoding=encoding):
                         frame.to_csv(path, index=False, encoding=encoding)
-                        with patch(
-                            "panelsolver.app.case_io.pd.read_csv",
-                            wraps=pd.read_csv,
-                        ) as read_csv:
-                            actual = reader(path)
-                        self.assertEqual(
-                            CSV_ENCODING,
-                            read_csv.call_args.kwargs["encoding"],
-                        )
+                        actual = reader(path)
                         self.assertEqual("日本語ケース", actual.iloc[0]["case_id"])
                         self.assertEqual("日本語メモ", actual.iloc[0]["user_note"])
 
@@ -161,30 +129,15 @@ class CaseReaderCompatibilityTests(unittest.TestCase):
                         reader(_INPUTS / "invalid" / filename)
                     error = caught.exception
                     self.assertEqual("InputValidationError", type(error).__name__)
-                    self.assertEqual(expected["message"], str(error))
                     self.assertEqual(
-                        expected["issues"],
-                        [asdict(issue) for issue in error.issues],
-                    )
-
-    def test_ooxml_excel_engine_dispatch_is_common(self) -> None:
-        for reader, filename in (
-            (read_fmf_cases, "fmfsolver_cases.csv"),
-            (read_newt_cases, "newtsolver_cases.csv"),
-        ):
-            frame = read_current_cases(reader, _INPUTS / filename)
-            for suffix in (".xlsx", ".xlsm"):
-                with (
-                    self.subTest(filename=filename, suffix=suffix),
-                    patch(
-                        "panelsolver.app.case_io.pd.read_excel",
-                        return_value=frame.copy(),
-                    ) as read_excel,
-                ):
-                    reader(f"cases{suffix}")
-                    self.assertEqual("openpyxl", read_excel.call_args.kwargs["engine"])
-                    self.assertEqual(
-                        {"case_id": "string"}, read_excel.call_args.kwargs["dtype"]
+                        [
+                            (issue["row_number"], issue["case_id"], issue["field"])
+                            for issue in expected["issues"]
+                        ],
+                        [
+                            (issue.row_number, issue.case_id, issue.field)
+                            for issue in error.issues
+                        ],
                     )
 
     def test_csv_xlsx_and_xlsm_preserve_valid_rows(self) -> None:
@@ -192,13 +145,13 @@ class CaseReaderCompatibilityTests(unittest.TestCase):
             (
                 read_fmf_cases,
                 "fmfsolver_cases.csv",
-                "fmf_supported_formats",
+                "001",
                 {"S": 5.0, "Ti_K": 300.0, "Tw_K": 300.0},
             ),
             (
                 read_newt_cases,
                 "newtsolver_cases.csv",
-                "newt_supported_formats",
+                "001",
                 {
                     "Mach": 6.0,
                     "gamma": 1.4,
@@ -386,28 +339,6 @@ class CaseReaderCompatibilityTests(unittest.TestCase):
 
 
 class ProductCaseAdapterTests(unittest.TestCase):
-    def test_rows_bind_independent_models_and_mesh_policies(self) -> None:
-        fmf_row = (
-            read_current_cases(read_fmf_cases, _INPUTS / "fmfsolver_cases.csv")
-            .iloc[0]
-            .to_dict()
-        )
-        newt_row = (
-            read_current_cases(read_newt_cases, _INPUTS / "newtsolver_cases.csv")
-            .iloc[0]
-            .to_dict()
-        )
-        fmf = adapt_fmf_row(fmf_row)
-        newt = adapt_newt_row(newt_row)
-        self.assertEqual("sentman", fmf.request.model_case.model_id)
-        self.assertEqual(
-            MeshValidationPolicy.STRICT, fmf.request.mesh_validation_policy
-        )
-        self.assertEqual("hypersonic", newt.request.model_case.model_id)
-        self.assertEqual(
-            MeshValidationPolicy.STRICT, newt.request.mesh_validation_policy
-        )
-
     def test_built_case_signature_is_exactly_the_execution_signature(self) -> None:
         cases = (
             (

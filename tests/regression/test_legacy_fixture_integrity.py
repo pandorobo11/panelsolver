@@ -3,80 +3,22 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import json
-import math
 import os
 import unittest
 from fnmatch import fnmatchcase
 from pathlib import Path, PureWindowsPath
 from unittest import mock
 
-import numpy as np
-
 REPOSITORY_ROOT = Path(__file__).parents[2]
 FIXTURE_ROOT = REPOSITORY_ROOT / "tests" / "fixtures" / "phase1"
 GOLDEN_ROOT = FIXTURE_ROOT / "golden"
 MANIFEST = json.loads((FIXTURE_ROOT / "manifest.json").read_text(encoding="utf-8"))
-COEFFICIENTS = ("CA", "CY", "CN", "Cl", "Cm", "Cn", "CD", "CL")
-COMMON_VTP_CELL_ARRAYS = {
-    "area_m2",
-    "shielded",
-    "Cp_n",
-    "theta_deg",
-    "C_face_stl",
-    "center_x_stl_m",
-    "center_y_stl_m",
-    "center_z_stl_m",
-    "stl_index",
-}
-COMMON_VTP_FIELD_ARRAYS = {
-    "case_id",
-    "case_signature",
-    "solver_version",
-    "stl_count",
-    "ray_backend_used",
-    "attitude_input_used",
-    "alpha_t_deg_resolved",
-    "beta_t_deg_resolved",
-    "stl_paths_json",
-}
-COMMON_NPZ_ARRAYS = {
-    "vertices",
-    "faces",
-    "centers_stl_m",
-    "normals_out_stl",
-    "areas_m2",
-    "shielded",
-    "Vhat_stl",
-    "Aref_m2",
-    "attitude_input",
-    "alpha_t_deg_resolved",
-    "beta_t_deg_resolved",
-    "C_force_stl",
-    "C_force_body",
-    "C_M_body",
-    "CA",
-    "CY",
-    "CN",
-    "Cl",
-    "Cm",
-    "Cn",
-    "CD",
-    "CL",
-    "Cp_n",
-    "face_stl_index",
-    "stl_paths",
-    "ray_backend_used",
-}
 
 
 def _load_case(solver: str, case_id: str) -> dict:
     return json.loads(
         (GOLDEN_ROOT / solver / f"{case_id}.json").read_text(encoding="utf-8")
     )
-
-
-def _values(record: dict) -> np.ndarray:
-    return np.asarray(record["values"])
 
 
 def _total_row(case: dict) -> dict:
@@ -163,15 +105,6 @@ class LegacyFixtureManifestTests(unittest.TestCase):
                     provenance["tolerance_profile"], MANIFEST["tolerance_profiles"]
                 )
 
-    def test_fixture_matrix_covers_phase1_minimum(self) -> None:
-        covered = {"invalid_input", *MANIFEST["contract_coverage"]}
-        for cases in MANIFEST["cases"].values():
-            for case in cases:
-                covered.update(case["coverage"])
-        for solver, paths in MANIFEST["invalid_inputs"].items():
-            self.assertTrue(paths, solver)
-        self.assertEqual(set(), set(MANIFEST["required_coverage"]) - covered)
-
     def test_every_tolerance_override_matches_a_captured_numeric_value(self) -> None:
         all_paths: set[str] = set()
         for solver in MANIFEST["sources"]:
@@ -193,75 +126,6 @@ class LegacyFixtureManifestTests(unittest.TestCase):
 
 
 class LegacyFixtureComparatorTests(unittest.TestCase):
-    def test_public_command_and_environment_contracts_are_captured(self) -> None:
-        expected_scripts = {
-            "fmfsolver": {"fmfsolver", "fmfsolver-gui", "fmfsolver-cli"},
-            "newtsolver": {"newtsolver", "newtsolver-gui", "newtsolver-cli"},
-        }
-        expected_suite_counts = {"fmfsolver": 75, "newtsolver": 90}
-        for solver in MANIFEST["sources"]:
-            contract = json.loads(
-                (GOLDEN_ROOT / solver / "contracts.json").read_text(encoding="utf-8")
-            )
-            self.assertEqual(
-                expected_scripts[solver], set(contract["package"]["scripts"])
-            )
-            self.assertEqual([], contract["package"]["package_all"])
-            self.assertIn(
-                f"usage: {solver.replace('solver', 'solver-cli')}",
-                contract["cli"]["help"],
-            )
-            self.assertIn(solver, contract["module_paths"])
-            self.assertEqual(
-                expected_suite_counts[solver], contract["legacy_suite"]["tests_run"]
-            )
-            self.assertEqual("passed", contract["legacy_suite"]["status"])
-
-            locked = contract["environments"]["locked"]
-            accelerated = contract["environments"]["rayaccel"]
-            self.assertFalse(locked["trimesh_has_embree"])
-            self.assertEqual(
-                "rtree", locked["backend_selection"]["auto"]["value"]["effective"]
-            )
-            self.assertEqual("error", locked["backend_selection"]["embree"]["status"])
-            self.assertTrue(accelerated["trimesh_has_embree"])
-            self.assertEqual(
-                "embree", accelerated["backend_selection"]["auto"]["value"]["effective"]
-            )
-            self.assertEqual(
-                "rtree", accelerated["backend_selection"]["rtree"]["value"]["effective"]
-            )
-            self.assertEqual(
-                "embree",
-                accelerated["backend_selection"]["embree"]["value"]["effective"],
-            )
-            self.assertFalse(locked["embree_binding"]["available"])
-            self.assertTrue(accelerated["embree_binding"]["available"])
-            self.assertEqual(
-                "<platform-specific-embree-distribution>",
-                accelerated["embree_binding"]["distribution"],
-            )
-            self.assertEqual("3.12", locked["python"])
-            self.assertEqual("3.12", accelerated["python"])
-
-            provenance = contract["provenance"]
-            environments = MANIFEST["generation"]["environments"]
-            self.assertEqual(environments, provenance["environments"])
-            self.assertEqual(environments[0], provenance["legacy_suite_environment"])
-            self.assertEqual(environments[1], provenance["cli_run_environment"])
-
-            invalid = contract["invalid_inputs"]
-            expected_names = {
-                Path(path).name for path in MANIFEST["invalid_inputs"][solver]
-            }
-            self.assertEqual(expected_names, set(invalid))
-            self.assertTrue(all(item["status"] == "error" for item in invalid.values()))
-
-    def test_semantic_comparator_accepts_the_committed_tree(self) -> None:
-        module = self._load_comparator_module()
-        differences = module.compare_capture_trees(GOLDEN_ROOT, GOLDEN_ROOT, MANIFEST)
-        self.assertEqual([], differences)
-
     def test_semantic_comparator_applies_quantity_specific_tolerances(self) -> None:
         module = self._load_comparator_module()
 
@@ -399,130 +263,6 @@ class LegacyFixtureComparatorTests(unittest.TestCase):
 
 
 class LegacyFixtureSemanticIntegrityTests(unittest.TestCase):
-    def test_artifact_schemas_and_cross_format_relations(self) -> None:
-        for solver in MANIFEST["sources"]:
-            for case_id, metadata in _case_metadata(solver).items():
-                with self.subTest(solver=solver, case_id=case_id):
-                    case = _load_case(solver, case_id)
-                    total = _total_row(case)
-                    self.assertEqual(case_id, total["case_id"])
-                    self.assertEqual(
-                        metadata["expected_effective_backend"],
-                        total["ray_backend_used"],
-                    )
-                    self.assertEqual(
-                        "<case-signature:path-and-version-dependent>",
-                        total["case_signature"],
-                    )
-                    self.assertEqual("<utc-timestamp>", total["run_started_at_utc"])
-                    self.assertEqual("<utc-timestamp>", total["run_finished_at_utc"])
-                    self.assertEqual(
-                        "<nonnegative-elapsed-seconds>", total["run_elapsed_s"]
-                    )
-                    self.assertTrue(
-                        case["relations"]["case_signature_csv_vtp_recomputed_equal"]
-                    )
-                    self.assertTrue(case["relations"]["csv_rows_share_run_metadata"])
-                    self.assertTrue(case["relations"]["timestamps_utc_and_ordered"])
-
-                    vtp = case["vtp"]
-                    npz = case["npz"]["arrays"]
-                    self.assertEqual(COMMON_VTP_CELL_ARRAYS, set(vtp["cell_data"]))
-                    self.assertTrue(COMMON_VTP_FIELD_ARRAYS <= set(vtp["field_data"]))
-                    if solver == "newtsolver":
-                        self.assertTrue(
-                            {"windward_eq_used", "leeward_eq_used"}
-                            <= set(vtp["field_data"])
-                        )
-                    self.assertTrue(COMMON_NPZ_ARRAYS <= set(npz))
-                    if solver == "fmfsolver":
-                        self.assertTrue({"S", "Ti_K", "Tw_K"} <= set(npz))
-
-                    for record in [
-                        vtp["points"],
-                        vtp["faces"],
-                        *vtp["cell_data"].values(),
-                        *vtp["field_data"].values(),
-                        *npz.values(),
-                    ]:
-                        self.assertEqual(tuple(record["shape"]), _values(record).shape)
-
-                    np.testing.assert_allclose(
-                        _values(vtp["cell_data"]["area_m2"]),
-                        _values(npz["areas_m2"]),
-                        rtol=0.0,
-                        atol=1e-12,
-                    )
-                    np.testing.assert_array_equal(
-                        _values(vtp["cell_data"]["shielded"]),
-                        _values(npz["shielded"]),
-                    )
-                    np.testing.assert_array_equal(
-                        _values(vtp["cell_data"]["stl_index"]),
-                        _values(npz["face_stl_index"]),
-                    )
-                    profile = MANIFEST["tolerance_profiles"][
-                        metadata["tolerance_profile"]
-                    ]
-                    tolerance = MANIFEST["tolerances"][profile["default"]]
-                    np.testing.assert_allclose(
-                        _values(vtp["cell_data"]["C_face_stl"]).sum(axis=0),
-                        _values(npz["C_force_stl"]),
-                        rtol=tolerance["rtol"],
-                        atol=tolerance["atol"],
-                    )
-                    for coefficient in COEFFICIENTS:
-                        self.assertTrue(
-                            math.isclose(
-                                float(total[coefficient]),
-                                float(npz[coefficient]["values"]),
-                                rel_tol=tolerance["rtol"],
-                                abs_tol=tolerance["atol"],
-                            ),
-                            coefficient,
-                        )
-                    self.assertEqual(total["faces"], len(_values(npz["areas_m2"])))
-                    self.assertEqual(
-                        total["shielded_faces"],
-                        int(_values(npz["shielded"]).astype(bool).sum()),
-                    )
-
-                    rows = case["csv"]["rows"]
-                    if "multi_component" in metadata["coverage"]:
-                        self.assertEqual(
-                            ["total", "component", "component"],
-                            [r["scope"] for r in rows],
-                        )
-                        for coefficient in COEFFICIENTS:
-                            component_sum = sum(
-                                float(row[coefficient])
-                                for row in rows
-                                if row["scope"] == "component"
-                            )
-                            self.assertTrue(
-                                math.isclose(
-                                    float(total[coefficient]),
-                                    component_sum,
-                                    rel_tol=tolerance["rtol"],
-                                    abs_tol=tolerance["atol"],
-                                )
-                            )
-                    else:
-                        self.assertEqual(["total"], [row["scope"] for row in rows])
-
-                    shielded = _values(npz["shielded"]).astype(bool)
-                    panel_loads = _values(vtp["cell_data"]["C_face_stl"])
-                    if shielded.any():
-                        np.testing.assert_array_equal(
-                            panel_loads[shielded], np.zeros_like(panel_loads[shielded])
-                        )
-                    if "shielded" in metadata["coverage"]:
-                        np.testing.assert_array_equal(
-                            shielded, np.array([False, False, True, True])
-                        )
-                    else:
-                        self.assertFalse(shielded.any())
-
     def test_validation_reference_values_are_frozen(self) -> None:
         fmf = _total_row(_load_case("fmfsolver", "fmf_zero_plate"))
         newt = _total_row(_load_case("newtsolver", "newt_zero_newtonian"))

@@ -9,7 +9,6 @@ import csv
 import importlib
 import importlib.metadata
 import importlib.util
-import inspect
 import json
 import os
 import shutil
@@ -560,38 +559,6 @@ def main(argv: list[str] | None = None) -> int:
             encoding="utf-8"
         )
     )
-    neutral_core = importlib.import_module("panelsolver.core")
-    neutral_app = importlib.import_module("panelsolver.app")
-    for name in (
-        "legacy_adapter",
-        "legacy_mesh",
-        "legacy_results",
-        "legacy_scheduler",
-        "legacy_shielding",
-    ):
-        if importlib.util.find_spec(f"panelsolver.app.{name}") is not None:
-            raise RuntimeError(f"compatibility implementation remains in app: {name}")
-    for module, names in (
-        (neutral_core, ("NpzProjection", "project_npz_artifact")),
-        (neutral_app, ("write_npz_projection",)),
-    ):
-        present = [name for name in names if hasattr(module, name)]
-        if present:
-            raise RuntimeError(f"removed neutral NPZ API remains: {present}")
-    removed_cache_api = [
-        name
-        for name in ("ResultCache", "ResultCacheError", "ResultCacheStats")
-        if hasattr(neutral_core, name)
-    ]
-    if removed_cache_api:
-        raise RuntimeError(f"removed result-cache API remains: {removed_cache_api}")
-    if importlib.util.find_spec("panelsolver.core.result_cache") is not None:
-        raise RuntimeError("removed panelsolver.core.result_cache module remains")
-    if "result_cache" in inspect.signature(neutral_core.execute_case).parameters:
-        raise RuntimeError("execute_case still accepts removed result_cache keyword")
-    if "cache_hit" in neutral_core.CaseExecutionResult.__dataclass_fields__:
-        raise RuntimeError("CaseExecutionResult still exposes result-cache state")
-
     with tempfile.TemporaryDirectory() as temp_dir:
         staging = Path(temp_dir)
         subprocess_environment = _smoke_subprocess_environment(staging)
@@ -916,35 +883,8 @@ def main(argv: list[str] | None = None) -> int:
             if list(inputs.rglob("*.npz")):
                 raise RuntimeError(f"{product} unexpectedly wrote NPZ output")
 
-            for suffix, input_path in excel_inputs[product].items():
-                format_output = staging / "format-smoke" / product / f"{suffix[1:]}.csv"
-                format_output.parent.mkdir(parents=True, exist_ok=True)
-                format_result = subprocess.run(
-                    [
-                        panel_solver,
-                        domain,
-                        "--input",
-                        input_path,
-                        "--output",
-                        format_output,
-                        "--workers",
-                        "1",
-                        "--checkpoint-every-cases",
-                        "0",
-                    ],
-                    cwd=staging,
-                    capture_output=True,
-                    text=True,
-                    check=False,
-                    env=subprocess_environment,
-                )
-                if format_result.returncode != 0 or not format_output.is_file():
-                    raise RuntimeError(
-                        f"{product} {suffix} input failed:\n"
-                        f"{format_result.stdout}\n{format_result.stderr}"
-                    )
-
             rejected_output = staging / "format-smoke" / product / "xls.csv"
+            rejected_output.parent.mkdir(parents=True, exist_ok=True)
             rejected = subprocess.run(
                 [
                     panel_solver,

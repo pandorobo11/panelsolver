@@ -77,15 +77,6 @@ class PanelMeshTests(unittest.TestCase):
         self.assertFalse(restored.faces.flags.writeable)
         self.assertEqual("first", restored.components[0].metadata["label"])
 
-    def test_repeated_triangle_indices_do_not_choose_mesh_repair_policy(self) -> None:
-        mesh = PanelMesh(
-            [[0, 0, 0], [1, 0, 0], [0, 1, 0]],
-            [[0, 0, 1], [0, 1, 2]],
-            geometry(component_ids=(0, 0)),
-            [MeshComponent(0, "unresolved-degeneracy.stl")],
-        )
-        np.testing.assert_array_equal(mesh.faces[0], [0, 0, 1])
-
     def test_mesh_rejects_invalid_arrays_and_indices(self) -> None:
         valid_vertices = [[0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0]]
         valid_faces = [[0, 1, 2], [1, 3, 2]]

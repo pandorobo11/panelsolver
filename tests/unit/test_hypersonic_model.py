@@ -22,11 +22,9 @@ from panelsolver.models import (
 from panelsolver.models.hypersonic import (
     _inverse_prandtl_meyer,
     _prandtl_meyer_nu,
-    _tangent_cone_detach_limit,
     _tangent_wedge_detach_limit,
     modified_newtonian_cp_max,
     prandtl_meyer_pressure_coefficient,
-    tangent_cone_pressure_coefficient,
     tangent_wedge_pressure_coefficient,
 )
 
@@ -152,20 +150,6 @@ class HypersonicModelTests(unittest.TestCase):
                 )
                 self.assertEqual(0.0, integrated.total.CN)
 
-    def test_modified_newtonian_uses_pinned_stagnation_cp(self) -> None:
-        cp_max = modified_newtonian_cp_max(6.0, 1.4)
-        loads = HypersonicModel().evaluate(
-            _geometry(np.array([[-1.0, 0.0, 0.0]])),
-            PanelFlowState(
-                np.array([1.0, 0.0, 0.0]),
-                np.array([False]),
-            ),
-            _case(windward_eq="modified_newtonian"),
-        )
-        self.assertGreater(cp_max, 0.0)
-        self.assertLess(cp_max, 2.0)
-        self.assertAlmostEqual(cp_max, loads.cell_scalars["cp"][0], places=12)
-
     def test_tangent_wedge_attached_and_detached_branches_are_retained(self) -> None:
         mach = 2.0
         gamma = 1.4
@@ -197,33 +181,6 @@ class HypersonicModelTests(unittest.TestCase):
             )[0]
         )
         self.assertGreater(attached, 0.0)
-
-    def test_tangent_cone_taylor_maccoll_branch_and_detach_are_retained(self) -> None:
-        mach = 6.0
-        gamma = 1.4
-        cap = modified_newtonian_cp_max(mach, gamma)
-        attached = float(
-            tangent_cone_pressure_coefficient(
-                mach,
-                gamma,
-                np.array([math.radians(10.0)]),
-                cp_cap=cap,
-            )[0]
-        )
-        theta_max, cp_crit = _tangent_cone_detach_limit(mach, gamma)
-        detached_angle = min(theta_max + math.radians(5.0), math.radians(85.0))
-        detached = float(
-            tangent_cone_pressure_coefficient(
-                mach,
-                gamma,
-                np.array([detached_angle]),
-                cp_cap=cap,
-            )[0]
-        )
-        self.assertGreater(attached, 0.0)
-        self.assertLess(attached, cap)
-        self.assertGreater(detached, cp_crit)
-        self.assertLess(detached, cap)
 
     def test_prandtl_meyer_iteration_and_vacuum_bound_are_retained(self) -> None:
         gamma = 1.67

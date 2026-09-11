@@ -63,42 +63,27 @@ class PanelSolverCliTests(unittest.TestCase):
                     self.assertIn(description, delegated)
                     self.assertIn("Input cases file (.csv/.xlsx/.xlsm)", delegated)
                     self.assertNotIn(".xls)", delegated)
+                    for option in (
+                        "--cases",
+                        "--checkpoint-every-cases",
+                        "--verbose",
+                        "--plain",
+                        "--debug",
+                    ):
+                        self.assertIn(option, delegated)
 
-    def test_help_and_explicit_empty_cases_use_common_cardinality(self) -> None:
-        with patch.dict(os.environ, {"COLUMNS": "80"}):
-            for program, description, builder in (
-                (
-                    "panelsolver fmf",
-                    "Run the Sentman free-molecular-flow model from CSV/XLSX/XLSM input.",
-                    build_fmf_parser,
-                ),
-                (
-                    "panelsolver hypersonic",
-                    "Run hypersonic panel models from CSV/XLSX/XLSM input.",
-                    build_hypersonic_parser,
-                ),
-            ):
-                with self.subTest(program=program):
-                    help_text = builder().format_help()
-                    self.assertIn(f"usage: {program}", help_text.casefold())
-                    self.assertIn(description, help_text)
-                    self.assertIn("Input cases file (.csv/.xlsx/.xlsm)", help_text)
-                    self.assertNotIn(".xls)", help_text)
-                    self.assertIn("--cases CASES [CASES ...]", help_text)
-                    self.assertIn("--checkpoint-every-cases", help_text)
-                    self.assertIn("--verbose", help_text)
-                    self.assertIn("--plain", help_text)
-                    self.assertIn("--debug", help_text)
-                    self.assertNotIn("--flush-every-cases", help_text)
-                    parsed = builder().parse_args(["--input", "cases.csv"])
-                    self.assertEqual(
-                        DEFAULT_CHECKPOINT_CASES,
-                        parsed.checkpoint_every_cases,
-                    )
-                    with contextlib.redirect_stderr(io.StringIO()):
-                        with self.assertRaises(SystemExit) as caught:
-                            builder().parse_args(["--input", "cases.csv", "--cases"])
-                    self.assertEqual(2, caught.exception.code)
+    def test_default_checkpoint_and_explicit_empty_case_selection(self) -> None:
+        for builder in (build_fmf_parser, build_hypersonic_parser):
+            with self.subTest(builder=builder.__name__):
+                parser = builder()
+                parsed = parser.parse_args(["--input", "cases.csv"])
+                self.assertEqual(
+                    DEFAULT_CHECKPOINT_CASES, parsed.checkpoint_every_cases
+                )
+                with contextlib.redirect_stderr(io.StringIO()):
+                    with self.assertRaises(SystemExit) as caught:
+                        parser.parse_args(["--input", "cases.csv", "--cases"])
+                self.assertEqual(2, caught.exception.code)
 
     def test_case_selector_keeps_comma_space_and_empty_contract(self) -> None:
         self.assertEqual({"a", "b", "c"}, parse_case_ids(["a,b", " c "]))
@@ -107,19 +92,18 @@ class PanelSolverCliTests(unittest.TestCase):
         self.assertIsNone(parse_case_ids([" , "]))
 
     def test_argument_errors_and_unknown_cases_keep_exit_boundaries(self) -> None:
-        for policy in (FMF_CLI_POLICY, HYPERSONIC_CLI_POLICY):
-            with self.subTest(product=policy.runtime_policy.product_id):
-                with contextlib.redirect_stderr(io.StringIO()):
-                    with self.assertRaises(SystemExit) as workers_exit:
-                        parser = (
-                            build_fmf_parser()
-                            if policy is FMF_CLI_POLICY
-                            else build_hypersonic_parser()
-                        )
-                        args = parser.parse_args(["--input", "x", "--workers", "0"])
-                        if args.workers < 1:
-                            parser.error("--workers must be >= 1")
-                self.assertEqual(2, workers_exit.exception.code)
+        for domain in ("fmf", "hypersonic"):
+            for option, value in (
+                ("--workers", "0"),
+                ("--checkpoint-every-cases", "-1"),
+            ):
+                with (
+                    self.subTest(domain=domain, option=option),
+                    contextlib.redirect_stderr(io.StringIO()),
+                ):
+                    with self.assertRaises(SystemExit) as caught:
+                        panel_solver_main([domain, "--input", "x", option, value])
+                    self.assertEqual(2, caught.exception.code)
 
         with tempfile.TemporaryDirectory() as temp_dir:
             input_path = Path(temp_dir) / "cases.csv"

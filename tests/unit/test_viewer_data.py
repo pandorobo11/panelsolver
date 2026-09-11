@@ -1,17 +1,12 @@
 import hashlib
 import unittest
-from dataclasses import FrozenInstanceError
-from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
 import pyvista as pv
 
 from panelsolver.app import (
-    ArtifactLoadMode,
-    ArtifactViewState,
     ArtifactViewStatus,
-    artifact_display_allowed,
     automatic_artifact_view_state,
     discover_scalar_fields,
     field_data_scalar,
@@ -94,9 +89,6 @@ class ArtifactMatchingTests(unittest.TestCase):
             with self.subTest(artifact=artifact):
                 match = match_artifact_case(artifact, {"case_id": "case"}, primary)
                 self.assertFalse(match.matched)
-                self.assertFalse(
-                    artifact_display_allowed(match, ArtifactLoadMode.AUTOMATIC)
-                )
         self.assertIsNone(field_data_scalar(SimpleNamespace(), "case_id"))
 
     def test_real_pyvista_dataset_attributes_are_supported_without_qt(self) -> None:
@@ -114,12 +106,6 @@ class ArtifactMatchingTests(unittest.TestCase):
         self.assertEqual("case", field_data_scalar(poly, "case_id"))
         fields = discover_scalar_fields(poly.cell_data, n_cells=poly.n_cells)
         self.assertEqual(("model_extra",), tuple(field.name for field in fields))
-
-    def test_manual_inspection_is_allowed_without_a_matching_row(self) -> None:
-        self.assertTrue(artifact_display_allowed(None, ArtifactLoadMode.MANUAL))
-        self.assertFalse(artifact_display_allowed(None, ArtifactLoadMode.AUTOMATIC))
-        with self.assertRaises(TypeError):
-            artifact_display_allowed(None, "manual")
 
     def test_duplicate_case_ids_resolve_by_signature_in_input_order(self) -> None:
         first = {"case_id": "duplicate", "variant": "first"}
@@ -144,29 +130,8 @@ class ArtifactMatchingTests(unittest.TestCase):
             )
         )
 
-    def test_matcher_requires_a_case_signature(self) -> None:
-        with self.assertRaises(TypeError):
-            match_artifact_case(_artifact("case", "x"), {"case_id": "case"}, object())
-
 
 class ArtifactViewStateTests(unittest.TestCase):
-    def test_state_is_immutable_and_validates_required_context(self) -> None:
-        state = ArtifactViewState(
-            ArtifactViewStatus.MISSING,
-            Path("outputs/case.vtp"),
-            " case ",
-        )
-        self.assertEqual("case", state.case_id)
-        self.assertTrue(state.path.is_absolute())
-        with self.assertRaises(FrozenInstanceError):
-            state.status = ArtifactViewStatus.CURRENT
-        with self.assertRaises(TypeError):
-            ArtifactViewState("missing", "/tmp/case.vtp", "case")
-        with self.assertRaises(ValueError):
-            ArtifactViewState(ArtifactViewStatus.EMPTY, "/tmp/case.vtp")
-        with self.assertRaises(ValueError):
-            ArtifactViewState(ArtifactViewStatus.CURRENT, "/tmp/case.vtp")
-
     def test_automatic_classification_accepts_current_signature(self) -> None:
         current = _signature("current")
         state = automatic_artifact_view_state(

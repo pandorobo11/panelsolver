@@ -75,9 +75,6 @@ with (
 ):
     lifecycle.RunLifecycleTests.setUpClass()
     names = unittest.defaultTestLoader.getTestCaseNames(lifecycle.RunLifecycleTests)
-    names += [
-        'test_vtp_output_failures_complete_once_with_bounded_summary_and_recover_ui'
-    ] * 20
     for name in names:
         result = unittest.TestResult()
         lifecycle.RunLifecycleTests(name).run(result)

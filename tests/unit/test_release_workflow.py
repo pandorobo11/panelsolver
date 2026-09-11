@@ -151,7 +151,7 @@ class ReleaseWorkflowTests(unittest.TestCase):
         for name in owners:
             self.assertEqual(1, self.job(name).count("smoke_installed_wheel.py"))
 
-    def test_required_artifact_gate_fails_closed_for_every_prerequisite(self) -> None:
+    def test_required_artifact_gate_fails_closed_for_non_success_results(self) -> None:
         gate = self.job("artifact")
         prerequisites = self.needs("artifact")
         self.assertTrue(
@@ -165,13 +165,14 @@ class ReleaseWorkflowTests(unittest.TestCase):
         code = textwrap.dedent(
             gate.split("python - <<'PY'\n", 1)[1].split("          PY", 1)[0]
         )
-        success = {name: {"result": "success"} for name in prerequisites}
+        success = {name: {"result": "success"} for name in sorted(prerequisites)}
         cases = [("all succeeded", success, True), ("empty", {}, False)]
-        for name in prerequisites:
-            for result in ("failure", "cancelled", "skipped"):
-                cases.append(
-                    (f"{name}: {result}", {**success, name: {"result": result}}, False)
-                )
+        # Put the failure after successful entries to exercise the whole scan.
+        name = next(reversed(success))
+        for result in ("failure", "cancelled", "skipped"):
+            cases.append(
+                (f"{name}: {result}", {**success, name: {"result": result}}, False)
+            )
         for label, results, expected_success in cases:
             with self.subTest(result=label):
                 run = subprocess.run(

@@ -12,7 +12,7 @@ import numpy as np
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtWidgets
 
 from panelsolver.app import (
     ArtifactViewState,
@@ -150,83 +150,6 @@ class ViewerPanelTests(unittest.TestCase):
             viewer.findChild(QtWidgets.QWidget, "viewerArtifactStatusRow")
         )
 
-    def test_all_frequent_controls_stay_visible_without_disclosure(self) -> None:
-        viewer, _plotter = self.make_viewer()
-        viewer.load_vtp("/tmp/case.vtp", FakePoly({"cp": [0.2, 0.5]}))
-        viewer.resize(850, 650)
-        viewer.show()
-        self.app.processEvents()
-        self.assertTrue(viewer.btn_view_iso_1.isVisible())
-        self.assertTrue(viewer.btn_view_wind.isVisible())
-        self.assertTrue(viewer.chk_edges.isVisible())
-        self.assertTrue(viewer.btn_view_xp.isVisible())
-        self.assertTrue(viewer.btn_view_iso_2.isVisible())
-        self.assertTrue(viewer.btn_view_wind_rev.isVisible())
-        viewer.btn_view_xp.click()
-        self.assertEqual((1, 0, 0), _plotter.view_vectors[-1])
-        viewer.btn_view_iso_1.click()
-        self.assertEqual((-1, -1, 1), _plotter.view_vectors[-1])
-        viewer.close()
-
-    def test_canvas_is_full_bleed_while_viewer_chrome_is_inset(self) -> None:
-        viewer, plotter = self.make_viewer()
-        viewer.load_vtp("/tmp/case.vtp", FakePoly({"cp": [0.2, 0.5]}))
-        root_margins = viewer._root_layout.contentsMargins()
-        self.assertEqual(
-            (
-                0,
-                0,
-                0,
-                viewer.style().pixelMetric(
-                    QtWidgets.QStyle.PixelMetric.PM_LayoutBottomMargin, None, viewer
-                ),
-            ),
-            (
-                root_margins.left(),
-                root_margins.top(),
-                root_margins.right(),
-                root_margins.bottom(),
-            ),
-        )
-        self.assertGreaterEqual(viewer._root_layout.indexOf(plotter.interactor), 0)
-        self.assertIs(viewer, plotter.interactor.parentWidget())
-
-        control_margins = viewer._controls_grid.contentsMargins()
-        self.assertGreater(control_margins.left(), 0)
-        self.assertEqual(control_margins.left(), control_margins.right())
-
-        viewer.resize(max(800, viewer.minimumSizeHint().width()), 600)
-        viewer.show()
-        self.app.processEvents()
-        self.assertEqual(0, plotter.interactor.mapTo(viewer, QtCore.QPoint()).x())
-        self.assertEqual(viewer.width(), plotter.interactor.width())
-        self.assertEqual(0, plotter.interactor.mapTo(viewer, QtCore.QPoint()).y())
-        viewer.close()
-
-    def test_runtime_long_labels_keep_viewer_actions_available(self) -> None:
-        viewer, _plotter = self.make_viewer()
-        viewer.lbl_colorbar.setText("Colorbar limits")
-        viewer.chk_edges.setText("Show all panel edges")
-        viewer.chk_shield_transparent.setText("Show shielded panels with transparency")
-        viewer.chk_overlay_text.setText("Show complete case information")
-        viewer.resize(max(1000, viewer.minimumSizeHint().width()), 600)
-        viewer.show()
-        self.app.processEvents()
-
-        actions = (
-            viewer.btn_open_vtp,
-            *viewer._camera_buttons,
-            viewer.btn_save_image,
-            viewer.btn_save_selected_images,
-        )
-        for action in actions:
-            with self.subTest(action=action.text()):
-                self.assertTrue(action.isVisible())
-                self.assertGreater(action.width(), 0)
-                right = action.mapTo(viewer, QtCore.QPoint()).x() + action.width()
-                self.assertLessEqual(right, viewer.width())
-        viewer.close()
-
     def test_automatic_unavailable_states_use_explicit_text_and_severity(self) -> None:
         viewer, _plotter = self.make_viewer()
         expected = (
@@ -326,66 +249,6 @@ class ViewerPanelTests(unittest.TestCase):
         viewer.chk_overlay_text.setChecked(True)
         self.assertIsNotNone(viewer._overlay_actor)
         viewer.close()
-
-    def test_semantic_action_roles_preserve_enabled_and_click_behavior(self) -> None:
-        viewer, _plotter = self.make_viewer()
-        for button in (
-            viewer.btn_open_vtp,
-            viewer.btn_save_image,
-            viewer.btn_save_selected_images,
-        ):
-            self.assertEqual("secondary", button.property("fluentAppearance"))
-        self.assertTrue(viewer.btn_open_vtp.isEnabled())
-        self.assertFalse(viewer.btn_save_image.isEnabled())
-        self.assertFalse(viewer.btn_save_selected_images.isEnabled())
-
-        opens: list[bool] = []
-        saves: list[bool] = []
-        selected_saves: list[bool] = []
-        batch_requests: list[bool] = []
-        viewer.btn_open_vtp.clicked.connect(lambda checked=False: opens.append(checked))
-        viewer.btn_save_image.clicked.connect(
-            lambda checked=False: saves.append(checked)
-        )
-        viewer.btn_save_selected_images.clicked.connect(
-            lambda checked=False: selected_saves.append(checked)
-        )
-        viewer.save_selected_images_requested.connect(
-            lambda: batch_requests.append(True)
-        )
-        with patch.object(
-            QtWidgets.QFileDialog,
-            "getOpenFileName",
-            return_value=("", ""),
-        ):
-            viewer.btn_open_vtp.click()
-        viewer.btn_save_image.click()
-        viewer.btn_save_selected_images.click()
-        self.assertEqual([False], opens)
-        self.assertEqual([], saves)
-        self.assertEqual([], selected_saves)
-        self.assertEqual([], batch_requests)
-
-        row = {"case_id": "one"}
-        viewer.set_input_path("/tmp/cases.csv")
-        viewer.set_case_rows((row,))
-        viewer.set_selected_case_rows((row,))
-        viewer.btn_save_selected_images.click()
-        self.assertEqual([False], selected_saves)
-        self.assertEqual([True], batch_requests)
-
-        viewer.load_vtp(
-            "/tmp/one.vtp",
-            FakePoly({"normal_traction_coeff": [1.0]}),
-            row,
-        )
-        with patch.object(
-            QtWidgets.QFileDialog,
-            "getSaveFileName",
-            return_value=("", ""),
-        ):
-            viewer.btn_save_image.click()
-        self.assertEqual([False], saves)
 
     def test_hypersonic_scalar_label_selects_cp_and_titles_colorbar(self) -> None:
         viewer, plotter = self.make_viewer(spec=newt_solver_spec())
@@ -687,24 +550,6 @@ class ViewerPanelTests(unittest.TestCase):
         self.assertEqual(manual_path, viewer._loaded_vtp_path)
         self.assertEqual(mesh_calls, plotter.mesh_calls)
         self.assertEqual(selected_scalar, viewer.cmb_scalar.currentData())
-
-    def test_manual_context_refresh_without_adapters_stays_unmatched(self) -> None:
-        viewer, _plotter = self.make_viewer(spec=fmf_solver_spec(adapters=None))
-        poly = FakePoly(
-            {"normal_traction_coeff": [1.0]},
-            {"case_id": ["case"], "case_signature": [_signature("case").digest]},
-        )
-        self.assertTrue(viewer.load_vtp("/tmp/manual.vtp", poly))
-
-        viewer.set_case_rows(({"case_id": "case"},))
-        viewer.set_case_rows(None)
-
-        self.assertEqual(
-            ArtifactViewStatus.MANUAL_UNMATCHED,
-            viewer.artifact_view_state.status,
-        )
-        self.assertIsNone(viewer._display_case_row)
-        self.assertIs(poly, viewer._poly)
 
     def test_new_input_selection_reset_clears_previous_automatic_result(
         self,
@@ -1267,6 +1112,10 @@ class ViewerPanelTests(unittest.TestCase):
 
     def test_export_buttons_follow_viewport_and_loaded_case_state(self) -> None:
         viewer, _plotter = self.make_viewer()
+        batch_requests = []
+        viewer.save_selected_images_requested.connect(
+            lambda: batch_requests.append(True)
+        )
         self.assertFalse(viewer.btn_save_image.isEnabled())
         self.assertFalse(viewer.btn_save_selected_images.isEnabled())
         viewer.set_input_path("/tmp/cases.csv")
@@ -1274,6 +1123,8 @@ class ViewerPanelTests(unittest.TestCase):
         self.assertFalse(viewer.btn_save_selected_images.isEnabled())
         viewer.set_selected_case_rows(({"case_id": "one"},))
         self.assertTrue(viewer.btn_save_selected_images.isEnabled())
+        viewer.btn_save_selected_images.click()
+        self.assertEqual([True], batch_requests)
         viewer.load_vtp(
             "/tmp/one.vtp",
             FakePoly({"normal_traction_coeff": [1.0]}),

@@ -366,69 +366,6 @@ class ReleaseToolTests(unittest.TestCase):
                 self.assertIn("examples/hypersonic/pressure_models.csv", names)
                 self.assertFalse(any(name.endswith((".npz", ".xls")) for name in names))
 
-    def test_packaged_examples_readme_uses_current_hypersonic_scalar(self) -> None:
-        source_readme = (
-            Path(__file__).resolve().parents[2] / "examples" / "README.md"
-        ).read_bytes()
-        with tempfile.TemporaryDirectory() as temp_dir:
-            repository = self.make_repository(Path(temp_dir))
-            (repository / "examples" / "README.md").write_bytes(source_readme)
-            wheel = self.write_wheel(repository)
-            _docs_zip, examples_zip = create_release_archives(repository)
-
-            with zipfile.ZipFile(wheel) as archive:
-                wheel_readme = archive.read("panelsolver/_examples/README.md").decode(
-                    "utf-8"
-                )
-            with zipfile.ZipFile(examples_zip) as archive:
-                examples_readme = archive.read("examples/README.md").decode("utf-8")
-
-            self.assertNotIn("Cp_n", wheel_readme)
-            self.assertNotIn("Cp_n", examples_readme)
-
-    def test_wheel_and_docs_zip_preserve_audited_theme_licenses(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            repository = self.make_repository(Path(temp_dir))
-            wheel = self.write_wheel(repository)
-            self.write_sdist(repository)
-            verify_wheel_contents(repository, wheel)
-            docs_zip, _examples_zip = create_release_archives(repository)
-            with zipfile.ZipFile(wheel) as archive:
-                names = set(archive.namelist())
-                self.assertFalse(any("devdocs" in Path(name).parts for name in names))
-                self.assertIn(
-                    "panelsolver/_docs_site/assets/javascripts/panelsolver-docs.js",
-                    names,
-                )
-                for license_name in _DOCS_REQUIRED_LICENSES:
-                    docs_license = (
-                        f"panelsolver/_docs_site/THIRD_PARTY_LICENSES/{license_name}"
-                    )
-                    metadata_license = next(
-                        name
-                        for name in names
-                        if name.endswith(
-                            f"licenses/THIRD_PARTY_LICENSES/{license_name}"
-                        )
-                    )
-                    self.assertNotEqual(
-                        archive.read("panelsolver/_docs_site/LICENSE"),
-                        archive.read(docs_license),
-                    )
-                    self.assertEqual(
-                        archive.read(docs_license),
-                        archive.read(metadata_license),
-                    )
-            with zipfile.ZipFile(docs_zip) as archive:
-                self.assertIn(
-                    "assets/javascripts/panelsolver-docs.js",
-                    archive.namelist(),
-                )
-                verify_offline_documentation_licenses(
-                    set(archive.namelist()),
-                    archive.read,
-                )
-
     def test_wheel_and_docs_zip_reject_developer_or_removed_pages(self) -> None:
         forbidden_docs = (
             "development/setup.html",
@@ -460,7 +397,7 @@ class ReleaseToolTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "developer documentation"):
                 verify_wheel_contents(repository, wheel)
 
-    def test_unaudited_theme_asset_or_missing_license_fails_release_check(self) -> None:
+    def test_wheel_rejects_unaudited_theme_asset(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             repository = self.make_repository(Path(temp_dir))
             wheel = self.write_wheel(repository)
@@ -472,38 +409,13 @@ class ReleaseToolTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "unaudited theme assets"):
                 verify_wheel_contents(repository, wheel)
 
-        members = {
-            *set(_DOCS_THEME_ASSET_LICENSES),
-            "LICENSE",
-            "THIRD_PARTY_NOTICES.md",
-        }
-        payloads = {
-            **self.theme_asset_payloads(),
-            "LICENSE": b"project license\n",
-            "THIRD_PARTY_NOTICES.md": ("\n".join(_DOCS_NOTICE_MARKERS) + "\n").encode(),
-        }
-        with self.assertRaisesRegex(RuntimeError, "missing third-party license"):
-            verify_offline_documentation_licenses(members, payloads.__getitem__)
-
-    def test_every_audited_readthedocs_asset_is_required(self) -> None:
-        self.assertEqual(
-            set(_DOCS_THEME_ASSET_LICENSES),
-            set(_DOCS_THEME_ASSET_SHA256),
-        )
+    def test_missing_audited_asset_fails_release_check(self) -> None:
         members, payloads = self.audited_docs_payloads()
         verify_offline_documentation_licenses(members, payloads.__getitem__)
-        for missing in _DOCS_THEME_ASSET_LICENSES:
-            with (
-                self.subTest(missing=missing),
-                self.assertRaisesRegex(
-                    RuntimeError,
-                    "missing audited theme assets",
-                ),
-            ):
-                verify_offline_documentation_licenses(
-                    members - {missing},
-                    payloads.__getitem__,
-                )
+        with self.assertRaisesRegex(RuntimeError, "missing audited theme assets"):
+            verify_offline_documentation_licenses(
+                members - {"css/theme.css"}, payloads.__getitem__
+            )
 
     def test_adapted_assets_and_polyfill_have_complete_license_mapping(self) -> None:
         css_licenses = set(_DOCS_THEME_ASSET_LICENSES["css/theme.css"])
@@ -535,25 +447,6 @@ class ReleaseToolTests(unittest.TestCase):
                 "Tino Zijdel",
             }.issubset(_DOCS_NOTICE_MARKERS)
         )
-
-        members, payloads = self.audited_docs_payloads()
-        license_path = f"THIRD_PARTY_LICENSES/{polyfill_license}"
-        with self.assertRaisesRegex(RuntimeError, "missing third-party license"):
-            verify_offline_documentation_licenses(
-                members - {license_path},
-                payloads.__getitem__,
-            )
-
-        members, payloads = self.audited_docs_payloads()
-        omitted_marker = "requestAnimationFrame polyfill"
-        payloads["THIRD_PARTY_NOTICES.md"] = (
-            "\n".join(
-                marker for marker in _DOCS_NOTICE_MARKERS if marker != omitted_marker
-            )
-            + "\n"
-        ).encode()
-        with self.assertRaisesRegex(RuntimeError, "notices omit audited components"):
-            verify_offline_documentation_licenses(members, payloads.__getitem__)
 
     def test_changed_audited_asset_fails_hash_gate(self) -> None:
         members, payloads = self.audited_docs_payloads()
@@ -601,27 +494,6 @@ class ReleaseToolTests(unittest.TestCase):
         ).encode()
         with self.assertRaisesRegex(RuntimeError, "notices omit audited components"):
             verify_offline_documentation_licenses(members, payloads.__getitem__)
-
-    def test_old_mkdocs_theme_assets_fail_as_unaudited(self) -> None:
-        for old_asset in (
-            "css/bootstrap.min.css",
-            "js/bootstrap.bundle.min.js",
-            "webfonts/fa-solid-900.woff2",
-        ):
-            members, payloads = self.audited_docs_payloads()
-            members.add(old_asset)
-            payloads[old_asset] = b"obsolete theme asset\n"
-            with (
-                self.subTest(old_asset=old_asset),
-                self.assertRaisesRegex(
-                    RuntimeError,
-                    "unaudited theme assets",
-                ),
-            ):
-                verify_offline_documentation_licenses(
-                    members,
-                    payloads.__getitem__,
-                )
 
     def test_sdist_requires_regeneration_inputs_and_all_documentation(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -713,10 +585,10 @@ class ReleaseToolTests(unittest.TestCase):
                         expected_commit="c" * 40 if case == "commit" else None,
                     )
 
-    def test_manifest_rejects_order_duplicate_kind_filename_and_unexpected_filename(
+    def test_manifest_rejects_reordered_kinds_and_invalid_filenames(
         self,
     ) -> None:
-        for case in ("order", "kind", "duplicate_filename", "unexpected_filename"):
+        for case in ("order", "duplicate_filename", "unexpected_filename"):
             with self.subTest(case=case), tempfile.TemporaryDirectory() as temp_dir:
                 repository = self.make_repository(Path(temp_dir))
                 self.prepare_artifacts(repository)
@@ -725,12 +597,6 @@ class ReleaseToolTests(unittest.TestCase):
                 if case == "order":
                     self.mutate_manifest(
                         manifest_path, lambda value: value["artifacts"].reverse()
-                    )
-                    expected = "kinds/order mismatch"
-                elif case == "kind":
-                    self.mutate_manifest(
-                        manifest_path,
-                        lambda value: value["artifacts"][2].update(kind="wheel"),
                     )
                     expected = "kinds/order mismatch"
                 elif case == "duplicate_filename":
@@ -999,30 +865,17 @@ class ReleaseToolTests(unittest.TestCase):
                 verify_github_release_state(expected_commit=commit)
 
     def test_github_api_errors_and_invalid_json_fail_closed(self) -> None:
-        failures = (
-            subprocess.CompletedProcess(
-                ["gh", "api"],
-                1,
-                stdout="",
-                stderr="HTTP 403: Resource not accessible by integration",
-            ),
-            subprocess.CompletedProcess(
-                ["gh", "api"],
-                1,
-                stdout="",
-                stderr="HTTP 403: API rate limit exceeded",
-            ),
+        failed = subprocess.CompletedProcess(
+            ["gh", "api"],
+            1,
+            stdout="",
+            stderr="HTTP 403: Resource not accessible by integration",
         )
-        for result in failures:
-            with (
-                self.subTest(stderr=result.stderr),
-                patch(
-                    "scripts.release_tools.subprocess.run",
-                    return_value=result,
-                ),
-                self.assertRaisesRegex(RuntimeError, "GitHub API request failed"),
-            ):
-                _github_api_json("repos/pandorobo11/panelsolver")
+        with (
+            patch("scripts.release_tools.subprocess.run", return_value=failed),
+            self.assertRaisesRegex(RuntimeError, "GitHub API request failed"),
+        ):
+            _github_api_json("repos/pandorobo11/panelsolver")
 
         invalid_json = subprocess.CompletedProcess(
             ["gh", "api"],

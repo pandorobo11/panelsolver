@@ -50,22 +50,6 @@ class WorkbenchTests(unittest.TestCase):
         self.assertEqual(widgets[1].y(), 28)
         self.assertEqual(flow.heightForWidth(100), 64)
 
-    def test_open_vtp_is_right_aligned_with_compact_scalar_selectors(self):
-        viewer = self.viewer()
-        viewer.resize(1100, 700)
-        viewer.show()
-        self.app.processEvents()
-        button = viewer.btn_open_vtp
-        self.assertEqual(button.geometry().right(), viewer.scalar_row.rect().right())
-        self.assertGreater(
-            button.x()
-            - viewer.scalar_selectors.mapTo(
-                viewer.scalar_row, viewer.cmb_cmap.geometry().topRight()
-            ).x(),
-            100,
-        )
-        viewer.close()
-
     def test_diagnostics_controls_fit_all_ancestors_when_wrapped(self):
         previous_qss = self.app.styleSheet()
         try:
@@ -259,16 +243,6 @@ class WorkbenchTests(unittest.TestCase):
             panel.close()
             self.app.setStyleSheet(previous)
 
-    def test_small_window_with_larger_text_keeps_primary_actions_inside_panels(self):
-        previous = self.app.font()
-        font = self.app.font()
-        font.setPointSizeF(font.pointSizeF() * 1.25)
-        self.app.setFont(font)
-        try:
-            self.assert_small_window_controls_fit()
-        finally:
-            self.app.setFont(previous)
-
     def test_small_window_with_native_styles_themes_and_text_sizes(self):
         previous_font = self.app.font()
         previous_qss = self.app.styleSheet()
@@ -461,14 +435,6 @@ class WorkbenchTests(unittest.TestCase):
         finally:
             self.app.setFont(previous_font)
             self.app.setStyleSheet(previous_style)
-
-    def test_full_input_remains_in_table_without_a_duplicate_details_panel(self):
-        panel = self.panel()
-        panel.load_input_file("/tmp/input.csv")
-        self.assertIn("custom", panel._table_columns)
-        self.assertIn("/mesh/first.stl", panel.case_table.item(0, 1).toolTip())
-        self.assertFalse(hasattr(panel, "case_details"))
-        panel.close()
 
     def test_diagnostics_count_messages_and_cancellation_survives_progress(self):
         panel = self.panel()

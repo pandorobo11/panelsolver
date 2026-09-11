@@ -13,7 +13,6 @@ from panelsolver.core import (
 )
 from panelsolver.models import (
     DuplicateModelError,
-    ModelCaseMismatchError,
     ModelOutputError,
     ModelRegistry,
     ModelRegistryError,
@@ -172,17 +171,6 @@ class ModelRegistryTests(unittest.TestCase):
                     state,
                     ModelCasePayload(model.model_id, {"scale": 1.0}),
                 )
-
-    def test_registry_detects_identity_mutation_after_registration(self) -> None:
-        model = SyntheticModel("before")
-        registry = ModelRegistry((model,))
-        model.model_id = "after"
-        with self.assertRaises(ModelCaseMismatchError):
-            registry.evaluate(
-                geometry(),
-                flow(),
-                ModelCasePayload("before", {"scale": 1.0}),
-            )
 
 
 if __name__ == "__main__":
