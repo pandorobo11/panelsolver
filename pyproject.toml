@@ -1,6 +1,6 @@
 [project]
 name = "panelsolver"
-version = "0.1.0rc1"
+version = "0.1.0"
 description = "Shared panel-solver platform for free-molecular and hypersonic flow models"
 readme = "README.md"
 requires-python = ">=3.12"

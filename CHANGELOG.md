@@ -6,7 +6,7 @@ migration baselines and runtime artifact version semantics are recorded in ADR
 
 ## [Unreleased]
 
-## [0.1.0rc1] - 2026-09-10
+## [0.1.0] - 2026-09-11
 
 - Generate every STL face normal from repaired face cross products using
   max-component scaling before normalization, avoiding Trimesh's absolute
