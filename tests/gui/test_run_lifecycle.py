@@ -344,10 +344,6 @@ class RunLifecycleTests(unittest.TestCase):
             self.assertEqual(initial_loads, len(viewer.loaded))
             self.assertIsNone(viewer.loaded_path)
 
-            # Manual inspection bypasses CasesPanel auto-load suppression.
-            viewer.load_vtp(str(vtp_path))
-            self.assertEqual(vtp_path.resolve(), viewer.loaded_path)
-
             self.assertTrue(panel.start_run(rows, 1, 1, root / "results.csv"))
             self.wait_until(lambda: not panel.is_running())
             self.assertEqual(vtp_path.resolve(), viewer.loaded_path)

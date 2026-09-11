@@ -159,7 +159,22 @@ class CsvWriterTests(unittest.TestCase):
         real_replace = os.replace
         handles = []
         events = []
-        expected = b"\xef\xbb\xbfcase_id,scope,blank\na,total,\na,component,\n"
+        contents = CsvProjection(
+            ("case_id", "scope", "blank"),
+            (
+                {"case_id": "日本語", "scope": "total", "blank": None},
+                {"case_id": "日本語", "scope": "component", "blank": None},
+            ),
+        )
+        expected = [
+            {"case_id": "日本語", "scope": "total", "blank": ""},
+            {"case_id": "日本語", "scope": "component", "blank": ""},
+        ]
+
+        def assert_complete_csv(path):
+            self.assertTrue(path.read_bytes().startswith(b"\xef\xbb\xbf"))
+            with path.open(encoding="utf-8-sig", newline="") as handle:
+                self.assertEqual(expected, list(csv.DictReader(handle)))
 
         def temporary_file(**kwargs):
             handle = real_temporary_file(**kwargs)
@@ -167,14 +182,14 @@ class CsvWriterTests(unittest.TestCase):
             return handle
 
         with tempfile.TemporaryDirectory() as td:
-            output = Path(td) / "results.csv"
+            output = Path(td) / "日本語-results.csv"
             output.write_bytes(b"previous run\n")
 
             def sync(descriptor):
                 handle = handles[0]
                 self.assertFalse(handle.closed)
                 self.assertEqual(handle.fileno(), descriptor)
-                self.assertEqual(expected, Path(handle.name).read_bytes())
+                assert_complete_csv(Path(handle.name))
                 self.assertEqual(b"previous run\n", output.read_bytes())
                 events.append("sync")
                 real_fsync(descriptor)
@@ -194,53 +209,10 @@ class CsvWriterTests(unittest.TestCase):
                 patch("panelsolver.app.csv_writer.os.fsync", side_effect=sync),
                 patch("panelsolver.app.csv_writer.os.replace", side_effect=replace),
             ):
-                write_csv_atomic(output, projection())
+                write_csv_atomic(output, contents)
             self.assertEqual(["sync", "replace"], events)
-            self.assertEqual(expected, output.read_bytes())
+            assert_complete_csv(output)
             self.assertEqual([output], list(Path(td).iterdir()))
-
-    def test_both_products_flush_fsync_replace_and_preserve_semantic_csv(self) -> None:
-        for adapter in (fmf_csv, hypersonic_csv):
-            with (
-                self.subTest(adapter=adapter.__name__),
-                tempfile.TemporaryDirectory() as td,
-            ):
-                output = Path(td) / "results.csv"
-                with (
-                    patch("panelsolver.app.csv_writer.os.fsync") as fsync,
-                    patch(
-                        "panelsolver.app.csv_writer.os.replace",
-                        wraps=os.replace,
-                    ) as replace,
-                ):
-                    adapter.write_csv(output, projection())
-                fsync.assert_called_once()
-                replace.assert_called_once()
-                self.assertEqual(b"\xef\xbb\xbf", output.read_bytes()[:3])
-                with output.open(encoding=CSV_ENCODING, newline="") as handle:
-                    reader = csv.DictReader(handle)
-                    self.assertEqual(
-                        [
-                            {"case_id": "a", "scope": "total", "blank": ""},
-                            {"case_id": "a", "scope": "component", "blank": ""},
-                        ],
-                        list(reader),
-                    )
-
-    def test_atomic_writer_emits_bom_and_round_trips_unicode(self) -> None:
-        for adapter in (fmf_csv, hypersonic_csv):
-            with (
-                self.subTest(adapter=adapter.__name__),
-                tempfile.TemporaryDirectory() as td,
-            ):
-                output = Path(td) / "日本語-results.csv"
-                adapter.write_csv(output, unicode_projection())
-                self.assertEqual(b"\xef\xbb\xbf", output.read_bytes()[:3])
-                with output.open(encoding=CSV_ENCODING, newline="") as handle:
-                    self.assertEqual(
-                        [{"case_id": "日本語ケース", "note": "日本語メモ"}],
-                        list(csv.DictReader(handle)),
-                    )
 
     def test_atomic_writer_preserves_output_and_cleans_temp_on_failure(self) -> None:
         for target, message in (

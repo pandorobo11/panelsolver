@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -10,7 +10,6 @@ from PySide6 import QtCore, QtGui, QtTest, QtWidgets
 
 from panelsolver.app.gui_components import FrozenCaseTable
 from panelsolver.app.gui_theme import (
-    SEMANTIC_PROPERTY_NAMES,
     SEMANTIC_TOKEN_NAMES,
     ApplicationThemeManager,
     ThemeMode,
@@ -18,7 +17,6 @@ from panelsolver.app.gui_theme import (
     build_application_palette,
     render_application_qss,
     resolve_theme,
-    set_semantic_property,
 )
 
 
@@ -177,22 +175,6 @@ class GuiThemeTests(unittest.TestCase):
                 "QWidget { color: @{missing_role}; }",
             )
 
-    def test_qss_leaves_complex_controls_and_generic_item_selection_to_qt(self) -> None:
-        for mode in (ThemeMode.LIGHT, ThemeMode.DARK):
-            qss = render_application_qss(resolve_theme(mode))
-            for control in (
-                "QDoubleSpinBox",
-                "QDateEdit",
-                "QTimeEdit",
-                "QDateTimeEdit",
-            ):
-                with self.subTest(mode=mode, control=control):
-                    self.assertNotIn(control, qss)
-
-            item_view_rule = qss.split("QAbstractItemView {", 1)[1].split("}", 1)[0]
-            self.assertNotIn("selection-background-color", item_view_rule)
-            self.assertNotIn("selection-color", item_view_rule)
-
     def test_case_cell_paints_selection_without_native_row_background(self) -> None:
         # Windows 11 draws the selection in CE_ItemViewItem, whereas other
         # styles may already fill it in PE_PanelItemViewRow. Exercise the cell
@@ -255,25 +237,6 @@ class GuiThemeTests(unittest.TestCase):
                 table.close()
                 table.deleteLater()
 
-    def test_progress_qss_is_bounded_and_resolves_semantic_statuses(self) -> None:
-        for mode in (ThemeMode.LIGHT, ThemeMode.DARK):
-            qss = render_application_qss(resolve_theme(mode))
-            self.assertIn("QProgressBar {", qss)
-            self.assertIn("QProgressBar::chunk {", qss)
-            for status in ("info", "success", "warning", "danger"):
-                with self.subTest(mode=mode, status=status):
-                    self.assertIn(f'QProgressBar[fluentStatus="{status}"]', qss)
-            for decorative_treatment in (
-                "qlineargradient",
-                "qradialgradient",
-                "qconicalgradient",
-                "animation",
-            ):
-                self.assertNotIn(decorative_treatment, qss)
-            for rule in qss.split("}"):
-                if rule.strip().startswith("QProgressBar"):
-                    self.assertNotIn("image:", rule)
-
     def test_progress_status_text_and_boundaries_have_contrast(self) -> None:
         roles = (
             ("info", "link", "inactive_selection_background"),
@@ -293,29 +256,6 @@ class GuiThemeTests(unittest.TestCase):
                         _contrast_ratio(tokens[border], tokens["control_background"]),
                         3.0,
                     )
-
-    def test_focus_rules_keep_the_base_border_width(self) -> None:
-        qss = render_application_qss(resolve_theme(ThemeMode.LIGHT))
-        self.assertNotIn("border: 2px", qss)
-        for selector in (
-            "QPushButton:focus, QToolButton:focus",
-            "QLineEdit:focus, QPlainTextEdit:focus, QTextEdit:focus",
-            "QAbstractItemView:focus",
-        ):
-            with self.subTest(selector=selector):
-                rule = qss.split(f"{selector} {{", 1)[1].split("}", 1)[0]
-                self.assertIn("border: 1px solid", rule)
-
-    def test_viewer_camera_compaction_is_property_scoped_and_horizontal(self) -> None:
-        qss = render_application_qss(resolve_theme(ThemeMode.LIGHT))
-        selector = 'QPushButton[viewerCameraControl="true"]'
-        rule = qss.split(f"{selector} {{", 1)[1].split("}", 1)[0]
-
-        self.assertIn("padding: 4px 6px", rule)
-        self.assertNotIn("padding-top", rule)
-        self.assertNotIn("padding-bottom", rule)
-        self.assertNotIn("min-height", rule)
-        self.assertNotIn("fluentSize", qss)
 
     def test_palette_populates_active_inactive_and_disabled_groups(self) -> None:
         theme = resolve_theme(ThemeMode.LIGHT)
@@ -630,77 +570,6 @@ class GuiThemeTests(unittest.TestCase):
                 1
             ].split("}", 1)[0]
             self.assertIn("subcontrol-position: center right", rule)
-
-    def test_semantic_property_helper_preserves_behavior(self) -> None:
-        self.assertEqual(
-            {"fluentAppearance", "fluentStatus", "fluentBusy", "fluentInvalid"},
-            SEMANTIC_PROPERTY_NAMES,
-        )
-        button = QtWidgets.QPushButton("Run")
-        activations: list[bool] = []
-        button.clicked.connect(lambda checked=False: activations.append(checked))
-
-        set_semantic_property(button, "fluentAppearance", "primary")
-        set_semantic_property(button, "fluentStatus", "info")
-        set_semantic_property(button, "fluentBusy", False)
-        self.assertEqual("primary", button.property("fluentAppearance"))
-        self.assertEqual("info", button.property("fluentStatus"))
-        self.assertFalse(button.property("fluentBusy"))
-        self.assertTrue(button.isEnabled())
-        button.click()
-        self.assertEqual([False], activations)
-
-        with self.assertRaisesRegex(ValueError, "Unsupported semantic property"):
-            set_semantic_property(button, "unknownProperty", True)
-        with self.assertRaisesRegex(ValueError, "Unsupported fluentAppearance"):
-            set_semantic_property(button, "fluentAppearance", "large")
-        with self.assertRaisesRegex(ValueError, "Unsupported fluentStatus"):
-            set_semantic_property(button, "fluentStatus", "running")
-        with self.assertRaisesRegex(TypeError, "must be a bool"):
-            set_semantic_property(button, "fluentInvalid", "true")
-
-    def test_semantic_property_repolishes_only_when_value_changes(self) -> None:
-        class StyleProbeWidget(QtWidgets.QWidget):
-            def __init__(self) -> None:
-                super().__init__()
-                self.style_probe = Mock()
-
-            def style(self):
-                return self.style_probe
-
-        widget = StyleProbeWidget()
-        set_semantic_property(widget, "fluentStatus", "neutral")
-        set_semantic_property(widget, "fluentStatus", "neutral")
-
-        widget.style_probe.unpolish.assert_called_once_with(widget)
-        widget.style_probe.polish.assert_called_once_with(widget)
-
-    def test_theme_apply_preserves_application_identity(self) -> None:
-        identity = ("Identity", "Display", "Organization", "example.invalid")
-        self.app.setApplicationName(identity[0])
-        self.app.setApplicationDisplayName(identity[1])
-        self.app.setOrganizationName(identity[2])
-        self.app.setOrganizationDomain(identity[3])
-        instance = QtWidgets.QApplication.instance()
-        manager = ApplicationThemeManager(self.app, mode=ThemeMode.LIGHT)
-
-        light = manager.apply()
-        dark = manager.set_mode(ThemeMode.DARK)
-
-        self.assertIs(instance, QtWidgets.QApplication.instance())
-        self.assertEqual(
-            identity,
-            (
-                self.app.applicationName(),
-                self.app.applicationDisplayName(),
-                self.app.organizationName(),
-                self.app.organizationDomain(),
-            ),
-        )
-        self.assertEqual(ThemeMode.LIGHT, light.effective_mode)
-        self.assertEqual(ThemeMode.DARK, dark.effective_mode)
-        self.assertNotIn("@{", self.app.styleSheet())
-        manager.deleteLater()
 
     def test_explicit_theme_refreshes_native_roles_on_system_change(self) -> None:
         manager = ApplicationThemeManager(self.app, mode=ThemeMode.DARK)

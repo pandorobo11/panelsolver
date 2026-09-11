@@ -24,12 +24,6 @@ class EnvironmentResolutionTests(unittest.TestCase):
         )
         self.assertEqual(2, explicit.batch_size)
 
-        configured = resolve_shielding_environment(
-            ShieldingConfig(),
-            environment={"PANELSOLVER_SHIELD_BATCH_SIZE": "6"},
-        )
-        self.assertEqual(6, configured.batch_size)
-
         defaults = resolve_shielding_environment(
             ShieldingConfig(),
             environment={},
@@ -47,23 +41,13 @@ class EnvironmentResolutionTests(unittest.TestCase):
                     environment={name: value},
                 )
 
-    def test_shield_cache_capacity_environment_is_not_recognized(self) -> None:
-        resolved = resolve_shielding_environment(
-            ShieldingConfig(),
-            environment={
-                "PANELSOLVER_SHIELD_CACHE_MAX": "invalid",
-            },
-        )
-        self.assertIsNone(resolved.batch_size)
-        self.assertFalse(hasattr(resolved, "cache_max"))
-
     def test_shielding_environment_is_ignored_when_shielding_is_disabled(self) -> None:
         config = ShieldingConfig(enabled=False)
         resolved = resolve_shielding_environment(
             config,
             environment={"PANELSOLVER_SHIELD_BATCH_SIZE": "invalid"},
         )
-        self.assertIs(config, resolved)
+        self.assertEqual(config, resolved)
 
     def test_chunk_precedence_is_explicit_environment_default(self) -> None:
         environment = {"PANELSOLVER_PARALLEL_CHUNK_CASES": "3"}

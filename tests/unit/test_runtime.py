@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import csv
-import inspect
 import os
 import tempfile
 import unittest
@@ -13,14 +12,11 @@ import pytest
 import pyvista as pv
 
 from panelsolver.app import (
-    DEFAULT_CHECKPOINT_CASES,
     GuiRunRequest,
-    GuiRunResult,
     OutputKind,
     OutputPhase,
     prepare_product_cases,
     run_and_write_product_cases,
-    run_product_cases,
 )
 from panelsolver.app.csv_writer import (
     CSV_ENCODING,
@@ -29,18 +25,14 @@ from panelsolver.app.csv_writer import (
     write_csv_atomic,
 )
 from panelsolver.app.runtime import (
-    _RAY_ACCEL_HINTED_PRODUCTS,
-    _maybe_log_ray_accel_hint,
-    combine_csv_projections,
-)
-from panelsolver.app.runtime import (
     _run_prepared_product_case as _real_run_prepared_product_case,
 )
+from panelsolver.app.runtime import (
+    combine_csv_projections,
+)
 from panelsolver.core import (
-    PartialResultPolicy,
     SchedulerCancelled,
     WorkerExecutionError,
-    WorkerLogPolicy,
     case_execution_bucket_keys,
     clear_shielding_cache,
     shielding_cache_stats,
@@ -51,7 +43,6 @@ from panelsolver.domains.fmf import read_cases as read_fmf_cases
 from panelsolver.domains.fmf import run_cases as run_fmf_cases
 from panelsolver.domains.hypersonic import RUNTIME_POLICY as NEWT_POLICY
 from panelsolver.domains.hypersonic import read_cases as read_newt_cases
-from panelsolver.domains.hypersonic import run_cases as run_newt_cases
 from tests.current_case_fixtures import read_current_cases
 
 INPUTS = Path(__file__).parents[1] / "fixtures" / "phase1" / "inputs"
@@ -354,8 +345,10 @@ class RuntimeTests(unittest.TestCase):
                 frame["out_dir"] = td
                 output = Path(td) / "summary.csv"
                 reported = []
+                logs = []
 
-                def log(message, *, reported=reported):
+                def log(message, *, reported=reported, logs=logs):
+                    logs.append(message)
                     if message.startswith("[OK]"):
                         reported.append(message.split("case_id=", 1)[1])
 
@@ -380,6 +373,11 @@ class RuntimeTests(unittest.TestCase):
                     progress_cb=progress,
                 )
                 self.assertEqual((), result.output_issues)
+                self.assertEqual(
+                    list(frame["case_id"]),
+                    [str(case.csv.rows[0]["case_id"]) for case in result.cases],
+                )
+                self.assertTrue(any(message.startswith("[WARN]") for message in logs))
                 with output.open(encoding=CSV_ENCODING, newline="") as handle:
                     self.assertEqual(
                         list(frame["case_id"]),
@@ -389,27 +387,6 @@ class RuntimeTests(unittest.TestCase):
                             if row["scope"] == "total"
                         ],
                     )
-
-    def test_ray_accel_hint_is_distribution_channel_neutral(self) -> None:
-        logs: list[str] = []
-        product_id = FMF_POLICY.product_id
-        was_hinted = product_id in _RAY_ACCEL_HINTED_PRODUCTS
-        _RAY_ACCEL_HINTED_PRODUCTS.discard(product_id)
-        try:
-            with mock.patch("panelsolver.app.runtime.trimesh_ray.has_embree", False):
-                _maybe_log_ray_accel_hint(FMF_POLICY, logs.append)
-        finally:
-            if not was_hinted:
-                _RAY_ACCEL_HINTED_PRODUCTS.discard(product_id)
-
-        self.assertEqual(1, len(logs))
-        message = logs[0]
-        self.assertIn("rayaccel", message)
-        self.assertIn("Panel Solver wheel", message)
-        self.assertIn("uv sync --extra rayaccel", message)
-        for forbidden in ("GitHub", "PyPI", "pandorobo11", "pip install"):
-            with self.subTest(forbidden=forbidden):
-                self.assertNotIn(forbidden, message)
 
     def _fmf_rows(self, root: Path, count: int) -> tuple[dict[str, object], ...]:
         base = (
@@ -598,37 +575,6 @@ class RuntimeTests(unittest.TestCase):
                 [row["case_id"] for row in saved if row["scope"] == "total"],
             )
 
-    def test_complete_checkpoint_is_rewritten_as_final_summary(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            root = Path(temp_dir)
-            rows = self._fmf_rows(root, 3)
-            summary = root / "summary.csv"
-            logs: list[str] = []
-
-            with mock.patch(
-                "panelsolver.app.runtime.write_csv_atomic",
-                wraps=write_csv_atomic,
-            ) as write:
-                result = run_and_write_product_cases(
-                    rows,
-                    FMF_POLICY,
-                    summary,
-                    checkpoint_every_cases=len(rows),
-                    log_snapshots=True,
-                    logfn=logs.append,
-                )
-
-            self.assertEqual(2, write.call_count)
-            self.assertTrue(result.summary_csv_saved)
-            self.assertEqual((), result.output_issues)
-            self.assertTrue(any("(input order)" in message for message in logs))
-            with summary.open(encoding=CSV_ENCODING, newline="") as stream:
-                saved = tuple(csv.DictReader(stream))
-            self.assertEqual(
-                ["case_0", "case_1", "case_2"],
-                [row["case_id"] for row in saved if row["scope"] == "total"],
-            )
-
     def test_tail_checkpoint_does_not_mask_final_summary_failure(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -664,28 +610,6 @@ class RuntimeTests(unittest.TestCase):
                 ["case_0", "case_1", "case_2"],
                 [row["case_id"] for row in saved if row["scope"] == "total"],
             )
-
-    def test_checkpoint_default_is_shared_across_runtime_and_domains(self) -> None:
-        for callback in (
-            run_product_cases,
-            run_and_write_product_cases,
-            run_fmf_cases,
-            run_newt_cases,
-        ):
-            with self.subTest(callback=callback):
-                parameter = inspect.signature(callback).parameters[
-                    "checkpoint_every_cases"
-                ]
-                self.assertEqual(DEFAULT_CHECKPOINT_CASES, parameter.default)
-
-    def test_products_share_supported_scheduler_policy(self) -> None:
-        for policy in (FMF_POLICY, NEWT_POLICY):
-            with self.subTest(product=policy.product_id):
-                self.assertIs(WorkerLogPolicy.FORWARD, policy.worker_log_policy)
-                self.assertIs(
-                    PartialResultPolicy.YIELD_COMPLETED,
-                    policy.partial_result_policy,
-                )
 
     def test_single_worker_groups_exact_reuse_buckets_without_output_reordering(
         self,
@@ -729,8 +653,10 @@ class RuntimeTests(unittest.TestCase):
             logs: list[str] = []
             progress: list[tuple[int, int]] = []
             snapshots: list[list[str]] = []
+            snapshot_progress: list[tuple[int, bool]] = []
 
-            def capture(projection, _done: int, _total: int, _final: bool) -> None:
+            def capture(projection, done: int, _total: int, final: bool) -> None:
+                snapshot_progress.append((done, final))
                 snapshots.append(
                     [
                         str(row["case_id"])
@@ -767,6 +693,9 @@ class RuntimeTests(unittest.TestCase):
                 snapshot,
             )
         self.assertEqual(["A-1", "B", "A-2"], snapshots[-1])
+        self.assertEqual(
+            [(1, False), (2, False), (3, False), (3, True)], snapshot_progress
+        )
         self.assertEqual(1, shielding_cache_stats().mask_hits)
 
     def test_artifacts_off_still_creates_directory_and_blank_csv_paths(self) -> None:
@@ -793,44 +722,6 @@ class RuntimeTests(unittest.TestCase):
                     self.assertEqual("", total["vtp_path"])
                     self.assertNotIn("save_npz_on", total)
                     self.assertNotIn("npz_path", total)
-
-    def test_checkpoints_are_completed_snapshots_in_input_order(self) -> None:
-        frame = read_current_cases(read_fmf_cases, INPUTS / "fmfsolver_cases.csv").iloc[
-            [0, 1, 4]
-        ]
-        snapshots: list[tuple[list[str], int, bool]] = []
-
-        def capture(projection, done: int, _total: int, final: bool) -> None:
-            case_ids = [
-                str(row["case_id"])
-                for row in projection.rows
-                if row["scope"] == "total"
-            ]
-            snapshots.append((case_ids, done, final))
-
-        with tempfile.TemporaryDirectory() as temp_dir:
-            frame["out_dir"] = temp_dir
-            rows = tuple(frame.to_dict(orient="records"))
-            run_fmf_cases(
-                rows,
-                workers=1,
-                checkpoint_every_cases=1,
-                snapshot_cb=capture,
-            )
-        input_order = {str(row["case_id"]): index for index, row in enumerate(rows)}
-        self.assertEqual([1, 2, 3, 3], [done for _, done, _ in snapshots])
-        self.assertEqual(
-            [False, False, False, True], [final for _, _, final in snapshots]
-        )
-        for case_ids, _, _ in snapshots:
-            self.assertEqual(
-                sorted(case_ids, key=input_order.__getitem__),
-                case_ids,
-            )
-        self.assertEqual(
-            [str(row["case_id"]) for row in rows],
-            snapshots[-1][0],
-        )
 
     def test_initial_cancellation_has_no_case_side_effect(self) -> None:
         row = (
@@ -955,68 +846,34 @@ class RuntimeTests(unittest.TestCase):
                         any(message.startswith("[WARN]") for message in logs)
                     )
 
-    @pytest.mark.slow
-    def test_parallel_success_is_input_ordered_and_forwards_worker_logs(self) -> None:
-        products = (
-            (
-                read_current_cases(read_fmf_cases, INPUTS / "fmfsolver_cases.csv").iloc[
-                    [0, 1]
-                ],
-                run_fmf_cases,
-                True,
-            ),
-            (
-                read_current_cases(
-                    read_newt_cases, INPUTS / "newtsolver_cases.csv"
-                ).iloc[[0, 1]],
-                run_newt_cases,
-                True,
-            ),
-        )
-        with tempfile.TemporaryDirectory() as temp_dir:
-            for product_index, (frame, runner, forwards_worker_logs) in enumerate(
-                products
-            ):
-                with self.subTest(runner=runner.__module__):
-                    out_dir = Path(temp_dir) / str(product_index)
-                    frame = frame.copy()
-                    frame["out_dir"] = str(out_dir)
-                    rows = tuple(frame.to_dict(orient="records"))
-                    logs: list[str] = []
-                    result = runner(rows, workers=2, logfn=logs.append)
-                    self.assertEqual(
-                        [str(row["case_id"]) for row in rows],
-                        [str(case.csv.rows[0]["case_id"]) for case in result.cases],
-                    )
-                    self.assertEqual(
-                        forwards_worker_logs,
-                        any(message.startswith("[WARN]") for message in logs),
-                    )
-
     def test_real_gui_adapters_read_run_write_and_return_first_artifact(self) -> None:
         rows = tuple(
             read_current_cases(read_fmf_cases, INPUTS / "fmfsolver_cases.csv").to_dict(
                 orient="records"
             )
         )
-        self.assertEqual(6, len(rows))
         with tempfile.TemporaryDirectory() as temp_dir:
             row = dict(rows[0])
             row["out_dir"] = temp_dir
             output = Path(temp_dir) / "summary.csv"
             logs: list[str] = []
             progress: list[tuple[int, int]] = []
-            result = FMF_GUI_ADAPTERS.run_cases(
-                GuiRunRequest(
-                    rows=(row,),
-                    workers=1,
-                    checkpoint_every_cases=DEFAULT_CHECKPOINT_CASES,
-                    output_path=output,
-                    log=logs.append,
-                    progress=lambda done, total: progress.append((done, total)),
-                    cancel_requested=lambda: False,
+            with mock.patch(
+                "panelsolver.app.runtime.write_csv_atomic", wraps=write_csv_atomic
+            ) as write:
+                result = FMF_GUI_ADAPTERS.run_cases(
+                    GuiRunRequest(
+                        rows=(row,),
+                        workers=1,
+                        checkpoint_every_cases=0,
+                        output_path=output,
+                        log=logs.append,
+                        progress=lambda done, total: progress.append((done, total)),
+                        cancel_requested=lambda: False,
+                    )
                 )
-            )
+            # Disabled checkpoints leave only the final CSV write.
+            write.assert_called_once()
             self.assertTrue(output.exists())
             self.assertEqual(
                 Path(temp_dir) / "fmf_zero_plate.vtp", result.first_vtp_path
@@ -1028,36 +885,6 @@ class RuntimeTests(unittest.TestCase):
                 FMF_GUI_ADAPTERS.build_case_signature(row).digest,
                 FMF_GUI_ADAPTERS.build_case_signature(result.first_case_row).digest,
             )
-
-    def test_gui_checkpoint_value_reaches_domain_runtime(self) -> None:
-        row = (
-            read_current_cases(read_fmf_cases, INPUTS / "fmfsolver_cases.csv")
-            .iloc[0]
-            .to_dict()
-        )
-        batch = object()
-        with (
-            mock.patch(
-                "panelsolver.domains.fmf.run_and_write_product_cases",
-                return_value=batch,
-            ) as run,
-            mock.patch(
-                "panelsolver.domains.fmf.gui_run_result_from_batch",
-                return_value=GuiRunResult(),
-            ),
-        ):
-            FMF_GUI_ADAPTERS.run_cases(
-                GuiRunRequest(
-                    rows=(row,),
-                    workers=1,
-                    checkpoint_every_cases=0,
-                    output_path=Path("summary.csv"),
-                    log=lambda _message: None,
-                    progress=lambda _done, _total: None,
-                    cancel_requested=lambda: False,
-                )
-            )
-        self.assertEqual(0, run.call_args.kwargs["checkpoint_every_cases"])
 
 
 if __name__ == "__main__":

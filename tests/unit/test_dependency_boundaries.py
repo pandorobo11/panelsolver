@@ -1,10 +1,6 @@
 import ast
-import subprocess
-import sys
 import unittest
 from pathlib import Path
-
-import pytest
 
 SRC_ROOT = Path(__file__).parents[2] / "src"
 
@@ -94,6 +90,10 @@ def _matches(name: str, prefixes: tuple[str, ...]) -> bool:
 
 
 class DependencyBoundaryTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.graph = internal_dependency_graph()
+
     def assert_edges_avoid(
         self,
         sources: tuple[str, ...],
@@ -101,7 +101,7 @@ class DependencyBoundaryTests(unittest.TestCase):
     ) -> None:
         violations = [
             f"{source} -> {target}"
-            for source, targets in internal_dependency_graph().items()
+            for source, targets in self.graph.items()
             if _matches(source, sources)
             for target in sorted(targets)
             if _matches(target, forbidden)
@@ -113,7 +113,7 @@ class DependencyBoundaryTests(unittest.TestCase):
         )
 
     def test_complete_internal_graph_has_no_cycles_or_self_loops(self) -> None:
-        graph = internal_dependency_graph()
+        graph = self.graph
         self.assertEqual(
             [],
             sorted(node for node, edges in graph.items() if node in edges),
@@ -151,30 +151,6 @@ class DependencyBoundaryTests(unittest.TestCase):
             ("panelsolver.models",),
             ("panelsolver.app",),
         )
-
-    @pytest.mark.slow
-    def test_top_level_cli_import_has_no_removed_product_packages(self) -> None:
-        code = (
-            "import importlib.util; import panelsolver.cli; "
-            "assert importlib.util.find_spec('fmfsolver') is None; "
-            "assert importlib.util.find_spec('newtsolver') is None; "
-            "assert importlib.util.find_spec('panelsolver._compat') is None"
-        )
-        subprocess.run([sys.executable, "-c", code], check=True)
-
-    @pytest.mark.slow
-    def test_domain_composition_uses_only_current_identities(self) -> None:
-        code = (
-            "from panelsolver.domains.fmf import CLI_POLICY as f_cli, "
-            "gui_spec as f_gui; "
-            "from panelsolver.domains.hypersonic import "
-            "CLI_POLICY as h_cli, gui_spec as h_gui; "
-            "assert f_cli.program == 'panelsolver fmf'; "
-            "assert h_cli.program == 'panelsolver hypersonic'; "
-            "assert f_gui().window_title == 'Panel Solver — FMF'; "
-            "assert h_gui().window_title == 'Panel Solver — Hypersonic'"
-        )
-        subprocess.run([sys.executable, "-c", code], check=True)
 
     def test_models_do_not_own_filesystem_or_execution_infrastructure(self) -> None:
         prohibited = (

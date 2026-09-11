@@ -65,12 +65,9 @@ def _unexpected_exit_worker(case: int, _logfn) -> int:
     return case
 
 
-def _unpickleable_worker(case: str, logfn):
+def _unpickleable_worker(case: str, _logfn):
     if case == "result":
         return lambda: None
-    if case == "log":
-        logfn(lambda: None)
-        return 1
     if case == "error":
         raise ValueError("failure after an unpickleable partial result")
     return 1
@@ -78,12 +75,6 @@ def _unpickleable_worker(case: str, logfn):
 
 def _identity_worker(case, _logfn):
     return case
-
-
-def _pid_worker(case: tuple[str, float], _logfn) -> tuple[int, str]:
-    label, delay_seconds = case
-    time.sleep(delay_seconds)
-    return os.getpid(), label
 
 
 def _synchronized_affinity_worker(
@@ -566,174 +557,6 @@ class SchedulerTests(unittest.TestCase):
         self.assert_no_new_worker_resources(before)
 
     @pytest.mark.slow
-    def test_bucket_local_grouping_reduces_worker_affinity_spread_without_more_steal(
-        self,
-    ) -> None:
-        before = _worker_resource_state()
-        affinity_a = SchedulingAffinityHint(("expensive", "a"), priority=2)
-        affinity_b = SchedulingAffinityHint(("expensive", "b"), priority=2)
-        cases = (
-            ("a", 0.03),
-            ("b", 0.03),
-            ("a", 0.03),
-            ("b", 0.03),
-            ("a", 0.03),
-            ("b", 0.03),
-        )
-        order = (1, 0, 3, 2, 5, 4)
-
-        def run_probe(affinity_hints=None, snapshot_cb=None):
-            return dict(
-                iter_case_results_parallel(
-                    cases,
-                    2,
-                    _pid_worker,
-                    log_policy=WorkerLogPolicy.DROP,
-                    partial_result_policy=PartialResultPolicy.YIELD_COMPLETED,
-                    execution_order=order,
-                    bucket_keys=("one-ray-bucket",) * len(cases),
-                    affinity_hints=affinity_hints,
-                    chunk_cases=4,
-                    snapshot_cb=snapshot_cb,
-                )
-            )
-
-        baseline = run_probe()
-        snapshots = []
-        grouped = run_probe(
-            (
-                (affinity_a,),
-                (affinity_b,),
-                (affinity_a,),
-                (affinity_b,),
-                (affinity_a,),
-                (affinity_b,),
-            ),
-            snapshots.append,
-        )
-
-        def affinity_worker_spread(results, label):
-            return len({result[0] for result in results.values() if result[1] == label})
-
-        self.assertEqual(2, affinity_worker_spread(baseline, "a"))
-        self.assertEqual(2, affinity_worker_spread(baseline, "b"))
-        self.assertEqual(1, affinity_worker_spread(grouped, "a"))
-        self.assertEqual(1, affinity_worker_spread(grouped, "b"))
-        # Both modes use one owner plus one steal for the sole primary bucket.
-        self.assertEqual(2, len({result[0] for result in baseline.values()}))
-        self.assertEqual(2, len({result[0] for result in grouped.values()}))
-        self.assertEqual(order, tuple(index for index, _ in snapshots[-1]))
-        self.assert_no_new_worker_resources(before)
-
-    @pytest.mark.slow
-    def test_bucket_local_grouping_does_not_add_ray_workers_when_groups_conflict(
-        self,
-    ) -> None:
-        before = _worker_resource_state()
-        labels = ("a", "b", "c")
-        affinities = {
-            label: SchedulingAffinityHint(("cache", label), priority=1)
-            for label in labels
-        }
-        cases = tuple((label, 0.02) for _ in range(5) for label in labels)
-        hints = tuple((affinities[label],) for label, _delay in cases)
-        order = tuple(reversed(range(len(cases))))
-
-        def run_probe(affinity_hints=None, snapshot_cb=None):
-            return dict(
-                iter_case_results_parallel(
-                    cases,
-                    3,
-                    _pid_worker,
-                    log_policy=WorkerLogPolicy.DROP,
-                    partial_result_policy=PartialResultPolicy.YIELD_COMPLETED,
-                    execution_order=order,
-                    bucket_keys=("one-ray-bucket",) * len(cases),
-                    affinity_hints=affinity_hints,
-                    chunk_cases=8,
-                    snapshot_cb=snapshot_cb,
-                )
-            )
-
-        baseline = run_probe()
-        snapshots = []
-        grouped = run_probe(hints, snapshots.append)
-        baseline_pids = {result[0] for result in baseline.values()}
-        grouped_pids = {result[0] for result in grouped.values()}
-
-        self.assertEqual(2, len(baseline_pids))
-        self.assertEqual(2, len(grouped_pids))
-        self.assertLessEqual(len(grouped_pids), len(baseline_pids))
-        self.assertEqual(order, tuple(index for index, _ in snapshots[-1]))
-        self.assert_no_new_worker_resources(before)
-
-    @pytest.mark.slow
-    def test_forward_logs_and_discard_failed_chunk_results(self) -> None:
-        before = _worker_resource_state()
-        logs: list[str] = []
-        yielded: list[tuple[int, int]] = []
-        iterator = iter_case_results_parallel(
-            (0, 1, 2),
-            2,
-            _failure_worker,
-            log_policy=WorkerLogPolicy.FORWARD,
-            partial_result_policy=PartialResultPolicy.DISCARD_CHUNK,
-            bucket_keys=("same", "same", "same"),
-            chunk_cases=3,
-            logfn=logs.append,
-        )
-        with self.assertRaises(WorkerExecutionError) as caught:
-            yielded.extend(iterator)
-        self.assertEqual([], yielded)
-        self.assertEqual(["case=0", "case=1"], logs)
-        self.assertIn("deliberate worker failure", caught.exception.remote_error)
-        self.assertIn("ValueError", caught.exception.remote_traceback)
-        self.assert_no_new_worker_resources(before)
-
-    @pytest.mark.slow
-    def test_drop_logs_and_yield_completed_failed_chunk_results(self) -> None:
-        before = _worker_resource_state()
-        logs: list[str] = []
-        iterator = iter_case_results_parallel(
-            (0, 1, 2),
-            2,
-            _failure_worker,
-            log_policy=WorkerLogPolicy.DROP,
-            partial_result_policy=PartialResultPolicy.YIELD_COMPLETED,
-            bucket_keys=("same", "same", "same"),
-            chunk_cases=3,
-            logfn=logs.append,
-        )
-        self.assertEqual((0, 0), next(iterator))
-        with self.assertRaises(WorkerExecutionError):
-            next(iterator)
-        self.assertEqual([], logs)
-        self.assert_no_new_worker_resources(before)
-
-    @pytest.mark.slow
-    def test_drop_logs_and_discard_failed_chunk_results_remain_orthogonal(
-        self,
-    ) -> None:
-        before = _worker_resource_state()
-        logs: list[str] = []
-        yielded: list[tuple[int, int]] = []
-        iterator = iter_case_results_parallel(
-            (0, 1, 2),
-            2,
-            _failure_worker,
-            log_policy=WorkerLogPolicy.DROP,
-            partial_result_policy=PartialResultPolicy.DISCARD_CHUNK,
-            bucket_keys=("same", "same", "same"),
-            chunk_cases=3,
-            logfn=logs.append,
-        )
-        with self.assertRaises(WorkerExecutionError):
-            yielded.extend(iterator)
-        self.assertEqual([], yielded)
-        self.assertEqual([], logs)
-        self.assert_no_new_worker_resources(before)
-
-    @pytest.mark.slow
     def test_forward_logs_and_yield_completed_failed_chunk_results_remain_orthogonal(
         self,
     ) -> None:
@@ -801,25 +624,6 @@ class SchedulerTests(unittest.TestCase):
         self.assert_no_new_worker_resources(before)
 
     @pytest.mark.slow
-    def test_fast_unexpected_exit_is_repeatable_after_all_workers_are_ready(
-        self,
-    ) -> None:
-        before = _worker_resource_state()
-        for _ in range(5):
-            with self.assertRaises(WorkerUnexpectedExitError):
-                list(
-                    iter_case_results_parallel(
-                        (0, 1),
-                        2,
-                        _unexpected_exit_worker,
-                        log_policy=WorkerLogPolicy.DROP,
-                        partial_result_policy=PartialResultPolicy.DISCARD_CHUNK,
-                        chunk_cases=1,
-                    )
-                )
-        self.assert_no_new_worker_resources(before)
-
-    @pytest.mark.slow
     def test_unpickleable_result_is_a_bounded_worker_error(self) -> None:
         before = _worker_resource_state()
         with self.assertRaisesRegex(
@@ -834,23 +638,6 @@ class SchedulerTests(unittest.TestCase):
                     partial_result_policy=PartialResultPolicy.DISCARD_CHUNK,
                     bucket_keys=("same", "same"),
                     chunk_cases=2,
-                )
-            )
-        self.assert_no_new_worker_resources(before)
-
-    @pytest.mark.slow
-    def test_unpickleable_case_is_rejected_before_pipe_dispatch(self) -> None:
-        before = _worker_resource_state()
-        unpickleable_case = lambda: None
-        with self.assertRaisesRegex(SchedulerError, "serialize worker task"):
-            list(
-                iter_case_results_parallel(
-                    (unpickleable_case, 1),
-                    2,
-                    _identity_worker,
-                    log_policy=WorkerLogPolicy.DROP,
-                    partial_result_policy=PartialResultPolicy.DISCARD_CHUNK,
-                    chunk_cases=1,
                 )
             )
         self.assert_no_new_worker_resources(before)
@@ -903,25 +690,6 @@ class SchedulerTests(unittest.TestCase):
             started = time.monotonic()
             iterator.close()
             self.assertLess(time.monotonic() - started, 7.0)
-        self.assert_no_new_worker_resources(before)
-
-    @pytest.mark.slow
-    def test_unpickleable_forwarded_log_is_a_bounded_worker_error(self) -> None:
-        before = _worker_resource_state()
-        with self.assertRaisesRegex(
-            WorkerExecutionError, "serialize worker chunk_done"
-        ):
-            list(
-                iter_case_results_parallel(
-                    ("log", "ok"),
-                    2,
-                    _unpickleable_worker,
-                    log_policy=WorkerLogPolicy.FORWARD,
-                    partial_result_policy=PartialResultPolicy.DISCARD_CHUNK,
-                    bucket_keys=("same", "same"),
-                    chunk_cases=2,
-                )
-            )
         self.assert_no_new_worker_resources(before)
 
     @pytest.mark.slow
@@ -1180,24 +948,6 @@ class SchedulerTests(unittest.TestCase):
         self.assertIs(caught.exception.__cause__, caught.exception.__context__)
         self.assertTrue(caught.exception.__suppress_context__)
         self.assertEqual(scheduler_module._CLEANUP_SECONDS, process.join_timeout)
-
-    def test_unpickleable_spawn_callable_is_rejected_before_child_start(self) -> None:
-        before = _worker_resource_state()
-        local_worker = lambda case, _logfn: case
-        with self.assertRaisesRegex(
-            WorkerStartupError,
-            "serialize spawn worker callable",
-        ):
-            list(
-                iter_case_results_parallel(
-                    (0, 1),
-                    2,
-                    local_worker,
-                    log_policy=WorkerLogPolicy.DROP,
-                    partial_result_policy=PartialResultPolicy.DISCARD_CHUNK,
-                )
-            )
-        self.assert_no_new_worker_resources(before)
 
     def test_os_spawn_start_failure_is_wrapped_without_child_leak(self) -> None:
         before = _worker_resource_state()

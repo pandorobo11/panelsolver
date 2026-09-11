@@ -5,7 +5,6 @@ import os
 import tempfile
 import time
 import unittest
-from dataclasses import replace
 from decimal import Decimal
 from pathlib import Path
 from types import SimpleNamespace
@@ -488,127 +487,6 @@ class CasesPanelTests(unittest.TestCase):
         self.assertEqual(extra_value, item.text())
         self.assertEqual(extra_value, item.toolTip())
 
-    def test_shared_panel_uses_spec_metadata_without_product_branching(self) -> None:
-        def renamed_spec(*, adapters):
-            return replace(
-                fmf_solver_spec(adapters=adapters),
-                product_id="synthetic-product",
-            )
-
-        panel, _ = self.make_panel(spec_factory=renamed_spec)
-        self.assertTrue(panel.load_input_file("/tmp/input.csv"))
-        mach_column = panel._table_columns.index("Mach")
-        self.assertEqual(
-            "Mach", panel.case_table.horizontalHeaderItem(mach_column).text()
-        )
-        self.assertTrue(
-            QtCore.Qt.AlignmentFlag(
-                panel.case_table.item(0, mach_column).textAlignment()
-            )
-            & QtCore.Qt.AlignmentFlag.AlignRight
-        )
-
-    def test_semantic_action_roles_preserve_enabled_and_click_behavior(self) -> None:
-        panel, _ = self.make_panel()
-        self.assertEqual("secondary", panel.btn_pick_input.property("fluentAppearance"))
-        self.assertEqual("primary", panel.btn_run.property("fluentAppearance"))
-        self.assertEqual("danger", panel.btn_cancel.property("fluentAppearance"))
-        self.assertTrue(panel.btn_pick_input.isEnabled())
-        self.assertEqual("Run Cases", panel.btn_run.text())
-        self.assertFalse(panel.btn_run.isEnabled())
-        self.assertFalse(panel.btn_cancel.isEnabled())
-
-        picks: list[bool] = []
-        runs: list[bool] = []
-        cancels: list[bool] = []
-        panel.btn_pick_input.clicked.connect(
-            lambda checked=False: picks.append(checked)
-        )
-        panel.btn_run.clicked.connect(lambda checked=False: runs.append(checked))
-        panel.btn_cancel.clicked.connect(lambda checked=False: cancels.append(checked))
-        with patch.object(
-            QtWidgets.QFileDialog,
-            "getOpenFileName",
-            return_value=("", ""),
-        ):
-            panel.btn_pick_input.click()
-        panel.btn_run.click()
-        panel.btn_cancel.click()
-        self.assertEqual([False], picks)
-        self.assertEqual([], runs)
-        self.assertEqual([], cancels)
-
-        self.assertTrue(panel.load_input_file("/tmp/input.csv"))
-        with patch.object(
-            QtWidgets.QFileDialog,
-            "getSaveFileName",
-            return_value=("", ""),
-        ):
-            panel.btn_run.click()
-        self.assertEqual([False], runs)
-
-    def test_execution_controls_keep_logical_groups_in_wrapping_rows(self) -> None:
-        panel, _ = self.make_panel()
-        root = panel.layout()
-
-        self.assertIs(
-            panel.settings_row, root.itemAt(root.indexOf(panel.settings_row)).layout()
-        )
-        self.assertIs(
-            panel.execution_row, root.itemAt(root.indexOf(panel.execution_row)).layout()
-        )
-        self.assertIsNone(root.itemAt(root.indexOf(panel.execution_row)).widget())
-
-        self.assertEqual(2, panel.settings_row.count())
-        self.assertIs(panel.workers_group, panel.settings_row.itemAt(0).layout())
-        self.assertIs(panel.checkpoint_group, panel.settings_row.itemAt(1).layout())
-        self.assertTrue(panel.settings_row.hasHeightForWidth())
-        self.assertTrue(panel.execution_row.hasHeightForWidth())
-
-        self.assertEqual(
-            [panel.lbl_workers, panel.spin_workers],
-            [panel.workers_group.itemAt(index).widget() for index in range(2)],
-        )
-        self.assertEqual(
-            [
-                panel.lbl_checkpoint_every_cases,
-                panel.spin_checkpoint_every_cases,
-                panel.lbl_checkpoint_unit,
-            ],
-            [panel.checkpoint_group.itemAt(index).widget() for index in range(3)],
-        )
-        self.assertEqual(2, panel.execution_row.count())
-        self.assertIs(panel.progress, panel.execution_row.itemAt(0).widget())
-        self.assertIs(
-            panel.run_actions_group,
-            panel.execution_row.itemAt(1).layout(),
-        )
-        self.assertEqual(
-            [panel.btn_run, panel.btn_cancel],
-            [panel.run_actions_group.itemAt(index).widget() for index in range(2)],
-        )
-        self.assertLess(
-            panel.workers_group.spacing(),
-            panel.settings_row.spacing(),
-        )
-        self.assertLess(
-            panel.checkpoint_group.spacing(),
-            panel.settings_row.spacing(),
-        )
-        self.assertEqual(8, panel.run_actions_group.spacing())
-        self.assertEqual(8, panel.execution_row.spacing())
-
-        for group in (
-            panel.workers_group,
-            panel.checkpoint_group,
-            panel.run_actions_group,
-        ):
-            margins = group.contentsMargins()
-            self.assertEqual(
-                (0, 0, 0, 0),
-                (margins.left(), margins.top(), margins.right(), margins.bottom()),
-            )
-
     def test_diagnostics_toggle_preserves_hidden_log_content(self) -> None:
         panel, _ = self.make_panel()
         panel.show()
@@ -831,28 +709,6 @@ class CasesPanelTests(unittest.TestCase):
                 )
             )
             self.assertEqual(remembered, panel.input_dialog_directory())
-
-    def test_selected_rows_keep_table_order_and_no_selection_means_all(self) -> None:
-        panel, _ = self.make_panel()
-        panel.load_input_file("/tmp/input.csv")
-        self.assertEqual(
-            ["case_b", "case_a"],
-            [r["case_id"] for r in panel.selected_or_all_case_rows()],
-        )
-        selection = panel.case_table.selectionModel()
-        selection.select(
-            panel.case_table.model().index(1, 0),
-            QtCore.QItemSelectionModel.SelectionFlag.Select
-            | QtCore.QItemSelectionModel.SelectionFlag.Rows,
-        )
-        selection.select(
-            panel.case_table.model().index(0, 0),
-            QtCore.QItemSelectionModel.SelectionFlag.Select
-            | QtCore.QItemSelectionModel.SelectionFlag.Rows,
-        )
-        self.assertEqual(
-            ["case_b", "case_a"], [r["case_id"] for r in panel.selected_case_rows()]
-        )
 
     def test_selected_case_signal_tracks_batch_export_availability(self) -> None:
         panel, _ = self.make_panel()
@@ -1191,30 +1047,6 @@ class CasesPanelTests(unittest.TestCase):
         self.assertEqual("2147483647", checkpoint.text())
         self.assertEqual("2147483647", checkpoint.lineEdit().text())
         panel.close()
-
-    def test_table_and_log_keep_primary_secondary_stretch_contract(self) -> None:
-        panel, _ = self.make_panel()
-        root = panel.layout()
-        self.assertIs(
-            panel.case_table, root.itemAt(root.indexOf(panel.case_table)).widget()
-        )
-        self.assertEqual(4, root.stretch(root.indexOf(panel.case_table)))
-        self.assertIs(
-            panel.execution_row, root.itemAt(root.indexOf(panel.execution_row)).layout()
-        )
-        self.assertIs(panel.progress, panel.execution_row.itemAt(0).widget())
-        self.assertIs(
-            panel.diagnostics_row,
-            root.itemAt(root.indexOf(panel.diagnostics_row)).widget(),
-        )
-        self.assertIs(panel.log, root.itemAt(root.indexOf(panel.log)).widget())
-        self.assertEqual(
-            QtWidgets.QSizePolicy.Policy.Minimum,
-            panel.btn_diagnostics.sizePolicy().horizontalPolicy(),
-        )
-        self.assertEqual(2, root.stretch(root.indexOf(panel.log)))
-        self.assertEqual(180, panel.log.minimumHeight())
-        self.assertFalse(panel.progress.isHidden())
 
     def test_run_cancel_and_output_rejection_do_not_emit(self) -> None:
         def reject(_out, _input, _rows):

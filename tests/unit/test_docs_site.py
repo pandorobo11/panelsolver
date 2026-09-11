@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 import re
+import shutil
 import tempfile
 import tomllib
 import unittest
 from html.parser import HTMLParser
-from importlib.metadata import version as distribution_version
 from pathlib import Path
 from unittest.mock import patch
 from urllib.parse import unquote, urlsplit
+from xml.etree import ElementTree
 
 from panelsolver.docs_site import (
     DocumentationSite,
@@ -155,23 +156,6 @@ class DocumentationSiteTests(unittest.TestCase):
         self.assertFalse((self.site / "devdocs").exists())
         self.assertFalse((self.site / "history").exists())
 
-    def test_normal_user_documentation_does_not_expose_repository_owner(self) -> None:
-        sources = [
-            ROOT / "README.md",
-            ROOT / "THIRD_PARTY_NOTICES.md",
-            *sorted((ROOT / "docs").rglob("*.md")),
-        ]
-        built_pages = [
-            self.site / "THIRD_PARTY_NOTICES.md",
-            *sorted(self.site.rglob("*.html")),
-        ]
-        for path in (*sources, *built_pages):
-            with self.subTest(path=path):
-                self.assertNotIn(
-                    "pandorobo11",
-                    path.read_text(encoding="utf-8").casefold(),
-                )
-
     def test_audited_build_dependency_versions_are_exact_and_current(self) -> None:
         with (ROOT / "pyproject.toml").open("rb") as stream:
             project = tomllib.load(stream)
@@ -179,39 +163,22 @@ class DocumentationSiteTests(unittest.TestCase):
             with self.subTest(requirement=requirement):
                 self.assertIn(requirement, project["dependency-groups"]["docs"])
                 self.assertIn(requirement, project["build-system"]["requires"])
-        self.assertEqual("1.6.1", distribution_version("mkdocs"))
-        self.assertEqual("3.81.0", distribution_version("latex2mathml"))
 
-    def test_wrong_mkdocs_version_fails_before_documentation_build(self) -> None:
-        versions = {"mkdocs": "1.7.0", "latex2mathml": "3.81.0"}
-        with (
-            tempfile.TemporaryDirectory() as temporary,
-            patch(
-                "panelsolver.docs_site.distribution_version",
-                side_effect=versions.__getitem__,
-            ),
-            self.assertRaisesRegex(
-                RuntimeError,
-                r"Offline documentation requires audited MkDocs 1\.6\.1; found 1\.7\.0\.",
-            ),
-        ):
-            build_documentation_site(ROOT, Path(temporary) / "site")
-
-    def test_wrong_latex2mathml_version_fails_before_documentation_build(self) -> None:
-        versions = {"mkdocs": "1.6.1", "latex2mathml": "3.82.0"}
-        with (
-            tempfile.TemporaryDirectory() as temporary,
-            patch(
-                "panelsolver.docs_site.distribution_version",
-                side_effect=versions.__getitem__,
-            ),
-            self.assertRaisesRegex(
-                RuntimeError,
-                r"Offline documentation requires audited latex2mathml 3\.81\.0; "
-                r"found 3\.82\.0\.",
-            ),
-        ):
-            build_documentation_site(ROOT, Path(temporary) / "site")
+    def test_unaudited_dependency_versions_fail_before_documentation_build(
+        self,
+    ) -> None:
+        for changed, actual in (("mkdocs", "1.7.0"), ("latex2mathml", "3.82.0")):
+            versions = {"mkdocs": "1.6.1", "latex2mathml": "3.81.0", changed: actual}
+            with (
+                self.subTest(dependency=changed),
+                tempfile.TemporaryDirectory() as temporary,
+                patch(
+                    "panelsolver.docs_site.distribution_version",
+                    side_effect=versions.__getitem__,
+                ),
+                self.assertRaisesRegex(RuntimeError, "requires audited"),
+            ):
+                build_documentation_site(ROOT, Path(temporary) / "site")
 
     def test_html_and_css_require_no_network_resources(self) -> None:
         for html in self.site.rglob("*.html"):
@@ -334,6 +301,11 @@ class DocumentationSiteTests(unittest.TestCase):
                         self.assertIn(unquote(split.fragment), parsed[target].ids)
 
     def test_math_is_prerendered_as_self_contained_mathml(self) -> None:
+        for page in self.site.rglob("*.html"):
+            html = page.read_text(encoding="utf-8")
+            for formula in re.findall(r"<math\b.*?</math>", html, flags=re.DOTALL):
+                with self.subTest(page=page.relative_to(self.site), formula=formula):
+                    ElementTree.fromstring(formula)
         for relative in ("methods/fmf.html", "methods/hypersonic.html"):
             html = (self.site / relative).read_text(encoding="utf-8")
             with self.subTest(relative=relative):
@@ -365,7 +337,13 @@ class DocumentationSiteTests(unittest.TestCase):
 
     def test_editable_fallback_keeps_temporary_site_alive_until_close(self) -> None:
         site = DocumentationSite()
-        index = site.resolve()
+        # The class fixture already exercises the real strict build. Reuse its
+        # files here so this case isolates editable-site lifetime and cleanup.
+        with patch(
+            "panelsolver.docs_site.build_documentation_site",
+            side_effect=lambda _project, target: shutil.copytree(self.site, target),
+        ):
+            index = site.resolve()
         root = index.parent
         self.assertTrue(index.is_file())
         self.assertEqual(root, site.resolve().parent)

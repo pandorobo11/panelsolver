@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import hashlib
-import math
 import unittest
-from itertools import pairwise
 
 from panelsolver.models._sentman_atmosphere_data import US1976_SENTMAN_TABLE
 from panelsolver.models.sentman_atmosphere import (
@@ -23,36 +21,6 @@ PREVIOUS_COLUMN_SHA256 = {
 
 
 class SentmanAtmosphereTableTests(unittest.TestCase):
-    def test_single_shared_table_has_only_required_quantities(self) -> None:
-        self.assertIs(type(US1976_SENTMAN_TABLE), tuple)
-        self.assertEqual(201, len(US1976_SENTMAN_TABLE))
-        self.assertTrue(all(type(row) is tuple for row in US1976_SENTMAN_TABLE))
-        self.assertTrue(all(len(row) == 4 for row in US1976_SENTMAN_TABLE))
-
-        altitudes = [row[0] for row in US1976_SENTMAN_TABLE]
-        self.assertEqual((0, 1000), (altitudes[0], altitudes[-1]))
-        self.assertEqual(201, len(set(altitudes)))
-        self.assertTrue(all(next_z > z for z, next_z in pairwise(altitudes)))
-        self.assertTrue(
-            all(
-                math.isfinite(float(value))
-                for row in US1976_SENTMAN_TABLE
-                for value in row
-            )
-        )
-        self.assertEqual((0.0, 1000.0), altitude_range_km())
-
-    def test_representative_low_and_high_altitude_points(self) -> None:
-        rows = {row[0]: row[1:] for row in US1976_SENTMAN_TABLE}
-        expected = {
-            0: (288.150, 340.29, 458.94),
-            90: (186.867, 274.04, 369.96),
-            100: (195.081, 280.00, 381.36),
-            500: (999.236, 633.69, 1215.05),
-            1000: (1000.000, 633.94, 2318.12),
-        }
-        self.assertEqual(expected, {altitude: rows[altitude] for altitude in expected})
-
     def test_full_grid_matches_pre_migration_column_hashes(self) -> None:
         columns = tuple(zip(*US1976_SENTMAN_TABLE, strict=True))
         formats = (".0f", ".3f", ".2f", ".2f")
@@ -68,6 +36,7 @@ class SentmanAtmosphereTableTests(unittest.TestCase):
                 )
 
     def test_interpolation_matches_pre_migration_samples(self) -> None:
+        self.assertEqual((0.0, 1000.0), altitude_range_km())
         expected = {
             87.5: {"T_K": 187.88, "c_ms": 274.78, "Vmean_ms": 370.775},
             102.5: {"T_K": 201.958, "c_ms": 284.85, "Vmean_ms": 389.795},

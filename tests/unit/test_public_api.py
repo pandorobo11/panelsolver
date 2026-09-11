@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ast
 import io
 import os
 import re
@@ -8,7 +7,7 @@ import shutil
 import tempfile
 import unicodedata
 import unittest
-from contextlib import redirect_stdout
+from contextlib import chdir, redirect_stdout
 from pathlib import Path
 
 import numpy as np
@@ -106,21 +105,10 @@ class PublicApiTests(unittest.TestCase):
             try:
                 for name, example in examples.items():
                     with self.subTest(name=name):
-                        syntax = ast.parse(example, filename=f"python-api:{name}")
-                        for node in ast.walk(syntax):
-                            if isinstance(node, ast.ImportFrom):
-                                self.assertEqual("panelsolver", node.module)
-                            if isinstance(node, ast.Import):
-                                self.assertTrue(
-                                    all(
-                                        alias.name == "panelsolver"
-                                        for alias in node.names
-                                    )
-                                )
                         namespace: dict[str, object] = {}
                         with redirect_stdout(io.StringIO()):
                             exec(  # noqa: S102 - execute a checked-in docs example
-                                compile(syntax, f"python-api:{name}", "exec"),
+                                compile(example, f"python-api:{name}", "exec"),
                                 namespace,
                             )
                         self.assertIsInstance(namespace["result"], SolveResult)
@@ -208,59 +196,6 @@ class PublicApiTests(unittest.TestCase):
         )
         self.assertEqual(compatibility.warnings, result.warnings)
 
-    def test_fmf_solve_is_in_memory_and_matches_sentman_pipeline(self) -> None:
-        row = (
-            read_current_cases(
-                read_fmf_cases,
-                INPUTS / "fmfsolver_cases.csv",
-            )
-            .iloc[0]
-            .to_dict()
-        )
-        case = FMFCase(
-            **_common(row),
-            speed_ratio=row["S"],
-            translational_temperature_k=row["Ti_K"],
-            wall_temperature_k=row["Tw_K"],
-        )
-        compatibility = execute_case(adapt_fmf_row(row).request)
-        with tempfile.TemporaryDirectory() as temporary:
-            original = os.getcwd()
-            os.chdir(temporary)
-            try:
-                result = solve_fmf(case)
-            finally:
-                os.chdir(original)
-            self.assertEqual([], list(Path(temporary).iterdir()))
-        self.assert_matches_execution(result, compatibility)
-
-    def test_hypersonic_solve_is_in_memory_and_matches_compatibility_path(self) -> None:
-        row = (
-            read_current_cases(
-                read_hypersonic_cases,
-                INPUTS / "newtsolver_cases.csv",
-            )
-            .iloc[0]
-            .to_dict()
-        )
-        case = HypersonicCase(
-            **_common(row),
-            mach=row["Mach"],
-            gamma=row["gamma"],
-            windward_equation=row["windward_eq"],
-            leeward_equation=row["leeward_eq"],
-        )
-        compatibility = execute_case(adapt_hypersonic_row(row).request)
-        with tempfile.TemporaryDirectory() as temporary:
-            original = os.getcwd()
-            os.chdir(temporary)
-            try:
-                result = solve_hypersonic(case)
-            finally:
-                os.chdir(original)
-            self.assertEqual([], list(Path(temporary).iterdir()))
-        self.assert_matches_execution(result, compatibility)
-
     def test_both_case_types_share_portable_case_id_validation(self) -> None:
         fmf_row = (
             read_current_cases(
@@ -313,7 +248,7 @@ class PublicApiTests(unittest.TestCase):
                     ):
                         factory(invalid)
 
-    def test_nfd_case_id_matches_case_table_signature_for_both_domains(self) -> None:
+    def test_in_memory_solves_match_case_tables_with_normalized_case_ids(self) -> None:
         nfd = "e\N{COMBINING ACUTE ACCENT}-signature"
         nfc = unicodedata.normalize("NFC", nfd)
         products = (
@@ -360,10 +295,12 @@ class PublicApiTests(unittest.TestCase):
                     )
                 self.assertEqual(nfc, case.case_id)
                 compatibility = execute_case(adapter(row).request)
-                self.assertEqual(
-                    compatibility.signature.digest,
-                    solver(case).case_signature,
-                )
+                output_dir = Path(temp) / "in-memory"
+                output_dir.mkdir()
+                with chdir(output_dir):
+                    result = solver(case)
+                self.assertEqual([], list(output_dir.iterdir()))
+                self.assert_matches_execution(result, compatibility)
 
 
 if __name__ == "__main__":

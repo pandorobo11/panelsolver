@@ -11,7 +11,7 @@ its native Qt tree on the GUI thread. Closing alone only hides a widget; leaving
 its destruction to Python cyclic GC can let a later worker collect GUI wrappers
 and clear Python layout state before Qt finishes using it (issue #297).
 
-`test_gui_fixture_lifecycle.py` runs the lifecycle cases in a bounded subprocess,
+`test_gui_fixture_lifecycle.py` runs each lifecycle case once in a bounded subprocess,
 forces GC in the real Qt worker, and checks native destruction after every test,
 including an intentional test failure during a run. This also checks direct
 unittest cleanup rather than relying on pytest teardown. GC stays enabled.

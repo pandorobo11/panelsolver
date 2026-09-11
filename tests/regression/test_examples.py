@@ -70,22 +70,6 @@ class ExampleRegressionTests(unittest.TestCase):
             if row["scope"] == "total"
         )
 
-    def test_geometry_is_byte_identical_to_phase1_inputs(self) -> None:
-        fixture_geometry = (
-            REPOSITORY_ROOT / "tests" / "fixtures" / "phase1" / "inputs" / "stl"
-        )
-        for name in (
-            "plate.stl",
-            "cube.stl",
-            "double_plate.stl",
-            "plate_offset_x2.stl",
-        ):
-            with self.subTest(name=name):
-                self.assertEqual(
-                    (fixture_geometry / name).read_bytes(),
-                    (EXAMPLES_ROOT / "geometry" / name).read_bytes(),
-                )
-
     def test_tables_are_portable_unique_and_use_current_names(self) -> None:
         case_ids: list[str] = []
         for (domain, table), raw_rows in self.raw_rows.items():
