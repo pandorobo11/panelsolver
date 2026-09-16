@@ -73,7 +73,18 @@ retained solve context into that core boundary. CLI and GUI will share an
 application-owned definition reader, batch service, and export path. The
 current `SolveResult` lacks topology and reference context; A4 must retain them
 from the same execution, without rereading STL or rerunning physics. This is an
-accepted implementation plan, not an available API or command in A0.
+accepted implementation plan, not an available API or command.
+
+The internal A1 boundary is `panelsolver.core.sectional`:
+`SectionalLoadDefinition` validates and freezes numerical inputs and normalizes
+the STL axis; `resolve_sectional_load_spec(mesh, definition)` returns an immutable
+`ResolvedSectionalLoadSpec`. Requested bounds remain in `spec.definition`;
+resolved bounds, selected geometry extrema, and closed-bound coverage are
+separate. A2 consumes the same `PanelMesh` topology with
+`spec.selected_face_indices`, `spec.axis_origin_stl_m`,
+`spec.axis_direction_hat_stl`, and `spec.bin_edges_m`. Selected component IDs are
+ascending, face indices retain mesh order, and bins are uniform. This boundary
+does not implement clipping, load integration, or any public/file/UI surface.
 
 ## Execution and artifacts
 
