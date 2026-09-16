@@ -62,7 +62,18 @@ exact supported exports and their user-facing contract are defined in the
 `panelsolver.domains` are lower-level composition modules. They expose typed
 implementation contracts for geometry, flow, models, execution policy, case
 tables, and product assembly, but are not re-exported wholesale from the package
-root. Only the package-root API is a supported Python integration surface.
+root. The package-root API is the currently implemented supported Python
+integration surface.
+
+[ADR 0019](../adr/0019-sectional-aerodynamic-load-distributions.md) accepts a
+dedicated `panelsolver.postprocess` stable surface for sectional aerodynamic
+loads, to be implemented in A4 without adding root exports. Its numerical
+definition, geometry, and integration belong to core; the public wrapper adapts
+retained solve context into that core boundary. CLI and GUI will share an
+application-owned definition reader, batch service, and export path. The
+current `SolveResult` lacks topology and reference context; A4 must retain them
+from the same execution, without rereading STL or rerunning physics. This is an
+accepted implementation plan, not an available API or command in A0.
 
 ## Execution and artifacts
 
