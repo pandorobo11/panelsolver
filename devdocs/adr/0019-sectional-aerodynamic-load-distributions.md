@@ -56,8 +56,13 @@ zero-based IDs in input-STL order. IDs in this feature use those same identities
 At the baseline, `PanelMesh` validates indexing and alignment but does not prove
 that topology-derived areas and centroids agree with `PanelGeometry`. Sectional
 geometry requires finite, nondegenerate source triangles and that agreement
-within floating-point geometry tolerance. A2 must check this at its geometry
-boundary; it must not repair, discard, or rescale inconsistent source faces to
+within floating-point geometry tolerance. That tolerance must account for the
+loader's rounding of absolute-coordinate centroids, even when the local face
+extent is small. Use an independently derived rounding envelope for the source
+geometry operations, not a tolerance enlarged to fit a sectional residual.
+The translated-triangle example below is valid loader geometry, not grounds for
+rejection. A2 must check consistency at its geometry boundary; it must not
+repair, discard, or rescale inconsistent source faces to
 force conservation. This requirement does not change the general `PanelMesh`
 constructor or the existing mesh loader as part of this feature.
 
@@ -458,15 +463,82 @@ Tests must cover:
 - A6: read-only loading, reload failures, shared numerical results, run
   snapshots, selection, cancellation/cleanup, and export failures.
 
-New float64 conservation fixtures use scale-aware error bounds: `1e-11 * scale`
-for ordinary representable fixtures. Use source area sums for area, sums of
-force contribution norms for force, and sums of lever-arm norms times force
-norms for moment; do not use only the possibly canceled resultant. For local
-first moments use area times distance from the chosen local origin as the
-scale. Apply the corresponding reference-length normalization for normalized
-moments. Test empty bins and exact-zero shielded loads exactly. Tiny geometries
-must not pass merely because of a large fixed absolute tolerance. Extreme
-unrepresentable cases exercise explicit failures instead.
+### Separate geometric conservation from agreement with stored coefficients
+
+Use two independent comparisons. First, compare fragment area and first-moment
+sums with source triangles evaluated in local coordinates from the same stored
+vertices. This checks clipping and integration without absolute-centroid
+rounding in the oracle. New float64 fixtures use `1e-11 * scale` for ordinary
+representable geometry: source area sums for area, sums of force contribution
+norms for force, and sums of lever-arm norms times force norms for moment. For
+local first moments use area times distance from the local origin. Do not use
+only the possibly canceled resultant. Translation of the assembly must not
+inflate this local conservation tolerance.
+
+Second, compare full-range strip sums with the existing integrator, which uses
+stored face areas and absolute-coordinate centroids. Those centroids may have
+lost local-position precision before the moment reference is subtracted.
+Allow a separate, propagated source-representation error budget in this
+comparison only; a correct local integral need not reproduce that rounding.
+
+For each face let `A_j` and `r_j` be the topology-derived area and centroid
+lever arm in a local or higher-precision reference calculation. Let `Ahat_j`
+be the stored area and `rhat_j` the lever arm evaluated by the existing
+integrator from its stored centroid and reference. Independently establish
+bounds `E_Aj >= abs(Ahat_j - A_j)` and
+`E_rj >= norm(rhat_j - r_j)`. Include reference subtraction rounding in `E_rj`,
+as well as absolute-centroid construction/storage rounding. Treat the stored
+vertices and case reference as authoritative inputs; do not add uncertainty
+from hypothetical coordinates before STL conversion.
+
+With `t_j = norm(traction_coeff_stl[j])`, conservative norm budgets are:
+
+```math
+B_F=\frac{1}{A_{\mathrm{ref}}}\sum_j t_j E_{A,j},
+\qquad
+B_M=\frac{1}{A_{\mathrm{ref}}}\sum_j t_j
+\left(E_{A,j}\|\boldsymbol r_j\|+
+\widehat A_j E_{r,j}\right).
+```
+
+These follow by expanding
+`Ahat_j * rhat_j - A_j * r_j = (Ahat_j - A_j) * r_j + Ahat_j * (rhat_j - r_j)`.
+The area error therefore also enters the moment budget. Add `B_F` or `B_M` to
+the respective local numerical tolerance for stored-coefficient comparisons;
+account for any additional reference-oracle error explicitly. Orthogonal frame
+transforms preserve these norm bounds. For each normalized body moment
+component, divide its bound by that component's reference length.
+
+Obtain the source bounds from analytic/higher-precision geometry or forward
+rounding bounds for the actual loader and subtraction operations. Validate
+source geometry separately against those operations' rounding envelope: an
+arbitrarily inconsistent stored centroid or area must not become acceptable
+merely by assigning it a large budget. Never derive a budget from the observed
+strip-sum discrepancy. Keep the tighter local-geometry test even when the
+stored-coefficient budget is larger, so it cannot conceal a clipping error.
+
+### Required translated-triangle regression (A2 and A3)
+
+Use vertices `(1000000, 0, 0)`, `(1000001, 0, 0)`, `(1000000, 1, 0)`, moment
+reference and axis origin `(1000000, 0, 0)`, direction `(1, 0, 0)`, edges
+`[0, 0.5, 1]`, traction `(0, 0, -1)`, and unit reference area and lengths.
+The two fragments have areas `3/8` and `1/8`, with local centroids
+`(2/9, 7/18, 0)` and `(2/3, 1/6, 0)`. Their analytic summed `Cm` is `1/6`.
+The baseline stored-centroid calculation gives `0.16666666668606922`, versus
+`0.16666666666666666` from local fragments: a difference of approximately
+`1.9403e-11`, exceeding the local moment tolerance of approximately `2.5386e-12`.
+For this case area is exact, and centroid rounding alone accounts for the
+difference through `B_M`. These numbers illustrate the baseline, not a demand
+to reproduce its last bits on every platform.
+
+A2 must accept this loader-produced geometry and verify fragment areas and
+local first moments against analytic values. A3 must verify the local moment,
+then agreement with existing coefficients under the independently propagated
+budget. Repeat at the origin to distinguish translation sensitivity in the
+stored representation from clipping error. Test empty bins and exact-zero
+shielded loads exactly. Tiny geometries must not pass merely because of a large
+fixed absolute tolerance. Extreme unrepresentable cases exercise explicit
+failures instead.
 
 Retain all existing model-specific golden tolerances, expected coefficients,
 shielding masks, CSV/VTP semantics, and signatures. Do not loosen golden
