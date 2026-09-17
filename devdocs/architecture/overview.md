@@ -86,6 +86,15 @@ separate. A2 consumes the same `PanelMesh` topology with
 ascending, face indices retain mesh order, and bins are uniform. This boundary
 does not implement clipping, load integration, or any public/file/UI surface.
 
+The internal A2 boundary is
+`panelsolver.core._sectional_geometry.compute_sectional_fragment_geometry(mesh, spec)`.
+It validates selected topology against stored geometry and returns immutable
+`SectionalFragmentGeometry` rows in source-face/bin order. Each row retains its
+source index, bin index, surface area, source-local first moment, and STL origin.
+[Sectional geometry](sectional-geometry.md) explains exact boundary ownership,
+analytic strip clipping, rounding bounds, and the geometry-only A3 handoff.
+No aerodynamic integration or public sectional feature is implemented by A2.
+
 ## Execution and artifacts
 
 The one-case engine loads ordered STL components, validates geometry, resolves
