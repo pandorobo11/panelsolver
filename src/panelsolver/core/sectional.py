@@ -132,11 +132,13 @@ def _uniform_bins(start: float, stop: float, count: int) -> tuple[np.ndarray, ..
     except (MemoryError, ValueError, OverflowError) as exc:
         raise ContractValueError("bin_count", "cannot allocate bin edges") from exc
     with np.errstate(over="ignore", invalid="ignore"):
-        if start < 0.0 < stop:
+        span = stop - start
+        if np.isfinite(span):
+            # Avoid separately rounding subnormal endpoint products.
+            edges = start + span * fractions
+        else:
             # The full span may overflow even when every bin width is finite.
             edges = start * (1.0 - fractions) + stop * fractions
-        else:
-            edges = start + (stop - start) * fractions
         edges[0], edges[-1] = start, stop
         edges = float_array(edges, field="bin_edges_m", shape=(count + 1,))
         widths = float_array(np.diff(edges), field="bin_widths_m", shape=(count,))
@@ -145,7 +147,7 @@ def _uniform_bins(start: float, stop: float, count: int) -> tuple[np.ndarray, ..
         centers = edges[:-1] + widths / 2.0
         # Do not underflow a subnormal half-width before adding it. Endpoints
         # this close cannot have an overflowing sum, so average them directly.
-        tiny_widths = widths < np.finfo(np.float64).tiny
+        tiny_widths = widths < 2.0 * np.finfo(np.float64).tiny
         centers[tiny_widths] = (edges[:-1][tiny_widths] + edges[1:][tiny_widths]) / 2.0
         centers = float_array(centers, field="bin_centers_m", shape=(count,))
     return edges, centers, widths

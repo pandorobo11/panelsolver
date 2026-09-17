@@ -452,6 +452,31 @@ def test_safe_bins_allow_overflowing_full_span_when_widths_are_finite(mesh):
     np.testing.assert_array_equal(spec.bin_centers_m, [-largest / 2, largest / 2])
 
 
+@pytest.mark.parametrize(
+    "start_units, stop_units, count, expected_units",
+    [
+        (-1, 3, 2, [-1, 1, 3]),
+        (-3, 1, 2, [-3, -1, 1]),
+        (-2, 2, 4, [-2, -1, 0, 1, 2]),
+    ],
+)
+def test_subnormal_ranges_crossing_zero_keep_uniform_representable_edges(
+    mesh, start_units, stop_units, count, expected_units
+):
+    tiny = np.finfo(np.float64).smallest_subnormal
+    spec = resolve_sectional_load_spec(
+        mesh,
+        definition(
+            start_m=start_units * tiny, stop_m=stop_units * tiny, bin_count=count
+        ),
+    )
+    np.testing.assert_array_equal(spec.bin_edges_m, np.array(expected_units) * tiny)
+    np.testing.assert_array_equal(
+        spec.bin_widths_m,
+        np.full(count, (stop_units - start_units) // count) * tiny,
+    )
+
+
 @pytest.mark.parametrize("sign", [1, -1])
 def test_subnormal_bin_midpoints_do_not_lose_half_width_before_addition(mesh, sign):
     tiny = np.finfo(float).smallest_subnormal
@@ -461,6 +486,19 @@ def test_subnormal_bin_midpoints_do_not_lose_half_width_before_addition(mesh, si
     )
     # The exact midpoint is 1.5 subnormal units, which rounds to the even 2.
     np.testing.assert_array_equal(spec.bin_centers_m, [sign * 2 * tiny])
+
+
+@pytest.mark.parametrize("sign", [1, -1])
+def test_normal_width_with_subnormal_half_width_has_correct_midpoint(mesh, sign):
+    tiny = np.finfo(np.float64).smallest_subnormal
+    normal = np.finfo(np.float64).tiny
+    start, stop = sorted([sign * tiny, sign * (normal + 2 * tiny)])
+    spec = resolve_sectional_load_spec(
+        mesh, definition(start_m=start, stop_m=stop, bin_count=1)
+    )
+    np.testing.assert_array_equal(spec.bin_widths_m, [normal + tiny])
+    # The exact midpoint is normal/2 + 1.5 subnormal units; round once to even.
+    np.testing.assert_array_equal(spec.bin_centers_m, [sign * (normal / 2 + 2 * tiny)])
 
 
 @pytest.mark.parametrize(
