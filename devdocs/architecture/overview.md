@@ -95,6 +95,14 @@ source index, bin index, surface area, source-local first moment, and STL origin
 analytic strip clipping, rounding bounds, and the geometry-only A3 handoff.
 No aerodynamic integration or public sectional feature is implemented by A2.
 
+The internal A3 boundary is
+`panelsolver.core._sectional_integration.integrate_sectional_loads(mesh, spec, local_loads, case)`.
+It integrates full model-neutral traction over A2 fragments and returns immutable
+strip wetted area, force/moment vectors, and coefficient views for the selected
+total and every selected component. [Sectional integration](sectional-integration.md)
+describes the A4 handoff, stable reductions, and separate local-conservation and
+stored-representation checks. No public API or artifact surface is added by A3.
+
 ## Execution and artifacts
 
 The one-case engine loads ordered STL components, validates geometry, resolves
