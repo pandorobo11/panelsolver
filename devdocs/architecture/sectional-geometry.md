@@ -73,11 +73,24 @@ absolute-coordinate mean of three vertices. A2 uses source-local edges
 `a=v1-v0`, `b=v2-v0` and a scaled norm (`hypot`). Both use the stored SI vertices
 as authoritative inputs, with no uncertainty assigned to earlier STL conversion.
 
+Source-area accuracy is checked separately from agreement with the stored loader
+area. The fast cross product is used only when its forward-error norm `E` is
+at most `gamma(64) * (norm(cross)-E)`, limiting relative cross error to about
+7e-15 before the norm evaluation. A skinny triangle can fail this accuracy gate
+even though its cross is finite and agrees with the loader's rounding envelope.
+For those faces, standard-library `Fraction` arithmetic evaluates all three
+determinants exactly from the original stored vertices, including edge
+subtraction. Each component is converted to float64 once, then `hypot` gives the
+area. This handles cancellation in every cyclic edge pairing without changing
+the source-local origin or using stored areas as a replacement or correction.
+
 Let `u = eps64/2`, `gamma(n)=n*u/(1-n*u)`, and `eta` be the smallest float64
 subnormal. Bound each cross component by `gamma(8)` times the sum of its two
 absolute edge products, plus `8*eta`. This covers edge subtraction, products,
-product subtraction, and bound evaluation. Combine bounds for both edge choices
-with half their vector norm. Add the actual loader square/sum rounding envelope
+product subtraction, and bound evaluation. For the exact fallback, replace the
+source cross bound with one ULP per converted component; retain the loader's
+edge-product bound. Combine the two bounds with half their vector norm.
+Add the actual loader square/sum rounding envelope
 (one ULP per squared component, two ULPs of their sum), propagated through the
 square root and division by two, and `gamma(8)` times the two area magnitudes.
 This allowance depends on local edges, not absolute coordinate translation.
@@ -95,5 +108,6 @@ These bounds do not use observed strip residuals. Conservation tests separately
 use analytic integrals and an 80-digit Decimal source oracle, with `1e-11`
 times local geometric scales. Translation never enlarges that local test bound.
 The finite precision of A1 projections remains the ownership input; extreme
-underflow/overflow raises explicitly, and no exact-arithmetic geometry kernel
-or new production dependency is introduced.
+underflow/overflow raises explicitly. Exact arithmetic is confined to the
+ill-conditioned source determinant fallback; strip clipping and the A3 handoff
+remain float64. There is no new production dependency.

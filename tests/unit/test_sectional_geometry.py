@@ -260,6 +260,53 @@ def test_real_loader_absolute_centroid_rounding_is_accepted(tmp_path, offset):
     np.testing.assert_allclose(result.areas_m2, [3 / 8, 1 / 8], rtol=0, atol=0)
 
 
+@pytest.mark.parametrize(
+    "triangle",
+    [
+        [[0, 0, 0], [100000001, 100000001, 0], [100000002, 100000001, 0]],
+        [[0, 0, 0], [1.1, 1.1, 0], [1.100001, 1.1, 0]],
+        # Every cyclic edge pair is nearly parallel, with no short edge to pick.
+        [[0, 0, 0], [1.1, 1.1, 0], [2.2, 2.20000001, 0]],
+        # Cancellation in all three cross components, not just a planar Z cross.
+        [
+            [0, 0, 0],
+            [100000001, 100000001, 300000003],
+            [100000002, 100000001, 300000004],
+        ],
+    ],
+)
+@pytest.mark.parametrize("cycle", [0, 1, 2])
+def test_slender_loader_triangles_conserve_area_and_first_moments(
+    tmp_path, triangle, cycle
+):
+    triangle = np.roll(np.array(triangle, dtype=float), cycle, axis=0)
+    path = tmp_path / "slender.stl"
+    vertices = "\n".join(
+        "vertex " + " ".join(repr(float(v)) for v in p) for p in triangle
+    )
+    path.write_text(
+        f"solid panel\nfacet normal 0 0 0\nouter loop\n{vertices}\nendloop\nendfacet\nendsolid panel\n"
+    )
+    mesh = load_panel_mesh([path], 1).mesh
+    np.testing.assert_array_equal(mesh.vertices_stl_m[mesh.faces[0]], triangle)
+    spec = resolve(mesh)
+    stored_areas = mesh.geometry.areas_m2.copy()
+    result = compute_sectional_fragment_geometry(mesh, spec)
+    # The 80-digit source oracle uses the stored vertices, independently of both
+    # loader areas and A2 source-area evaluation. Keep the existing 1e-11 gate.
+    conservation_errors(mesh, spec, result)
+    np.testing.assert_array_equal(mesh.geometry.areas_m2, stored_areas)
+
+
+def test_slender_triangle_still_rejects_inconsistent_stored_area():
+    mesh = make_mesh(
+        [[[0, 0, 0], [100000001, 100000001, 0], [100000002, 100000001, 0]]]
+    )
+    mesh = replace(mesh, geometry=replace(mesh.geometry, areas_m2=[50000100.5]))
+    with pytest.raises(ContractValueError, match="topology area disagrees"):
+        compute(mesh)
+
+
 def test_oblique_triangle_arbitrary_axis_uses_surface_area():
     # Orthogonal unit basis vectors in an oblique plane; axis has a normal part.
     a = np.array([1, 2, 2]) / 3

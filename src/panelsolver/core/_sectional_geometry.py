@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from fractions import Fraction
 
 import numpy as np
 
@@ -88,6 +89,42 @@ def _cross_rounding_bound(a: np.ndarray, b: np.ndarray) -> np.ndarray:
     )
 
 
+def _source_cross(
+    triangle: np.ndarray, local: np.ndarray, field: str
+) -> tuple[np.ndarray, np.ndarray]:
+    """Cross product with an accuracy gate separate from loader consistency.
+
+    The fast path's forward error must be <= gamma(64) of the true cross norm
+    (about 7e-15, retaining roughly 47 significant binary digits). Product
+    cancellation can violate that condition even for finite nonzero crosses.
+    In that case evaluate the determinant exactly from the stored float64
+    vertices, including edge subtraction, and round each component only once.
+    """
+    cross = np.cross(local[1], local[2])
+    error = _cross_rounding_bound(local[1], local[2])
+    _finite(cross, field)
+    _finite(error, field)
+    norm, error_norm = math.hypot(*cross), math.hypot(*error)
+    if norm > 0 and error_norm <= _gamma(64) * max(norm - error_norm, 0):
+        return cross, error
+
+    # Standard-library rational arithmetic is confined to ill-conditioned
+    # source determinants. Clipping/ownership and result buffers stay float64.
+    vertices = [[Fraction(float(x)) for x in vertex] for vertex in triangle]
+    a = [vertices[1][i] - vertices[0][i] for i in range(3)]
+    b = [vertices[2][i] - vertices[0][i] for i in range(3)]
+    exact = [a[i] * b[j] - a[j] * b[i] for i, j in ((1, 2), (2, 0), (0, 1))]
+    try:
+        cross = np.array([float(x) for x in exact])
+    except OverflowError as exc:
+        raise NonFiniteError(field) from exc
+    if any(x != 0 and rounded == 0 for x, rounded in zip(exact, cross, strict=True)):
+        raise ContractValueError(field, "source cross product underflow")
+    # One ULP per component bounds the single rational-to-float conversion,
+    # including subnormals. This replaces, rather than enlarges, the fast error.
+    return cross, np.array([math.ulp(float(x)) for x in cross])
+
+
 def _validate_source(
     mesh: PanelMesh, face: int, triangle: np.ndarray
 ) -> tuple[np.ndarray, float]:
@@ -105,7 +142,7 @@ def _validate_source(
     adjacent = triangle[2] - triangle[1]
     _finite(local, field)
     _finite(adjacent, field)
-    cross = np.cross(local[1], local[2])
+    cross, source_cross_error = _source_cross(triangle, local, field)
     loader_cross = np.cross(local[1], adjacent)
     _finite(cross, field)
     _finite(loader_cross, field)
@@ -114,9 +151,7 @@ def _validate_source(
     if area == 0:
         raise ContractValueError(field, "degenerate or unrepresentable triangle area")
 
-    cross_error = _cross_rounding_bound(local[1], local[2]) + _cross_rounding_bound(
-        local[1], adjacent
-    )
+    cross_error = source_cross_error + _cross_rounding_bound(local[1], adjacent)
     squares = loader_cross * loader_cross
     squared_norm = float(np.sum(squares))
     _finite(squared_norm, field)
