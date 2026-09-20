@@ -69,8 +69,9 @@ the supported Python integration surfaces.
 dedicated `panelsolver.postprocess` stable surface for sectional aerodynamic
 loads, implemented by A4 without adding root exports. Its numerical
 definition, geometry, and integration belong to core; the public wrapper adapts
-retained solve context into that core boundary. CLI and GUI will share an
-application-owned definition reader, batch service, and export path. The
+retained solve context into that core boundary. The CLI uses an
+application-owned definition reader, batch service, and export path, also
+intended for A6 GUI composition. The
 `SolveResult` retains the immutable mesh and common case privately from the same
 execution, without rereading STL or rerunning physics. The retained field is not
 a constructor argument, so manually constructed or `dataclasses.replace` results
@@ -78,8 +79,7 @@ cannot attach stale context to substituted loads, geometry, attitude, or identit
 Deep copying a solver-produced result retains its immutable buffers/context.
 The public `SectionalLoads` result reuses the A3 spec, case, total, and component
 distributions, adding only the originating case signature. Documented returned
-fields are public; raw numerical constructors remain internal. CLI/GUI workflows
-are not provided by A4.
+fields are public; raw numerical constructors remain internal.
 
 The internal A1 boundary is `panelsolver.core.sectional`:
 `SectionalLoadDefinition` validates and freezes numerical inputs and normalizes
@@ -108,6 +108,20 @@ strip wetted area, force/moment vectors, and coefficient views for the selected
 total and every selected component. [Sectional integration](sectional-integration.md)
 describes the A4 handoff, stable reductions, and separate local-conservation and
 stored-representation checks. No public API or artifact surface is added by A3.
+
+The A5 application boundary is `app.sectional_definitions` plus
+`app.sectional_batch`. The reader owns CSV syntax and normalized batch labels;
+A1 owns numerical validation. `run_sectional_cases` reuses product case
+adaptation and the existing case scheduler, evaluates physics once per case,
+and projects every selected definition before releasing the full execution.
+Only compact CSV rows, counts and failure identities cross the worker boundary.
+The final projection follows input case/definition order, and records terminal
+batch status and completion counts. Cancellation and observed failures request
+a cooperative stop and drain already-dispatched work at case boundaries.
+Export reuses protected-path validation and atomic CSV writing. There is no
+Summary/VTP round trip, new cache, checkpoint system or physical signature.
+`app.sectional_cli` owns selection and presentation; the top-level dispatcher
+only routes the new subcommand. GUI composition remains A6 work.
 
 ## Execution and artifacts
 

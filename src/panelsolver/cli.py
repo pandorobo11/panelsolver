@@ -8,6 +8,7 @@ import sys
 from rich_argparse import RichHelpFormatter
 
 from panelsolver.app.cli import ProductCliPolicy, run_cli
+from panelsolver.app.sectional_cli import run_sectional_cli
 from panelsolver.domains.fmf import CLI_POLICY as _FMF_POLICY
 from panelsolver.domains.hypersonic import CLI_POLICY as _HYPERSONIC_POLICY
 
@@ -48,6 +49,8 @@ def main(argv: list[str] | None = None) -> int:
     namespace, remaining = parser.parse_known_args(arguments)
     if namespace.domain is None:
         parser.error("a flow domain is required: fmf or hypersonic")
+    if remaining[:1] == ["sectional-loads"]:
+        return run_sectional_cli(_POLICIES[namespace.domain], remaining[1:])
     return run_cli(_POLICIES[namespace.domain], remaining)
 
 
