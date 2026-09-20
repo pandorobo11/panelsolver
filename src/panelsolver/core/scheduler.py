@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import multiprocessing as mp
+import signal
 import sys
 import time
 import traceback
@@ -706,6 +707,9 @@ def _worker_process_entry[CaseT, ResultT](
     capture_logs: bool,
     include_partial_results: bool,
 ) -> None:
+    # The parent owns cooperative cancellation. A terminal Ctrl-C also reaches
+    # spawned workers; let their current case finish at a safe boundary.
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
     try:
         _worker_loop(
             worker_id,
@@ -829,10 +833,15 @@ def _wait_for_worker_readiness(
             raise WorkerStartupError(
                 f"Spawn workers did not become ready before timeout: {missing}."
             )
-        readable = wait_connections(
-            result_connections,
-            timeout=min(_POLL_SECONDS, remaining),
-        )
+        try:
+            readable = wait_connections(
+                result_connections,
+                timeout=min(_POLL_SECONDS, remaining),
+            )
+        except InterruptedError:
+            # Windows pipe waits can be interrupted by a handled SIGINT.
+            # Recheck cancellation and the startup deadline before waiting again.
+            continue
         if not readable:
             dead_workers: list[tuple[int, int | None]] = []
             for worker_id, process in enumerate(processes):
@@ -986,7 +995,18 @@ def iter_case_results_parallel[CaseT, ResultT](
     completed: dict[int, ResultT] = {}
     cancellation_requested = False
 
+    def observe_cancellation() -> bool:
+        nonlocal cancellation_requested
+        if not cancellation_requested and cancel_cb is not None and bool(cancel_cb()):
+            cancellation_requested = True
+            cancel_event.set()
+        return cancellation_requested
+
     def assign_next(worker_id: int) -> bool:
+        # A consumer can request a stop while accepting a yielded case result.
+        # Observe that request before dispatch, then drain already-busy workers.
+        if observe_cancellation():
+            return False
         picked = _pick_next_chunk(
             worker_id,
             worker_last_bucket,
@@ -1055,17 +1075,16 @@ def iter_case_results_parallel[CaseT, ResultT](
             assign_next(worker_id)
 
         while len(completed) < total:
-            if (
-                not cancellation_requested
-                and cancel_cb is not None
-                and bool(cancel_cb())
-            ):
-                cancellation_requested = True
-                cancel_event.set()
+            observe_cancellation()
             if cancellation_requested and not any(worker_busy):
                 raise SchedulerCancelled("Canceled by user at a case boundary.")
 
-            readable = wait_connections(result_receivers, timeout=_POLL_SECONDS)
+            try:
+                readable = wait_connections(result_receivers, timeout=_POLL_SECONDS)
+            except InterruptedError:
+                # Keep the parent cancellation callback authoritative and drain
+                # active cases; this poll has not consumed a result frame.
+                continue
             if not readable:
                 dead_workers = [
                     (worker_id, processes[worker_id].exitcode)

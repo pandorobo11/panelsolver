@@ -28,6 +28,7 @@ nav:
       - Case tables and geometry: inputs/case-files.md
       - FMF input reference: inputs/fmf-input.md
       - Hypersonic input reference: inputs/hypersonic-input.md
+      - Sectional load definitions: inputs/sectional-loads.md
   - Running calculations:
       - GUI: running/gui.md
       - CLI: running/cli.md
@@ -36,6 +37,7 @@ nav:
       - Troubleshooting: running/troubleshooting.md
   - Results:
       - Summary CSV reference: results/summary-csv.md
+      - Sectional load CSV: results/sectional-loads-csv.md
       - VTP reference: results/vtp.md
   - Product reference:
       - Environment variables: product-reference/environment-variables.md
