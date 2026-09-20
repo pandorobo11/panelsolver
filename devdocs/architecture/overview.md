@@ -69,9 +69,8 @@ the supported Python integration surfaces.
 dedicated `panelsolver.postprocess` stable surface for sectional aerodynamic
 loads, implemented by A4 without adding root exports. Its numerical
 definition, geometry, and integration belong to core; the public wrapper adapts
-retained solve context into that core boundary. The CLI uses an
-application-owned definition reader, batch service, and export path, also
-intended for A6 GUI composition. The
+retained solve context into that core boundary. The CLI and GUI use the same
+application-owned definition reader, batch service, and export path. The
 `SolveResult` retains the immutable mesh and common case privately from the same
 execution, without rereading STL or rerunning physics. The retained field is not
 a constructor argument, so manually constructed or `dataclasses.replace` results
@@ -121,7 +120,16 @@ a cooperative stop and drain already-dispatched work at case boundaries.
 Export reuses protected-path validation and atomic CSV writing. There is no
 Summary/VTP round trip, new cache, checkpoint system or physical signature.
 `app.sectional_cli` owns selection and presentation; the top-level dispatcher
-only routes the new subcommand. GUI composition remains A6 work.
+only routes the new subcommand.
+
+The A6 `app.sectional_dialog` is a persistent modeless, read-only selection and
+results surface. Domain adapters bind the same batch service to the current
+runtime policy. A concrete Qt worker executes frozen case/definition snapshots;
+only compact results survive completion. Normal and sectional runs exclude each
+other until thread cleanup. Cooperative cancellation retains successful pairs
+with their actual terminal status. A separate export worker uses the retained
+result and protected input paths, so a save failure can be retried without a
+solve. The viewer's VTP and ordinary solve results are never sectional inputs.
 
 ## Execution and artifacts
 

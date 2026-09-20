@@ -15,6 +15,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import tomllib
 import zipfile
 from pathlib import Path
@@ -199,8 +200,9 @@ def _smoke_sectional_cli(
             raise RuntimeError(f"installed {domain} sectional result contract failed")
 
 
-def _smoke_gui_entrypoint() -> None:
+def _smoke_gui_entrypoint(staging: Path) -> None:
     from PySide6 import QtCore, QtWidgets
+    from shiboken6 import delete
 
     from panelsolver import gui as gui_module
     from panelsolver.app.gui_bootstrap import _application_icon, create_main_window
@@ -274,8 +276,16 @@ def _smoke_gui_entrypoint() -> None:
             ),
         )
         constructed.append((spec.product_id, spec.model_id, window.windowTitle()))
-        verify_help_menu(window, identity="Panel Solver")
-        window.close()
+        try:
+            verify_help_menu(window, identity="Panel Solver")
+            _smoke_sectional_gui(window, staging, spec.product_id, _application)
+        finally:
+            dialog = window.sectional_dialog
+            if dialog is not None and dialog.is_running():
+                dialog.cancel_run()
+                _wait_for_gui_idle(dialog, _application)
+            window.close()
+            delete(window)
         return 0
 
     original = gui_module.run_gui
@@ -288,6 +298,44 @@ def _smoke_gui_entrypoint() -> None:
         gui_module.run_gui = original
     if constructed != list(expected.values()):
         raise RuntimeError(f"Panel Solver GUI identity changed: {constructed!r}")
+
+
+def _wait_for_gui_idle(dialog, application) -> None:
+    deadline = time.monotonic() + 60
+    while dialog.is_running():
+        application.processEvents()
+        if time.monotonic() >= deadline:
+            raise RuntimeError("installed sectional GUI did not finish worker cleanup")
+        time.sleep(0.005)
+    application.processEvents()
+
+
+def _smoke_sectional_gui(window, staging: Path, domain: str, application) -> None:
+    """Real installed adapters/workers; only the OpenGL viewer is substituted."""
+    root = staging / "sectional-cli"
+    if not window.cases_panel.load_input_file(root / f"{domain}-cases.csv"):
+        raise RuntimeError(f"installed {domain} GUI could not open sectional cases")
+    window.cases_panel.case_table.selectAll()
+    window.open_sectional_loads()
+    dialog = window.sectional_dialog
+    if dialog is None or not dialog.load_definitions(root / "sections.csv"):
+        raise RuntimeError(f"installed {domain} GUI could not open definitions")
+    dialog.definition_table.selectAll()
+    if not dialog.start_run():
+        raise RuntimeError(f"installed {domain} GUI did not start sectional batch")
+    _wait_for_gui_idle(dialog, application)
+    output = root / f"{domain}-gui-sections.csv"
+    if not dialog.export_results(output):
+        raise RuntimeError(f"installed {domain} GUI did not start result export")
+    _wait_for_gui_idle(dialog, application)
+    with output.open(encoding=CSV_ENCODING, newline="") as stream:
+        actual = list(csv.DictReader(stream))
+    with (root / f"{domain}-sections.csv").open(
+        encoding=CSV_ENCODING, newline=""
+    ) as stream:
+        expected = list(csv.DictReader(stream))
+    if actual != expected:
+        raise RuntimeError(f"installed {domain} GUI and CLI sectional results differ")
 
 
 def _smoke_subprocess_environment(staging: Path) -> dict[str, str]:
@@ -667,7 +715,7 @@ def main(argv: list[str] | None = None) -> int:
         _smoke_sectional_cli(staging, inputs, subprocess_environment)
         _smoke_packaged_documentation()
         _smoke_packaged_examples(staging)
-        _smoke_gui_entrypoint()
+        _smoke_gui_entrypoint(staging)
         if dist_dir is not None:
             release_examples = _extract_release_archives(repository, dist_dir, staging)
             _smoke_release_examples(release_examples, staging, subprocess_environment)
