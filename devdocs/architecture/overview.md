@@ -62,18 +62,24 @@ exact supported exports and their user-facing contract are defined in the
 `panelsolver.domains` are lower-level composition modules. They expose typed
 implementation contracts for geometry, flow, models, execution policy, case
 tables, and product assembly, but are not re-exported wholesale from the package
-root. The package-root API is the currently implemented supported Python
-integration surface.
+root. The package-root solve API and dedicated sectional postprocessing API are
+the supported Python integration surfaces.
 
 [ADR 0019](../adr/0019-sectional-aerodynamic-load-distributions.md) accepts a
 dedicated `panelsolver.postprocess` stable surface for sectional aerodynamic
-loads, to be implemented in A4 without adding root exports. Its numerical
+loads, implemented by A4 without adding root exports. Its numerical
 definition, geometry, and integration belong to core; the public wrapper adapts
 retained solve context into that core boundary. CLI and GUI will share an
 application-owned definition reader, batch service, and export path. The
-current `SolveResult` lacks topology and reference context; A4 must retain them
-from the same execution, without rereading STL or rerunning physics. This is an
-accepted implementation plan, not an available API or command.
+`SolveResult` retains the immutable mesh and common case privately from the same
+execution, without rereading STL or rerunning physics. The retained field is not
+a constructor argument, so manually constructed or `dataclasses.replace` results
+cannot attach stale context to substituted loads, geometry, attitude, or identity.
+Deep copying a solver-produced result retains its immutable buffers/context.
+The public `SectionalLoads` result reuses the A3 spec, case, total, and component
+distributions, adding only the originating case signature. Documented returned
+fields are public; raw numerical constructors remain internal. CLI/GUI workflows
+are not provided by A4.
 
 The internal A1 boundary is `panelsolver.core.sectional`:
 `SectionalLoadDefinition` validates and freezes numerical inputs and normalizes
