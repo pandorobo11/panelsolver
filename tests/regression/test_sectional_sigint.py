@@ -36,6 +36,7 @@ def _run_probe(tmp_path: Path, *, group_signal: bool) -> None:
         "-j",
         "2",
         "--plain",
+        "--debug",
     ]
     process = subprocess.Popen(
         command,

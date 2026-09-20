@@ -833,10 +833,15 @@ def _wait_for_worker_readiness(
             raise WorkerStartupError(
                 f"Spawn workers did not become ready before timeout: {missing}."
             )
-        readable = wait_connections(
-            result_connections,
-            timeout=min(_POLL_SECONDS, remaining),
-        )
+        try:
+            readable = wait_connections(
+                result_connections,
+                timeout=min(_POLL_SECONDS, remaining),
+            )
+        except InterruptedError:
+            # Windows pipe waits can be interrupted by a handled SIGINT.
+            # Recheck cancellation and the startup deadline before waiting again.
+            continue
         if not readable:
             dead_workers: list[tuple[int, int | None]] = []
             for worker_id, process in enumerate(processes):
@@ -1074,7 +1079,12 @@ def iter_case_results_parallel[CaseT, ResultT](
             if cancellation_requested and not any(worker_busy):
                 raise SchedulerCancelled("Canceled by user at a case boundary.")
 
-            readable = wait_connections(result_receivers, timeout=_POLL_SECONDS)
+            try:
+                readable = wait_connections(result_receivers, timeout=_POLL_SECONDS)
+            except InterruptedError:
+                # Keep the parent cancellation callback authoritative and drain
+                # active cases; this poll has not consumed a result frame.
+                continue
             if not readable:
                 dead_workers = [
                     (worker_id, processes[worker_id].exitcode)
