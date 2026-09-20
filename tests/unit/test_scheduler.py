@@ -607,6 +607,45 @@ class SchedulerTests(unittest.TestCase):
         self.assert_no_new_worker_resources(before)
 
     @pytest.mark.slow
+    def test_consumer_cancellation_is_observed_before_redispatch(self) -> None:
+        before = _worker_resource_state()
+        stop = False
+        dispatches: list[tuple[tuple[int, ...], bool]] = []
+        encode = scheduler_module._encode_parent_message
+
+        def record(message):
+            if message.get("type") == "run_chunk":
+                dispatches.append((tuple(message["indices"]), stop))
+            return encode(message)
+
+        def cancel_requested() -> bool:
+            return stop
+
+        yielded: list[int] = []
+        with mock.patch.object(
+            scheduler_module, "_encode_parent_message", side_effect=record
+        ):
+            with self.assertRaises(SchedulerCancelled):
+                for index, _ in iter_case_results_parallel(
+                    ((0, 0.02), (1, 0.2), (2, 0.2), (3, 0.2)),
+                    2,
+                    _success_worker,
+                    log_policy=WorkerLogPolicy.DROP,
+                    partial_result_policy=PartialResultPolicy.YIELD_COMPLETED,
+                    bucket_keys=("same",) * 4,
+                    chunk_cases=1,
+                    cancel_cb=cancel_requested,
+                ):
+                    yielded.append(index)
+                    # Sectional consumers request stop here when a returned case
+                    # reports a definition failure, while retaining its results.
+                    stop = True
+        self.assert_no_new_worker_resources(before)
+        self.assertTrue(yielded)
+        self.assertEqual([((0,), False), ((1,), False)], dispatches)
+        self.assertTrue(set(yielded).issubset({0, 1}))
+
+    @pytest.mark.slow
     def test_unexpected_exit_is_reported_with_exit_code(self) -> None:
         before = _worker_resource_state()
         with self.assertRaises(WorkerUnexpectedExitError) as caught:
