@@ -256,6 +256,22 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
         table.setMinimumHeight(100)
         return table
 
+    @staticmethod
+    def _ensure_header_widths(table: QtWidgets.QTableView) -> None:
+        header = table.horizontalHeader()
+        # Match CasesPanel's native-style header minimum; content autosizing
+        # alone can leave labels crowded against the section boundaries.
+        padding = 2 * table.style().pixelMetric(
+            QtWidgets.QStyle.PixelMetric.PM_HeaderMargin, None, header
+        )
+        for column in range(header.count()):
+            table.setColumnWidth(
+                column,
+                max(
+                    table.columnWidth(column), header.sectionSizeHint(column) + padding
+                ),
+            )
+
     def _normal_state_changed(self, running: bool) -> None:
         self._normal_running = running
         self._refresh_controls()
@@ -368,6 +384,7 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
             )
         self.definition_model.replace(columns, records)
         self.definition_table.resizeColumnsToContents()
+        self._ensure_header_widths(self.definition_table)
         self.definition_status.setText(
             f"Loaded {len(definitions)} read-only definition(s). Select one or more rows; edit the CSV externally and Reload."
         )
@@ -476,6 +493,7 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
                     110, self.result_table.fontMetrics().horizontalAdvance(column) + 24
                 ),
             )
+        self._ensure_header_widths(self.result_table)
         summary = f"{result.status.capitalize()}: {result.completed_pairs}/{result.requested_pairs} case × section pairs; {result.completed_cases}/{result.total_cases} complete cases."
         if result.errors:
             summary += " " + "; ".join(
