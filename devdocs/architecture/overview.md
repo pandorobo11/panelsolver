@@ -126,8 +126,13 @@ The A6 `app.sectional_dialog` is a persistent modeless, read-only selection and
 results surface. Domain adapters bind the same batch service to the current
 runtime policy. A concrete Qt worker executes frozen case/definition snapshots;
 only compact results survive completion. Normal and sectional runs exclude each
-other until thread cleanup. Cooperative cancellation retains successful pairs
-with their actual terminal status. A separate export worker uses the retained
+other until thread cleanup. The case scope reuses ordinary selection semantics:
+selected cases or all loaded cases when none are selected; definitions still
+require explicit selection. Run chooses and validates the output destination
+before solving. Calculation cleanup hands off successful pairs to the existing
+export worker without releasing the run guard or notifying completion between
+phases. Cooperative cancellation retains and saves successful pairs with their
+actual terminal status. The export worker uses the retained
 result and protected input paths, so a save failure can be retried without a
 solve. The viewer's VTP and ordinary solve results are never sectional inputs.
 

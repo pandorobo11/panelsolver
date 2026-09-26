@@ -132,7 +132,7 @@ class SectionalDialogTests(unittest.TestCase):
     def test_read_only_open_reload_invalid_reload_and_explicit_selection(self):
         window, panel, dialog = self.make_window()
         self.assertFalse(dialog.btn_run.isEnabled())
-        self.assertFalse(dialog.start_run())
+        self.assertFalse(dialog.start_run(self.root / "automatic.csv"))
         self.assertEqual(2, dialog.definition_model.rowCount())
         index = dialog.definition_model.index(0, 0)
         self.assertFalse(
@@ -141,7 +141,7 @@ class SectionalDialogTests(unittest.TestCase):
         self.assertFalse(dialog.definition_model.setData(index, "changed"))
         self.assertEqual("span", dialog.definitions[0].section_id)
         self.select(panel.case_table, 1)
-        self.assertFalse(dialog.start_run())
+        self.assertFalse(dialog.start_run(self.root / "automatic.csv"))
         self.select(dialog.definition_table, 0)
         self.assertTrue(dialog.btn_run.isEnabled())
         panel.spin_workers.setRange(1, 2)
@@ -160,7 +160,7 @@ class SectionalDialogTests(unittest.TestCase):
         dialog.reload_definitions()
         self.assertEqual((), dialog.definitions)
         self.assertIn("read failed", dialog.definition_status.text())
-        self.assertFalse(dialog.start_run())
+        self.assertFalse(dialog.start_run(self.root / "automatic.csv"))
         self.assertFalse(dialog.btn_run.isEnabled())
         self.assertEqual(str(self.definition_path), dialog.path_value.text())
         window.open_sectional_loads()
@@ -188,7 +188,7 @@ class SectionalDialogTests(unittest.TestCase):
                 with patch.object(
                     sectional_batch, "execute_case", side_effect=record
                 ) as execute:
-                    self.assertTrue(dialog.start_run())
+                    self.assertTrue(dialog.start_run(self.root / "automatic.csv"))
                     self.wait_until(lambda dialog=dialog: not dialog.is_running())
                 self.assertEqual(2, execute.call_count)
                 self.assertTrue(
@@ -198,7 +198,7 @@ class SectionalDialogTests(unittest.TestCase):
                 self.assertIs(
                     dialog.batch_result.csv.rows[0], dialog.result_model.rows[0]
                 )
-                self.assertEqual("Completed", dialog.progress.text())
+                self.assertEqual("Exported (completed)", dialog.progress.text())
                 self.assertTrue(dialog.btn_export.isEnabled())
                 self.assertFalse((self.root / "unused").exists())
                 output = self.root / f"{domain.RUNTIME_POLICY.product_id}.csv"
@@ -208,6 +208,232 @@ class SectionalDialogTests(unittest.TestCase):
                     rows = list(csv.DictReader(handle))
                 self.assertEqual(20, len(rows))
                 self.assertEqual({"case_0", "case_1"}, {row["case_id"] for row in rows})
+
+    def test_run_button_chooses_output_and_runs_selected_or_all_cases(self):
+        _window, panel, dialog = self.make_window()
+        self.select(dialog.definition_table, 0)
+        for selected, expected in (((), ["case_0", "case_1"]), ((1,), ["case_1"])):
+            with self.subTest(selected=selected):
+                self.select(panel.case_table, *selected)
+                self.assertIn(
+                    "selected" if selected else "all loaded",
+                    dialog.selection_status.text(),
+                )
+                self.assertIn("Selected" if selected else "All", dialog.btn_run.text())
+                output = self.root / f"selection-{len(selected)}.csv"
+                with (
+                    patch.object(
+                        QtWidgets.QFileDialog,
+                        "getSaveFileName",
+                        return_value=(str(output), "CSV (*.csv)"),
+                    ) as picker,
+                    patch.object(
+                        sectional_batch,
+                        "execute_case",
+                        wraps=sectional_batch.execute_case,
+                    ) as execute,
+                ):
+                    dialog.btn_run.click()
+                    self.wait_until(lambda dialog=dialog: not dialog.is_running())
+                picker.assert_called_once()
+                self.assertEqual(len(expected), execute.call_count)
+                self.assertEqual(
+                    str(self.root / "outputs/cases_sectional_loads.csv"),
+                    picker.call_args.args[2],
+                )
+                with output.open(encoding="utf-8-sig", newline="") as handle:
+                    self.assertEqual(
+                        expected,
+                        list(
+                            dict.fromkeys(
+                                row["case_id"] for row in csv.DictReader(handle)
+                            )
+                        ),
+                    )
+
+    def test_output_picker_cancel_preserves_previous_result_without_solving(self):
+        _window, _panel, dialog = self.make_window()
+        self.select(dialog.definition_table, 0)
+        output = self.root / "previous.csv"
+        self.assertTrue(dialog.start_run(output))
+        self.wait_until(lambda: not dialog.is_running())
+        retained, status, contents = (
+            dialog.batch_result,
+            dialog.result_status.text(),
+            output.read_bytes(),
+        )
+        with (
+            patch.object(
+                QtWidgets.QFileDialog, "getSaveFileName", return_value=("", "")
+            ),
+            patch.object(sectional_batch, "execute_case") as execute,
+        ):
+            dialog.btn_run.click()
+        execute.assert_not_called()
+        self.assertFalse(dialog.is_running())
+        self.assertIs(retained, dialog.batch_result)
+        self.assertEqual(status, dialog.result_status.text())
+        self.assertEqual(contents, output.read_bytes())
+
+    def test_run_rejects_protected_output_before_solving(self):
+        _window, panel, dialog = self.make_window()
+        self.select(dialog.definition_table, 0)
+        self.select(panel.case_table, 0)
+        unselected_stl = self.root / "unselected.stl"
+        unselected_stl.write_bytes((ROOT / "examples/geometry/plate.stl").read_bytes())
+        panel.case_rows[1]["stl_path"] = str(unselected_stl)
+        with patch.object(sectional_batch, "execute_case") as execute:
+            for path in (panel.input_path, self.definition_path, unselected_stl):
+                contents = path.read_bytes()
+                self.assertFalse(dialog.start_run(path))
+                self.assertIn("Invalid output path", dialog.result_status.text())
+                self.assertEqual(contents, path.read_bytes())
+        execute.assert_not_called()
+        self.assertFalse(panel._external_run_active)
+
+    def test_failed_or_empty_run_never_autosaves_previous_result(self):
+        outcomes = []
+
+        def runner(request):
+            if outcomes:
+                outcome = outcomes.pop(0)
+                if isinstance(outcome, Exception):
+                    raise outcome
+                return outcome
+            return fmf.GUI_ADAPTERS.run_sectional_cases(request)
+
+        _window, _panel, dialog = self.make_window(runner=runner)
+        self.select(dialog.definition_table, 0)
+        self.assertTrue(dialog.start_run(self.root / "previous.csv"))
+        self.wait_until(lambda: not dialog.is_running())
+        retained = dialog.batch_result
+        output = self.root / "next.csv"
+        output.write_text("existing valid output")
+        for outcome in (
+            RuntimeError("calculation failed"),
+            SectionalBatchResult(None, "cancelled", 0, 2, 0, 2),
+        ):
+            outcomes.append(outcome)
+            self.assertTrue(dialog.start_run(output))
+            self.wait_until(lambda: not dialog.is_running())
+            self.assertEqual("existing valid output", output.read_text())
+            if isinstance(outcome, Exception):
+                self.assertIs(retained, dialog.batch_result)
+                self.assertIn("Calculation failed", dialog.result_status.text())
+            else:
+                self.assertIsNone(dialog.batch_result.csv)
+                self.assertIn("Cancelled", dialog.result_status.text())
+
+    def test_automatic_save_failure_retains_result_for_export_without_resolve(self):
+        _window, panel, dialog = self.make_window()
+        self.select(dialog.definition_table, 0)
+        output = self.root / "automatic.csv"
+        output.write_text("old valid output")
+        with patch(
+            "panelsolver.app.csv_writer.os.replace", side_effect=OSError("disk full")
+        ):
+            self.assertTrue(dialog.start_run(output))
+            self.wait_until(lambda: not dialog.is_running())
+        self.assertIn("Export failed", dialog.result_status.text())
+        self.assertEqual("old valid output", output.read_text())
+        self.assertFalse(panel._external_run_active)
+        retained = dialog.batch_result
+        with patch.object(
+            sectional_batch, "execute_case", side_effect=AssertionError("resolve")
+        ):
+            self.assertTrue(dialog.export_results(output))
+            self.wait_until(lambda: not dialog.is_running())
+        self.assertIs(retained, dialog.batch_result)
+        self.assertIn("Exported completed", dialog.result_status.text())
+
+    def test_failed_partial_run_automatically_saves_only_successful_pairs(self):
+        _window, _panel, dialog = self.make_window()
+        self.definition_path.write_text(
+            HEADER.rstrip("\n") + ",component_ids\n"
+            "valid,0,0,0,0,1,0,3,0\nunknown,0,0,0,0,1,0,3,999\n"
+        )
+        dialog.reload_definitions()
+        self.select(dialog.definition_table, 0, 1)
+        output = self.root / "partial.csv"
+        self.assertTrue(dialog.start_run(output))
+        self.wait_until(lambda: not dialog.is_running())
+        self.assertEqual("failed", dialog.batch_result.status)
+        with output.open(encoding="utf-8-sig", newline="") as handle:
+            rows = list(csv.DictReader(handle))
+        self.assertEqual({"failed"}, {row["batch_status"] for row in rows})
+        self.assertEqual(
+            {("case_0", "valid")}, {(row["case_id"], row["section_id"]) for row in rows}
+        )
+        self.assertIn("Exported failed snapshot", dialog.result_status.text())
+
+    def test_protected_path_resolution_failure_releases_run_guard(self):
+        link = self.root / "definition-link.csv"
+        link.symlink_to(self.definition_path)
+        real_runner = fmf.GUI_ADAPTERS.run_sectional_cases
+
+        def runner(request):
+            result = real_runner(request)
+            link.unlink()
+            link.symlink_to(link.name)
+            return result
+
+        _window, panel, dialog = self.make_window(runner=runner)
+        self.assertTrue(dialog.load_definitions(link))
+        self.select(dialog.definition_table, 0)
+        finished = []
+        dialog.run_finished.connect(lambda: finished.append(True))
+        output = self.root / "result.csv"
+        self.assertTrue(dialog.start_run(output))
+        self.wait_until(lambda: not dialog.is_running())
+        self.assertIn("Export failed", dialog.result_status.text())
+        self.assertFalse(panel._external_run_active)
+        self.assertEqual([True], finished)
+        self.assertFalse(output.exists())
+        retained = dialog.batch_result
+        self.assertFalse(dialog.start_run(output))
+        self.assertIn("Invalid output path", dialog.result_status.text())
+        link.unlink()
+        link.symlink_to(self.definition_path)
+        self.assertTrue(dialog.export_results(output))
+        self.wait_until(lambda: not dialog.is_running())
+        self.assertIs(retained, dialog.batch_result)
+        self.assertTrue(output.exists())
+
+    def test_close_during_automatic_save_failure_keeps_result_for_retry(self):
+        for route in ("dialog", "main"):
+            with self.subTest(route=route):
+                window, panel, dialog = self.make_window()
+                window.show()
+                self.select(dialog.definition_table, 0)
+                entered, release = threading.Event(), threading.Event()
+                self.addCleanup(release.set)
+
+                def writer(*args, entered=entered, release=release):
+                    entered.set()
+                    release.wait(5)
+                    raise OSError("disk full")
+
+                output = self.root / f"{route}.csv"
+                with patch.object(
+                    sectional_dialog, "write_sectional_csv", side_effect=writer
+                ):
+                    self.assertTrue(dialog.start_run(output))
+                    self.wait_until(entered.is_set)
+                    (dialog if route == "dialog" else window).close()
+                    release.set()
+                    self.wait_until(lambda dialog=dialog: not dialog.is_running())
+                self.assertTrue(window.isVisible())
+                self.assertTrue(dialog.isVisible())
+                self.assertIn("Export failed", dialog.result_status.text())
+                self.assertFalse(panel._external_run_active)
+                with patch.object(
+                    sectional_batch,
+                    "execute_case",
+                    side_effect=AssertionError("resolve"),
+                ):
+                    self.assertTrue(dialog.export_results(output))
+                    self.wait_until(lambda dialog=dialog: not dialog.is_running())
+                self.assertTrue(output.exists())
 
     def test_active_snapshot_reload_selection_and_duplicate_run_guards(self):
         entered, release = threading.Event(), threading.Event()
@@ -224,9 +450,9 @@ class SectionalDialogTests(unittest.TestCase):
         self.addCleanup(release.set)
         self.select(panel.case_table, 1)
         self.select(dialog.definition_table, 0)
-        self.assertTrue(dialog.start_run())
+        self.assertTrue(dialog.start_run(self.root / "automatic.csv"))
         self.wait_until(entered.is_set)
-        self.assertFalse(dialog.start_run())
+        self.assertFalse(dialog.start_run(self.root / "automatic.csv"))
         self.assertFalse(
             panel.start_run(panel.case_rows, 1, 0, self.root / "normal.csv")
         )
@@ -273,14 +499,14 @@ class SectionalDialogTests(unittest.TestCase):
         self.addCleanup(release.set)
         self.select(panel.case_table, 0)
         self.select(dialog.definition_table, 0)
-        self.assertTrue(dialog.start_run())
+        self.assertTrue(dialog.start_run(self.root / "automatic.csv"))
         self.wait_until(lambda: not dialog.is_running())
         self.assertTrue(
             panel.start_run(panel.case_rows, 1, 0, self.root / "normal.csv")
         )
         self.assertFalse(dialog.btn_run.isEnabled())
         self.assertFalse(dialog.btn_export.isEnabled())
-        self.assertFalse(dialog.start_run())
+        self.assertFalse(dialog.start_run(self.root / "automatic.csv"))
         self.assertFalse(dialog.export_results(self.root / "normal.csv"))
         self.wait_until(entered.is_set)
         release.set()
@@ -310,13 +536,19 @@ class SectionalDialogTests(unittest.TestCase):
         _window, panel, dialog = self.make_window(runner=runner)
         self.select(panel.case_table, 0, 1)
         self.select(dialog.definition_table, 0, 1)
-        self.assertTrue(dialog.start_run())
+        self.assertTrue(dialog.start_run(self.root / "automatic.csv"))
         self.wait_until(entered.is_set)
         dialog.cancel_run()
         self.assertIn("Cancelling", dialog.progress.text())
         self.wait_until(lambda: not dialog.is_running())
         self.assertEqual("cancelled", dialog.batch_result.status)
-        self.assertIn("Cancelled: 1/4", dialog.result_status.text())
+        self.assertIn("Exported cancelled snapshot (1/4", dialog.result_status.text())
+        with (self.root / "automatic.csv").open(
+            encoding="utf-8-sig", newline=""
+        ) as handle:
+            automatic_rows = list(csv.DictReader(handle))
+        self.assertEqual({"cancelled"}, {row["batch_status"] for row in automatic_rows})
+        self.assertEqual({"case_0"}, {row["case_id"] for row in automatic_rows})
         retained = dialog.batch_result
         output = self.root / "result.csv"
         output.write_text("old valid contents")
@@ -353,7 +585,7 @@ class SectionalDialogTests(unittest.TestCase):
                 window.show()
                 self.select(panel.case_table, 0)
                 self.select(dialog.definition_table, 0)
-                self.assertTrue(dialog.start_run())
+                self.assertTrue(dialog.start_run(self.root / "automatic.csv"))
                 self.wait_until(entered.is_set)
                 if route == "escape":
                     dialog.reject()
@@ -386,7 +618,7 @@ class SectionalDialogTests(unittest.TestCase):
         _window, panel, dialog = self.make_window()
         self.select(panel.case_table, 0)
         self.select(dialog.definition_table, 0)
-        self.assertTrue(dialog.start_run())
+        self.assertTrue(dialog.start_run(self.root / "automatic.csv"))
         self.wait_until(lambda: not dialog.is_running())
         retained = dialog.batch_result
         new_definition = self.root / "new-sections.csv"
@@ -424,7 +656,7 @@ class SectionalDialogTests(unittest.TestCase):
         source.symlink_to(replacement)
         self.select(panel.case_table, 0)
         self.select(dialog.definition_table, 0)
-        self.assertTrue(dialog.start_run())
+        self.assertTrue(dialog.start_run(self.root / "automatic.csv"))
         self.wait_until(lambda: not dialog.is_running())
         for path in (self.definition_path, replacement, panel.input_path):
             original = path.read_bytes()
@@ -449,7 +681,7 @@ class SectionalDialogTests(unittest.TestCase):
         link.symlink_to(replacement)
         self.select(panel.case_table, 0)
         self.select(dialog.definition_table, 0)
-        self.assertTrue(dialog.start_run())
+        self.assertTrue(dialog.start_run(self.root / "automatic.csv"))
         self.wait_until(lambda: not dialog.is_running())
         for target in (original, replacement, link):
             contents = target.read_bytes()
@@ -458,13 +690,15 @@ class SectionalDialogTests(unittest.TestCase):
             self.assertIn("Export failed", dialog.result_status.text())
             self.assertEqual(contents, target.read_bytes())
 
-    def test_export_close_waits_for_writer_and_small_dialog_remains_usable(self):
+    def test_automatic_export_close_waits_for_writer_and_small_dialog_remains_usable(
+        self,
+    ):
         _window, panel, dialog = self.make_window()
         self.select(panel.case_table, 0)
         self.select(dialog.definition_table, 0)
-        self.assertTrue(dialog.start_run())
-        self.wait_until(lambda: not dialog.is_running())
         entered, release = threading.Event(), threading.Event()
+        finished = []
+        dialog.run_finished.connect(lambda: finished.append(True))
         original = sectional_dialog.write_sectional_csv
 
         def writer(*args):
@@ -483,12 +717,18 @@ class SectionalDialogTests(unittest.TestCase):
         ):
             self.assertTrue(dialog.rect().contains(button.geometry()))
         with patch.object(sectional_dialog, "write_sectional_csv", side_effect=writer):
-            self.assertTrue(dialog.export_results(self.root / "slow.csv"))
+            self.assertTrue(dialog.start_run(self.root / "slow.csv"))
             self.wait_until(entered.is_set)
+            self.assertEqual([], finished)
+            self.assertTrue(panel._external_run_active)
+            self.assertFalse(
+                panel.start_run(panel.case_rows, 1, 0, self.root / "normal.csv")
+            )
             dialog.close()
             self.assertTrue(dialog.isVisible())
             self.assertTrue(dialog.is_running())
             release.set()
             self.wait_until(lambda: not dialog.is_running())
         self.wait_until(lambda: not dialog.isVisible())
+        self.assertEqual([True], finished)
         self.assertTrue((self.root / "slow.csv").exists())

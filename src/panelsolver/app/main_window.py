@@ -167,6 +167,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.spec, self.cases_panel, self
             )
             self.sectional_dialog.run_finished.connect(self._on_case_run_finished)
+            self.sectional_dialog.export_failed.connect(
+                self._on_sectional_export_failed
+            )
         self.sectional_dialog.show()
         self.sectional_dialog.raise_()
         self.sectional_dialog.activateWindow()
@@ -321,6 +324,12 @@ class MainWindow(QtWidgets.QMainWindow):
             self.viewer_panel.close_plotter()
         self._documentation_site.close()
         super().closeEvent(event)
+
+    @QtCore.Slot()
+    def _on_sectional_export_failed(self) -> None:
+        if self._close_when_run_finishes:
+            self._close_when_run_finishes = False
+            self.open_sectional_loads()
 
     @QtCore.Slot()
     def _on_case_run_finished(self) -> None:

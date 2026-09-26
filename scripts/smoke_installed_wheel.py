@@ -315,18 +315,15 @@ def _smoke_sectional_gui(window, staging: Path, domain: str, application) -> Non
     root = staging / "sectional-cli"
     if not window.cases_panel.load_input_file(root / f"{domain}-cases.csv"):
         raise RuntimeError(f"installed {domain} GUI could not open sectional cases")
-    window.cases_panel.case_table.selectAll()
+    window.cases_panel.case_table.clearSelection()
     window.open_sectional_loads()
     dialog = window.sectional_dialog
     if dialog is None or not dialog.load_definitions(root / "sections.csv"):
         raise RuntimeError(f"installed {domain} GUI could not open definitions")
     dialog.definition_table.selectAll()
-    if not dialog.start_run():
-        raise RuntimeError(f"installed {domain} GUI did not start sectional batch")
-    _wait_for_gui_idle(dialog, application)
     output = root / f"{domain}-gui-sections.csv"
-    if not dialog.export_results(output):
-        raise RuntimeError(f"installed {domain} GUI did not start result export")
+    if not dialog.start_run(output):
+        raise RuntimeError(f"installed {domain} GUI did not start sectional batch")
     _wait_for_gui_idle(dialog, application)
     with output.open(encoding=CSV_ENCODING, newline="") as stream:
         actual = list(csv.DictReader(stream))
