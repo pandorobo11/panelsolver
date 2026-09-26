@@ -205,6 +205,7 @@ class CasesPanel(QtWidgets.QWidget):
     input_path_changed = QtCore.Signal(object)
     run_requested = QtCore.Signal(object, int, int, object)
     run_finished = QtCore.Signal()
+    run_state_changed = QtCore.Signal(bool)
 
     def __init__(
         self,
@@ -225,6 +226,7 @@ class CasesPanel(QtWidgets.QWidget):
         self._last_input_directory: Path | None = None
         self.case_rows: tuple[CaseRow, ...] = ()
         self.input_path: Path | None = None
+        self._loaded_input_paths: tuple[Path, ...] = ()
         self._table_columns: tuple[str, ...] = ()
 
         self.input_value = QtWidgets.QLineEdit()
@@ -301,6 +303,7 @@ class CasesPanel(QtWidgets.QWidget):
         set_semantic_property(self.progress, "fluentStatus", "neutral")
         set_semantic_property(self.progress, "fluentBusy", False)
         self._run_thread: QtCore.QThread | None = None
+        self._external_run_active = False
         self._run_worker: CaseRunWorker | None = None
         self._run_rows: tuple[CaseRow, ...] = ()
         self._run_output_path: Path | None = None
@@ -426,7 +429,7 @@ class CasesPanel(QtWidgets.QWidget):
 
     def pick_input_file(self) -> None:
         """Open the shared normal-input picker used by both GUI entry points."""
-        if self.is_running():
+        if self.is_running() or self._external_run_active:
             self.logln("[WARN] Cannot open another input while cases are running.")
             return
         path, _ = QtWidgets.QFileDialog.getOpenFileName(
@@ -445,7 +448,12 @@ class CasesPanel(QtWidgets.QWidget):
         remember_directory: bool = True,
     ) -> bool:
         """Read cases through the selected product adapter and reset on failure."""
+        if self.is_running() or self._external_run_active:
+            self.logln("[WARN] Cannot open another input while cases are running.")
+            return False
         try:
+            source = absolute_input_path(path)
+            resolved_source = source.resolve(strict=False)
             raw_rows = self.spec.adapters.read_cases(path)
             rows = tuple(raw_rows)
             if not rows:
@@ -469,7 +477,8 @@ class CasesPanel(QtWidgets.QWidget):
                 )
             return False
 
-        self.input_path = absolute_input_path(path)
+        self.input_path = source
+        self._loaded_input_paths = (source, resolved_source)
         self._invalid_current_vtp_artifacts.clear()
         self.input_value.setText(str(self.input_path))
         self.case_rows = normalized
@@ -742,6 +751,9 @@ class CasesPanel(QtWidgets.QWidget):
             self._clear_viewer_with_state(state)
 
     def request_run(self) -> None:
+        if self.is_running() or self._external_run_active:
+            self.logln("[WARN] A calculation is already active.")
+            return
         if self.input_path is None or not self.case_rows:
             return
         rows = self.selected_or_all_case_rows()
@@ -787,7 +799,7 @@ class CasesPanel(QtWidgets.QWidget):
         output_path: str | Path,
     ) -> bool:
         """Start exactly one background adapter run."""
-        if self._run_thread is not None:
+        if self._run_thread is not None or self._external_run_active:
             self.logln("[WARN] A case run is already active.")
             return False
         selected = tuple(dict(row) for row in rows)
@@ -849,6 +861,11 @@ class CasesPanel(QtWidgets.QWidget):
 
     def is_running(self) -> bool:
         return self._run_thread is not None
+
+    def set_external_run_active(self, active: bool) -> None:
+        """Keep ordinary solve/input controls locked until sectional cleanup."""
+        self._external_run_active = active
+        self._set_running_state(self.is_running())
 
     @QtCore.Slot(int, int)
     def _on_run_progress(self, done: int, total: int) -> None:
@@ -1011,19 +1028,22 @@ class CasesPanel(QtWidgets.QWidget):
         self.run_finished.emit()
 
     def _set_running_state(self, running: bool) -> None:
-        self.btn_pick_input.setEnabled(not running)
-        self.spin_workers.setEnabled(not running)
-        self.case_table.setEnabled(not running)
+        busy = running or self._external_run_active
+        self.btn_pick_input.setEnabled(not busy)
+        self.spin_workers.setEnabled(not busy)
+        self.case_table.setEnabled(not busy)
         self.btn_clear_selection.setEnabled(
-            not running and bool(self.selected_case_rows())
+            not busy and bool(self.selected_case_rows())
         )
         self.btn_cancel.setEnabled(running)
-        self.btn_run.setEnabled((not running) and bool(self.case_rows))
+        self.btn_run.setEnabled((not busy) and bool(self.case_rows))
+        self.run_state_changed.emit(running)
 
     def clear_loaded_cases(self) -> None:
         self._invalid_current_vtp_artifacts.clear()
         self.case_rows = ()
         self.input_path = None
+        self._loaded_input_paths = ()
         self._table_columns = ()
         self.input_value.clear()
         self.case_table.clear()

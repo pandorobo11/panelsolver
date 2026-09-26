@@ -12,6 +12,7 @@ from panelsolver.docs_site import DocumentationSite
 
 from .cases_panel import CasesPanel
 from .examples import ExampleDefinition, ExampleLibrary
+from .sectional_dialog import SectionalLoadsDialog
 from .solver_spec import SolverSpec
 from .versioning import panelsolver_distribution_version
 from .viewer import ViewerPanel
@@ -54,6 +55,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.splitter.setStretchFactor(1, 3)
         self.splitter.setSizes([600, 850])
         self._close_when_run_finishes = False
+        self.sectional_dialog: SectionalLoadsDialog | None = None
         self._build_file_menu()
         self._build_help_menu()
         self._layout_settings = layout_settings if persist_layout else None
@@ -102,6 +104,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.open_vtp_action.triggered.connect(self.viewer_panel.open_vtp)
         self.file_menu.addAction(self.open_vtp_action)
 
+        if (
+            isinstance(self.cases_panel, CasesPanel)
+            and self.spec.adapters is not None
+            and self.spec.adapters.run_sectional_cases is not None
+        ):
+            self.sectional_loads_action = self.file_menu.addAction("Sectional Loads...")
+            self.sectional_loads_action.triggered.connect(self.open_sectional_loads)
+
         self.new_from_example_menu = self.file_menu.addMenu("New from Example")
         self.example_actions: tuple[QtGui.QAction, ...] = tuple(
             self._add_example_action(example) for example in self.spec.examples
@@ -123,7 +133,7 @@ class MainWindow(QtWidgets.QMainWindow):
         return action
 
     def _new_from_example(self, example: ExampleDefinition) -> None:
-        if self.cases_panel.is_running():
+        if self.cases_panel.is_running() or self._sectional_running():
             self.cases_panel.logln(
                 "[WARN] Cannot create an example while cases are running."
             )
@@ -150,6 +160,22 @@ class MainWindow(QtWidgets.QMainWindow):
             input_path,
             remember_directory=False,
         )
+
+    def open_sectional_loads(self) -> None:
+        if self.sectional_dialog is None:
+            self.sectional_dialog = SectionalLoadsDialog(
+                self.spec, self.cases_panel, self
+            )
+            self.sectional_dialog.run_finished.connect(self._on_case_run_finished)
+            self.sectional_dialog.export_failed.connect(
+                self._on_sectional_export_failed
+            )
+        self.sectional_dialog.show()
+        self.sectional_dialog.raise_()
+        self.sectional_dialog.activateWindow()
+
+    def _sectional_running(self) -> bool:
+        return self.sectional_dialog is not None and self.sectional_dialog.is_running()
 
     def _build_help_menu(self) -> None:
         self.help_menu = self.menuBar().addMenu("Help")
@@ -282,18 +308,28 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def closeEvent(self, event) -> None:
         """Cancel an active run and defer close until its thread is cleaned up."""
-        if self.cases_panel.is_running():
+        if self.cases_panel.is_running() or self._sectional_running():
             if not self._close_when_run_finishes:
                 self._close_when_run_finishes = True
                 self.cases_panel.cancel_run()
+                if self._sectional_running():
+                    self.sectional_dialog.cancel_run()
                 self.cases_panel.logln("[CLOSE] Waiting for the active run to stop...")
             event.ignore()
             return
         self._save_layout()
+        if self.sectional_dialog is not None:
+            self.sectional_dialog.close()
         if isinstance(self.viewer_panel, ViewerPanel):
             self.viewer_panel.close_plotter()
         self._documentation_site.close()
         super().closeEvent(event)
+
+    @QtCore.Slot()
+    def _on_sectional_export_failed(self) -> None:
+        if self._close_when_run_finishes:
+            self._close_when_run_finishes = False
+            self.open_sectional_loads()
 
     @QtCore.Slot()
     def _on_case_run_finished(self) -> None:
