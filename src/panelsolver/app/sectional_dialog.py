@@ -154,6 +154,8 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
         self._protected_paths: tuple[Path, ...] = ()
         self._active_protected_paths: tuple[Path, ...] = ()
         self._run_output_path: Path | None = None
+        self._save_path: Path | None = None
+        self._save_failed = False
         self._thread: QtCore.QThread | None = None
         self._worker: _SectionalWorker | _ExportWorker | None = None
         self._normal_running = cases_panel.is_running()
@@ -178,7 +180,7 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
         self.selection_status.setWordWrap(True)
         self.btn_run = QtWidgets.QPushButton("Run Selected Cases × Sections")
         self.btn_cancel = QtWidgets.QPushButton("Cancel")
-        self.btn_export = QtWidgets.QPushButton("Export Results...")
+        self.btn_retry_save = QtWidgets.QPushButton("Retry Save...")
         set_semantic_property(self.btn_run, "fluentAppearance", "primary")
         set_semantic_property(self.btn_cancel, "fluentAppearance", "danger")
         self.progress = QtWidgets.QProgressBar()
@@ -200,7 +202,7 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
             self.btn_reload,
             self.btn_run,
             self.btn_cancel,
-            self.btn_export,
+            self.btn_retry_save,
         ):
             button.setAutoDefault(False)
 
@@ -223,7 +225,12 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
         layout.addWidget(splitter, 1)
         layout.addWidget(self.selection_status)
         actions = FlowLayout()
-        for button in (self.btn_run, self.btn_cancel, self.btn_export, self.btn_close):
+        for button in (
+            self.btn_run,
+            self.btn_cancel,
+            self.btn_retry_save,
+            self.btn_close,
+        ):
             actions.addWidget(button)
         layout.addLayout(actions)
         layout.addWidget(self.progress)
@@ -232,7 +239,7 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
         self.btn_reload.clicked.connect(self.reload_definitions)
         self.btn_run.clicked.connect(self.request_run)
         self.btn_cancel.clicked.connect(self.cancel_run)
-        self.btn_export.clicked.connect(self.export_results)
+        self.btn_retry_save.clicked.connect(self.retry_save)
         self.btn_close.clicked.connect(self.close)
         self.definition_table.selectionModel().selectionChanged.connect(
             self._refresh_controls
@@ -284,11 +291,13 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
         busy = self.is_running()
         selected = bool(self.cases_panel.selected_case_rows())
         cases = len(self.cases_panel.selected_or_all_case_rows())
-        sections = len(self.selected_definitions())
+        sections_selected = bool(self.selected_definitions())
+        sections = len(self.selected_or_all_definitions())
         reason = " — ordinary solve running" if self._normal_running else ""
         self.selection_status.setText(
-            f"Run scope: {cases} {'selected' if selected else 'all loaded'} case(s) × {sections} selected section(s). "
-            f"No case selection runs all cases. Workers: {self.cases_panel.spin_workers.value()}{reason}"
+            f"Run scope: {cases} {'selected' if selected else 'all loaded'} case(s) × "
+            f"{sections} {'selected' if sections_selected else 'all loaded'} section(s). "
+            f"Leave either selection empty to run all its rows. Workers: {self.cases_panel.spin_workers.value()}{reason}"
         )
         self.btn_run.setText(
             f"Run {'Selected' if selected else 'All'} Cases × Sections"
@@ -302,8 +311,10 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
         self.btn_cancel.setEnabled(
             busy and self._operation == "run" and not self._cancel_requested
         )
-        self.btn_export.setEnabled(
-            not busy
+        self.btn_retry_save.setVisible(self._save_failed)
+        self.btn_retry_save.setEnabled(
+            self._save_failed
+            and not busy
             and not self._normal_running
             and self.batch_result is not None
             and self.batch_result.csv is not None
@@ -315,6 +326,9 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
             for index in self.definition_table.selectionModel().selectedRows()
         )
         return tuple(self.definitions[index] for index in indices)
+
+    def selected_or_all_definitions(self) -> tuple[SectionalDefinition, ...]:
+        return self.selected_definitions() or self.definitions
 
     def open_definitions(self) -> None:
         path, _ = QtWidgets.QFileDialog.getOpenFileName(
@@ -394,7 +408,7 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
         self.definition_table.resizeColumnsToContents()
         self._ensure_header_widths(self.definition_table)
         self.definition_status.setText(
-            f"Loaded {len(definitions)} read-only definition(s). Select one or more rows; edit the CSV externally and Reload."
+            f"Loaded {len(definitions)} read-only definition(s). No selection runs all definitions; edit the CSV externally and Reload."
         )
         self._refresh_controls()
         return True
@@ -406,7 +420,7 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
             or self.cases_panel.is_running()
             or not self.cases_panel.case_rows
             or self.cases_panel.input_path is None
-            or not self.selected_definitions()
+            or not self.selected_or_all_definitions()
         ):
             return
         default = default_summary_output_path(self.cases_panel.input_path).with_name(
@@ -432,16 +446,14 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
             MappingProxyType(deepcopy(dict(row)))
             for row in self.cases_panel.selected_or_all_case_rows()
         )
-        definitions = self.selected_definitions()
+        definitions = self.selected_or_all_definitions()
         if (
             not rows
             or not definitions
             or self.cases_panel.input_path is None
             or self.definition_path is None
         ):
-            self.selection_status.setText(
-                "Load cases and select at least one definition before running."
-            )
+            self.selection_status.setText("Load cases and definitions before running.")
             return False
         try:
             protected_paths = self._current_protected_paths()
@@ -511,6 +523,7 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
     @QtCore.Slot(object)
     def _completed(self, result: SectionalBatchResult) -> None:
         self.batch_result = result
+        self._save_failed = False
         if result.csv is None:
             self._run_output_path = None
         self._protected_paths = self._active_protected_paths
@@ -551,13 +564,16 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
         # An exception must never auto-save an earlier run's retained result.
         self._run_output_path = None
         self.result_status.setText(
-            f"Calculation failed: {message}. Previous computed results, if any, are retained for export."
+            f"Calculation failed: {message}. Previous computed results, if any, are retained."
         )
         self.progress.setFormat("Failed")
         set_semantic_property(self.progress, "fluentStatus", "danger")
         self.cases_panel.logln(f"[ERROR] Sectional calculation: {message}")
 
-    def export_results(self, path: str | Path | None = None) -> bool:
+    def retry_save(self) -> bool:
+        return self._save_failed and self._save_results()
+
+    def _save_results(self, path: str | Path | None = None) -> bool:
         if (
             self.is_running()
             or self._normal_running
@@ -566,19 +582,17 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
             or self.batch_result.csv is None
         ):
             return False
-        # clicked(bool) is not a destination argument.
-        if isinstance(path, bool):
-            path = None
         if path is None:
             selected, _ = QtWidgets.QFileDialog.getSaveFileName(
                 self,
-                "Export Sectional Results",
-                "sectional_loads_result.csv",
+                "Retry Saving Sectional Results",
+                str(self._save_path or "sectional_loads_result.csv"),
                 "CSV (*.csv)",
             )
             if not selected:
                 return False
             path = selected
+        self._save_path = Path(path)
         try:
             protected = tuple(
                 dict.fromkeys(
@@ -619,10 +633,11 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
     @QtCore.Slot(object)
     def _exported(self, path: Path) -> None:
         assert self.batch_result is not None
+        self._save_failed = False
         self.result_status.setText(
-            f"Exported {self.batch_result.status} snapshot ({self.batch_result.completed_pairs}/{self.batch_result.requested_pairs} pairs): {path}"
+            f"Saved {self.batch_result.status} snapshot ({self.batch_result.completed_pairs}/{self.batch_result.requested_pairs} pairs): {path}"
         )
-        self.progress.setFormat(f"Exported ({self.batch_result.status})")
+        self.progress.setFormat(f"Saved ({self.batch_result.status})")
         set_semantic_property(
             self.progress,
             "fluentStatus",
@@ -632,12 +647,14 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
     @QtCore.Slot(str)
     def _export_failed(self, message: str) -> None:
         self._close_when_finished = False
+        self._save_failed = True
         self.result_status.setText(
-            f"Export failed: {message}. Computed results are retained; choose Export Results to retry."
+            f"Save failed: {message}. Computed results are retained; choose Retry Save to try another destination."
         )
-        self.progress.setFormat("Export failed")
+        self.progress.setFormat("Save failed")
         set_semantic_property(self.progress, "fluentStatus", "danger")
-        self.cases_panel.logln(f"[ERROR] Sectional export: {message}")
+        self.cases_panel.logln(f"[ERROR] Sectional save: {message}")
+        self._refresh_controls()
         self.export_failed.emit()
 
     @QtCore.Slot()
@@ -649,7 +666,7 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
         output, self._run_output_path = self._run_output_path, None
         # Keep the run guard and close request across calculation -> export.
         # run_finished is emitted only after the final writer is cleaned up.
-        if output is not None and self.export_results(output):
+        if output is not None and self._save_results(output):
             return
         self.cases_panel.set_external_run_active(False)
         set_semantic_property(self.progress, "fluentBusy", False)

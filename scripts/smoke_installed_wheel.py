@@ -320,7 +320,7 @@ def _smoke_sectional_gui(window, staging: Path, domain: str, application) -> Non
     dialog = window.sectional_dialog
     if dialog is None or not dialog.load_definitions(root / "sections.csv"):
         raise RuntimeError(f"installed {domain} GUI could not open definitions")
-    dialog.definition_table.selectAll()
+    dialog.definition_table.clearSelection()
     output = root / f"{domain}-gui-sections.csv"
     if not dialog.start_run(output):
         raise RuntimeError(f"installed {domain} GUI did not start sectional batch")

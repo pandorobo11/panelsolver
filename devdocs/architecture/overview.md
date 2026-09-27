@@ -127,14 +127,16 @@ results surface. Domain adapters bind the same batch service to the current
 runtime policy. A concrete Qt worker executes frozen case/definition snapshots;
 only compact results survive completion. Normal and sectional runs exclude each
 other until thread cleanup. The case scope reuses ordinary selection semantics:
-selected cases or all loaded cases when none are selected; definitions still
-require explicit selection. Run chooses and validates the output destination
+selected cases or all loaded cases when none are selected. Definitions likewise
+default to all loaded definitions when unselected, independently of case scope.
+Run chooses and validates the output destination
 before solving. Calculation cleanup hands off successful pairs to the existing
 export worker without releasing the run guard or notifying completion between
 phases. Cooperative cancellation retains and saves successful pairs with their
 actual terminal status. The export worker uses the retained
-result and protected input paths, so a save failure can be retried without a
-solve. The viewer's VTP and ordinary solve results are never sectional inputs.
+result and protected input paths. The GUI has no general Export action; a save
+failure exposes Retry Save for that retained snapshot without a solve. The
+viewer's VTP and ordinary solve results are never sectional inputs.
 
 ## Execution and artifacts
 
