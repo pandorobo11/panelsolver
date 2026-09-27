@@ -122,9 +122,10 @@ Summary/VTP round trip, new cache, checkpoint system or physical signature.
 `app.sectional_cli` owns selection and presentation; the top-level dispatcher
 only routes the new subcommand.
 
-The A6 `app.sectional_dialog` is a persistent modeless, read-only selection and
-results surface. Domain adapters bind the same batch service to the current
-runtime policy. A concrete Qt worker executes frozen case/definition snapshots;
+The A6 `app.sectional_dialog` is a persistent modeless, read-only definition
+selection and run/save status surface. Numerical results are written to CSV,
+without a result table in the dialog. Domain adapters bind the same batch service
+to the current runtime policy. A concrete Qt worker executes frozen case/definition snapshots;
 only compact results survive completion. Normal and sectional runs exclude each
 other until thread cleanup. The case scope reuses ordinary selection semantics:
 selected cases or all loaded cases when none are selected. Definitions likewise

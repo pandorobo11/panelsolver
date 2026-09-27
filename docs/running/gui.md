@@ -52,8 +52,9 @@ explains cancellation boundaries and which outputs remain available.
    Cancelling the file dialog does not start a calculation or change retained results.
 5. Each target case is solved once and all selected definitions use that same
    in-memory execution. Results are saved automatically to the chosen path.
-   Inspect completion/save status and the retained strip results. There is no
-   separate Export action. The Viewer VTP is not an input.
+   The dialog shows completion/save status, pair counts and the saved path;
+   inspect numerical results in the CSV. There is no result table or separate
+   Export action. The Viewer VTP is not an input.
 
 The definition table supports opening and reloading files, not definition
 editing. Edit the CSV externally and reload it before starting a new batch.

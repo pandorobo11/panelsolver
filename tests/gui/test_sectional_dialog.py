@@ -203,9 +203,10 @@ class SectionalDialogTests(unittest.TestCase):
                     all(thread != gui_thread for thread in observed_threads)
                 )
                 self.assertEqual(expected, dialog.batch_result)
-                self.assertIs(
-                    dialog.batch_result.csv.rows[0], dialog.result_model.rows[0]
+                self.assertIn(
+                    "Saved completed snapshot (4/4 pairs)", dialog.result_status.text()
                 )
+                self.assertIn("automatic.csv", dialog.result_status.text())
                 self.assertEqual("Saved (completed)", dialog.progress.text())
                 self.assertTrue(dialog.btn_retry_save.isHidden())
                 self.assertFalse((self.root / "unused").exists())

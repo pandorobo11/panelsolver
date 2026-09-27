@@ -1,4 +1,4 @@
-"""Read-only sectional definitions and snapshot-bound batch results in Qt."""
+"""Read-only sectional definitions and batch run/save status in Qt."""
 
 from __future__ import annotations
 
@@ -146,7 +146,7 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
         self.cases_panel = cases_panel
         self.setWindowTitle(f"Sectional Loads — {spec.domain_name}")
         self.setModal(False)
-        self.resize(1040, 700)
+        self.resize(1040, 500)
         self.definition_path: Path | None = None
         self._loaded_definition_paths: tuple[Path, ...] = ()
         self.definitions: tuple[SectionalDefinition, ...] = ()
@@ -192,9 +192,6 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
         self.result_status.setTextInteractionFlags(
             QtCore.Qt.TextInteractionFlag.TextSelectableByMouse
         )
-        self.result_table = self._table("Sectional results")
-        self.result_model = _ReadOnlyModel(self)
-        self.result_table.setModel(self.result_model)
         self.btn_close = QtWidgets.QPushButton("Close")
         self.btn_close.setAutoDefault(False)
         for button in (
@@ -213,16 +210,7 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
         file_actions.addWidget(self.btn_reload)
         layout.addLayout(file_actions)
         layout.addWidget(self.definition_status)
-        splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical)
-        splitter.addWidget(self.definition_table)
-        result_panel = QtWidgets.QWidget()
-        result_layout = QtWidgets.QVBoxLayout(result_panel)
-        result_layout.setContentsMargins(0, 0, 0, 0)
-        result_layout.addWidget(self.result_status)
-        result_layout.addWidget(self.result_table)
-        splitter.addWidget(result_panel)
-        splitter.setSizes([230, 260])
-        layout.addWidget(splitter, 1)
+        layout.addWidget(self.definition_table, 1)
         layout.addWidget(self.selection_status)
         actions = FlowLayout()
         for button in (
@@ -234,6 +222,7 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
             actions.addWidget(button)
         layout.addLayout(actions)
         layout.addWidget(self.progress)
+        layout.addWidget(self.result_status)
 
         self.btn_open.clicked.connect(self.open_definitions)
         self.btn_reload.clicked.connect(self.reload_definitions)
@@ -527,18 +516,6 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
         if result.csv is None:
             self._run_output_path = None
         self._protected_paths = self._active_protected_paths
-        self.result_model.replace(
-            result.csv.columns if result.csv else (),
-            result.csv.rows if result.csv else (),
-        )
-        for index, column in enumerate(self.result_model.columns):
-            self.result_table.setColumnWidth(
-                index,
-                max(
-                    110, self.result_table.fontMetrics().horizontalAdvance(column) + 24
-                ),
-            )
-        self._ensure_header_widths(self.result_table)
         summary = f"{result.status.capitalize()}: {result.completed_pairs}/{result.requested_pairs} case × section pairs; {result.completed_cases}/{result.total_cases} complete cases."
         if result.errors:
             summary += " " + "; ".join(
