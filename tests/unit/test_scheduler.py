@@ -607,6 +607,121 @@ class SchedulerTests(unittest.TestCase):
         self.assert_no_new_worker_resources(before)
 
     @pytest.mark.slow
+    def test_consumer_cancellation_is_observed_before_redispatch(self) -> None:
+        before = _worker_resource_state()
+        stop = False
+        dispatches: list[tuple[tuple[int, ...], bool]] = []
+        encode = scheduler_module._encode_parent_message
+
+        def record(message):
+            if message.get("type") == "run_chunk":
+                dispatches.append((tuple(message["indices"]), stop))
+            return encode(message)
+
+        def cancel_requested() -> bool:
+            return stop
+
+        yielded: list[int] = []
+        with mock.patch.object(
+            scheduler_module, "_encode_parent_message", side_effect=record
+        ):
+            with self.assertRaises(SchedulerCancelled):
+                for index, _ in iter_case_results_parallel(
+                    ((0, 0.02), (1, 0.2), (2, 0.2), (3, 0.2)),
+                    2,
+                    _success_worker,
+                    log_policy=WorkerLogPolicy.DROP,
+                    partial_result_policy=PartialResultPolicy.YIELD_COMPLETED,
+                    bucket_keys=("same",) * 4,
+                    chunk_cases=1,
+                    cancel_cb=cancel_requested,
+                ):
+                    yielded.append(index)
+                    # Sectional consumers request stop here when a returned case
+                    # reports a definition failure, while retaining its results.
+                    stop = True
+        self.assert_no_new_worker_resources(before)
+        self.assertTrue(yielded)
+        self.assertEqual([((0,), False), ((1,), False)], dispatches)
+        self.assertTrue(set(yielded).issubset({0, 1}))
+
+    def test_readiness_retries_an_interrupted_poll(self) -> None:
+        connection = mock.Mock()
+        connection.recv_bytes.return_value = bytes(
+            scheduler_module._encode_worker_message({"type": "ready", "worker_id": 0})
+        )
+        with mock.patch.object(
+            scheduler_module,
+            "wait_connections",
+            side_effect=[
+                InterruptedError(4, "Interrupted function call"),
+                [connection],
+            ],
+        ) as wait:
+            scheduler_module._wait_for_worker_readiness((connection,), (mock.Mock(),))
+        self.assertEqual(2, wait.call_count)
+
+    @pytest.mark.slow
+    def test_result_poll_interruption_rechecks_cancellation_and_drains(self) -> None:
+        for cancel in (False, True):
+            with self.subTest(cancel=cancel):
+                self._check_result_poll_interruption(cancel)
+
+    def _check_result_poll_interruption(self, cancel: bool) -> None:
+        before = _worker_resource_state()
+        dispatched = []
+        yielded = []
+        stop = False
+        interrupted = False
+        original_wait = scheduler_module.wait_connections
+        original_encode = scheduler_module._encode_parent_message
+
+        def record(message):
+            if message.get("type") == "run_chunk":
+                dispatched.extend(message["indices"])
+            return original_encode(message)
+
+        def poll(*args, **kwargs):
+            nonlocal stop, interrupted
+            ready = original_wait(*args, **kwargs)
+            if dispatched and ready and not interrupted:
+                interrupted = True
+                stop = cancel
+                raise InterruptedError(4, "Interrupted function call")
+            return ready
+
+        def cancel_requested():
+            return stop
+
+        with (
+            mock.patch.object(scheduler_module, "wait_connections", side_effect=poll),
+            mock.patch.object(
+                scheduler_module, "_encode_parent_message", side_effect=record
+            ),
+        ):
+            iterator = iter_case_results_parallel(
+                ((0, 0.01), (1, 0.1), (2, 0.01)),
+                2,
+                _success_worker,
+                log_policy=WorkerLogPolicy.DROP,
+                partial_result_policy=PartialResultPolicy.YIELD_COMPLETED,
+                bucket_keys=("same",) * 3,
+                chunk_cases=1,
+                cancel_cb=cancel_requested,
+            )
+            if cancel:
+                with self.assertRaises(SchedulerCancelled):
+                    for index, result in iterator:
+                        yielded.append((index, result))
+                self.assertEqual([0, 1], dispatched)
+                self.assertTrue(yielded)
+                self.assertTrue({index for index, _ in yielded}.issubset({0, 1}))
+            else:
+                self.assertEqual([(0, 0), (1, 10), (2, 20)], sorted(iterator))
+        self.assertTrue(interrupted)
+        self.assert_no_new_worker_resources(before)
+
+    @pytest.mark.slow
     def test_unexpected_exit_is_reported_with_exit_code(self) -> None:
         before = _worker_resource_state()
         with self.assertRaises(WorkerUnexpectedExitError) as caught:

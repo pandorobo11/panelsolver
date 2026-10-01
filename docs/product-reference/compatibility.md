@@ -2,7 +2,8 @@
 
 Panel Solver supports:
 
-- batch commands `panelsolver fmf` and `panelsolver hypersonic`;
+- batch commands `panelsolver fmf` and `panelsolver hypersonic`, including
+  their `sectional-loads` workflows;
 - GUI commands `panelsolver-gui fmf` and `panelsolver-gui hypersonic`;
 - normal launcher-driven GUI operation;
 - the seven package-root solve imports and the dedicated
@@ -11,6 +12,8 @@ Panel Solver supports:
 - documented CSV, XLSX, and XLSM case files and their domain schemas/defaults;
 - documented [Summary CSV](../results/summary-csv.md) and
   [VTP](../results/vtp.md) semantics;
+- separate [sectional definition CSV](../inputs/sectional-loads.md) and
+  [sectional result CSV](../results/sectional-loads-csv.md) semantics;
 - documented numerical values, signs, frames, normalizations, and
   model-specific behavior.
 

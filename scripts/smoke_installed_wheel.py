@@ -126,6 +126,79 @@ def _smoke_high_level_api(staging: Path, inputs: Path) -> None:
         )
 
 
+def _smoke_sectional_cli(
+    staging: Path, inputs: Path, environment: dict[str, str]
+) -> None:
+    """Exercise installed sectional commands without any intermediate artifacts."""
+    root = staging / "sectional-cli"
+    root.mkdir()
+    definitions = root / "sections.csv"
+    definitions.write_text(
+        "section_id,origin_x_stl_m,origin_y_stl_m,origin_z_stl_m,"
+        "direction_x_stl,direction_y_stl,direction_z_stl,bin_count\n"
+        "001,0,0,0,0,1,0,3\noblique,0,0,0,1,1,1,4\n",
+        encoding="utf-8",
+    )
+    command = _command_path("panelsolver")
+    for domain, product, module in (
+        ("fmf", "fmfsolver", fmf),
+        ("hypersonic", "newtsolver", hypersonic),
+    ):
+        help_result = subprocess.run(
+            [command, domain, "sectional-loads", "--help"],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            env=environment,
+            check=True,
+        )
+        if "--sections" not in help_result.stdout or "STL" not in help_result.stdout:
+            raise RuntimeError(f"installed {domain} sectional help is incomplete")
+        frame = module.read_cases(inputs / f"{product}_cases.csv").iloc[:2].copy()
+        unused_output = root / f"{domain}-unused-vtp"
+        frame["out_dir"] = str(unused_output)
+        case_path = root / f"{domain}-cases.csv"
+        frame.to_csv(case_path, index=False)
+        output = root / f"{domain}-sections.csv"
+        completed = subprocess.run(
+            [
+                command,
+                domain,
+                "sectional-loads",
+                "-i",
+                str(case_path),
+                "-d",
+                str(definitions),
+                "-o",
+                str(output),
+                "--plain",
+            ],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            env=environment,
+            check=False,
+        )
+        if completed.returncode or not output.is_file():
+            raise RuntimeError(
+                f"installed {domain} sectional run failed: {completed.stderr}"
+            )
+        with output.open(encoding=CSV_ENCODING, newline="") as stream:
+            rows = list(csv.DictReader(stream))
+        expected_rows = sum(
+            7 * (1 + len(str(row["stl_path"]).split(";")))
+            for row in frame.to_dict(orient="records")
+        )
+        if (
+            len(rows) != expected_rows
+            or {row["section_id"] for row in rows} != {"001", "oblique"}
+            or {row["batch_status"] for row in rows} != {"completed"}
+            or {row["completed_pairs"] for row in rows} != {str(2 * len(frame))}
+            or unused_output.exists()
+        ):
+            raise RuntimeError(f"installed {domain} sectional result contract failed")
+
+
 def _smoke_gui_entrypoint() -> None:
     from PySide6 import QtCore, QtWidgets
 
@@ -591,6 +664,7 @@ def main(argv: list[str] | None = None) -> int:
         _prepare_current_inputs(inputs)
         excel_inputs = _prepare_current_excel_inputs(inputs)
         _smoke_high_level_api(staging, inputs)
+        _smoke_sectional_cli(staging, inputs, subprocess_environment)
         _smoke_packaged_documentation()
         _smoke_packaged_examples(staging)
         _smoke_gui_entrypoint()

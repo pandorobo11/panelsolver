@@ -2,6 +2,10 @@
 
 This page covers how the CLI and GUI handle workers, checkpoints, cancellation,
 and recovery from calculation or output-file failures.
+These checkpoint rules describe ordinary solves. Sectional batches use the same
+case scheduler but retain compact results for a final or repeated atomic export;
+their distinct partial-result rules are in the
+[sectional result reference](../results/sectional-loads-csv.md#failures-and-repeated-export).
 Use the [Summary CSV reference](../results/summary-csv.md) and
 [VTP reference](../results/vtp.md) to interpret saved result fields.
 
