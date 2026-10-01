@@ -5,7 +5,8 @@ Panel Solver supports:
 - batch commands `panelsolver fmf` and `panelsolver hypersonic`;
 - GUI commands `panelsolver-gui fmf` and `panelsolver-gui hypersonic`;
 - normal launcher-driven GUI operation;
-- only the seven package-root imports described in the
+- the seven package-root solve imports and the dedicated
+  `panelsolver.postprocess` sectional-load surface described in the
   [Python API reference](../running/python-api.md);
 - documented CSV, XLSX, and XLSM case files and their domain schemas/defaults;
 - documented [Summary CSV](../results/summary-csv.md) and

@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from copy import deepcopy
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import numpy as np
@@ -23,6 +24,7 @@ from panelsolver.core import (
     ShieldingConfig,
     execute_case,
 )
+from panelsolver.core.mesh import PanelMesh
 from panelsolver.models import HypersonicModel, ModelRegistry, SentmanModel
 
 
@@ -114,6 +116,12 @@ class HypersonicCase:
 
 
 @dataclass(frozen=True, slots=True, eq=False)
+class _SectionalContext:
+    mesh: PanelMesh
+    case: CommonCasePayload
+
+
+@dataclass(frozen=True, slots=True, eq=False)
 class SolveResult:
     """In-memory integrated and per-face result with no artifact side effects."""
 
@@ -126,6 +134,24 @@ class SolveResult:
     case_signature: str
     ray_backend_used: str
     warnings: tuple[str, ...]
+    # Not a constructor argument: dataclasses.replace must not attach a solve's
+    # topology/references to substituted loads, geometry, attitude or identity.
+    _sectional_context: _SectionalContext | None = field(
+        default=None, init=False, repr=False
+    )
+
+    def __deepcopy__(self, memo: dict[int, object]) -> SolveResult:
+        # Solver-owned values are deeply immutable. Keep their buffers and
+        # retained context together rather than letting NumPy copy them writable.
+        if self._sectional_context is not None:
+            return self
+        return SolveResult(
+            **{
+                name: deepcopy(getattr(self, name), memo)
+                for name in self.__dataclass_fields__
+                if name != "_sectional_context"
+            }
+        )
 
 
 def _solve(
@@ -162,7 +188,7 @@ def _solve(
     )
     execution = execute_case(request)
     results = execution.results
-    return SolveResult(
+    result = SolveResult(
         attitude=attitude,
         coefficients=results.total,
         components=results.components,
@@ -173,6 +199,12 @@ def _solve(
         ray_backend_used=execution.shielding.config.effective_backend,
         warnings=execution.warnings,
     )
+    object.__setattr__(
+        result,
+        "_sectional_context",
+        _SectionalContext(execution.mesh, results.case),
+    )
+    return result
 
 
 def solve_fmf(case: FMFCase) -> SolveResult:

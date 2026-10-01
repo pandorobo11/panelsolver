@@ -75,8 +75,7 @@ print(cp.shape, shielded.shape, result.case_signature)
 
 ## Supported imports and scope
 
-The supported Python API consists of exactly these seven names, imported from
-the package root:
+The stable solve API has exactly these seven names at the package root:
 
 ```python
 from panelsolver import (
@@ -90,9 +89,17 @@ from panelsolver import (
 )
 ```
 
-Compatibility covers these package-root imports and the returned fields
-documented below. Nested result objects are accessed through `SolveResult`;
+Sectional postprocessing has a separate supported import:
+
+```python
+from panelsolver.postprocess import SectionalLoads, compute_sectional_loads
+```
+
+Compatibility covers these imports, the callable signatures, and returned fields
+documented below. Nested result objects are accessed through the returned result;
 their defining modules and direct constructors remain implementation details.
+`SectionalLoads` is exposed for type annotations and result checks, not direct
+construction. Package-root exports are unchanged.
 See [Compatibility policy](../product-reference/compatibility.md) for the full support boundary.
 
 ## Attitude resolution
@@ -411,6 +418,133 @@ Result arrays are C-contiguous, read-only NumPy buffers: central floating arrays
 use `float64`, component IDs use `int64`, and the shielding mask uses boolean
 dtype. Nested result objects and scalar/metadata mappings are also read-only.
 Make an explicit copy when mutable working data is needed, for example `result.geometry.centers_stl_m.copy()`.
+
+Solver-produced results retain their immutable topology and common references
+privately for postprocessing, from the same physical execution. Existing
+`SolveResult` constructor arguments are unchanged. Manually constructed results,
+including results reconstructed by `dataclasses.replace`, have no retained solve
+context and cannot be used for sectional postprocessing. A deep copy of an
+original solver-produced result retains its immutable data and context.
+
+## Sectional aerodynamic load distributions
+
+Use the result of either `solve_fmf` or `solve_hypersonic` directly. This example
+runs after either minimal example above (including with the supplied plate):
+
+<!-- python-api-sectional-example -->
+```python
+from panelsolver.postprocess import compute_sectional_loads
+
+loads = compute_sectional_loads(
+    result,
+    axis_origin_stl_m=(0.0, 0.0, 0.0),
+    axis_direction_stl=(0.2, 0.9, 0.4),
+    bin_count=30,
+)
+print(loads.case.case_id, loads.case_signature)
+print(loads.spec.bin_centers_m, loads.total.CD, loads.total.Cm)
+```
+
+```text
+compute_sectional_loads(
+    result: SolveResult,
+    *,
+    axis_origin_stl_m: Sequence[float],
+    axis_direction_stl: Sequence[float],
+    bin_count: int,
+    start_m: float | None = None,
+    stop_m: float | None = None,
+    component_ids: Sequence[int] | None = None,
+) -> SectionalLoads
+```
+
+All definition arguments are keyword-only; NumPy vectors are also accepted.
+Origin is a finite three-vector in STL coordinates, in metres. Direction is a
+finite, nonzero dimensionless three-vector, normalized internally without changing
+its sign. Signed axis distance is
+`s = dot(r_stl_m - axis_origin_stl_m, unit_direction_stl)`.
+`bin_count` is a positive Python integer; boolean and floating counts are invalid.
+
+Omit both bounds to cover the vertices referenced by selected component faces.
+Auto range fails for zero projected extent; use explicit bounds for that case.
+Supply both signed metre bounds with `start_m < stop_m` to use an explicit range.
+Partial and nonintersecting ranges are valid. Components default to all; otherwise
+supply distinct nonnegative IDs from the original ordered STL inputs (zero for
+the first). Unknown IDs are errors. No reference area, moment reference, reference
+length, attitude, or physical case signature changes with the definition.
+
+Bins have equal width. Internal boundary planes belong to the bin on their
+right; the final bin includes the last upper boundary. A surface lying wholly
+on a boundary is counted once. These are integrated surface-load coefficients
+per strip, not coefficients per metre or structural internal loads. Traction
+includes the complete Sentman normal and tangential vector.
+
+The function reads no files and runs neither shielding nor physics. You can
+apply multiple definitions to one result, even after the source STL files have
+changed or been deleted. Supplying a manual/reconstructed result without retained
+context raises `ValueError`; other result types raise `TypeError`. Invalid
+definitions raise `TypeError` or `ValueError` from shared numerical validation.
+
+### Returned definition and provenance
+
+`SectionalLoads` is frozen and contains the fields below. Array buffers and nested
+objects are read-only, including after deep copying the returned result. Numerical
+arrays use `float64`; bin-related face indices use `int64`.
+
+| Field | Meaning |
+|---|---|
+| `case_signature` | Original physical solve's signature, identical to `result.case_signature`. |
+| `case.case_id` | Original case identity. |
+| `case.Aref_m2` | Original global reference area, m². |
+| `case.moment_reference_stl_m` | Original moment reference, `(3,)` STL metres. |
+| `case.Lref_Cl_m`, `Lref_Cm_m`, `Lref_Cn_m` | Original body moment reference lengths, m. |
+| `case.alpha_stability_deg` | Original stability-frame angle, degrees. |
+| `spec.definition.axis_origin_stl_m` | Requested origin, `(3,)` STL metres; also `spec.axis_origin_stl_m`. |
+| `spec.definition.axis_direction_stl` | Requested unnormalized direction, `(3,)`. |
+| `spec.axis_direction_hat_stl` | Normalized direction, `(3,)`. |
+| `spec.definition.start_m`, `stop_m` | Requested bounds in metres, or both `None`. |
+| `spec.definition.bin_count` | Number of bins, `B`. |
+| `spec.definition.component_ids` | Requested IDs in ascending order, or `None` for all. |
+| `spec.range_mode` | `"auto"` or `"explicit"`. |
+| `spec.resolved_start_m`, `resolved_stop_m` | Resolved bounds in metres. |
+| `spec.bin_edges_m` | Edges in metres, `(B+1,)`. |
+| `spec.bin_centers_m`, `bin_widths_m` | Bin centers and positive widths in metres, each `(B,)`. |
+| `spec.selected_component_ids` | Resolved original component IDs in ascending order. |
+| `spec.selected_geometry_min_m`, `selected_geometry_max_m` | Selected geometry's projected extrema, m. |
+| `spec.all_components_selected` | Whether all mesh components were selected. |
+| `spec.covers_selected_geometry` | Whether the closed outer bounds cover all selected geometry. |
+| `total` | Distribution summed over selected components within the specified range. |
+| `components` | Tuple in ascending component-ID order; each item has `component_id` and `distribution`. |
+
+`total` need not describe the whole vehicle. Whole-case conservation requires
+both coverage flags to be true. Coverage uses geometry, including shielded or
+zero-load faces; coincident surfaces remain separate. All component distributions
+share the total's bins and original global references. A single component still
+produces both total and component distributions; empty bins remain explicit zeros.
+
+### Returned strip distributions
+
+Each `total` and `components[*].distribution` exposes these arrays. The bin axis
+is first and follows increasing signed axis distance.
+
+| Field / property | Shape / units | Meaning |
+|---|---|---|
+| `wetted_area_m2` | `(B,)`, m² | Actual surface-fragment area, including shielded faces. |
+| `force_coeff_stl` | `(B, 3)`, dimensionless | Integrated strip force coefficient in STL axes. |
+| `force_coeff_body` | `(B, 3)`, dimensionless | Same force in body axes. |
+| `force_coeff_stability` | `(B, 3)`, dimensionless | Same force in stability axes. |
+| `moment_area_coeff_body_m` | `(B, 3)`, m | Body moment numerator about the original reference, divided by global reference area. |
+| `moment_coeff_body` | `(B, 3)`, dimensionless | Numerator divided by the original roll/pitch/yaw reference lengths. |
+| `CA`, `CY`, `CN` | `(B,)`, dimensionless | `-Fx_body`, `Fy_body`, `-Fz_body`. |
+| `CD`, `CL` | `(B,)`, dimensionless | `-Fx_stability`, `-Fz_stability`. |
+| `Cl`, `Cm`, `Cn` | `(B,)`, dimensionless | Normalized body moment components. |
+
+Coefficient views derive from primitive vectors. No cumulative or density
+quantities are provided. Topology-local moment integration avoids loss from
+rounding absolute face centroids, so full-range sums can differ from the original
+stored-centroid integrator within the source geometry's representation error.
+Signs and references follow the existing
+[load conventions](../methods/load-and-coefficient-conventions.md).
 
 ## API ↔ Summary CSV / VTP correspondence
 

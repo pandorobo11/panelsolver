@@ -47,6 +47,7 @@ def _smoke_high_level_api(staging: Path, inputs: Path) -> None:
         solve_fmf,
         solve_hypersonic,
     )
+    from panelsolver.postprocess import SectionalLoads, compute_sectional_loads
 
     expected_surface = (
         "FMFCase",
@@ -105,6 +106,24 @@ def _smoke_high_level_api(staging: Path, inputs: Path) -> None:
     for result in (fmf, hypersonic):
         if result.local_loads.n_faces < 1 or len(result.case_signature) != 64:
             raise RuntimeError("high-level solve result is incomplete")
+        sectional = compute_sectional_loads(
+            result,
+            axis_origin_stl_m=(0.0, 0.0, 0.0),
+            axis_direction_stl=(0.0, 1.0, 0.0),
+            bin_count=5,
+        )
+        if (
+            not isinstance(sectional, SectionalLoads)
+            or sectional.case_signature != result.case_signature
+            or not sectional.spec.covers_selected_geometry
+        ):
+            raise RuntimeError("installed sectional API returned incomplete context")
+        np.testing.assert_allclose(
+            sectional.total.force_coeff_stl.sum(axis=0),
+            result.coefficients.force_coeff_stl,
+            rtol=1e-12,
+            atol=1e-14,
+        )
 
 
 def _smoke_gui_entrypoint() -> None:

@@ -8,8 +8,13 @@ Python API, root exports, retained `SolveResult` context, CSV, CLI, or GUI.
 
 `core._sectional_integration.integrate_sectional_loads(mesh, spec, local_loads, case)`
 accepts `PanelMesh`, A1's `ResolvedSectionalLoadSpec`, `LocalLoads`, and
-`CommonCasePayload`. A4 should retain these inputs from the same solve and call
-this boundary after A1 resolution. It calls
+`CommonCasePayload`. A4 retains these inputs from the same solve and calls
+this boundary after A1 resolution through `postprocess.compute_sectional_loads`.
+Its public `SectionalLoads` subtype adds the original physical case signature,
+reusing these nested immutable objects without duplicate coefficient state.
+The public returned fields are specified in the
+[Python API reference](../../docs/running/python-api.md#sectional-aerodynamic-load-distributions);
+core constructors remain internal. The integrator calls
 `compute_sectional_fragment_geometry(mesh, spec)` once, consuming A2's exact
 [`SectionalFragmentGeometry` interface](sectional-geometry.md#geometry-handoff):
 `source_face_indices`, `bin_indices`, `areas_m2`, `origins_stl_m`, and
