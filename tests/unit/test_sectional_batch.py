@@ -144,11 +144,11 @@ def test_schema_is_fixed_and_contains_no_cumulative_or_density_fields():
         "delta_CA",
         "delta_CY",
         "delta_CN",
-        "delta_CD",
-        "delta_CL",
         "delta_Cl",
         "delta_Cm",
         "delta_Cn",
+        "delta_CD",
+        "delta_CL",
     )
 
 

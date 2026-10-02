@@ -31,7 +31,7 @@ range_mode,resolved_start_m,resolved_stop_m,
 selected_geometry_min_m,selected_geometry_max_m,covers_selected_geometry,bin_count,
 Aref_m2,ref_x_stl_m,ref_y_stl_m,ref_z_stl_m,Lref_Cl_m,Lref_Cm_m,Lref_Cn_m,alpha_stability_deg,
 scope,component_id,bin_index,bin_start_m,bin_stop_m,bin_center_m,bin_width_m,wetted_area_m2,
-delta_CA,delta_CY,delta_CN,delta_CD,delta_CL,delta_Cl,delta_Cm,delta_Cn
+delta_CA,delta_CY,delta_CN,delta_Cl,delta_Cm,delta_Cn,delta_CD,delta_CL
 ```
 
 ## Identity, completion and definition
@@ -66,6 +66,8 @@ delta_CA,delta_CY,delta_CN,delta_CD,delta_CL,delta_Cl,delta_Cm,delta_Cn
 
 ## Strip quantities
 
+The coefficient columns follow the ordinary Summary CSV order:
+`CA, CY, CN, Cl, Cm, Cn, CD, CL`, each prefixed with `delta_`.
 The CSV contains only the eight aerodynamic coefficient views below; coordinate
 vector components and moment-area coefficients remain available through the
 Python API but are not CSV columns.

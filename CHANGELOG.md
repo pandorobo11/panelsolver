@@ -15,6 +15,8 @@ migration baselines and runtime artifact version semantics are recorded in ADR
   completion counts in CLI/GUI status. Omit the three unnormalized
   `direction_*_stl` columns, `requested_component_ids`, `requested_start_m`,
   and `requested_stop_m`; retain normalized direction and resolved selection/range.
+  Match the ordinary Summary CSV coefficient order:
+  `CA, CY, CN, Cl, Cm, Cn, CD, CL` (with `delta_` prefixes).
   Definition CSV inputs and the Python API are unchanged.
 
 ## [0.1.0] - 2026-09-11

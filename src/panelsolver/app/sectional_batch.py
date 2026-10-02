@@ -76,7 +76,7 @@ SECTIONAL_CSV_COLUMNS = (
     "bin_center_m",
     "bin_width_m",
     "wetted_area_m2",
-    *(f"delta_{name}" for name in ("CA", "CY", "CN", "CD", "CL", "Cl", "Cm", "Cn")),
+    *(f"delta_{name}" for name in ("CA", "CY", "CN", "Cl", "Cm", "Cn", "CD", "CL")),
 )
 _PAIR_COLUMNS = tuple(
     name for name in SECTIONAL_CSV_COLUMNS if name not in _STATUS_COLUMNS
@@ -167,7 +167,7 @@ def _project_pair(
     for scope, component_id, distribution in scopes:
         coefficients = {
             name: getattr(distribution, name)
-            for name in ("CA", "CY", "CN", "CD", "CL", "Cl", "Cm", "Cn")
+            for name in ("CA", "CY", "CN", "Cl", "Cm", "Cn", "CD", "CL")
         }
         for bin_index in range(definition.bin_count):
             values: dict[str, CsvCell] = {
