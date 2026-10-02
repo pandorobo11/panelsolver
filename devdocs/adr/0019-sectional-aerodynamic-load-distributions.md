@@ -344,8 +344,8 @@ Use a separate long-format CSV, not the existing Summary CSV. One row represents
   original nonnegative mesh ID for component rows.
 - Zero-based bin index, lower/upper bound, center, and width in metres.
 - Wetted area in m² and the eight strip aerodynamic coefficients
-  `delta_CA`, `delta_CY`, `delta_CN`, `delta_CD`, `delta_CL`, `delta_Cl`,
-  `delta_Cm`, and `delta_Cn`.
+  `delta_CA`, `delta_CY`, `delta_CN`, `delta_Cl`, `delta_Cm`, `delta_Cn`,
+  `delta_CD`, and `delta_CL`.
 
 Accepted CSV scope amendment (2026-10-02): at the user's explicit request,
 coordinate-vector and moment-area coefficient columns are omitted from the

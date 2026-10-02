@@ -29,7 +29,7 @@ direction_hat_x_stl,direction_hat_y_stl,direction_hat_z_stl,
 selected_component_ids,all_components_selected,
 range_mode,resolved_start_m,resolved_stop_m,
 selected_geometry_min_m,selected_geometry_max_m,covers_selected_geometry,bin_count,
-Aref_m2,ref_x_stl_m,ref_y_stl_m,ref_z_stl_m,Lref_Cl_m,Lref_Cm_m,Lref_Cn_m,alpha_stability_deg,
+ref_x_stl_m,ref_y_stl_m,ref_z_stl_m,Aref_m2,Lref_Cl_m,Lref_Cm_m,Lref_Cn_m,alpha_stability_deg,
 scope,component_id,bin_index,bin_start_m,bin_stop_m,bin_center_m,bin_width_m,wetted_area_m2,
 delta_CA,delta_CY,delta_CN,delta_Cl,delta_Cm,delta_Cn,delta_CD,delta_CL
 ```
@@ -55,8 +55,8 @@ delta_CA,delta_CY,delta_CN,delta_Cl,delta_Cm,delta_Cn,delta_CD,delta_CL
 
 | Columns | Meaning |
 |---|---|
-| `Aref_m2` | Original global reference area, m². |
 | `ref_*_stl_m` | Original moment reference point in STL metres. This is independent of the section axis origin. |
+| `Aref_m2` | Original global reference area, m². |
 | `Lref_Cl_m`, `Lref_Cm_m`, `Lref_Cn_m` | Original roll, pitch and yaw reference lengths, m. |
 | `alpha_stability_deg` | Original stability-frame angle, degrees. |
 | `scope` | `total` or `component`. |
@@ -76,8 +76,8 @@ Python API but are not CSV columns.
 |---|---|
 | `wetted_area_m2` | Actual surface area in the strip, m²; includes shielded surfaces and counts distinct coincident faces separately. |
 | `delta_CA`, `delta_CY`, `delta_CN` | Body force views: minus X, Y, minus Z. |
-| `delta_CD`, `delta_CL` | Stability force views: minus X, minus Z. |
 | `delta_Cl`, `delta_Cm`, `delta_Cn` | Normalized body roll, pitch and yaw moments. |
+| `delta_CD`, `delta_CL` | Stability force views: minus X, minus Z. |
 
 `delta_` denotes an integral over this strip, not a derivative or coefficient
 per metre. Full model traction includes Sentman tangential loads. Frames, signs
