@@ -24,10 +24,10 @@ the shared serializer. Blank fields are described below. The exact order is:
 <!-- sectional-result-columns -->
 ```text
 case_id,case_signature,section_id,batch_status,
-origin_x_stl_m,origin_y_stl_m,origin_z_stl_m,direction_x_stl,direction_y_stl,direction_z_stl,
+origin_x_stl_m,origin_y_stl_m,origin_z_stl_m,
 direction_hat_x_stl,direction_hat_y_stl,direction_hat_z_stl,
-requested_component_ids,selected_component_ids,all_components_selected,
-range_mode,requested_start_m,requested_stop_m,resolved_start_m,resolved_stop_m,
+selected_component_ids,all_components_selected,
+range_mode,resolved_start_m,resolved_stop_m,
 selected_geometry_min_m,selected_geometry_max_m,covers_selected_geometry,bin_count,
 Aref_m2,ref_x_stl_m,ref_y_stl_m,ref_z_stl_m,Lref_Cl_m,Lref_Cm_m,Lref_Cn_m,alpha_stability_deg,
 scope,component_id,bin_index,bin_start_m,bin_stop_m,bin_center_m,bin_width_m,wetted_area_m2,
@@ -42,12 +42,10 @@ delta_CA,delta_CY,delta_CN,delta_CD,delta_CL,delta_Cl,delta_Cm,delta_Cn
 | `section_id` | Normalized definition label from the run snapshot. |
 | `batch_status` | `completed`, `failed`, or `cancelled`. Computation state, independent of whether a subsequent export succeeds. |
 | `origin_*_stl_m` | Requested axis origin in STL metres. |
-| `direction_*_stl`, `direction_hat_*_stl` | Requested dimensionless direction and normalized direction. |
-| `requested_component_ids` | Ascending semicolon-separated requested IDs; blank means all. |
+| `direction_hat_*_stl` | Normalized dimensionless axis direction in STL coordinates. |
 | `selected_component_ids` | Resolved ascending original IDs, semicolon-separated. |
 | `all_components_selected` | Boolean: all mesh components were selected. |
 | `range_mode` | `auto` or `explicit`. |
-| `requested_start_m`, `requested_stop_m` | Signed requested bounds, blank for auto range. |
 | `resolved_start_m`, `resolved_stop_m` | Actual signed outer bounds, m. |
 | `selected_geometry_min_m`, `selected_geometry_max_m` | Projected extrema of selected geometry, m. |
 | `covers_selected_geometry` | Boolean: closed outer bounds cover all selected geometry. |

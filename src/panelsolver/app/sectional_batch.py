@@ -52,14 +52,10 @@ SECTIONAL_CSV_COLUMNS = (
     "section_id",
     *_STATUS_COLUMNS,
     *(f"origin_{axis}_stl_m" for axis in "xyz"),
-    *(f"direction_{axis}_stl" for axis in "xyz"),
     *(f"direction_hat_{axis}_stl" for axis in "xyz"),
-    "requested_component_ids",
     "selected_component_ids",
     "all_components_selected",
     "range_mode",
-    "requested_start_m",
-    "requested_stop_m",
     "resolved_start_m",
     "resolved_stop_m",
     "selected_geometry_min_m",
@@ -139,16 +135,9 @@ def _project_pair(
         "case_id": case.case_id,
         "case_signature": signature,
         "section_id": section_id,
-        "requested_component_ids": (
-            None
-            if definition.component_ids is None
-            else ";".join(map(str, definition.component_ids))
-        ),
         "selected_component_ids": ";".join(map(str, spec.selected_component_ids)),
         "all_components_selected": spec.all_components_selected,
         "range_mode": spec.range_mode,
-        "requested_start_m": definition.start_m,
-        "requested_stop_m": definition.stop_m,
         "resolved_start_m": spec.resolved_start_m,
         "resolved_stop_m": spec.resolved_stop_m,
         "selected_geometry_min_m": spec.selected_geometry_min_m,
@@ -163,7 +152,6 @@ def _project_pair(
     }
     for index, axis in enumerate("xyz"):
         common[f"origin_{axis}_stl_m"] = float(definition.axis_origin_stl_m[index])
-        common[f"direction_{axis}_stl"] = float(definition.axis_direction_stl[index])
         common[f"direction_hat_{axis}_stl"] = float(
             definition.axis_direction_hat_stl[index]
         )

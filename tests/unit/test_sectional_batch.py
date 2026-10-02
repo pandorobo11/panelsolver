@@ -113,18 +113,12 @@ def test_schema_is_fixed_and_contains_no_cumulative_or_density_fields():
         "origin_x_stl_m",
         "origin_y_stl_m",
         "origin_z_stl_m",
-        "direction_x_stl",
-        "direction_y_stl",
-        "direction_z_stl",
         "direction_hat_x_stl",
         "direction_hat_y_stl",
         "direction_hat_z_stl",
-        "requested_component_ids",
         "selected_component_ids",
         "all_components_selected",
         "range_mode",
-        "requested_start_m",
-        "requested_stop_m",
         "resolved_start_m",
         "resolved_stop_m",
         "selected_geometry_min_m",
@@ -195,9 +189,7 @@ def test_matches_public_api_coefficients_references_and_identity(domain):
         for row in actual:
             assert row["case_signature"] == solved.case_signature
             assert row["section_id"] == "oblique, α"
-            assert (
-                row["requested_component_ids"] == row["selected_component_ids"] == "1"
-            )
+            assert row["selected_component_ids"] == "1"
             assert row["all_components_selected"] is False
             assert row["Aref_m2"] == 2.7
             assert row["Lref_Cm_m"] == 2.3
