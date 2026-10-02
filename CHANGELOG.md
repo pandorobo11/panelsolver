@@ -6,6 +6,12 @@ migration baselines and runtime artifact version semantics are recorded in ADR
 
 ## [Unreleased]
 
+- Simplify sectional result CSV: retain only `delta_CA`, `delta_CY`, `delta_CN`,
+  `delta_CD`, `delta_CL`, `delta_Cl`, `delta_Cm`, and `delta_Cn` as load columns.
+  Remove the 15 coordinate-vector and moment-area `delta_` columns. Existing
+  CSV consumers using those columns must use the Python API instead; numerical
+  results and all other sectional CSV columns are unchanged.
+
 ## [0.1.0] - 2026-09-11
 
 - Generate every STL face normal from repaired face cross products using

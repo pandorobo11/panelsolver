@@ -80,13 +80,6 @@ SECTIONAL_CSV_COLUMNS = (
     "bin_center_m",
     "bin_width_m",
     "wetted_area_m2",
-    *(
-        f"delta_force_coeff_{axis}_{frame}"
-        for frame in ("stl", "body", "stability")
-        for axis in "xyz"
-    ),
-    *(f"delta_moment_area_coeff_{axis}_body_m" for axis in "xyz"),
-    *(f"delta_moment_coeff_{axis}_body" for axis in "xyz"),
     *(f"delta_{name}" for name in ("CA", "CY", "CN", "CD", "CL", "Cl", "Cm", "Cn")),
 )
 _PAIR_COLUMNS = tuple(
@@ -204,17 +197,6 @@ def _project_pair(
                     for name, vector in coefficients.items()
                 },
             }
-            for frame in ("stl", "body", "stability"):
-                vector = getattr(distribution, f"force_coeff_{frame}")[bin_index]
-                for index, axis in enumerate("xyz"):
-                    values[f"delta_force_coeff_{axis}_{frame}"] = float(vector[index])
-            for index, axis in enumerate("xyz"):
-                values[f"delta_moment_area_coeff_{axis}_body_m"] = float(
-                    distribution.moment_area_coeff_body_m[bin_index, index]
-                )
-                values[f"delta_moment_coeff_{axis}_body"] = float(
-                    distribution.moment_coeff_body[bin_index, index]
-                )
             rows.append({name: values[name] for name in _PAIR_COLUMNS})
     return CsvProjection(_PAIR_COLUMNS, tuple(rows))
 

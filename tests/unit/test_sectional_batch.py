@@ -149,21 +149,6 @@ def test_schema_is_fixed_and_contains_no_cumulative_or_density_fields():
         "bin_center_m",
         "bin_width_m",
         "wetted_area_m2",
-        "delta_force_coeff_x_stl",
-        "delta_force_coeff_y_stl",
-        "delta_force_coeff_z_stl",
-        "delta_force_coeff_x_body",
-        "delta_force_coeff_y_body",
-        "delta_force_coeff_z_body",
-        "delta_force_coeff_x_stability",
-        "delta_force_coeff_y_stability",
-        "delta_force_coeff_z_stability",
-        "delta_moment_area_coeff_x_body_m",
-        "delta_moment_area_coeff_y_body_m",
-        "delta_moment_area_coeff_z_body_m",
-        "delta_moment_coeff_x_body",
-        "delta_moment_coeff_y_body",
-        "delta_moment_coeff_z_body",
         "delta_CA",
         "delta_CY",
         "delta_CN",
@@ -176,7 +161,7 @@ def test_schema_is_fixed_and_contains_no_cumulative_or_density_fields():
 
 
 @pytest.mark.parametrize("domain", DOMAINS)
-def test_matches_public_api_all_frames_references_and_identity(domain):
+def test_matches_public_api_coefficients_references_and_identity(domain):
     rows = _rows(domain, components=2)
     definition = _definition(
         "oblique, α", direction=(0.2, 0.9, 0.4), component_ids=(1,)
@@ -202,25 +187,6 @@ def test_matches_public_api_all_frames_references_and_identity(domain):
         ("component", expected.components[0].distribution),
     ):
         actual = [row for row in result.csv.rows if row["scope"] == scope]
-        for frame in ("stl", "body", "stability"):
-            np.testing.assert_array_equal(
-                [
-                    [row[f"delta_force_coeff_{axis}_{frame}"] for axis in "xyz"]
-                    for row in actual
-                ],
-                getattr(distribution, f"force_coeff_{frame}"),
-            )
-        for prefix, suffix, name in (
-            ("delta_moment_area_coeff", "body_m", "moment_area_coeff_body_m"),
-            ("delta_moment_coeff", "body", "moment_coeff_body"),
-        ):
-            np.testing.assert_array_equal(
-                [
-                    [row[f"{prefix}_{axis}_{suffix}"] for axis in "xyz"]
-                    for row in actual
-                ],
-                getattr(distribution, name),
-            )
         for name in ("CA", "CY", "CN", "CD", "CL", "Cl", "Cm", "Cn"):
             np.testing.assert_array_equal(
                 [row[f"delta_{name}"] for row in actual], getattr(distribution, name)

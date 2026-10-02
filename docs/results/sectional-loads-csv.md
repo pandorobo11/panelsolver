@@ -31,11 +31,6 @@ range_mode,requested_start_m,requested_stop_m,resolved_start_m,resolved_stop_m,
 selected_geometry_min_m,selected_geometry_max_m,covers_selected_geometry,bin_count,
 Aref_m2,ref_x_stl_m,ref_y_stl_m,ref_z_stl_m,Lref_Cl_m,Lref_Cm_m,Lref_Cn_m,alpha_stability_deg,
 scope,component_id,bin_index,bin_start_m,bin_stop_m,bin_center_m,bin_width_m,wetted_area_m2,
-delta_force_coeff_x_stl,delta_force_coeff_y_stl,delta_force_coeff_z_stl,
-delta_force_coeff_x_body,delta_force_coeff_y_body,delta_force_coeff_z_body,
-delta_force_coeff_x_stability,delta_force_coeff_y_stability,delta_force_coeff_z_stability,
-delta_moment_area_coeff_x_body_m,delta_moment_area_coeff_y_body_m,delta_moment_area_coeff_z_body_m,
-delta_moment_coeff_x_body,delta_moment_coeff_y_body,delta_moment_coeff_z_body,
 delta_CA,delta_CY,delta_CN,delta_CD,delta_CL,delta_Cl,delta_Cm,delta_Cn
 ```
 
@@ -74,14 +69,13 @@ delta_CA,delta_CY,delta_CN,delta_CD,delta_CL,delta_Cl,delta_Cm,delta_Cn
 
 ## Strip quantities
 
+The CSV contains only the eight aerodynamic coefficient views below; coordinate
+vector components and moment-area coefficients remain available through the
+Python API but are not CSV columns.
+
 | Columns | Units and meaning |
 |---|---|
 | `wetted_area_m2` | Actual surface area in the strip, m²; includes shielded surfaces and counts distinct coincident faces separately. |
-| `delta_force_coeff_*_stl` | Integrated strip force vector in STL coordinates, dimensionless. |
-| `delta_force_coeff_*_body` | Same vector in body coordinates, dimensionless. |
-| `delta_force_coeff_*_stability` | Same vector in stability coordinates, dimensionless. |
-| `delta_moment_area_coeff_*_body_m` | Strip body moment numerator divided by global area, m. |
-| `delta_moment_coeff_*_body` | Body moment vector divided by the respective reference lengths, dimensionless. |
 | `delta_CA`, `delta_CY`, `delta_CN` | Body force views: minus X, Y, minus Z. |
 | `delta_CD`, `delta_CL` | Stability force views: minus X, minus Z. |
 | `delta_Cl`, `delta_Cm`, `delta_Cn` | Normalized body roll, pitch and yaw moments. |
