@@ -194,7 +194,8 @@ def _smoke_sectional_cli(
             len(rows) != expected_rows
             or {row["section_id"] for row in rows} != {"001", "oblique"}
             or {row["batch_status"] for row in rows} != {"completed"}
-            or {row["completed_pairs"] for row in rows} != {str(2 * len(frame))}
+            or len({(row["case_id"], row["section_id"]) for row in rows})
+            != 2 * len(frame)
             or unused_output.exists()
         ):
             raise RuntimeError(f"installed {domain} sectional result contract failed")

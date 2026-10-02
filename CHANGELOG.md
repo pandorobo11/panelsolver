@@ -10,7 +10,9 @@ migration baselines and runtime artifact version semantics are recorded in ADR
   `delta_CD`, `delta_CL`, `delta_Cl`, `delta_Cm`, and `delta_Cn` as load columns.
   Remove the 15 coordinate-vector and moment-area `delta_` columns. Existing
   CSV consumers using those columns must use the Python API instead; numerical
-  results and all other sectional CSV columns are unchanged.
+  results are unchanged. Also omit repeated `requested_pairs` and
+  `completed_pairs` CSV columns; retain `batch_status` for partial results and
+  completion counts in CLI/GUI status.
 
 ## [0.1.0] - 2026-09-11
 

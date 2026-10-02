@@ -110,8 +110,6 @@ def test_schema_is_fixed_and_contains_no_cumulative_or_density_fields():
         "case_signature",
         "section_id",
         "batch_status",
-        "requested_pairs",
-        "completed_pairs",
         "origin_x_stl_m",
         "origin_y_stl_m",
         "origin_z_stl_m",
@@ -310,8 +308,7 @@ def test_missing_component_is_failure_not_zero_and_keeps_successful_prefix():
     assert "absent from mesh" in result.errors[0].message
     assert {row["section_id"] for row in result.csv.rows} == {"001"}
     assert {row["batch_status"] for row in result.csv.rows} == {"failed"}
-    assert {row["completed_pairs"] for row in result.csv.rows} == {1}
-    assert {row["requested_pairs"] for row in result.csv.rows} == {6}
+    assert len({(row["case_id"], row["section_id"]) for row in result.csv.rows}) == 1
 
 
 def test_physics_and_auto_range_failure_have_distinct_labels():

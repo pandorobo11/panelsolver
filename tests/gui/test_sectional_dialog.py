@@ -624,12 +624,7 @@ class SectionalDialogTests(unittest.TestCase):
             first = sectional_batch.run_sectional_cases(
                 request.rows[:1], fmf.RUNTIME_POLICY, request.definitions[:1]
             )
-            rows = tuple(
-                dict(
-                    row, batch_status="cancelled", requested_pairs=4, completed_pairs=1
-                )
-                for row in first.csv.rows
-            )
+            rows = tuple(dict(row, batch_status="cancelled") for row in first.csv.rows)
             return SectionalBatchResult(
                 type(first.csv)(first.csv.columns, rows), "cancelled", 1, 4, 0, 2
             )

@@ -114,8 +114,8 @@ A1 owns numerical validation. `run_sectional_cases` reuses product case
 adaptation and the existing case scheduler, evaluates physics once per case,
 and projects every selected definition before releasing the full execution.
 Only compact CSV rows, counts and failure identities cross the worker boundary.
-The final projection follows input case/definition order, and records terminal
-batch status and completion counts. Cancellation and observed failures request
+The final CSV projection follows input case/definition order and records terminal
+batch status. Completion counts remain in the batch result for CLI/GUI status. Cancellation and observed failures request
 a cooperative stop and drain already-dispatched work at case boundaries.
 Export reuses protected-path validation and atomic CSV writing. There is no
 Summary/VTP round trip, new cache, checkpoint system or physical signature.

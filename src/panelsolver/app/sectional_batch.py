@@ -45,7 +45,7 @@ type LogCallback = Callable[[str], None]
 type CancelCallback = Callable[[], bool]
 type ProgressCallback = Callable[[int, int], None]
 
-_STATUS_COLUMNS = ("batch_status", "requested_pairs", "completed_pairs")
+_STATUS_COLUMNS = ("batch_status",)
 SECTIONAL_CSV_COLUMNS = (
     "case_id",
     "case_signature",
@@ -259,8 +259,6 @@ def _finish_batch(
     requested_pairs = len(completed) * definitions_count
     values: dict[str, CsvCell] = {
         "batch_status": status,
-        "requested_pairs": requested_pairs,
-        "completed_pairs": completed_pairs,
     }
     rows = tuple(
         {

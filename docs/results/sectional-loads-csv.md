@@ -23,7 +23,7 @@ the shared serializer. Blank fields are described below. The exact order is:
 
 <!-- sectional-result-columns -->
 ```text
-case_id,case_signature,section_id,batch_status,requested_pairs,completed_pairs,
+case_id,case_signature,section_id,batch_status,
 origin_x_stl_m,origin_y_stl_m,origin_z_stl_m,direction_x_stl,direction_y_stl,direction_z_stl,
 direction_hat_x_stl,direction_hat_y_stl,direction_hat_z_stl,
 requested_component_ids,selected_component_ids,all_components_selected,
@@ -41,7 +41,6 @@ delta_CA,delta_CY,delta_CN,delta_CD,delta_CL,delta_Cl,delta_Cm,delta_Cn
 | `case_id`, `case_signature` | Actual solved case ID and unchanged physical case signature. Definitions do not alter that signature. |
 | `section_id` | Normalized definition label from the run snapshot. |
 | `batch_status` | `completed`, `failed`, or `cancelled`. Computation state, independent of whether a subsequent export succeeds. |
-| `requested_pairs`, `completed_pairs` | Requested and successfully retained case × definition counts for this batch, repeated on every row. A partial export is therefore identifiable without the log. |
 | `origin_*_stl_m` | Requested axis origin in STL metres. |
 | `direction_*_stl`, `direction_hat_*_stl` | Requested dimensionless direction and normalized direction. |
 | `requested_component_ids` | Ascending semicolon-separated requested IDs; blank means all. |
@@ -92,7 +91,8 @@ documented representation rounding; no conservation residual is redistributed.
 The batch stops scheduling work after observing a calculation failure or a
 cooperative cancellation. Already-dispatched cases can finish before the stop
 is observed. Successfully retained pairs are exported in the same input order,
-with the terminal status/counts above; uncompleted pairs are absent. The CLI
+with the terminal status above; uncompleted pairs are absent. Completion counts
+remain available in CLI diagnostics and GUI status, rather than CSV columns. The CLI
 returns nonzero for failed/cancelled runs even when their partial CSV is saved.
 
 When no pair succeeds, no CSV is written and an existing destination is left
