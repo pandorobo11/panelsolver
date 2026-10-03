@@ -45,29 +45,25 @@ type LogCallback = Callable[[str], None]
 type CancelCallback = Callable[[], bool]
 type ProgressCallback = Callable[[int, int], None]
 
-_STATUS_COLUMNS = ("batch_status", "requested_pairs", "completed_pairs")
+_STATUS_COLUMNS = ("batch_status",)
 SECTIONAL_CSV_COLUMNS = (
     "case_id",
     "case_signature",
     "section_id",
     *_STATUS_COLUMNS,
     *(f"origin_{axis}_stl_m" for axis in "xyz"),
-    *(f"direction_{axis}_stl" for axis in "xyz"),
     *(f"direction_hat_{axis}_stl" for axis in "xyz"),
-    "requested_component_ids",
     "selected_component_ids",
     "all_components_selected",
     "range_mode",
-    "requested_start_m",
-    "requested_stop_m",
     "resolved_start_m",
     "resolved_stop_m",
     "selected_geometry_min_m",
     "selected_geometry_max_m",
     "covers_selected_geometry",
     "bin_count",
-    "Aref_m2",
     *(f"ref_{axis}_stl_m" for axis in "xyz"),
+    "Aref_m2",
     "Lref_Cl_m",
     "Lref_Cm_m",
     "Lref_Cn_m",
@@ -80,14 +76,7 @@ SECTIONAL_CSV_COLUMNS = (
     "bin_center_m",
     "bin_width_m",
     "wetted_area_m2",
-    *(
-        f"delta_force_coeff_{axis}_{frame}"
-        for frame in ("stl", "body", "stability")
-        for axis in "xyz"
-    ),
-    *(f"delta_moment_area_coeff_{axis}_body_m" for axis in "xyz"),
-    *(f"delta_moment_coeff_{axis}_body" for axis in "xyz"),
-    *(f"delta_{name}" for name in ("CA", "CY", "CN", "CD", "CL", "Cl", "Cm", "Cn")),
+    *(f"delta_{name}" for name in ("CA", "CY", "CN", "Cl", "Cm", "Cn", "CD", "CL")),
 )
 _PAIR_COLUMNS = tuple(
     name for name in SECTIONAL_CSV_COLUMNS if name not in _STATUS_COLUMNS
@@ -146,16 +135,9 @@ def _project_pair(
         "case_id": case.case_id,
         "case_signature": signature,
         "section_id": section_id,
-        "requested_component_ids": (
-            None
-            if definition.component_ids is None
-            else ";".join(map(str, definition.component_ids))
-        ),
         "selected_component_ids": ";".join(map(str, spec.selected_component_ids)),
         "all_components_selected": spec.all_components_selected,
         "range_mode": spec.range_mode,
-        "requested_start_m": definition.start_m,
-        "requested_stop_m": definition.stop_m,
         "resolved_start_m": spec.resolved_start_m,
         "resolved_stop_m": spec.resolved_stop_m,
         "selected_geometry_min_m": spec.selected_geometry_min_m,
@@ -170,7 +152,6 @@ def _project_pair(
     }
     for index, axis in enumerate("xyz"):
         common[f"origin_{axis}_stl_m"] = float(definition.axis_origin_stl_m[index])
-        common[f"direction_{axis}_stl"] = float(definition.axis_direction_stl[index])
         common[f"direction_hat_{axis}_stl"] = float(
             definition.axis_direction_hat_stl[index]
         )
@@ -186,7 +167,7 @@ def _project_pair(
     for scope, component_id, distribution in scopes:
         coefficients = {
             name: getattr(distribution, name)
-            for name in ("CA", "CY", "CN", "CD", "CL", "Cl", "Cm", "Cn")
+            for name in ("CA", "CY", "CN", "Cl", "Cm", "Cn", "CD", "CL")
         }
         for bin_index in range(definition.bin_count):
             values: dict[str, CsvCell] = {
@@ -204,17 +185,6 @@ def _project_pair(
                     for name, vector in coefficients.items()
                 },
             }
-            for frame in ("stl", "body", "stability"):
-                vector = getattr(distribution, f"force_coeff_{frame}")[bin_index]
-                for index, axis in enumerate("xyz"):
-                    values[f"delta_force_coeff_{axis}_{frame}"] = float(vector[index])
-            for index, axis in enumerate("xyz"):
-                values[f"delta_moment_area_coeff_{axis}_body_m"] = float(
-                    distribution.moment_area_coeff_body_m[bin_index, index]
-                )
-                values[f"delta_moment_coeff_{axis}_body"] = float(
-                    distribution.moment_coeff_body[bin_index, index]
-                )
             rows.append({name: values[name] for name in _PAIR_COLUMNS})
     return CsvProjection(_PAIR_COLUMNS, tuple(rows))
 
@@ -277,8 +247,6 @@ def _finish_batch(
     requested_pairs = len(completed) * definitions_count
     values: dict[str, CsvCell] = {
         "batch_status": status,
-        "requested_pairs": requested_pairs,
-        "completed_pairs": completed_pairs,
     }
     rows = tuple(
         {

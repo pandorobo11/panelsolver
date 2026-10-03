@@ -13,6 +13,8 @@ from panelsolver.core import CaseSignature
 from .examples import ExampleDefinition
 from .output_status import OutputIssue
 from .runtime import ProductBatchRunResult
+from .sectional_batch import SectionalBatchResult
+from .sectional_definitions import SectionalDefinition
 
 type CaseRow = Mapping[str, object]
 type ReadCasesCallback = Callable[[str | Path], Sequence[CaseRow]]
@@ -126,6 +128,23 @@ class GuiRunResult:
 type RunCasesCallback = Callable[[GuiRunRequest], GuiRunResult]
 
 
+@dataclass(frozen=True, slots=True)
+class GuiSectionalRunRequest:
+    """One sectional run's selected immutable definition and case snapshots."""
+
+    rows: tuple[CaseRow, ...]
+    definitions: tuple[SectionalDefinition, ...]
+    workers: int
+    log: LogCallback
+    progress: ProgressCallback
+    cancel_requested: CancelRequestedCallback
+
+
+type RunSectionalCasesCallback = Callable[
+    [GuiSectionalRunRequest], SectionalBatchResult
+]
+
+
 def gui_run_result_from_batch(
     request: GuiRunRequest,
     result: ProductBatchRunResult,
@@ -165,6 +184,7 @@ class SolverGuiAdapters:
     run_cases: RunCasesCallback
     validate_output_path: ValidateOutputPathCallback
     resolve_velocity_hat_stl: ResolveVelocityCallback
+    run_sectional_cases: RunSectionalCasesCallback | None = None
 
     def __post_init__(self) -> None:
         for field_name in (
@@ -176,6 +196,12 @@ class SolverGuiAdapters:
         ):
             if not callable(getattr(self, field_name)):
                 raise TypeError(f"SolverGuiAdapters.{field_name} must be callable")
+        if self.run_sectional_cases is not None and not callable(
+            self.run_sectional_cases
+        ):
+            raise TypeError(
+                "SolverGuiAdapters.run_sectional_cases must be callable or None"
+            )
 
 
 def _nonempty_text(value: object, *, field: str) -> str:

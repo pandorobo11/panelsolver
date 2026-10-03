@@ -1,7 +1,8 @@
 # Sectional load definitions
 
 Use a separate UTF-8 CSV to define sectional aerodynamic load distributions for
-the [sectional CLI workflow](../running/cli.md#sectional-load-batches). Solver
+the [sectional CLI workflow](../running/cli.md#sectional-load-batches) or the
+[read-only GUI workflow](../running/gui.md#sectional-load-batches). Solver
 case tables remain unchanged. Python callers use
 [`compute_sectional_loads`](../running/python-api.md#sectional-aerodynamic-load-distributions)
 arguments directly.

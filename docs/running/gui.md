@@ -37,6 +37,55 @@ Closing the window during a run also requests cancellation and waits for cleanup
 [Batch execution and recovery](batch-execution-and-recovery.md#cancellation-and-calculation-failures)
 explains cancellation boundaries and which outputs remain available.
 
+## Sectional load batches
+
+1. Open a case table. Select case rows to run a subset, or leave the case selection
+   empty to run all loaded cases, as with ordinary calculation.
+2. Choose **File > Sectional Loads...** and open a separate
+   [sectional definition CSV](../inputs/sectional-loads.md).
+3. Select definitions in the read-only table to run a subset, or leave the
+   selection empty to run all loaded definitions. Case and definition selections
+   are independent; the run scope shows both effective counts.
+4. Choose **Run All Cases × Sections** or **Run Selected Cases × Sections**, then
+   select the [sectional result CSV](../results/sectional-loads-csv.md) destination.
+   The suggested path is `<input_dir>/outputs/<input_stem>_sectional_loads.csv`.
+   Cancelling the file dialog does not start a calculation or change retained results.
+5. Each target case is solved once and all selected definitions use that same
+   in-memory execution. Results are saved automatically to the chosen path.
+   The dialog shows completion/save status, pair counts and the saved path;
+   inspect numerical results in the CSV. There is no result table or separate
+   Export action. The Viewer VTP is not an input.
+
+The definition table supports opening and reloading files, not definition
+editing. Edit the CSV externally and reload it before starting a new batch.
+A failed reload clears the runnable definitions and reports the error.
+The open definition CSV is protected from ordinary Summary CSV output as well
+as sectional output, including while the Sectional Loads window is hidden.
+Opening or reloading definitions is disabled during ordinary calculation.
+
+Starting a run freezes both selections and definitions. Later selection/file
+changes do not relabel completed results. Run and export status are separate:
+cancelled or failed batches save any successful pairs to the chosen destination,
+with their actual terminal status. If no pair succeeds, the output is unchanged.
+A save failure retains the calculation and shows **Retry Save...** to select a
+destination and save it without rerunning physics. This action is hidden after
+successful saving and never substitutes current selections for the failed-save
+snapshot.
+Result rows include their actual case signatures, section IDs and terminal
+batch status, including partial results.
+
+Normal case solving and sectional solving cannot run simultaneously. Cancel
+requests stop at safe boundaries; already-running parallel cases can finish.
+Closing during a run requests cancellation and waits for calculation, automatic
+export of successful pairs, and worker cleanup. Ordinary runs remain disabled
+until both calculation and saving finish.
+If saving fails while a close request is waiting, the window remains open so
+you can use **Retry Save...** or close it yourself.
+No intermediate Summary CSV or VTP is required or created by sectional runs.
+
+For an FMF example, open `examples/fmf/flow_modes.csv`; for Hypersonic, open
+`examples/hypersonic/basic.csv`. Both work with `examples/sectional_loads.csv`.
+
 ## Organize the workspace
 
 The case table shows all input fields, including extra fields, in their declared

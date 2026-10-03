@@ -343,8 +343,14 @@ Use a separate long-format CSV, not the existing Summary CSV. One row represents
 - `scope` is `total` or `component`; component ID is blank for total and the
   original nonnegative mesh ID for component rows.
 - Zero-based bin index, lower/upper bound, center, and width in metres.
-- Wetted area in m² and the primitive strip coefficient values above, with
-  explicit frames and units for vector components.
+- Wetted area in m² and the eight strip aerodynamic coefficients
+  `delta_CA`, `delta_CY`, `delta_CN`, `delta_Cl`, `delta_Cm`, `delta_Cn`,
+  `delta_CD`, and `delta_CL`.
+
+Accepted CSV scope amendment (2026-10-02): at the user's explicit request,
+coordinate-vector and moment-area coefficient columns are omitted from the
+CSV. The numerical result and Python API still expose those quantities; their
+contracts and calculations are unchanged.
 
 Emit empty bins and individual component rows even for one component. Order
 rows by input case order, definition-file order after filtering, total then

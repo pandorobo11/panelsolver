@@ -71,7 +71,7 @@ def test_cli_real_batch_independent_filters_and_no_intermediate_artifacts(
     all_rows = _rows(paths[2])
     assert len(all_rows) == 2 * (3 + 2) * 2
     assert {row["batch_status"] for row in all_rows} == {"completed"}
-    assert {row["completed_pairs"] for row in all_rows} == {"4"}
+    assert len({(row["case_id"], row["section_id"]) for row in all_rows}) == 4
     assert not (tmp_path / "unused-vtp").exists()
     assert (
         main(_args(domain, paths) + ["--cases", "case_002", "--sections", "a,b"]) == 0
@@ -81,10 +81,7 @@ def test_cli_real_batch_independent_filters_and_no_intermediate_artifacts(
         r for r in all_rows if r["case_id"] == "case_002" and r["section_id"] == "a,b"
     ]
     assert len(selected) == len(expected) == 4
-    for got, wanted in zip(selected, expected, strict=True):
-        for key in got:
-            if key not in {"requested_pairs", "completed_pairs"}:
-                assert got[key] == wanted[key]
+    assert selected == expected
     if domain == "fmf":
         # Mode B is part of the actual command run, not converted to public Mode A inputs.
         assert {r["case_id"] for r in all_rows} == {"case_001", "case_002"}
@@ -127,7 +124,7 @@ def test_cli_partial_failure_and_save_failure_are_distinct(tmp_path, capsys):
     partial = _rows(paths[2])
     assert {row["section_id"] for row in partial} == {"good"}
     assert {row["batch_status"] for row in partial} == {"failed"}
-    assert {row["completed_pairs"] for row in partial} == {"1"}
+    assert len({(row["case_id"], row["section_id"]) for row in partial}) == 1
     assert "section_id='bad'" in capsys.readouterr().err
     previous = paths[2].read_bytes()
     with patch(
@@ -158,7 +155,7 @@ def test_cli_cooperative_sigint_retains_partial_and_restores_handler(tmp_path, c
     assert signal.getsignal(signal.SIGINT) is previous
     rows = _rows(paths[2])
     assert {row["batch_status"] for row in rows} == {"cancelled"}
-    assert {row["completed_pairs"] for row in rows} == {"2"}
+    assert len({(row["case_id"], row["section_id"]) for row in rows}) == 2
     assert "partial" in capsys.readouterr().err
 
 

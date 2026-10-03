@@ -88,8 +88,7 @@ def _run_probe(tmp_path: Path, *, group_signal: bool) -> None:
         rows = list(csv.DictReader(stream))
     assert len(rows) == 80
     assert {row["batch_status"] for row in rows} == {"cancelled"}
-    assert {row["completed_pairs"] for row in rows} == {"6"}
-    assert {row["requested_pairs"] for row in rows} == {"6"}
+    assert len({(row["case_id"], row["section_id"]) for row in rows}) == 6
     assert list(dict.fromkeys(row["case_id"] for row in rows)) == [
         "fmf_mode_a",
         "fmf_mode_b",

@@ -69,9 +69,8 @@ the supported Python integration surfaces.
 dedicated `panelsolver.postprocess` stable surface for sectional aerodynamic
 loads, implemented by A4 without adding root exports. Its numerical
 definition, geometry, and integration belong to core; the public wrapper adapts
-retained solve context into that core boundary. The CLI uses an
-application-owned definition reader, batch service, and export path, also
-intended for A6 GUI composition. The
+retained solve context into that core boundary. The CLI and GUI use the same
+application-owned definition reader, batch service, and export path. The
 `SolveResult` retains the immutable mesh and common case privately from the same
 execution, without rereading STL or rerunning physics. The retained field is not
 a constructor argument, so manually constructed or `dataclasses.replace` results
@@ -115,13 +114,30 @@ A1 owns numerical validation. `run_sectional_cases` reuses product case
 adaptation and the existing case scheduler, evaluates physics once per case,
 and projects every selected definition before releasing the full execution.
 Only compact CSV rows, counts and failure identities cross the worker boundary.
-The final projection follows input case/definition order, and records terminal
-batch status and completion counts. Cancellation and observed failures request
+The final CSV projection follows input case/definition order and records terminal
+batch status. Completion counts remain in the batch result for CLI/GUI status. Cancellation and observed failures request
 a cooperative stop and drain already-dispatched work at case boundaries.
 Export reuses protected-path validation and atomic CSV writing. There is no
 Summary/VTP round trip, new cache, checkpoint system or physical signature.
 `app.sectional_cli` owns selection and presentation; the top-level dispatcher
-only routes the new subcommand. GUI composition remains A6 work.
+only routes the new subcommand.
+
+The A6 `app.sectional_dialog` is a persistent modeless, read-only definition
+selection and run/save status surface. Numerical results are written to CSV,
+without a result table in the dialog. Domain adapters bind the same batch service
+to the current runtime policy. A concrete Qt worker executes frozen case/definition snapshots;
+only compact results survive completion. Normal and sectional runs exclude each
+other until thread cleanup. The case scope reuses ordinary selection semantics:
+selected cases or all loaded cases when none are selected. Definitions likewise
+default to all loaded definitions when unselected, independently of case scope.
+Run chooses and validates the output destination
+before solving. Calculation cleanup hands off successful pairs to the existing
+export worker without releasing the run guard or notifying completion between
+phases. Cooperative cancellation retains and saves successful pairs with their
+actual terminal status. The export worker uses the retained
+result and protected input paths. The GUI has no general Export action; a save
+failure exposes Retry Save for that retained snapshot without a solve. The
+viewer's VTP and ordinary solve results are never sectional inputs.
 
 ## Execution and artifacts
 

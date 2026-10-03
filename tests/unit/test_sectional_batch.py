@@ -110,33 +110,25 @@ def test_schema_is_fixed_and_contains_no_cumulative_or_density_fields():
         "case_signature",
         "section_id",
         "batch_status",
-        "requested_pairs",
-        "completed_pairs",
         "origin_x_stl_m",
         "origin_y_stl_m",
         "origin_z_stl_m",
-        "direction_x_stl",
-        "direction_y_stl",
-        "direction_z_stl",
         "direction_hat_x_stl",
         "direction_hat_y_stl",
         "direction_hat_z_stl",
-        "requested_component_ids",
         "selected_component_ids",
         "all_components_selected",
         "range_mode",
-        "requested_start_m",
-        "requested_stop_m",
         "resolved_start_m",
         "resolved_stop_m",
         "selected_geometry_min_m",
         "selected_geometry_max_m",
         "covers_selected_geometry",
         "bin_count",
-        "Aref_m2",
         "ref_x_stl_m",
         "ref_y_stl_m",
         "ref_z_stl_m",
+        "Aref_m2",
         "Lref_Cl_m",
         "Lref_Cm_m",
         "Lref_Cn_m",
@@ -149,34 +141,19 @@ def test_schema_is_fixed_and_contains_no_cumulative_or_density_fields():
         "bin_center_m",
         "bin_width_m",
         "wetted_area_m2",
-        "delta_force_coeff_x_stl",
-        "delta_force_coeff_y_stl",
-        "delta_force_coeff_z_stl",
-        "delta_force_coeff_x_body",
-        "delta_force_coeff_y_body",
-        "delta_force_coeff_z_body",
-        "delta_force_coeff_x_stability",
-        "delta_force_coeff_y_stability",
-        "delta_force_coeff_z_stability",
-        "delta_moment_area_coeff_x_body_m",
-        "delta_moment_area_coeff_y_body_m",
-        "delta_moment_area_coeff_z_body_m",
-        "delta_moment_coeff_x_body",
-        "delta_moment_coeff_y_body",
-        "delta_moment_coeff_z_body",
         "delta_CA",
         "delta_CY",
         "delta_CN",
-        "delta_CD",
-        "delta_CL",
         "delta_Cl",
         "delta_Cm",
         "delta_Cn",
+        "delta_CD",
+        "delta_CL",
     )
 
 
 @pytest.mark.parametrize("domain", DOMAINS)
-def test_matches_public_api_all_frames_references_and_identity(domain):
+def test_matches_public_api_coefficients_references_and_identity(domain):
     rows = _rows(domain, components=2)
     definition = _definition(
         "oblique, α", direction=(0.2, 0.9, 0.4), component_ids=(1,)
@@ -202,25 +179,6 @@ def test_matches_public_api_all_frames_references_and_identity(domain):
         ("component", expected.components[0].distribution),
     ):
         actual = [row for row in result.csv.rows if row["scope"] == scope]
-        for frame in ("stl", "body", "stability"):
-            np.testing.assert_array_equal(
-                [
-                    [row[f"delta_force_coeff_{axis}_{frame}"] for axis in "xyz"]
-                    for row in actual
-                ],
-                getattr(distribution, f"force_coeff_{frame}"),
-            )
-        for prefix, suffix, name in (
-            ("delta_moment_area_coeff", "body_m", "moment_area_coeff_body_m"),
-            ("delta_moment_coeff", "body", "moment_coeff_body"),
-        ):
-            np.testing.assert_array_equal(
-                [
-                    [row[f"{prefix}_{axis}_{suffix}"] for axis in "xyz"]
-                    for row in actual
-                ],
-                getattr(distribution, name),
-            )
         for name in ("CA", "CY", "CN", "CD", "CL", "Cl", "Cm", "Cn"):
             np.testing.assert_array_equal(
                 [row[f"delta_{name}"] for row in actual], getattr(distribution, name)
@@ -231,9 +189,7 @@ def test_matches_public_api_all_frames_references_and_identity(domain):
         for row in actual:
             assert row["case_signature"] == solved.case_signature
             assert row["section_id"] == "oblique, α"
-            assert (
-                row["requested_component_ids"] == row["selected_component_ids"] == "1"
-            )
+            assert row["selected_component_ids"] == "1"
             assert row["all_components_selected"] is False
             assert row["Aref_m2"] == 2.7
             assert row["Lref_Cm_m"] == 2.3
@@ -344,8 +300,7 @@ def test_missing_component_is_failure_not_zero_and_keeps_successful_prefix():
     assert "absent from mesh" in result.errors[0].message
     assert {row["section_id"] for row in result.csv.rows} == {"001"}
     assert {row["batch_status"] for row in result.csv.rows} == {"failed"}
-    assert {row["completed_pairs"] for row in result.csv.rows} == {1}
-    assert {row["requested_pairs"] for row in result.csv.rows} == {6}
+    assert len({(row["case_id"], row["section_id"]) for row in result.csv.rows}) == 1
 
 
 def test_physics_and_auto_range_failure_have_distinct_labels():

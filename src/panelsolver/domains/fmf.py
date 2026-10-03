@@ -41,6 +41,8 @@ from panelsolver.app.csv_writer import (
     write_csv_atomic,
 )
 from panelsolver.app.examples import ExampleDefinition
+from panelsolver.app.sectional_batch import SectionalBatchResult, run_sectional_cases
+from panelsolver.app.solver_spec import GuiSectionalRunRequest
 from panelsolver.core import (
     CaseExecutionResult,
     CaseSignature,
@@ -484,12 +486,25 @@ def _run_gui_cases(request: GuiRunRequest) -> GuiRunResult:
     return gui_run_result_from_batch(request, result)
 
 
+def _run_gui_sectional_cases(request: GuiSectionalRunRequest) -> SectionalBatchResult:
+    return run_sectional_cases(
+        request.rows,
+        RUNTIME_POLICY,
+        request.definitions,
+        workers=request.workers,
+        logfn=request.log,
+        progress_cb=request.progress,
+        cancel_cb=request.cancel_requested,
+    )
+
+
 GUI_ADAPTERS = SolverGuiAdapters(
     read_cases=_read_gui_cases,
     build_case_signature=build_case_signature,
     run_cases=_run_gui_cases,
     validate_output_path=_validate_gui_output,
     resolve_velocity_hat_stl=_resolve_velocity,
+    run_sectional_cases=_run_gui_sectional_cases,
 )
 
 _PREFERRED_SCALARS = (
