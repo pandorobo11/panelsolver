@@ -170,13 +170,21 @@ class MainWindowMenuTests(unittest.TestCase):
 
     def test_each_domain_lists_only_its_examples(self) -> None:
         expected = {
-            "FMF": ["Basic", "Attitude Modes", "Components", "Flow Modes", "Shielding"],
+            "FMF": [
+                "Basic",
+                "Attitude Modes",
+                "Components",
+                "Flow Modes",
+                "Shielding",
+                "Sectional Loads",
+            ],
             "Hypersonic": [
                 "Basic",
                 "Attitude Modes",
                 "Components",
                 "Pressure Models",
                 "Shielding",
+                "Sectional Loads",
             ],
         }
         for spec in (fmf_spec(), hypersonic_spec()):

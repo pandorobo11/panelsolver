@@ -530,6 +530,7 @@ def _smoke_packaged_documentation() -> None:
 
 def _smoke_packaged_examples(staging: Path) -> None:
     from panelsolver.app import ExampleLibrary
+    from panelsolver.app.sectional_definitions import read_sectional_definitions
     from panelsolver.domains import fmf, hypersonic
 
     library = ExampleLibrary()
@@ -542,6 +543,10 @@ def _smoke_packaged_examples(staging: Path) -> None:
                 / Path(example.input_resource).stem
             )
             input_path = library.copy_example(example, destination)
+            if example.sectional_definition_resource is not None:
+                read_sectional_definitions(
+                    destination / example.sectional_definition_resource
+                )
             frame = module.read_cases(input_path)
             if frame.empty:
                 raise RuntimeError(f"installed example did not load: {input_path}")

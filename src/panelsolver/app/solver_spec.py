@@ -416,9 +416,14 @@ class SolverSpec:
         if any(not isinstance(example, ExampleDefinition) for example in examples):
             raise TypeError("SolverSpec.examples must contain ExampleDefinition values")
         labels = tuple(example.label for example in examples)
-        inputs = tuple(example.input_resource for example in examples)
+        inputs = tuple(
+            (example.input_resource, example.sectional_definition_resource)
+            for example in examples
+        )
         if len(labels) != len(set(labels)) or len(inputs) != len(set(inputs)):
-            raise ValueError("SolverSpec.examples must have unique labels and inputs")
+            raise ValueError(
+                "SolverSpec.examples must have unique labels and input combinations"
+            )
         object.__setattr__(self, "examples", examples)
 
 

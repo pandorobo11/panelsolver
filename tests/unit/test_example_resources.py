@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import tempfile
 import unittest
+from dataclasses import replace
 from pathlib import Path
 
 from panelsolver.app import ExampleLibrary
+from panelsolver.app.examples import ExampleDefinition
+from panelsolver.app.sectional_definitions import read_sectional_definitions
 from panelsolver.domains import fmf, hypersonic
 
 
@@ -23,6 +26,11 @@ class ExampleResourceTests(unittest.TestCase):
                         destination = base / domain / Path(example.input_resource).stem
                         input_path = library.copy_example(example, destination)
                         self.assertTrue(input_path.is_file())
+                        if example.sectional_definition_resource is not None:
+                            definitions = read_sectional_definitions(
+                                destination / example.sectional_definition_resource
+                            )
+                            self.assertEqual(3, len(definitions))
                         frame = module.read_cases(input_path)
                         self.assertGreater(len(frame), 0)
                         resolved_destination = destination.resolve(strict=False)
@@ -44,6 +52,23 @@ class ExampleResourceTests(unittest.TestCase):
             input_path.write_text("user edit\n", encoding="utf-8")
             with self.assertRaisesRegex(RuntimeError, "overwrite"):
                 library.copy_example(example, destination)
+
+    def test_sectional_resource_validation_and_unique_input_combinations(self):
+        for resource in ("../sections.csv", "/sections.csv", "sections.txt"):
+            with self.subTest(resource=resource), self.assertRaises(ValueError):
+                ExampleDefinition(
+                    "Sections", "fmf/basic.csv", sectional_definition_resource=resource
+                )
+        with self.assertRaises(ValueError):
+            ExampleDefinition(
+                "Sections", "fmf/basic.csv", ("sections.csv",), "sections.csv"
+            )
+        spec = fmf.gui_spec()
+        with self.assertRaises(ValueError):
+            replace(
+                spec,
+                examples=(*spec.examples, replace(spec.examples[0], label="Duplicate")),
+            )
 
 
 if __name__ == "__main__":

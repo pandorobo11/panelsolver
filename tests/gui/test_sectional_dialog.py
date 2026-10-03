@@ -129,6 +129,110 @@ class SectionalDialogTests(unittest.TestCase):
                 | QtCore.QItemSelectionModel.SelectionFlag.Rows,
             )
 
+    def test_sectional_example_copies_loads_and_runs_both_domains(self):
+        for domain in (fmf, hypersonic):
+            with self.subTest(domain=domain.RUNTIME_POLICY.product_id):
+                window, panel, dialog = self.make_window(domain)
+                dialog.close()
+                destination = self.root / domain.RUNTIME_POLICY.product_id
+                action = next(
+                    a for a in window.example_actions if a.text() == "Sectional Loads"
+                )
+                with patch.object(
+                    QtWidgets.QFileDialog,
+                    "getExistingDirectory",
+                    return_value=str(destination),
+                ):
+                    action.trigger()
+                self.assertTrue(dialog.isVisible())
+                self.assertTrue(panel.input_path.is_relative_to(destination.resolve()))
+                self.assertEqual(
+                    destination.resolve() / "sectional_loads.csv",
+                    dialog.definition_path,
+                )
+                self.assertEqual(
+                    ["span", "oblique", "partial"],
+                    [d.section_id for d in dialog.definitions],
+                )
+                self.assertTrue(dialog.btn_run.isEnabled())
+                self.assertTrue(dialog.start_run(destination / "result.csv"))
+                self.wait_until(lambda dialog=dialog: not dialog.is_running())
+                self.assertEqual("completed", dialog.batch_result.status)
+                self.assertEqual(
+                    len(panel.case_rows) * 3, dialog.batch_result.completed_pairs
+                )
+                self.assertTrue((destination / "result.csv").is_file())
+                original = dialog.definition_path.read_bytes()
+                with (
+                    patch.object(
+                        QtWidgets.QFileDialog,
+                        "getSaveFileName",
+                        return_value=(str(dialog.definition_path), ""),
+                    ),
+                    patch.object(QtWidgets.QMessageBox, "critical") as error,
+                ):
+                    panel.request_run()
+                error.assert_called_once()
+                self.assertEqual(original, dialog.definition_path.read_bytes())
+
+    def test_sectional_example_cancel_and_collision_preserve_loaded_inputs(self):
+        window, panel, dialog = self.make_window()
+        action = next(
+            a for a in window.example_actions if a.text() == "Sectional Loads"
+        )
+        previous = (
+            panel.input_path,
+            panel.case_rows,
+            dialog.definition_path,
+            dialog.definitions,
+        )
+        with (
+            patch.object(
+                QtWidgets.QFileDialog, "getExistingDirectory", return_value=""
+            ),
+            patch.object(window._example_library, "copy_example") as copy,
+        ):
+            action.trigger()
+        copy.assert_not_called()
+        destination = self.root / "collision"
+        destination.mkdir()
+        definition = destination / "sectional_loads.csv"
+        definition.write_text("user-edited definitions")
+        with (
+            patch.object(
+                QtWidgets.QFileDialog,
+                "getExistingDirectory",
+                return_value=str(destination),
+            ),
+            patch.object(QtWidgets.QMessageBox, "critical") as error,
+        ):
+            action.trigger()
+        error.assert_called_once()
+        self.assertEqual("user-edited definitions", definition.read_text())
+        self.assertEqual(
+            previous,
+            (
+                panel.input_path,
+                panel.case_rows,
+                dialog.definition_path,
+                dialog.definitions,
+            ),
+        )
+        self.assertFalse((destination / "fmf").exists())
+
+    def test_sectional_example_blocked_during_calculation(self):
+        window, panel, dialog = self.make_window()
+        action = next(
+            a for a in window.example_actions if a.text() == "Sectional Loads"
+        )
+        for owner in (panel, dialog):
+            with (
+                patch.object(owner, "is_running", return_value=True),
+                patch.object(QtWidgets.QFileDialog, "getExistingDirectory") as picker,
+            ):
+                action.trigger()
+            picker.assert_not_called()
+
     def test_read_only_open_reload_and_default_all_selection(self):
         window, panel, dialog = self.make_window()
         self.assertTrue(dialog.btn_run.isEnabled())
