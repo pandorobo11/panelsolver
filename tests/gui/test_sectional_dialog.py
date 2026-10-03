@@ -174,6 +174,81 @@ class SectionalDialogTests(unittest.TestCase):
         window.open_sectional_loads()
         self.assertIs(window.sectional_dialog, dialog)
 
+    def test_normal_run_rejects_loaded_definition_output(self):
+        for domain in (fmf, hypersonic):
+            with self.subTest(domain=domain.RUNTIME_POLICY.product_id):
+                _window, panel, dialog = self.make_window(domain)
+                dialog.close()
+                original = self.definition_path.read_bytes()
+                with (
+                    patch.object(
+                        QtWidgets.QFileDialog,
+                        "getSaveFileName",
+                        return_value=(str(self.definition_path), "CSV (*.csv)"),
+                    ),
+                    patch.object(QtWidgets.QMessageBox, "critical") as error,
+                    patch.object(panel, "start_run") as start,
+                ):
+                    panel.request_run()
+                start.assert_not_called()
+                error.assert_called_once()
+                self.assertEqual(original, self.definition_path.read_bytes())
+
+    def test_normal_output_protection_tracks_reload_and_loaded_symlink_target(self):
+        _window, panel, dialog = self.make_window()
+        source = self.root / "source.csv"
+        source.symlink_to(self.definition_path)
+        self.assertTrue(dialog.load_definitions(source))
+        replacement = self.root / "replacement.csv"
+        replacement.write_bytes(self.definition_path.read_bytes())
+        source.unlink()
+        source.symlink_to(replacement)
+        alias = self.root / "alias.csv"
+        alias.hardlink_to(self.definition_path)
+        for output in (self.definition_path, source, replacement, alias):
+            with self.subTest(output=output.name):
+                original = output.read_bytes()
+                with (
+                    patch.object(
+                        QtWidgets.QFileDialog,
+                        "getSaveFileName",
+                        return_value=(str(output), "CSV (*.csv)"),
+                    ),
+                    patch.object(QtWidgets.QMessageBox, "critical") as error,
+                    patch.object(panel, "start_run") as start,
+                ):
+                    panel.request_run()
+                start.assert_not_called()
+                error.assert_called_once()
+                self.assertEqual(original, output.read_bytes())
+        replacement.write_text("invalid definition")
+        dialog.reload_definitions()
+        with (
+            patch.object(
+                QtWidgets.QFileDialog,
+                "getSaveFileName",
+                return_value=(str(replacement), "CSV (*.csv)"),
+            ),
+            patch.object(QtWidgets.QMessageBox, "critical") as error,
+            patch.object(panel, "start_run") as start,
+        ):
+            panel.request_run()
+        start.assert_not_called()
+        error.assert_called_once()
+        self.assertTrue(dialog.load_definitions(self.definition_path))
+        with (
+            patch.object(
+                QtWidgets.QFileDialog,
+                "getSaveFileName",
+                return_value=(str(replacement), "CSV (*.csv)"),
+            ),
+            patch.object(QtWidgets.QMessageBox, "critical") as error,
+            patch.object(panel, "start_run") as start,
+        ):
+            panel.request_run()
+        start.assert_called_once()
+        error.assert_not_called()
+
     def test_real_both_domain_runs_match_service_and_solve_once_per_case(self):
         for domain in (fmf, hypersonic):
             with self.subTest(domain=domain.RUNTIME_POLICY.product_id):
@@ -607,12 +682,23 @@ class SectionalDialogTests(unittest.TestCase):
         )
         self.assertFalse(dialog.btn_run.isEnabled())
         self.assertFalse(dialog.btn_retry_save.isEnabled())
+        self.assertFalse(dialog.btn_open.isEnabled())
+        self.assertFalse(dialog.btn_reload.isEnabled())
+        previous = dialog.definitions
+        candidate = self.root / "during-normal.csv"
+        candidate.write_bytes(self.definition_path.read_bytes())
+        self.assertFalse(dialog.load_definitions(candidate))
+        self.assertEqual(self.definition_path, dialog.definition_path)
+        self.assertIs(previous, dialog.definitions)
         self.assertFalse(dialog.start_run(self.root / "automatic.csv"))
         self.assertFalse(dialog._save_results(self.root / "normal.csv"))
         self.wait_until(entered.is_set)
         release.set()
         self.wait_until(lambda: not panel.is_running())
         self.assertTrue(dialog.btn_run.isEnabled())
+        self.assertTrue(dialog.btn_open.isEnabled())
+        self.assertTrue(dialog.btn_reload.isEnabled())
+        self.assertTrue(dialog.load_definitions(candidate))
 
     def test_cancellation_keeps_partial_result_and_export_failure_is_retryable(self):
         entered = threading.Event()

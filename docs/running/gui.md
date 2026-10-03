@@ -59,6 +59,9 @@ explains cancellation boundaries and which outputs remain available.
 The definition table supports opening and reloading files, not definition
 editing. Edit the CSV externally and reload it before starting a new batch.
 A failed reload clears the runnable definitions and reports the error.
+The open definition CSV is protected from ordinary Summary CSV output as well
+as sectional output, including while the Sectional Loads window is hidden.
+Opening or reloading definitions is disabled during ordinary calculation.
 
 Starting a run freezes both selections and definitions. Later selection/file
 changes do not relabel completed results. Run and export status are separate:

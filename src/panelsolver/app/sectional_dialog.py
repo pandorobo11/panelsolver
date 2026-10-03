@@ -291,8 +291,10 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
         self.btn_run.setText(
             f"Run {'Selected' if selected else 'All'} Cases × Sections"
         )
-        self.btn_open.setEnabled(not busy)
-        self.btn_reload.setEnabled(not busy and self.definition_path is not None)
+        self.btn_open.setEnabled(not busy and not self._normal_running)
+        self.btn_reload.setEnabled(
+            not busy and not self._normal_running and self.definition_path is not None
+        )
         self.definition_table.setEnabled(not busy)
         self.btn_run.setEnabled(
             not busy and not self._normal_running and cases > 0 and sections > 0
@@ -334,15 +336,17 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
             self.load_definitions(self.definition_path)
 
     def load_definitions(self, path: str | Path) -> bool:
-        if self.is_running():
+        if self.is_running() or self.cases_panel.is_running():
             return False
         candidate = Path(path).expanduser().absolute()
         # Invalid reload disables execution instead of displaying new file text
         # while silently retaining the previous numerical definitions.
         self.definition_path = candidate
+        self.cases_panel.sectional_definition_paths = (candidate,)
         self.path_value.setText(str(candidate))
         try:
             resolved_source = candidate.resolve(strict=False)
+            self.cases_panel.sectional_definition_paths = (candidate, resolved_source)
             definitions = read_sectional_definitions(candidate)
         except Exception as exc:
             self.definitions = ()

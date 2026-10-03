@@ -10,6 +10,7 @@ from pathlib import Path
 import pyvista as pv
 from PySide6 import QtCore, QtWidgets
 
+from .csv_writer import validate_csv_output_path
 from .gui_components import FlowLayout, FrozenCaseTable, WorkbenchSpinBox
 from .gui_theme import set_semantic_property
 from .output_status import OutputKind, OutputPhase
@@ -227,6 +228,7 @@ class CasesPanel(QtWidgets.QWidget):
         self.case_rows: tuple[CaseRow, ...] = ()
         self.input_path: Path | None = None
         self._loaded_input_paths: tuple[Path, ...] = ()
+        self.sectional_definition_paths: tuple[Path, ...] = ()
         self._table_columns: tuple[str, ...] = ()
 
         self.input_value = QtWidgets.QLineEdit()
@@ -775,6 +777,7 @@ class CasesPanel(QtWidgets.QWidget):
                 self.input_path,
                 rows,
             )
+            validate_csv_output_path(output_path, self.sectional_definition_paths)
         except Exception as exc:
             self.logln(f"[ERROR] {exc}")
             QtWidgets.QMessageBox.critical(
