@@ -126,6 +126,8 @@ class MainWindow(QtWidgets.QMainWindow):
     def _add_example_action(self, example: ExampleDefinition) -> QtGui.QAction:
         action = QtGui.QAction(example.label, self)
         action.setData(example.input_resource)
+        if example.sectional_definition_resource is not None:
+            action.setEnabled(hasattr(self, "sectional_loads_action"))
         action.triggered.connect(
             lambda _checked=False, selected=example: self._new_from_example(selected)
         )
@@ -156,10 +158,17 @@ class MainWindow(QtWidgets.QMainWindow):
             )
             return
         self.cases_panel.logln(f"[OK] Copied example workspace: {destination}")
-        self.cases_panel.load_input_file(
+        if not self.cases_panel.load_input_file(
             input_path,
             remember_directory=False,
-        )
+        ):
+            return
+        if example.sectional_definition_resource is not None:
+            self.open_sectional_loads()
+            self.sectional_dialog.load_definitions(
+                Path(destination).expanduser().resolve(strict=False)
+                / example.sectional_definition_resource
+            )
 
     def open_sectional_loads(self) -> None:
         if self.sectional_dialog is None:

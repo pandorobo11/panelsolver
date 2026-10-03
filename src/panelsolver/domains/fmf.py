@@ -543,6 +543,12 @@ _GUI_EXAMPLES = (
         "fmf/shielding.csv",
         ("geometry/double_plate.stl",),
     ),
+    ExampleDefinition(
+        "Sectional Loads",
+        "fmf/flow_modes.csv",
+        ("geometry/plate.stl",),
+        sectional_definition_resource="sectional_loads.csv",
+    ),
 )
 
 

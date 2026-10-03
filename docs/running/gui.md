@@ -39,6 +39,15 @@ explains cancellation boundaries and which outputs remain available.
 
 ## Sectional load batches
 
+To start with a complete example, choose **File > New from Example > Sectional
+Loads** and select a workspace directory. This copies the current domain's case
+table (FMF Flow Modes or Hypersonic Basic), its STL geometry, and
+`sectional_loads.csv`. The case table and the Sectional Loads dialog open with
+those copied inputs, ready to run. Existing modified files are not overwritten.
+Edit the copied definition CSV externally and use **Reload** to try changes.
+
+For your own files:
+
 1. Open a case table. Select case rows to run a subset, or leave the case selection
    empty to run all loaded cases, as with ordinary calculation.
 2. Choose **File > Sectional Loads...** and open a separate
