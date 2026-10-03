@@ -572,6 +572,12 @@ _GUI_EXAMPLES = (
         "hypersonic/shielding.csv",
         ("geometry/double_plate.stl",),
     ),
+    ExampleDefinition(
+        "Sectional Loads",
+        "hypersonic/basic.csv",
+        ("geometry/plate.stl",),
+        sectional_definition_resource="sectional_loads.csv",
+    ),
 )
 
 

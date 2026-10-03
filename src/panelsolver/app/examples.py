@@ -34,6 +34,7 @@ class ExampleDefinition:
     label: str
     input_resource: str
     supporting_resources: tuple[str, ...] = ()
+    sectional_definition_resource: str | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.label, str) or not self.label.strip():
@@ -61,16 +62,33 @@ class ExampleDefinition:
             )
             for value in supporting
         )
-        all_resources = (input_resource, *supporting)
+        sectional = self.sectional_definition_resource
+        if sectional is not None:
+            sectional = _resource_path(
+                sectional, field="ExampleDefinition.sectional_definition_resource"
+            )
+            if PurePosixPath(sectional).suffix.lower() != ".csv":
+                raise ValueError("sectional definition resource must be a CSV")
+        all_resources = (
+            input_resource,
+            *supporting,
+            *((sectional,) if sectional else ()),
+        )
         if len(all_resources) != len(set(all_resources)):
             raise ValueError("ExampleDefinition resources must be unique")
         object.__setattr__(self, "label", self.label.strip())
         object.__setattr__(self, "input_resource", input_resource)
         object.__setattr__(self, "supporting_resources", supporting)
+        object.__setattr__(self, "sectional_definition_resource", sectional)
 
     @property
     def resources(self) -> tuple[str, ...]:
-        return (self.input_resource, *self.supporting_resources)
+        sectional = self.sectional_definition_resource
+        return (
+            self.input_resource,
+            *self.supporting_resources,
+            *((sectional,) if sectional else ()),
+        )
 
 
 class ExampleLibrary:
