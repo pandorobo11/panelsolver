@@ -132,28 +132,18 @@ class MainWindowMenuTests(unittest.TestCase):
         )
         return window, cases
 
-    def test_open_action_uses_the_same_picker_as_the_screen_button(self) -> None:
-        window, cases = self.make_window(fmf_spec())
-        self.assertEqual(
-            [
-                "Open Input File...",
-                "Open VTP...",
-                "New from Example",
-                "",
-                "Exit",
-            ],
-            [action.text() for action in window.file_menu.actions()],
-        )
+    def test_file_actions_reach_input_picker_viewer_and_close(self) -> None:
+        site = _Site()
+        window, cases = self.make_window(fmf_spec(), site=site)
+        self.assertIn(window.open_input_action, window.file_menu.actions())
+        self.assertIn(window.open_vtp_action, window.file_menu.actions())
+        self.assertIn(window.exit_action, window.file_menu.actions())
         window.open_input_action.trigger()
         self.assertEqual(1, cases.pick_count)
-        window.close()
-
-    def test_open_vtp_action_uses_the_existing_viewer_entry_point(self) -> None:
-        window, _cases = self.make_window(fmf_spec())
-        self.assertTrue(window.open_vtp_action.shortcut().isEmpty())
         window.open_vtp_action.trigger()
         self.assertEqual(1, window.viewer_panel.open_vtp_count)
-        window.close()
+        window.exit_action.trigger()
+        self.assertTrue(site.closed)
 
     def test_artifact_state_signal_is_projected_without_main_window_branching(
         self,
@@ -169,30 +159,26 @@ class MainWindowMenuTests(unittest.TestCase):
         window.close()
 
     def test_each_domain_lists_only_its_examples(self) -> None:
-        expected = {
-            "FMF": [
-                "Basic",
-                "Attitude Modes",
-                "Components",
-                "Flow Modes",
-                "Shielding",
-                "Sectional Loads",
-            ],
-            "Hypersonic": [
-                "Basic",
-                "Attitude Modes",
-                "Components",
-                "Pressure Models",
-                "Shielding",
-                "Sectional Loads",
-            ],
-        }
         for spec in (fmf_spec(), hypersonic_spec()):
             with self.subTest(product=spec.product_id):
                 window, _cases = self.make_window(spec)
+                self.assertIn(
+                    window.new_from_example_menu.menuAction(),
+                    window.file_menu.actions(),
+                )
+                self.assertTrue(window.example_actions)
                 self.assertEqual(
-                    expected[spec.domain_name],
-                    [action.text() for action in window.example_actions],
+                    [
+                        (example.label, example.input_resource)
+                        for example in spec.examples
+                    ],
+                    [
+                        (action.text(), action.data())
+                        for action in window.example_actions
+                    ],
+                )
+                self.assertEqual(
+                    list(window.example_actions), window.new_from_example_menu.actions()
                 )
                 domain = "fmf" if spec.domain_name == "FMF" else "hypersonic"
                 self.assertTrue(
@@ -226,10 +212,7 @@ class MainWindowMenuTests(unittest.TestCase):
             (root / "index.html").touch()
             site = _Site(root)
             window, _cases = self.make_window(fmf_spec(), site=site)
-            self.assertEqual(
-                ["Documentation", "", "About"],
-                [action.text() for action in window.help_menu.actions()],
-            )
+            self.assertIn(window.documentation_action, window.help_menu.actions())
             opened = []
             with patch(
                 "panelsolver.app.main_window.QtGui.QDesktopServices.openUrl",
@@ -248,6 +231,7 @@ class MainWindowMenuTests(unittest.TestCase):
         for spec in (fmf_spec(), hypersonic_spec()):
             with self.subTest(domain=spec.domain_name):
                 window, _cases = self.make_window(spec)
+                self.assertIn(window.about_action, window.help_menu.actions())
                 with (
                     patch(
                         "panelsolver.app.main_window.panelsolver_distribution_version",

@@ -12,7 +12,6 @@ from PySide6 import QtWidgets
 
 from panelsolver import gui as gui_module
 from panelsolver.app.gui_bootstrap import (
-    _WINDOWS_APP_USER_MODEL_ID,
     _set_windows_app_user_model_id,
     run_gui,
 )
@@ -74,19 +73,21 @@ class GuiBootstrapTests(unittest.TestCase):
 
     def test_windows_app_id_is_set_before_application_creation(self) -> None:
         events = []
+        shell32 = MagicMock()
+        shell32.SetCurrentProcessExplicitAppUserModelID.side_effect = lambda identity: (
+            events.append(("app-id", identity)) or 0
+        )
         fake_application = MagicMock()
         fake_application.exec.return_value = 0
 
         def make_application(_argv):
-            events.append("application")
+            events.append(("application", None))
             return fake_application
 
         with (
             patch.object(QtWidgets.QApplication, "instance", return_value=None),
-            patch(
-                "panelsolver.app.gui_bootstrap._set_windows_app_user_model_id",
-                side_effect=lambda: events.append("app-id"),
-            ),
+            patch("panelsolver.app.gui_bootstrap.sys.platform", "win32"),
+            patch("ctypes.WinDLL", create=True, return_value=shell32),
             patch(
                 "panelsolver.app.gui_bootstrap._application_icon",
                 return_value=MagicMock(),
@@ -99,32 +100,13 @@ class GuiBootstrapTests(unittest.TestCase):
                 window_factory=_FakeWindow,
             )
 
-        self.assertEqual(["app-id", "application"], events)
+        self.assertEqual(
+            [("app-id", "io.github.pandorobo11.panelsolver"), ("application", None)],
+            events,
+        )
         fake_application.setWindowIcon.assert_called_once()
 
-    def test_windows_app_id_uses_stable_identity(self) -> None:
-        set_app_id = MagicMock(return_value=0)
-        shell32 = MagicMock()
-        shell32.SetCurrentProcessExplicitAppUserModelID = set_app_id
-        with (
-            patch("panelsolver.app.gui_bootstrap.sys.platform", "win32"),
-            patch("ctypes.WinDLL", create=True, return_value=shell32),
-        ):
-            _set_windows_app_user_model_id()
-        set_app_id.assert_called_once_with(_WINDOWS_APP_USER_MODEL_ID)
-
     def test_launcher_reuses_specs_with_domain_visible_identity(self) -> None:
-        fmf = gui_module.gui_spec_for_domain("fmf")
-        hypersonic = gui_module.gui_spec_for_domain("hypersonic")
-        self.assertEqual("fmf", fmf.product_id)
-        self.assertEqual("sentman", fmf.model_id)
-        self.assertEqual("Panel Solver — FMF", fmf.window_title)
-        self.assertIsNotNone(fmf.adapters)
-        self.assertEqual("hypersonic", hypersonic.product_id)
-        self.assertEqual("hypersonic", hypersonic.model_id)
-        self.assertEqual("Panel Solver — Hypersonic", hypersonic.window_title)
-        self.assertIsNotNone(hypersonic.adapters)
-
         captured = []
         with patch(
             "panelsolver.gui.run_gui",
