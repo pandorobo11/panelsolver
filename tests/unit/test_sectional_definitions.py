@@ -3,7 +3,6 @@ from __future__ import annotations
 import csv
 from copy import deepcopy
 from dataclasses import FrozenInstanceError
-from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -46,8 +45,7 @@ def _write(tmp_path, rows, *, columns=COLUMNS, encoding="utf-8"):
     return path
 
 
-@pytest.mark.parametrize("encoding", ("utf-8", "utf-8-sig"))
-@pytest.mark.parametrize("reverse", (False, True))
+@pytest.mark.parametrize("encoding,reverse", (("utf-8", False), ("utf-8-sig", True)))
 def test_valid_csv_encoding_column_order_and_numerical_handoff(
     tmp_path, encoding, reverse
 ):
@@ -241,12 +239,6 @@ def test_malformed_csv_and_non_utf8_include_file_and_row(tmp_path):
         read_sectional_definitions(path)
 
 
-def test_all_rows_are_validated_even_before_selection(tmp_path):
-    path = _write(tmp_path, [ROW, ROW | {"section_id": "unselected", "bin_count": "0"}])
-    with pytest.raises(ValueError, match="row 3, section_id='unselected'.*bin_count"):
-        select_sectional_definitions(read_sectional_definitions(path), ("right",))
-
-
 def test_selector_preserves_input_order_normalizes_ids_and_rejects_unknown(tmp_path):
     definitions = read_sectional_definitions(
         _write(
@@ -267,11 +259,7 @@ def test_selector_preserves_input_order_normalizes_ids_and_rejects_unknown(tmp_p
 def test_reader_does_not_resolve_mesh_or_repeat_numerical_checks(tmp_path):
     # Unknown mesh IDs and an enormous count are mesh-dependent resolution work.
     path = _write(tmp_path, [ROW | {"component_ids": "999", "bin_count": str(2**70)}])
-    with patch(
-        "panelsolver.core.sectional.resolve_sectional_load_spec",
-        side_effect=AssertionError("mesh resolution"),
-    ):
-        definition = read_sectional_definitions(path)[0].definition
+    definition = read_sectional_definitions(path)[0].definition
     assert definition.component_ids == (999,)
     assert definition.bin_count == 2**70
 

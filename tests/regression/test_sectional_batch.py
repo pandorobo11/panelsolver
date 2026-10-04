@@ -48,8 +48,11 @@ def _definitions():
     )
 
 
-@pytest.mark.parametrize("domain", (fmf, hypersonic), ids=("fmf", "hypersonic"))
-def test_representative_32_case_batch_matches_spawn_and_input_order(domain):
+def test_fmf_multicomponent_batch_matches_spawn_and_input_order(monkeypatch):
+    # Two workers must accept more than their initial dispatch. Hypersonic's
+    # application payload is exercised by the shielded batch below.
+    monkeypatch.setenv("PANELSOLVER_PARALLEL_CHUNK_CASES", "2")
+    domain = fmf
     name = domain.RUNTIME_POLICY.product_id
     source = domain.read_cases(EXAMPLES / name / "components.csv").iloc[0].to_dict()
     rows = tuple(
@@ -59,7 +62,7 @@ def test_representative_32_case_batch_matches_spawn_and_input_order(domain):
             "alpha_deg": float((index * 7) % 25),
             "save_vtp_on": 0,
         }
-        for index in range(32)
+        for index in range(5)
     )
     definitions = _definitions()
     serial = batch.run_sectional_cases(rows, domain.RUNTIME_POLICY, definitions)
@@ -67,8 +70,8 @@ def test_representative_32_case_batch_matches_spawn_and_input_order(domain):
         rows, domain.RUNTIME_POLICY, definitions, workers=2
     )
     assert serial.status == parallel.status == "completed"
-    assert serial.completed_pairs == parallel.completed_pairs == 96
-    assert serial.completed_cases == parallel.completed_cases == 32
+    assert serial.completed_pairs == parallel.completed_pairs == 15
+    assert serial.completed_cases == parallel.completed_cases == 5
     assert serial.csv == parallel.csv
     expected = [
         (row["case_id"], definition.section_id, scope, component, index)
@@ -89,9 +92,12 @@ def test_representative_32_case_batch_matches_spawn_and_input_order(domain):
     ] == expected
 
 
-@pytest.mark.parametrize("domain", (fmf, hypersonic), ids=("fmf", "hypersonic"))
 @pytest.mark.parametrize("backend", BACKENDS)
-def test_shielded_strips_keep_area_and_scheduler_recovers_input_order(domain, backend):
+def test_hypersonic_shielded_batch_preserves_area_and_input_order(backend, monkeypatch):
+    # Keep both ray backends here; core integration separately covers both
+    # domains x backends. This path owns mixed shielding and multi-case chunks.
+    monkeypatch.setenv("PANELSOLVER_PARALLEL_CHUNK_CASES", "2")
+    domain = hypersonic
     name = domain.RUNTIME_POLICY.product_id
     source = domain.read_cases(EXAMPLES / name / "shielding.csv").iloc[0].to_dict()
     rows = tuple(

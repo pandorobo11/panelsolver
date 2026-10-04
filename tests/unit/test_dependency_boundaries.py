@@ -45,14 +45,13 @@ def imported_names(path: Path, current: str) -> set[str]:
     return imports
 
 
-def internal_dependency_graph() -> dict[str, set[str]]:
-    modules = production_modules()
-    graph = {name: set() for name in modules}
-    for current, path in modules.items():
-        for imported in imported_names(path, current):
+def internal_dependency_graph(imports: dict[str, set[str]]) -> dict[str, set[str]]:
+    graph = {name: set() for name in imports}
+    for current, targets in imports.items():
+        for imported in targets:
             parts = imported.split(".")
             candidates = (".".join(parts[:end]) for end in range(len(parts), 0, -1))
-            target = next((item for item in candidates if item in modules), None)
+            target = next((item for item in candidates if item in imports), None)
             if target is not None:
                 graph[current].add(target)
     return graph
@@ -89,10 +88,45 @@ def _matches(name: str, prefixes: tuple[str, ...]) -> bool:
     return any(name == prefix or name.startswith(f"{prefix}.") for prefix in prefixes)
 
 
+def environment_dependencies(tree: ast.AST) -> set[str]:
+    aliases = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                name = alias.name if alias.asname else alias.name.split(".")[0]
+                aliases[alias.asname or name] = name
+        elif isinstance(node, ast.ImportFrom) and node.module == "os":
+            for alias in node.names:
+                aliases[alias.asname or alias.name] = f"os.{alias.name}"
+
+    def qualified_name(node):
+        if isinstance(node, ast.Name):
+            return aliases.get(node.id, node.id)
+        if isinstance(node, ast.Attribute):
+            return f"{qualified_name(node.value)}.{node.attr}"
+        return ""
+
+    # Inspect executable names, including import aliases, rather than matching
+    # comments/docstrings that explain why core must not read the environment.
+    return {
+        name
+        for node in ast.walk(tree)
+        if isinstance(node, (ast.Name, ast.Attribute))
+        if _matches(
+            name := qualified_name(node),
+            ("os.environ", "os.environb", "os.getenv", "os.getenvb"),
+        )
+    }
+
+
 class DependencyBoundaryTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.graph = internal_dependency_graph()
+        cls.imports = {
+            name: imported_names(path, name)
+            for name, path in production_modules().items()
+        }
+        cls.graph = internal_dependency_graph(cls.imports)
 
     def assert_edges_avoid(
         self,
@@ -101,7 +135,7 @@ class DependencyBoundaryTests(unittest.TestCase):
     ) -> None:
         violations = [
             f"{source} -> {target}"
-            for source, targets in self.graph.items()
+            for source, targets in self.imports.items()
             if _matches(source, sources)
             for target in sorted(targets)
             if _matches(target, forbidden)
@@ -123,33 +157,37 @@ class DependencyBoundaryTests(unittest.TestCase):
             cycle, "Internal dependency cycle: " + " -> ".join(cycle or ())
         )
 
-    def test_core_has_no_product_environment_identity_or_environment_reads(
-        self,
-    ) -> None:
-        prohibited = (
-            "FMFSOLVER_",
-            "NEWTSOLVER_",
-            "PANELSOLVER_",
-            "legacy_env_prefix",
-            "os.environ",
-            "os.getenv",
-        )
+    def test_core_does_not_read_process_environment(self) -> None:
         violations = [
             f"{path.relative_to(SRC_ROOT)}: {token}"
             for path in sorted((SRC_ROOT / "panelsolver" / "core").rglob("*.py"))
-            for token in prohibited
-            if token in path.read_text(encoding="utf-8")
+            for token in sorted(
+                environment_dependencies(ast.parse(path.read_text(encoding="utf-8")))
+            )
         ]
         self.assertEqual([], violations)
 
     def test_every_shared_layer_obeys_documented_inward_direction(self) -> None:
         self.assert_edges_avoid(
             ("panelsolver.core",),
-            ("panelsolver.models", "panelsolver.app"),
+            (
+                "panelsolver.models",
+                "panelsolver.app",
+                "panelsolver.domains",
+                "panelsolver.gui",
+                "PySide6",
+                "pyvistaqt",
+            ),
         )
         self.assert_edges_avoid(
             ("panelsolver.models",),
-            ("panelsolver.app",),
+            (
+                "panelsolver.app",
+                "panelsolver.domains",
+                "panelsolver.gui",
+                "PySide6",
+                "pyvistaqt",
+            ),
         )
 
     def test_models_do_not_own_filesystem_or_execution_infrastructure(self) -> None:

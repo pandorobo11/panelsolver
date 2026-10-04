@@ -39,14 +39,20 @@ class ComponentAggregationTests(unittest.TestCase):
         self.loads = LocalLoads([[1, 0, 0], [0, 0, 0], [3, 0, 0]])
 
     def test_sparse_components_are_sorted_and_sum_to_total(self) -> None:
-        integration = integrate_panel_loads(self.geometry, self.loads, case())
-        components = aggregate_component_results(
+        results = assemble_common_results(
+            case(),
+            ModelCasePayload("synthetic", {"mode": "test"}),
             self.geometry,
             self.flow,
-            integration,
-            case(),
-            metadata_by_component={7: {"source": "seven"}},
+            self.loads,
+            metadata={"run": "unit"},
+            metadata_by_component={2: {"name": "two"}, 7: {"source": "seven"}},
         )
+        components = results.components
+        self.assertEqual("synthetic", results.model_id)
+        self.assertEqual("unit", results.metadata["run"])
+        self.assertEqual("two", components[0].metadata["name"])
+        np.testing.assert_array_equal(results.total.force_coeff_stl, [4, 0, 0])
 
         self.assertEqual((2, 7), tuple(item.component_id for item in components))
         self.assertEqual((1, 2), tuple(item.face_count for item in components))
@@ -63,27 +69,8 @@ class ComponentAggregationTests(unittest.TestCase):
                 (item.integrated.force_coeff_stl for item in components),
                 start=np.zeros(3),
             ),
-            integration.total.force_coeff_stl,
+            results.total.force_coeff_stl,
         )
-
-    def test_assembler_builds_existing_common_results_contract(self) -> None:
-        results = assemble_common_results(
-            case(),
-            ModelCasePayload("synthetic", {"mode": "test"}),
-            self.geometry,
-            self.flow,
-            self.loads,
-            metadata={"run": "unit"},
-            metadata_by_component={2: {"name": "two"}},
-        )
-
-        self.assertEqual("synthetic", results.model_id)
-        self.assertEqual(
-            (2, 7), tuple(item.component_id for item in results.components)
-        )
-        self.assertEqual("unit", results.metadata["run"])
-        self.assertEqual("two", results.components[0].metadata["name"])
-        np.testing.assert_array_equal(results.total.force_coeff_stl, [4, 0, 0])
 
     def test_rejects_alignment_and_metadata_errors(self) -> None:
         integration = integrate_panel_loads(self.geometry, self.loads, case())

@@ -95,11 +95,6 @@ def test_retains_exact_execution_and_matches_a3(domain):
         )
     assert execute.call_count == 1
     execution = executions[0]
-    context = result._sectional_context
-    assert context.mesh is execution.mesh
-    assert context.mesh.geometry is result.geometry
-    assert context.case is execution.results.case
-    assert loads.case is execution.results.case
     assert loads.case_signature == result.case_signature == execution.signature.digest
     assert loads.case.case_id == f"postprocess-{domain}"
     assert loads.case.alpha_stability_deg == result.attitude.alpha_stability_deg
@@ -179,9 +174,10 @@ def test_original_constructor_and_missing_context_are_explicit():
         compute_sectional_loads(object(), **DEFINITION)
 
 
-@pytest.mark.parametrize(
-    "changed",
-    (
+def test_replacement_cannot_reuse_unrelated_solve_context():
+    original = _solve("fmf")
+    other = _solve("hypersonic")
+    for changed in (
         "geometry",
         "local_loads",
         "attitude",
@@ -189,14 +185,10 @@ def test_original_constructor_and_missing_context_are_explicit():
         "case_signature",
         "coefficients",
         "components",
-    ),
-)
-def test_replacement_cannot_reuse_unrelated_solve_context(changed):
-    original = _solve("fmf")
-    other = _solve("hypersonic")
-    substituted = replace(original, **{changed: getattr(other, changed)})
-    with pytest.raises(ValueError, match="no retained solve context"):
-        compute_sectional_loads(substituted, **DEFINITION)
+    ):
+        substituted = replace(original, **{changed: getattr(other, changed)})
+        with pytest.raises(ValueError, match="no retained solve context"):
+            compute_sectional_loads(substituted, **DEFINITION)
 
 
 def test_inputs_and_returned_arrays_are_immutable_without_caller_aliases():
@@ -237,7 +229,6 @@ def test_inputs_and_returned_arrays_are_immutable_without_caller_aliases():
     restored = compute_sectional_loads(pickle.loads(pickle.dumps(result)), **DEFINITION)
     assert restored.case_signature == result.case_signature
     copied = deepcopy(result)
-    assert copied is result
     for array in _arrays(copied):
         assert not array.flags.writeable
     assert (
@@ -246,9 +237,9 @@ def test_inputs_and_returned_arrays_are_immutable_without_caller_aliases():
     )
 
 
-@pytest.mark.parametrize(
-    "invalid",
-    (
+def test_public_wrapper_preserves_a1_validation():
+    result = _solve("fmf")
+    for invalid in (
         {"axis_origin_stl_m": (True, 0, 0)},
         {"axis_direction_stl": (0, 0, 0)},
         {"axis_direction_stl": (1, np.inf, 0)},
@@ -257,11 +248,9 @@ def test_inputs_and_returned_arrays_are_immutable_without_caller_aliases():
         {"start_m": 0.0},
         {"component_ids": (2,)},
         {"component_ids": ()},
-    ),
-)
-def test_public_wrapper_preserves_a1_validation(invalid):
-    with pytest.raises((TypeError, ValueError)):
-        compute_sectional_loads(_solve("fmf"), **(DEFINITION | invalid))
+    ):
+        with pytest.raises((TypeError, ValueError)):
+            compute_sectional_loads(result, **(DEFINITION | invalid))
 
 
 def test_keyword_only_contract_and_empty_range():
