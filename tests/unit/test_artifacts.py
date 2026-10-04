@@ -177,45 +177,24 @@ class ArtifactProjectionTests(unittest.TestCase):
 
             projection = project_vtp_artifact(
                 loaded.mesh,
-                results_for_mesh(loaded.mesh),
+                results_for_mesh(loaded.mesh, case_id="ケース"),
                 ArtifactProjectionPolicy(
                     "beta_tan",
                     "signature",
                     "not_used",
                     "1.0",
+                    vtp_field_data={"model_note": ["モデル固有の説明"]},
                 ),
             )
             output = Path(temp_dir) / "unicode-path.vtp"
             write_vtp_projection(output, projection)
 
-            stored = str(pv.read(output).field_data["stl_paths_json"][0])
+            poly = pv.read(output)
+            self.assertEqual("ケース", str(poly.field_data["case_id"][0]))
+            self.assertEqual("モデル固有の説明", str(poly.field_data["model_note"][0]))
+            stored = str(poly.field_data["stl_paths_json"][0])
             self.assertTrue(stored.isascii())
             self.assertEqual([str(source.resolve())], json.loads(stored))
-
-    def test_non_ascii_string_fields_round_trip_without_generic_escaping(self) -> None:
-        mesh, results = fixture(case_id="ケース")
-        projection = project_vtp_artifact(
-            mesh,
-            results,
-            ArtifactProjectionPolicy(
-                "beta_tan",
-                "signature",
-                "not_used",
-                "1.0",
-                vtp_field_data={"model_note": ["モデル固有の説明"]},
-            ),
-        )
-
-        with tempfile.TemporaryDirectory() as temp_dir:
-            output = Path(temp_dir) / "unicode-fields.vtp"
-            write_vtp_projection(output, projection)
-            poly = pv.read(output)
-
-        self.assertEqual("ケース", str(poly.field_data["case_id"][0]))
-        self.assertEqual("モデル固有の説明", str(poly.field_data["model_note"][0]))
-        self.assertEqual(
-            ["plate.stl"], json.loads(poly.field_data["stl_paths_json"][0])
-        )
 
     def test_policy_additions_cannot_override_common_fields(self) -> None:
         mesh, results = fixture()

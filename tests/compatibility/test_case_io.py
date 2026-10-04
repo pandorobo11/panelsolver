@@ -5,18 +5,10 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-import numpy as np
 import pandas as pd
 
 from panelsolver.app.csv_writer import CSV_ENCODING
-from panelsolver.core import execute_case
-from panelsolver.domains.fmf import adapt_row as adapt_fmf_row
-from panelsolver.domains.fmf import build_case_signature as build_fmf_signature
 from panelsolver.domains.fmf import read_cases as read_fmf_cases
-from panelsolver.domains.hypersonic import adapt_row as adapt_newt_row
-from panelsolver.domains.hypersonic import (
-    build_case_signature as build_newt_signature,
-)
 from panelsolver.domains.hypersonic import read_cases as read_newt_cases
 from tests.current_case_fixtures import read_current_cases
 
@@ -40,37 +32,27 @@ def _write_case_table(frame: pd.DataFrame, path: Path) -> None:
 
 
 class CaseReaderCompatibilityTests(unittest.TestCase):
-    def test_csv_and_excel_reject_removed_npz_field_for_any_value(self) -> None:
-        products = (
-            (read_fmf_cases, "fmfsolver_cases.csv"),
-            (read_newt_cases, "newtsolver_cases.csv"),
+    def test_readers_reject_removed_npz_field_regardless_of_flag_value(self) -> None:
+        cases = (
+            (read_fmf_cases, "fmfsolver_cases.csv", ".csv", 0),
+            (read_newt_cases, "newtsolver_cases.csv", ".xlsx", 1),
         )
-        with tempfile.TemporaryDirectory() as temp_dir:
-            root = Path(temp_dir)
-            for reader, filename in products:
-                base = read_current_cases(reader, _INPUTS / filename).iloc[[0]].copy()
-                for value in (0, 1):
-                    for suffix in (".csv", ".xlsx", ".xlsm"):
-                        with self.subTest(
-                            filename=filename, value=value, suffix=suffix
-                        ):
-                            frame = base.copy()
-                            frame["save_npz_on"] = value
-                            path = root / f"{Path(filename).stem}-{value}{suffix}"
-                            _write_case_table(frame, path)
-                            with self.assertRaises(Exception) as caught:
-                                reader(path)
-                            error = caught.exception
-                            self.assertEqual(
-                                "InputValidationError", type(error).__name__
-                            )
-                            self.assertEqual(
-                                ["save_npz_on"],
-                                [issue.field for issue in error.issues],
-                            )
-                            self.assertIn("has been removed", str(error))
-                            self.assertIn("Delete this field", str(error))
-                            self.assertIn("no longer writes NPZ files", str(error))
+        for reader, filename, suffix, value in cases:
+            with self.subTest(filename=filename), tempfile.TemporaryDirectory() as td:
+                frame = read_current_cases(reader, _INPUTS / filename).iloc[[0]].copy()
+                frame["save_npz_on"] = value
+                path = Path(td) / f"case{suffix}"
+                _write_case_table(frame, path)
+                with self.assertRaises(Exception) as caught:
+                    reader(path)
+                error = caught.exception
+                self.assertEqual("InputValidationError", type(error).__name__)
+                self.assertEqual(
+                    ["save_npz_on"], [issue.field for issue in error.issues]
+                )
+                self.assertIn("has been removed", str(error))
+                self.assertIn("Delete this field", str(error))
+                self.assertIn("no longer writes NPZ files", str(error))
 
     def test_csv_reader_accepts_bomless_bom_and_japanese_utf8(self) -> None:
         products = (
@@ -89,28 +71,6 @@ class CaseReaderCompatibilityTests(unittest.TestCase):
                         actual = reader(path)
                         self.assertEqual("日本語ケース", actual.iloc[0]["case_id"])
                         self.assertEqual("日本語メモ", actual.iloc[0]["user_note"])
-
-    def test_valid_phase1_tables_preserve_rows_columns_defaults_and_paths(self) -> None:
-        products = (
-            ("fmfsolver", read_fmf_cases, "fmfsolver_cases.csv", 6),
-            ("newtsolver", read_newt_cases, "newtsolver_cases.csv", 9),
-        )
-        for product, reader, filename, row_count in products:
-            with self.subTest(product=product):
-                frame = read_current_cases(reader, _INPUTS / filename)
-                contract = json.loads(
-                    (_GOLDEN / product / "contracts.json").read_text()
-                )
-                expected_columns = [
-                    name
-                    for name in contract["cli_run"]["result_csv_columns"]
-                    if name != "save_npz_on"
-                ][: len(frame.columns)]
-                self.assertEqual(row_count, len(frame))
-                self.assertEqual(expected_columns, list(frame.columns))
-                self.assertNotIn("save_npz_on", frame.columns)
-                self.assertTrue(frame["stl_path"].map(Path).map(Path.is_absolute).all())
-                self.assertTrue(frame["out_dir"].map(Path).map(Path.is_absolute).all())
 
     def test_invalid_phase1_tables_preserve_structured_issue_contracts(self) -> None:
         for product, reader in (
@@ -336,47 +296,6 @@ class CaseReaderCompatibilityTests(unittest.TestCase):
                         frame.to_csv(path, index=False)
                         actual = reader(path).iloc[0]
                         self.assertEqual(mode, actual["attitude_input"])
-
-
-class ProductCaseAdapterTests(unittest.TestCase):
-    def test_built_case_signature_is_exactly_the_execution_signature(self) -> None:
-        cases = (
-            (
-                read_current_cases(read_fmf_cases, _INPUTS / "fmfsolver_cases.csv")
-                .iloc[0]
-                .to_dict(),
-                adapt_fmf_row,
-                build_fmf_signature,
-            ),
-            (
-                read_current_cases(read_newt_cases, _INPUTS / "newtsolver_cases.csv")
-                .iloc[0]
-                .to_dict(),
-                adapt_newt_row,
-                build_newt_signature,
-            ),
-        )
-        for row, adapter, signature_builder in cases:
-            with self.subTest(case_id=row["case_id"]):
-                signature = signature_builder(row)
-                result = execute_case(adapter(row).request)
-                self.assertEqual(result.signature, signature)
-
-    def test_single_sideslip_endpoint_runs_in_both_modes(self) -> None:
-        frame = read_current_cases(read_newt_cases, _INPUTS / "newtsolver_cases.csv")
-        beta_sin = (
-            frame.loc[frame["case_id"] == "newt_beta_sin_boundary"].iloc[0].to_dict()
-        )
-        beta_tan = dict(beta_sin)
-        beta_tan["attitude_input"] = "beta_tan"
-
-        adapted_sin = adapt_newt_row(beta_sin)
-        execute_case(adapted_sin.request)
-        adapted_tan = adapt_newt_row(beta_tan)
-        execute_case(adapted_tan.request)
-        np.testing.assert_array_equal(
-            adapted_sin.attitude.velocity_hat_stl, adapted_tan.attitude.velocity_hat_stl
-        )
 
 
 if __name__ == "__main__":

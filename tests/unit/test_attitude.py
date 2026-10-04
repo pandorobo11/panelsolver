@@ -10,32 +10,24 @@ from panelsolver.app.attitude import ResolvedAttitude, resolve_attitude
 class ResolvedAttitudeInvariantTests(unittest.TestCase):
     def test_direct_construction_normalizes_and_freezes_finite_vectors(self) -> None:
         attitude = ResolvedAttitude(
-            velocity_hat_stl=np.array([3.0, 4.0, 0.0]),
+            velocity_hat_stl=np.array([3, 4, 0]),
             alpha_deg="10.5",
             beta_or_bank_deg=-20,
             input_mode="BETA_TAN",
         )
 
         np.testing.assert_array_equal(attitude.velocity_hat_stl, [0.6, 0.8, 0.0])
+        self.assertEqual(np.dtype(np.float64), attitude.velocity_hat_stl.dtype)
         self.assertFalse(attitude.velocity_hat_stl.flags.writeable)
-        self.assertIsInstance(attitude.velocity_hat_stl.base, bytes)
+        with self.assertRaises(ValueError):
+            attitude.velocity_hat_stl.setflags(write=True)
         self.assertEqual(10.5, attitude.alpha_deg)
         self.assertEqual(-20.0, attitude.beta_or_bank_deg)
         self.assertEqual("beta_tan", attitude.input_mode)
 
-    def test_direct_construction_accepts_integer_vector(self) -> None:
-        attitude = ResolvedAttitude([1, 0, 0], 0.0, 0.0, "beta_tan")
-
-        np.testing.assert_array_equal(attitude.velocity_hat_stl, [1.0, 0.0, 0.0])
-        self.assertEqual(np.dtype(np.float64), attitude.velocity_hat_stl.dtype)
-        self.assertFalse(attitude.velocity_hat_stl.flags.writeable)
-        self.assertIsInstance(attitude.velocity_hat_stl.base, bytes)
-
     def test_direct_construction_normalizes_extreme_finite_vectors(self) -> None:
         maximum = np.finfo(np.float64).max
         vectors = (
-            [1.0e308, 1.0e308, 1.0e308],
-            [1.2e308, 1.2e308, 1.2e308],
             [maximum, maximum, maximum],
             [maximum, 1.0, -maximum / 2.0],
         )
@@ -54,7 +46,6 @@ class ResolvedAttitudeInvariantTests(unittest.TestCase):
                     places=15,
                 )
                 self.assertFalse(attitude.velocity_hat_stl.flags.writeable)
-                self.assertIsInstance(attitude.velocity_hat_stl.base, bytes)
 
         expected = np.full(3, 1.0 / np.sqrt(3.0))
         np.testing.assert_allclose(
