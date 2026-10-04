@@ -78,6 +78,33 @@ class SectionalDialogTests(unittest.TestCase):
             time.sleep(0.002)
         self.app.processEvents()
 
+    def test_cp_dialog_runs_and_protects_both_definition_files(self):
+        for domain in (fmf, hypersonic):
+            with self.subTest(domain=domain.RUNTIME_POLICY.product_id):
+                window, panel, loads = self.make_window(domain)
+                cp_path = self.root / "cp.csv"
+                cp_path.write_text(
+                    HEADER.replace("bin_count", "section_count")
+                    + "cuts,0,0,0,0,1,0,3\n"
+                )
+                window.open_sectional_cp()
+                cp = window.sectional_cp_dialog
+                self.assertTrue(cp.load_definitions(cp_path))
+                self.assertIn("planes", cp.definition_model.columns)
+                self.assertIn(cp_path, panel.sectional_definition_paths)
+                self.assertIn(self.definition_path, panel.sectional_definition_paths)
+                output = self.root / "cp-result.csv"
+                self.assertTrue(cp.start_run(output))
+                self.assertFalse(loads.start_run(self.root / "loads.csv"))
+                self.assertFalse(loads.load_definitions(self.definition_path))
+                self.wait_until(lambda current=cp: not current.is_running())
+                self.assertTrue(output.exists())
+                self.assertEqual(cp.batch_result.status, "completed")
+                with output.open(encoding="utf-8-sig") as stream:
+                    rows = list(csv.DictReader(stream))
+                self.assertIn("x0_stl_m", rows[0])
+                self.assertTrue(loads.btn_run.isEnabled())
+
     def make_window(self, domain=fmf, *, runner=None, normal_runner=None):
         spec = domain.gui_spec()
         if runner is not None:

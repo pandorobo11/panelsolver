@@ -1,0 +1,288 @@
+"""Independent analytic segments, discontinuities, and public workflows."""
+
+import csv
+import pickle
+from unittest.mock import patch
+
+import numpy as np
+import pytest
+
+from panelsolver.app.sectional_batch import run_sectional_cases, write_sectional_csv
+from panelsolver.app.sectional_definitions import (
+    SectionalDefinition,
+    read_sectional_definitions,
+)
+from panelsolver.core.contracts import LocalLoads
+from panelsolver.core.sectional_cp import SectionalCpDefinition, compute_cp_sections
+from panelsolver.domains import fmf, hypersonic
+from panelsolver.postprocess import compute_sectional_cp
+from tests.unit.test_postprocess import _solve
+from tests.unit.test_sectional_geometry import TRIANGLE, make_mesh
+
+
+def definition(**changes):
+    return SectionalCpDefinition(
+        **(
+            {
+                "axis_origin_stl_m": (0, 0, 0),
+                "axis_direction_stl": (1, 0, 0),
+                "section_count": 1,
+                "start_m": 0.5,
+                "stop_m": 0.5,
+            }
+            | changes
+        )
+    )
+
+
+def extract(mesh=None, spec=None, name="cp"):
+    mesh = make_mesh() if mesh is None else mesh
+    return compute_cp_sections(
+        mesh,
+        LocalLoads(
+            np.zeros((len(mesh.faces), 3)), {name: np.arange(len(mesh.faces)) + 0.3}
+        ),
+        spec or definition(),
+        "test-signature",
+    )
+
+
+def test_analytic_endpoints_and_panel_values():
+    mesh = make_mesh([TRIANGLE, [[1, 0, 0], [1, 1, 0], [0, 1, 0]]])
+    plane = extract(mesh).planes[0]
+    assert plane.status == "ok"
+    assert plane.source_face_indices.tolist() == [0, 1]
+    np.testing.assert_array_equal(plane.scalar_values, [0.3, 1.3])
+    # Each panel owns its segment, including the discontinuous shared endpoint.
+    expected = [{(0.5, 0.0, 0.0), (0.5, 0.5, 0.0)}, {(0.5, 0.5, 0.0), (0.5, 1.0, 0.0)}]
+    assert [set(map(tuple, s)) for s in plane.endpoints_stl_m] == expected
+
+
+def test_shared_edge_keeps_both_values():
+    mesh = make_mesh([TRIANGLE, [[0, 0, 0], [0, 1, 0], [-1, 0, 0]]])
+    plane = extract(mesh, definition(start_m=0.0, stop_m=0.0)).planes[0]
+    assert len(plane.scalar_values) == 2
+    assert set(map(tuple, plane.endpoints_stl_m[0])) == set(
+        map(tuple, plane.endpoints_stl_m[1])
+    )
+    np.testing.assert_array_equal(plane.scalar_values, [0.3, 1.3])
+
+
+@pytest.mark.parametrize("location", [1.0, 2.0])
+def test_point_and_nonintersection_are_empty(location):
+    plane = extract(spec=definition(start_m=location, stop_m=location)).planes[0]
+    assert plane.status == "empty"
+    assert plane.endpoints_stl_m.shape == (0, 2, 3)
+
+
+def test_coplanar_failure_does_not_discard_other_planes():
+    result = extract(
+        spec=definition(
+            axis_direction_stl=(0, 0, 1), section_count=3, start_m=-1.0, stop_m=1.0
+        )
+    )
+    assert [p.status for p in result.planes] == ["empty", "failed", "empty"]
+    assert "coplanar" in result.planes[1].message
+
+
+@pytest.mark.parametrize("shift,scale", [(1e9, 1), (0, 1e-60), (0, 1e60)])
+def test_translation_and_scale(shift, scale):
+    mesh = make_mesh([TRIANGLE * scale + shift])
+    plane = extract(
+        mesh,
+        definition(
+            axis_origin_stl_m=(shift, shift, shift), start_m=scale / 2, stop_m=scale / 2
+        ),
+    ).planes[0]
+    assert plane.status == "ok"
+    np.testing.assert_allclose(
+        (plane.endpoints_stl_m[0] - shift) / scale,
+        [[0.5, 0, 0], [0.5, 0.5, 0]],
+        rtol=1e-14,
+        atol=0,
+    )
+
+
+def test_oblique_plane():
+    spec = definition(axis_direction_stl=(1, 1, 0), start_m=0.25, stop_m=0.25)
+    plane = extract(spec=spec).planes[0]
+    np.testing.assert_allclose(
+        plane.endpoints_stl_m @ spec.axis_direction_hat_stl, 0.25, rtol=1e-15
+    )
+    np.testing.assert_allclose(
+        np.sort(plane.endpoints_stl_m[0, :, :2], axis=0),
+        [[0, 0], [np.sqrt(2) / 4, np.sqrt(2) / 4]],
+        rtol=1e-15,
+    )
+
+
+def test_selection_auto_single_and_pickle():
+    mesh = make_mesh([TRIANGLE, TRIANGLE + [2, 0, 0]], ids=[2, 7])
+    result = extract(mesh, definition(start_m=None, stop_m=None, component_ids=(7,)))
+    assert result.planes[0].position_m == 2.5
+    assert result.planes[0].source_face_indices.tolist() == [1]
+    restored = pickle.loads(pickle.dumps(result))
+    with pytest.raises(ValueError):
+        restored.planes[0].endpoints_stl_m[0, 0, 0] = 2
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"section_count": True},
+        {"section_count": 0},
+        {"section_count": 1.5},
+        {"axis_direction_stl": (0, 0, 0)},
+        {"axis_origin_stl_m": (True, 0, 0)},
+        {"start_m": float("nan")},
+        {"stop_m": None},
+        {"stop_m": 1},
+        {"section_count": 2},
+        {"component_ids": (0, 0)},
+    ],
+)
+def test_reject_invalid_definitions(changes):
+    with pytest.raises((ValueError, TypeError)):
+        definition(**changes)
+
+
+def test_missing_scalar_and_mismatched_faces():
+    with pytest.raises(ValueError):
+        compute_cp_sections(
+            make_mesh(), LocalLoads(np.zeros((1, 3))), definition(), "x"
+        )
+    with pytest.raises(ValueError):
+        compute_cp_sections(
+            make_mesh(), LocalLoads(np.zeros((2, 3)), {"cp": [0, 1]}), definition(), "x"
+        )
+
+
+@pytest.mark.parametrize("domain", ["fmf", "hypersonic"])
+def test_public_api_uses_retained_solve(domain):
+    solved = _solve(domain)
+    with patch(
+        "panelsolver.api.execute_case",
+        side_effect=AssertionError("must not solve again"),
+    ):
+        result = compute_sectional_cp(
+            solved,
+            axis_origin_stl_m=(0, 0, 0),
+            axis_direction_stl=(0, 1, 0),
+            section_count=3,
+            start_m=-0.2,
+            stop_m=0.2,
+        )
+    assert result.case_signature == solved.case_signature
+    assert result.scalar_name == (
+        "cp" if domain == "hypersonic" else "normal_traction_coeff"
+    )
+    assert any(p.status == "ok" for p in result.planes)
+    for plane in result.planes:
+        np.testing.assert_array_equal(
+            plane.scalar_values,
+            solved.local_loads.cell_scalars[result.scalar_name][
+                plane.source_face_indices
+            ],
+        )
+
+
+@pytest.mark.parametrize("domain", [fmf, hypersonic])
+def test_batch_parser_and_csv(tmp_path, domain):
+    path = tmp_path / "definitions.csv"
+    path.write_text(
+        "section_id,origin_x_stl_m,origin_y_stl_m,origin_z_stl_m,direction_x_stl,direction_y_stl,direction_z_stl,start_m,stop_m,section_count\nspan,0,0,0,0,1,0,-.2,.2,3\n"
+    )
+    defs = read_sectional_definitions(path, cp=True)
+    row = (
+        domain.read_cases(f"examples/{domain.RUNTIME_POLICY.product_id}/basic.csv")
+        .iloc[0]
+        .to_dict()
+    )
+    from panelsolver.app import sectional_batch
+
+    original = sectional_batch.execute_case
+    with patch.object(sectional_batch, "execute_case", wraps=original) as solve:
+        result = run_sectional_cases([row], domain.RUNTIME_POLICY, defs)
+    assert solve.call_count == 1
+    assert result.status == "completed"
+    assert result.csv is not None
+    target = tmp_path / "result.csv"
+    write_sectional_csv(target, result, [path])
+    with target.open(encoding="utf-8-sig") as stream:
+        rows = list(csv.DictReader(stream))
+    assert "x0_stl_m" in rows[0] and "x1_stl_m" in rows[0]
+    assert {r["plane_index"] for r in rows} == {"0", "1", "2"}
+    with pytest.raises(ValueError):
+        write_sectional_csv(path, result, [path])
+
+
+def test_failed_planes_continue_in_batch():
+    row = hypersonic.read_cases("examples/hypersonic/basic.csv").iloc[0].to_dict()
+    defs = (
+        SectionalDefinition(
+            "cut", definition(section_count=3, start_m=-0.5, stop_m=0.5)
+        ),
+        SectionalDefinition("empty", definition(start_m=10, stop_m=10)),
+    )
+    result = run_sectional_cases([row], hypersonic.RUNTIME_POLICY, defs)
+    assert result.csv is not None
+    assert any(r["section_id"] == "empty" for r in result.csv.rows)
+
+
+def test_resolution_failure_retains_row_and_continues():
+    row = hypersonic.read_cases("examples/hypersonic/basic.csv").iloc[0].to_dict()
+    defs = (
+        SectionalDefinition("invalid_component", definition(component_ids=(999,))),
+        SectionalDefinition("empty", definition(start_m=10, stop_m=10)),
+    )
+    result = run_sectional_cases([row], hypersonic.RUNTIME_POLICY, defs)
+    assert result.status == "failed"
+    assert result.completed_pairs == 1
+    assert [r["plane_status"] for r in result.csv.rows] == ["failed", "empty"]
+    assert result.csv.rows[0]["plane_index"] is None
+
+
+def test_failed_coplanar_plane_batch_and_following_case():
+    row = hypersonic.read_cases("examples/hypersonic/basic.csv").iloc[0].to_dict()
+    # The basic example is a flat x=0 plate; cut x=-1,0,1.
+    defs = (
+        SectionalDefinition(
+            "coplanar",
+            definition(
+                axis_direction_stl=(1, 0, 0), section_count=3, start_m=-1, stop_m=1
+            ),
+        ),
+    )
+    result = run_sectional_cases(
+        [row, {**row, "case_id": "second"}], hypersonic.RUNTIME_POLICY, defs
+    )
+    assert result.status == "failed"
+    assert result.completed_pairs == 0
+    assert [r["plane_status"] for r in result.csv.rows] == [
+        "empty",
+        "failed",
+        "empty",
+    ] * 2
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("domain", [fmf, hypersonic])
+def test_cp_spawn_matches_serial(domain):
+    row = (
+        domain.read_cases(f"examples/{domain.RUNTIME_POLICY.product_id}/basic.csv")
+        .iloc[0]
+        .to_dict()
+    )
+    rows = [dict(row, case_id=str(i)) for i in range(3)]
+    definitions = (
+        SectionalDefinition(
+            "cuts",
+            definition(
+                axis_direction_stl=(0, 1, 0), section_count=3, start_m=-0.2, stop_m=0.2
+            ),
+        ),
+    )
+    serial = run_sectional_cases(rows, domain.RUNTIME_POLICY, definitions)
+    parallel = run_sectional_cases(rows, domain.RUNTIME_POLICY, definitions, workers=2)
+    assert serial.status == parallel.status == "completed"
+    assert serial.csv == parallel.csv

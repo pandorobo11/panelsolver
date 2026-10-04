@@ -13,6 +13,7 @@ import numpy as np
 
 from panelsolver.core.errors import ContractError, ContractValueError
 from panelsolver.core.sectional import SectionalLoadDefinition
+from panelsolver.core.sectional_cp import SectionalCpDefinition
 
 from .csv_writer import CSV_ENCODING
 
@@ -42,12 +43,14 @@ class SectionalDefinition:
     """A file/batch label attached to one immutable numerical definition."""
 
     section_id: str
-    definition: SectionalLoadDefinition
+    definition: SectionalLoadDefinition | SectionalCpDefinition
     row_number: int = 0
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "section_id", _normalize_id(self.section_id))
-        if not isinstance(self.definition, SectionalLoadDefinition):
+        if not isinstance(
+            self.definition, (SectionalLoadDefinition, SectionalCpDefinition)
+        ):
             raise ContractValueError("definition", "must be a SectionalLoadDefinition")
 
     def __deepcopy__(self, memo: dict[int, object]) -> SectionalDefinition:
@@ -71,8 +74,10 @@ def _integer_token(token: str, field: str) -> int:
         raise ContractValueError(field, "integer token is too large") from exc
 
 
-def _parse_definition(row: dict[str, str]) -> SectionalLoadDefinition:
-    for name in _REQUIRED_FIELDS:
+def _parse_definition(
+    row: dict[str, str], *, cp: bool = False
+) -> SectionalLoadDefinition | SectionalCpDefinition:
+    for name in _required_fields(cp):
         if not row[name]:
             raise ContractValueError(name, "required cell is blank")
     component_text = row.get("component_ids", "")
@@ -86,14 +91,16 @@ def _parse_definition(row: dict[str, str]) -> SectionalLoadDefinition:
     )
     # Float conversion is lexical only. A1 owns finite-value, axis, count,
     # range-pair and component numerical validation, including overflow.
-    return SectionalLoadDefinition(
+    constructor = SectionalCpDefinition if cp else SectionalLoadDefinition
+    count_field = "section_count" if cp else "bin_count"
+    return constructor(
         axis_origin_stl_m=np.array(
             [_float_token(row[name], name) for name in _ORIGIN_FIELDS]
         ),
         axis_direction_stl=np.array(
             [_float_token(row[name], name) for name in _DIRECTION_FIELDS]
         ),
-        bin_count=_integer_token(row["bin_count"], "bin_count"),
+        **{count_field: _integer_token(row[count_field], count_field)},
         start_m=(
             _float_token(row["start_m"], "start_m") if row.get("start_m") else None
         ),
@@ -102,7 +109,16 @@ def _parse_definition(row: dict[str, str]) -> SectionalLoadDefinition:
     )
 
 
-def read_sectional_definitions(path: str | Path) -> tuple[SectionalDefinition, ...]:
+def _required_fields(cp: bool) -> tuple[str, ...]:
+    return tuple(
+        "section_count" if cp and name == "bin_count" else name
+        for name in _REQUIRED_FIELDS
+    )
+
+
+def read_sectional_definitions(
+    path: str | Path, *, cp: bool = False
+) -> tuple[SectionalDefinition, ...]:
     """Read and validate the entire v1 CSV before any selection or physical solve.
 
     Numeric constraints are delegated to A1. Mesh-dependent component existence
@@ -124,8 +140,8 @@ def read_sectional_definitions(path: str | Path) -> tuple[SectionalDefinition, .
             if len(header) != len(set(header)):
                 duplicates = sorted({name for name in header if header.count(name) > 1})
                 raise ContractValueError("header", f"duplicate columns: {duplicates}")
-            unknown = set(header) - set(_REQUIRED_FIELDS) - set(_OPTIONAL_FIELDS)
-            missing = set(_REQUIRED_FIELDS) - set(header)
+            unknown = set(header) - set(_required_fields(cp)) - set(_OPTIONAL_FIELDS)
+            missing = set(_required_fields(cp)) - set(header)
             if unknown:
                 raise ContractValueError(
                     "header", f"unknown columns: {sorted(unknown)}"
@@ -157,7 +173,7 @@ def read_sectional_definitions(path: str | Path) -> tuple[SectionalDefinition, .
                     raise ContractValueError(
                         "section_id", "duplicate identity after trim/NFC normalization"
                     )
-                definition = _parse_definition(row)
+                definition = _parse_definition(row, cp=cp)
                 definitions.append(
                     SectionalDefinition(section_id, definition, row_number)
                 )

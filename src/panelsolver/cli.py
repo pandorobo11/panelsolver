@@ -49,6 +49,8 @@ def main(argv: list[str] | None = None) -> int:
     namespace, remaining = parser.parse_known_args(arguments)
     if namespace.domain is None:
         parser.error("a flow domain is required: fmf or hypersonic")
+    if remaining[:1] == ["sectional-cp"]:
+        return run_sectional_cli(_POLICIES[namespace.domain], remaining[1:], cp=True)
     if remaining[:1] == ["sectional-loads"]:
         return run_sectional_cli(_POLICIES[namespace.domain], remaining[1:])
     return run_cli(_POLICIES[namespace.domain], remaining)

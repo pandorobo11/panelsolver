@@ -10,6 +10,8 @@ from types import MappingProxyType
 
 from PySide6 import QtCore, QtWidgets
 
+from panelsolver.core.sectional_cp import SectionalCpDefinition
+
 from .cases_panel import CasesPanel
 from .csv_writer import validate_csv_output_path
 from .gui_components import FlowLayout
@@ -138,13 +140,22 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
     run_finished = QtCore.Signal()
     export_failed = QtCore.Signal()
 
-    def __init__(self, spec: SolverSpec, cases_panel: CasesPanel, parent=None) -> None:
+    def __init__(
+        self,
+        spec: SolverSpec,
+        cases_panel: CasesPanel,
+        parent=None,
+        *,
+        cp: bool = False,
+    ) -> None:
         super().__init__(parent)
         if spec.adapters is None or spec.adapters.run_sectional_cases is None:
             raise ValueError("sectional run adapter is required")
+        self.cp = cp
+        self._output_suffix = "sectional_cp" if cp else "sectional_loads"
         self._runner = spec.adapters.run_sectional_cases
         self.cases_panel = cases_panel
-        self.setWindowTitle(f"Sectional Loads — {spec.domain_name}")
+        self.setWindowTitle(f"Sectional {'Cp' if cp else 'Loads'} — {spec.domain_name}")
         self.setModal(False)
         self.resize(1040, 500)
         self.definition_path: Path | None = None
@@ -204,6 +215,12 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
             button.setAutoDefault(False)
 
         layout = QtWidgets.QVBoxLayout(self)
+        if cp:
+            note = QtWidgets.QLabel(
+                "One row per panel segment, with both endpoints. Hypersonic: Cp; FMF: normal traction coefficient. No interpolation."
+            )
+            note.setWordWrap(True)
+            layout.addWidget(note)
         layout.addWidget(self.path_value)
         file_actions = FlowLayout()
         file_actions.addWidget(self.btn_open)
@@ -273,7 +290,9 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
             )
 
     def _normal_state_changed(self, running: bool) -> None:
-        self._normal_running = running
+        self._normal_running = running or (
+            self.cases_panel._external_run_active and not self.is_running()
+        )
         self._refresh_controls()
 
     def _refresh_controls(self, *_args) -> None:
@@ -336,18 +355,18 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
             self.load_definitions(self.definition_path)
 
     def load_definitions(self, path: str | Path) -> bool:
-        if self.is_running() or self.cases_panel.is_running():
+        if self.is_running() or self._normal_running or self.cases_panel.is_running():
             return False
         candidate = Path(path).expanduser().absolute()
         # Invalid reload disables execution instead of displaying new file text
         # while silently retaining the previous numerical definitions.
         self.definition_path = candidate
-        self.cases_panel.sectional_definition_paths = (candidate,)
+        self._protect_definitions(candidate)
         self.path_value.setText(str(candidate))
         try:
             resolved_source = candidate.resolve(strict=False)
-            self.cases_panel.sectional_definition_paths = (candidate, resolved_source)
-            definitions = read_sectional_definitions(candidate)
+            self._protect_definitions(candidate, resolved_source)
+            definitions = read_sectional_definitions(candidate, cp=self.cp)
         except Exception as exc:
             self.definitions = ()
             self._loaded_definition_paths = ()
@@ -364,7 +383,7 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
             "direction STL",
             "start [m]",
             "stop [m]",
-            "bins",
+            "planes" if self.cp else "bins",
             "components",
         )
         records = []
@@ -388,7 +407,9 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
                             if definition.start_m is None
                             else definition.start_m,
                             "auto" if definition.stop_m is None else definition.stop_m,
-                            definition.bin_count,
+                            definition.section_count
+                            if isinstance(definition, SectionalCpDefinition)
+                            else definition.bin_count,
                             "all"
                             if definition.component_ids is None
                             else ";".join(map(str, definition.component_ids)),
@@ -417,7 +438,7 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
         ):
             return
         default = default_summary_output_path(self.cases_panel.input_path).with_name(
-            f"{self.cases_panel.input_path.stem}_sectional_loads.csv"
+            f"{self.cases_panel.input_path.stem}_{self._output_suffix}.csv"
         )
         try:
             default.parent.mkdir(parents=True, exist_ok=True)
@@ -567,7 +588,7 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
             selected, _ = QtWidgets.QFileDialog.getSaveFileName(
                 self,
                 "Retry Saving Sectional Results",
-                str(self._save_path or "sectional_loads_result.csv"),
+                str(self._save_path or f"{self._output_suffix}_result.csv"),
                 "CSV (*.csv)",
             )
             if not selected:
@@ -590,6 +611,15 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
         self._start_worker(worker, "export")
         return True
 
+    def _protect_definitions(self, *paths: Path) -> None:
+        # Both persistent dialogs share the ordinary output protection boundary.
+        previous = getattr(self.cases_panel, "_sectional_paths_by_kind", {})
+        previous[self.cp] = paths
+        self.cases_panel._sectional_paths_by_kind = previous
+        self.cases_panel.sectional_definition_paths = tuple(
+            dict.fromkeys(p for group in previous.values() for p in group)
+        )
+
     def _current_protected_paths(self) -> tuple[Path, ...]:
         current = (
             sectional_protected_paths(
@@ -604,6 +634,7 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
         return tuple(
             dict.fromkeys(
                 (
+                    *self.cases_panel.sectional_definition_paths,
                     *self._loaded_definition_paths,
                     *self.cases_panel._loaded_input_paths,
                     *current,

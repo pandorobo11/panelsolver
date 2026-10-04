@@ -596,3 +596,34 @@ The solve functions read every path in `stl_paths` and return their results in
 memory. They create no output directories or result files (Summary CSV, VTP,
 PNG, or checkpoints). Use the [CLI](cli.md) or
 [GUI](gui.md) to write calculation outputs.
+
+## Sectional Cp sections
+
+```python
+from panelsolver.postprocess import compute_sectional_cp
+
+sections = compute_sectional_cp(
+    result,
+    axis_origin_stl_m=(0, 0, 0),
+    axis_direction_stl=(0, 1, 0),
+    section_count=5,
+    start_m=-0.2,
+    stop_m=0.2,
+    component_ids=None,
+)
+```
+
+`result` must be an original `solve_fmf` or `solve_hypersonic` result with retained
+solve context. This function performs no physical solve or file reads. The
+returned `SectionalCp` exposes `definition`, `selected_component_ids`,
+`scalar_name`, `planes`, and `case_signature`. The definition contains the input
+fields above and `axis_direction_hat_stl`. Constructors remain internal.
+
+Each plane exposes `position_m`, `status` (`ok`, `empty`, `failed`), `message`,
+`source_face_indices` and `component_ids` (int64, `(K,)`), `endpoints_stl_m`
+(float64, `(K, 2, 3)`), and `scalar_values` (float64, `(K,)`). Arrays are immutable,
+including after pickling. Empty/failed planes have zero-length arrays. Hypersonic
+values are `cp`; FMF values are `normal_traction_coeff`. Check plane statuses
+before using results. Invalid mesh-dependent definitions raise validation errors.
+See [input rules](../inputs/sectional-cp.md) and
+[intersection semantics](../results/sectional-cp-csv.md).

@@ -56,6 +56,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.splitter.setSizes([600, 850])
         self._close_when_run_finishes = False
         self.sectional_dialog: SectionalLoadsDialog | None = None
+        self.sectional_cp_dialog: SectionalLoadsDialog | None = None
         self._build_file_menu()
         self._build_help_menu()
         self._layout_settings = layout_settings if persist_layout else None
@@ -111,6 +112,8 @@ class MainWindow(QtWidgets.QMainWindow):
         ):
             self.sectional_loads_action = self.file_menu.addAction("Sectional Loads...")
             self.sectional_loads_action.triggered.connect(self.open_sectional_loads)
+            self.sectional_cp_action = self.file_menu.addAction("Sectional Cp...")
+            self.sectional_cp_action.triggered.connect(self.open_sectional_cp)
 
         self.new_from_example_menu = self.file_menu.addMenu("New from Example")
         self.example_actions: tuple[QtGui.QAction, ...] = tuple(
@@ -179,12 +182,33 @@ class MainWindow(QtWidgets.QMainWindow):
             self.sectional_dialog.export_failed.connect(
                 self._on_sectional_export_failed
             )
+        self.sectional_dialog._normal_state_changed(self.cases_panel.is_running())
         self.sectional_dialog.show()
         self.sectional_dialog.raise_()
         self.sectional_dialog.activateWindow()
 
+    def open_sectional_cp(self) -> None:
+        if self.sectional_cp_dialog is None:
+            self.sectional_cp_dialog = SectionalLoadsDialog(
+                self.spec, self.cases_panel, self, cp=True
+            )
+            self.sectional_cp_dialog.run_finished.connect(self._on_case_run_finished)
+            self.sectional_cp_dialog.export_failed.connect(self._on_cp_export_failed)
+        self.sectional_cp_dialog._normal_state_changed(self.cases_panel.is_running())
+        self.sectional_cp_dialog.show()
+        self.sectional_cp_dialog.raise_()
+        self.sectional_cp_dialog.activateWindow()
+
+    def _on_cp_export_failed(self) -> None:
+        if self._close_when_run_finishes:
+            self._close_when_run_finishes = False
+            self.open_sectional_cp()
+
     def _sectional_running(self) -> bool:
-        return self.sectional_dialog is not None and self.sectional_dialog.is_running()
+        return any(
+            dialog is not None and dialog.is_running()
+            for dialog in (self.sectional_dialog, self.sectional_cp_dialog)
+        )
 
     def _build_help_menu(self) -> None:
         self.help_menu = self.menuBar().addMenu("Help")
@@ -322,13 +346,16 @@ class MainWindow(QtWidgets.QMainWindow):
                 self._close_when_run_finishes = True
                 self.cases_panel.cancel_run()
                 if self._sectional_running():
-                    self.sectional_dialog.cancel_run()
+                    for dialog in (self.sectional_dialog, self.sectional_cp_dialog):
+                        if dialog is not None and dialog.is_running():
+                            dialog.cancel_run()
                 self.cases_panel.logln("[CLOSE] Waiting for the active run to stop...")
             event.ignore()
             return
         self._save_layout()
-        if self.sectional_dialog is not None:
-            self.sectional_dialog.close()
+        for dialog in (self.sectional_dialog, self.sectional_cp_dialog):
+            if dialog is not None:
+                dialog.close()
         if isinstance(self.viewer_panel, ViewerPanel):
             self.viewer_panel.close_plotter()
         self._documentation_site.close()

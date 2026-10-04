@@ -24,12 +24,18 @@ from .sectional_definitions import (
 )
 
 
-def build_sectional_parser(policy: ProductCliPolicy) -> argparse.ArgumentParser:
+def build_sectional_parser(
+    policy: ProductCliPolicy, *, cp: bool = False
+) -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog=f"{policy.program} sectional-loads",
+        prog=f"{policy.program} {'sectional-cp' if cp else 'sectional-loads'}",
         description=(
-            "Integrate sectional loads for cases × definitions from a separate CSV. "
-            "Axes are in STL coordinates; origins and signed bounds are metres (m). "
+            (
+                "Extract sectional Cp / FMF normal traction on cutting planes. "
+                if cp
+                else "Integrate sectional loads for cases × definitions from a separate CSV. "
+            )
+            + "Axes are in STL coordinates; origins and signed bounds are metres (m). "
             "Blank start/stop selects each case's geometry range. Component IDs "
             "are the original zero-based positions in that case's STL list."
         ),
@@ -67,9 +73,12 @@ def build_sectional_parser(policy: ProductCliPolicy) -> argparse.ArgumentParser:
     return parser
 
 
-def run_sectional_cli(policy: ProductCliPolicy, argv: list[str] | None = None) -> int:
-    parser = build_sectional_parser(policy)
+def run_sectional_cli(
+    policy: ProductCliPolicy, argv: list[str] | None = None, *, cp: bool = False
+) -> int:
+    parser = build_sectional_parser(policy, cp=cp)
     args = parser.parse_args(argv)
+    args.cp = cp
     if args.workers < 1:
         parser.error("--workers must be >= 1")
     try:
@@ -89,7 +98,7 @@ def _run(policy: ProductCliPolicy, args: argparse.Namespace) -> int:
     definition_path = Path(args.definitions).expanduser().absolute()
     # Validate the complete definition file before filtering or running physics.
     definitions = select_sectional_definitions(
-        read_sectional_definitions(definition_path), args.sections
+        read_sectional_definitions(definition_path, cp=args.cp), args.sections
     )
     frame = policy.read_cases(input_path)
     if frame.empty:

@@ -20,6 +20,11 @@ from panelsolver.core.sectional import (
     SectionalLoadDefinition,
     resolve_sectional_load_spec,
 )
+from panelsolver.core.sectional_cp import (
+    SectionalCp,
+    SectionalCpDefinition,
+    compute_cp_sections,
+)
 
 
 @dataclass(frozen=True, slots=True, eq=False)
@@ -92,4 +97,44 @@ def compute_sectional_loads(
     )
 
 
-__all__ = ("SectionalLoads", "compute_sectional_loads")
+__all__ = (
+    "SectionalCp",
+    "SectionalLoads",
+    "compute_sectional_cp",
+    "compute_sectional_loads",
+)
+
+
+def compute_sectional_cp(
+    result: SolveResult,
+    *,
+    axis_origin_stl_m: Sequence[float] | np.ndarray,
+    axis_direction_stl: Sequence[float] | np.ndarray,
+    section_count: int,
+    start_m: float | None = None,
+    stop_m: float | None = None,
+    component_ids: Sequence[int] | None = None,
+) -> SectionalCp:
+    """Extract panel-constant Cp (FMF: normal traction) on parallel planes.
+
+    Returned planes retain both endpoints of each source-panel segment.
+    No interpolation or repeated physical solve is performed.
+    """
+    if not isinstance(result, SolveResult):
+        raise TypeError("result must be a SolveResult")
+    context = result._sectional_context
+    if context is None:
+        raise ValueError(
+            "result has no retained solve context; use an original solve result"
+        )
+    definition = SectionalCpDefinition(
+        axis_origin_stl_m,
+        axis_direction_stl,
+        section_count,
+        start_m,
+        stop_m,
+        component_ids,
+    )
+    return compute_cp_sections(
+        context.mesh, result.local_loads, definition, result.case_signature
+    )
