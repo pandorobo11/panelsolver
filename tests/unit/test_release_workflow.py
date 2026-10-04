@@ -1,11 +1,14 @@
 import json
 import os
 import re
+import shlex
 import subprocess
 import sys
 import textwrap
 import unittest
 from pathlib import Path
+
+import yaml
 
 ROOT = Path(__file__).parents[2]
 WORKFLOW = ROOT / ".github" / "workflows" / "ci.yml"
@@ -14,165 +17,215 @@ WORKFLOW = ROOT / ".github" / "workflows" / "ci.yml"
 class ReleaseWorkflowTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.workflow = WORKFLOW.read_text(encoding="utf-8")
+        # BaseLoader leaves GitHub's YAML `on` key and expression strings intact.
+        # PyYAML is already supplied by the locked documentation toolchain.
+        cls.workflow = yaml.load(WORKFLOW.read_text(encoding="utf-8"), yaml.BaseLoader)
+        cls.jobs = cls.workflow["jobs"]
 
-    def job(self, name: str) -> str:
-        match = re.search(
-            rf"^  {re.escape(name)}:\n(?P<body>.*?)(?=^  [a-z][a-z0-9_-]*:\n|\Z)",
-            self.workflow,
-            re.MULTILINE | re.DOTALL,
-        )
-        self.assertIsNotNone(match, f"workflow job {name!r} is missing")
-        return match.group("body")
+    def runs(self, name: str) -> list[str]:
+        return [step["run"] for step in self.jobs[name]["steps"] if "run" in step]
 
-    def job_names(self) -> list[str]:
-        return re.findall(
-            r"^  ([a-z][a-z0-9_-]*):$",
-            self.workflow.split("jobs:\n", 1)[1],
-            re.MULTILINE,
-        )
+    def commands(self, name: str) -> list[str]:
+        return [" ".join(run.split()) for run in self.runs(name)]
 
     def needs(self, name: str) -> set[str]:
-        match = re.search(r"^    needs: \[(.*?)\]$", self.job(name), re.MULTILINE)
-        return {item.strip() for item in match.group(1).split(",")} if match else set()
+        return set(self.jobs[name].get("needs", ()))
 
-    def test_pr_triggers_and_concurrency_leave_main_and_tags_independent(self) -> None:
-        triggers = self.workflow.split("permissions:", 1)[0]
-        self.assertRegex(triggers, r"push:\s+branches: \[main\]\s+tags: \[\"v\*\"\]")
-        self.assertIn("  pull_request:", triggers)
+    def action(self, name: str, action: str) -> dict:
+        steps = [
+            step
+            for step in self.jobs[name]["steps"]
+            if step.get("uses", "").split("@", 1)[0] == action
+        ]
+        self.assertEqual(1, len(steps), (name, action))
+        return steps[0]
+
+    def test_triggers_and_concurrency_keep_main_and_tags_independent(self) -> None:
+        triggers = self.workflow["on"]
+        self.assertEqual(["main"], triggers["push"]["branches"])
+        self.assertEqual(["v*"], triggers["push"]["tags"])
+        self.assertIn("pull_request", triggers)
+        concurrency = self.workflow["concurrency"]
         self.assertIn(
             "github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number)",
-            triggers,
+            concurrency["group"],
         )
-        self.assertIn("|| format('run-{0}', github.run_id)", triggers)
-        self.assertIn(
-            "cancel-in-progress: ${{ github.event_name == 'pull_request' }}", triggers
+        self.assertIn("|| format('run-{0}', github.run_id)", concurrency["group"])
+        self.assertEqual(
+            "${{ github.event_name == 'pull_request' }}",
+            concurrency["cancel-in-progress"],
         )
 
-    def test_source_tests_start_independently_and_keep_full_platform_coverage(
-        self,
-    ) -> None:
-        source = self.job("test")
+    def test_source_and_installed_checks_keep_platform_coverage(self) -> None:
         self.assertFalse(self.needs("test"))
-        for platform in ("ubuntu-latest", "windows-latest", "macos-15"):
-            self.assertIn(f"- {platform}", source)
-        self.assertIn("fail-fast: false", source)
-        self.assertIn("uv sync --locked --extra rayaccel --group docs", source)
-        self.assertIn("if not ray.has_embree else None", source)
-        self.assertRegex(source, r"run: uv run --no-sync pytest --durations=30\s*\n")
-        self.assertIn("scripts/probe_scheduler_lifecycle.py", source)
-        self.assertIn("--iterations 10 --timeout-seconds 90", source)
-        for distribution_step in (
-            "download-artifact",
-            "reinstall-wheel",
-            "smoke_installed_wheel.py",
+        self.assertEqual(
+            {"ubuntu", "windows", "macos"},
+            {
+                os.split("-", 1)[0]
+                for os in self.jobs["test"]["strategy"]["matrix"]["os"]
+            },
+        )
+        self.assertEqual(
+            {"windows", "macos"},
+            {
+                os.split("-", 1)[0]
+                for os in self.jobs["installed-wheel"]["strategy"]["matrix"]["os"]
+            },
+        )
+        self.assertTrue(self.jobs["clean-install"]["runs-on"].startswith("ubuntu-"))
+        for name in ("test", "installed-wheel"):
+            self.assertEqual("false", self.jobs[name]["strategy"]["fail-fast"])
+            self.assertIn("${{ matrix.os }}", self.jobs[name]["runs-on"])
+            sync = next(
+                command for command in self.commands(name) if "uv sync" in command
+            )
+            self.assertTrue({"--locked", "rayaccel", "docs"} <= set(shlex.split(sync)))
+        source = self.commands("test")
+        pytest_command = next(command for command in source if " pytest" in command)
+        pytest_arguments = shlex.split(pytest_command)
+        pytest_arguments = pytest_arguments[pytest_arguments.index("pytest") + 1 :]
+        for argument in pytest_arguments:
+            self.assertTrue(argument.startswith("--durations="), pytest_command)
+        self.assertTrue(any("ray.has_embree" in command for command in source))
+        self.assertTrue(
+            any("probe_scheduler_lifecycle.py" in command for command in source)
+        )
+        smoke_owners = {
+            name
+            for name in self.jobs
+            if any(
+                "smoke_installed_wheel.py" in command for command in self.commands(name)
+            )
+        }
+        self.assertEqual({"installed-wheel", "clean-install"}, smoke_owners)
+        for name in smoke_owners:
+            self.assertTrue({"quality", "distribution-build"} <= self.needs(name))
+            smoke = [
+                command
+                for command in self.commands(name)
+                if "smoke_installed_wheel.py" in command
+            ]
+            self.assertEqual(1, len(smoke))
+            self.assertIn("--dist-dir", shlex.split(smoke[0]))
+        self.assertTrue(
+            any(
+                "reinstall-wheel" in command
+                for command in self.commands("installed-wheel")
+            )
+        )
+
+    def test_quality_job_keeps_mandatory_checks(self) -> None:
+        commands = [shlex.split(command) for command in self.commands("quality")]
+        for required in (
+            ["uv", "sync"],
+            ["uv", "run", "--no-sync", "ruff", "format"],
+            ["uv", "run", "--no-sync", "ruff", "check"],
+            ["uv", "run", "--no-sync", "mypy"],
         ):
-            self.assertNotIn(distribution_step, source)
+            matches = [
+                command for command in commands if command[: len(required)] == required
+            ]
+            self.assertEqual(1, len(matches), required)
+            if required[-1] == "sync":
+                self.assertIn("--locked", matches[0])
+            elif required[-1] == "format":
+                self.assertIn("--check", matches[0])
 
-    def test_build_job_is_the_only_distribution_producer(self) -> None:
-        producers = [name for name in self.job_names() if "uv build" in self.job(name)]
+    def test_build_once_and_consumers_verify_the_same_commit_bound_set(self) -> None:
+        producers = [
+            name
+            for name in self.jobs
+            for command in self.commands(name)
+            if shlex.split(command)[:2] == ["uv", "build"]
+        ]
         self.assertEqual(["distribution-build"], producers)
-        self.assertEqual(1, self.workflow.count("run: uv build"))
-
-    def test_build_job_verifies_and_uploads_manifested_distributions(self) -> None:
-        artifact_job = self.job("distribution-build")
-        for check in (
-            "verify-distributions",
-            "create-release-archives",
-            "dry-run",
+        build = self.commands("distribution-build")
+        for required in (
             "generate_us1976_sentman_table.py --check",
             "generate_docs_angle_response_plots.py --check",
             "mkdocs build --strict",
+            "verify-distributions",
+            "create-release-archives",
+            "dry-run",
         ):
-            self.assertIn(check, artifact_job)
-        self.assertNotIn("smoke_installed_wheel.py", artifact_job)
-        self.assertNotIn("reinstall-wheel", artifact_job)
-        self.assertIn("create-manifest", artifact_job)
-        self.assertIn("verify-manifest", artifact_job)
-        self.assertIn("actions/upload-artifact@v4", artifact_job)
+            self.assertTrue(any(required in command for command in build), required)
+        create = next(command for command in build if "create-manifest" in command)
+        self.assertIn('--commit-sha "${{ github.sha }}"', create)
+        upload = self.action("distribution-build", "actions/upload-artifact")["with"]
+        self.assertEqual("error", upload["if-no-files-found"])
+        self.assertEqual("dist", upload["path"])
+        self.assertIn("${{ github.run_id }}", upload["name"])
+        for name in (
+            "distribution-build",
+            "installed-wheel",
+            "clean-install",
+            "release",
+        ):
+            with self.subTest(job=name):
+                commands = self.commands(name)
+                manifest = [
+                    command for command in commands if "verify-manifest" in command
+                ]
+                self.assertEqual(1, len(manifest))
+                self.assertIn('--expected-commit "${{ github.sha }}"', manifest[0])
+                if name == "distribution-build":
+                    continue
+                downloaded = self.action(name, "actions/download-artifact")["with"]
+                self.assertEqual(upload["name"], downloaded["name"])
+                self.assertEqual(upload["path"], downloaded["path"])
+                for forbidden in (
+                    "uv build",
+                    "mkdocs build",
+                    "create-release-archives",
+                ):
+                    self.assertFalse(any(forbidden in command for command in commands))
 
-    def test_clean_install_uses_the_built_wheel_in_an_empty_environment(self) -> None:
-        clean_install = self.job("clean-install")
-        self.assertIn("runs-on: ubuntu-latest", clean_install)
-        self.assertTrue(
-            {"distribution-build", "quality"} <= self.needs("clean-install")
-        )
-        self.assertIn("verify-wheel", clean_install)
-        self.assertIn("uv venv", clean_install)
-        self.assertIn("uv pip install", clean_install)
-        self.assertIn('--python "${CLEAN_VENV}/bin/python"', clean_install)
-        self.assertIn('"${WHEEL}[rayaccel]"', clean_install)
+    def test_clean_install_uses_verified_wheel_outside_checkout(self) -> None:
+        commands = self.commands("clean-install")
+        install = next(command for command in commands if "uv venv" in command)
+        for required in (
+            "verify-wheel",
+            "uv pip install",
+            '"${WHEEL}[rayaccel]"',
+            "smoke_installed_wheel.py",
+        ):
+            self.assertIn(required, install)
+        # Installation and the smoke must use the same fresh interpreter, not
+        # the active checkout's environment; the smoke runs from RUNNER_TEMP.
+        self.assertIn('CLEAN_VENV="${RUNNER_TEMP}/panelsolver-clean"', install)
+        self.assertIn('--python "${CLEAN_VENV}/bin/python"', install)
         self.assertRegex(
-            clean_install,
-            r'"\$\{CLEAN_VENV\}/bin/python"\s*\\?\s*'
-            r'"\$\{GITHUB_WORKSPACE\}/scripts/smoke_installed_wheel\.py"',
+            install,
+            r'"\$\{CLEAN_VENV\}/bin/python"\s*\\?\s*"\$\{GITHUB_WORKSPACE\}/scripts/smoke_installed_wheel\.py"',
         )
-        self.assertNotIn("uv sync", clean_install)
+        self.assertLess(install.index("uv venv"), install.index("uv pip install"))
+        self.assertLess(
+            install.index('cd "${RUNNER_TEMP}"'),
+            install.index("smoke_installed_wheel.py"),
+        )
+        self.assertFalse(any("uv sync" in command for command in commands))
+        self.assertNotIn("--system-site-packages", install)
 
-    def test_all_consumers_verify_and_reuse_the_uploaded_exact_set(self) -> None:
-        for job_name in ("installed-wheel", "clean-install", "release"):
-            with self.subTest(job=job_name):
-                job = self.job(job_name)
-                self.assertIn("actions/download-artifact@v4", job)
-                self.assertIn("verify-manifest", job)
-                self.assertIn("panelsolver-dist-${{ github.run_id }}", job)
-                self.assertIn('--expected-commit "${{ github.sha }}"', job)
-                self.assertNotIn("uv build", job)
-                self.assertNotIn("mkdocs build", job)
-                self.assertNotIn("create-release-archives", job)
-        self.assertEqual(
-            1, self.job("distribution-build").count("create-release-archives")
-        )
-        self.assertNotIn("create-release-archives", self.job("release"))
-
-    def test_one_installed_wheel_smoke_owner_per_platform(self) -> None:
-        wheel = self.job("installed-wheel")
-        self.assertTrue(
-            {"distribution-build", "quality"} <= self.needs("installed-wheel")
-        )
-        for platform in ("windows-latest", "macos-15"):
-            self.assertIn(f"- {platform}", wheel)
-        self.assertNotIn("ubuntu-latest", wheel)
-        self.assertIn("fail-fast: false", wheel)
-        self.assertIn("uv sync --locked --extra rayaccel --group docs", wheel)
-        self.assertIn("reinstall-wheel .", wheel)
-        self.assertIn(
-            "scripts/smoke_installed_wheel.py .\n          --dist-dir dist", wheel
-        )
-        self.assertIn(
-            '--dist-dir "${GITHUB_WORKSPACE}/dist"', self.job("clean-install")
-        )
-        owners = {
-            name
-            for name in self.job_names()
-            if "smoke_installed_wheel.py" in self.job(name)
-        }
-        self.assertEqual({"installed-wheel", "clean-install"}, owners)
-        for name in owners:
-            self.assertEqual(1, self.job(name).count("smoke_installed_wheel.py"))
-
-    def test_required_artifact_gate_fails_closed_for_non_success_results(self) -> None:
-        gate = self.job("artifact")
+    def test_required_gate_fails_closed_and_release_depends_on_it(self) -> None:
+        gate = self.jobs["artifact"]
         prerequisites = self.needs("artifact")
         self.assertTrue(
             {"quality", "distribution-build", "installed-wheel", "clean-install"}
             <= prerequisites
         )
-        self.assertIn("if: ${{ always() }}", gate)
-        self.assertIn("NEEDS_RESULTS: ${{ toJSON(needs) }}", gate)
-        # Execute the real gate body for every non-success result, including skips
-        # caused by a failed build. This tests failure behavior, not a YAML snapshot.
+        self.assertEqual("${{ always() }}", gate["if"])
+        step = next(
+            step for step in gate["steps"] if "NEEDS_RESULTS" in step.get("env", {})
+        )
+        self.assertEqual("${{ toJSON(needs) }}", step["env"]["NEEDS_RESULTS"])
         code = textwrap.dedent(
-            gate.split("python - <<'PY'\n", 1)[1].split("          PY", 1)[0]
+            step["run"].split("python - <<'PY'\n", 1)[1].rsplit("PY", 1)[0]
         )
         success = {name: {"result": "success"} for name in sorted(prerequisites)}
         cases = [("all succeeded", success, True), ("empty", {}, False)]
-        # Put the failure after successful entries to exercise the whole scan.
         name = next(reversed(success))
         for result in ("failure", "cancelled", "skipped"):
-            cases.append(
-                (f"{name}: {result}", {**success, name: {"result": result}}, False)
-            )
+            cases.append((result, {**success, name: {"result": result}}, False))
         for label, results, expected_success in cases:
             with self.subTest(result=label):
                 run = subprocess.run(
@@ -183,44 +236,76 @@ class ReleaseWorkflowTests(unittest.TestCase):
                     check=False,
                 )
                 self.assertEqual(expected_success, run.returncode == 0, run.stderr)
-
-    def test_release_requires_source_and_distribution_success(self) -> None:
-        release = self.job("release")
         self.assertTrue({"test", "artifact"} <= self.needs("release"))
-        self.assertNotIn("always()", release)
-        self.assertIn("if: startsWith(github.ref, 'refs/tags/v')", release)
-        self.assertIn("verify-manifest", release)
+        self.assertEqual(
+            "startsWith(github.ref, 'refs/tags/v')", self.jobs["release"]["if"]
+        )
 
     def test_tag_validation_uses_fetched_protected_main(self) -> None:
-        for job_name in ("distribution-build", "release"):
-            with self.subTest(job=job_name):
-                job = self.job(job_name)
-                self.assertIn("git fetch origin main --tags --force", job)
-                self.assertIn("refs/remotes/origin/main^{commit}", job)
-                self.assertNotIn('EXPECTED_COMMIT="$(git rev-parse HEAD', job)
-                self.assertIn("verify-github-state", job)
-                self.assertIn("--expected-commit", job)
+        for name in ("distribution-build", "release"):
+            with self.subTest(job=name):
+                script = next(run for run in self.runs(name) if "verify-tag" in run)
+                lines = re.sub(r"\\\n\s*", " ", script).splitlines()
+                fetched = False
+                variables = {}
+                validated = set()
+                for line in lines:
+                    tokens = shlex.split(line)
+                    if tokens[:3] == ["git", "fetch", "origin"]:
+                        self.assertIn("main", tokens)
+                        self.assertIn("--tags", tokens)
+                        fetched = True
+                    assignment = (
+                        re.fullmatch(r"(\w+)=\$\((.+)\)", tokens[0])
+                        if len(tokens) == 1
+                        else None
+                    )
+                    if assignment:
+                        command = shlex.split(assignment[2])
+                        if command[:2] == ["git", "rev-parse"]:
+                            self.assertTrue(
+                                fetched, "resolve protected main after fetching it"
+                            )
+                            variables[assignment[1]] = command[-1]
+                    for check in ("verify-tag", "verify-github-state"):
+                        if check not in tokens:
+                            continue
+                        self.assertTrue(fetched)
+                        argument = tokens[tokens.index("--expected-commit") + 1]
+                        reference = variables.get(
+                            argument.lstrip("$").strip("{}"), argument
+                        )
+                        self.assertIn(
+                            reference,
+                            {
+                                "origin/main",
+                                "origin/main^{commit}",
+                                "refs/remotes/origin/main",
+                                "refs/remotes/origin/main^{commit}",
+                            },
+                        )
+                        validated.add(check)
+                self.assertEqual({"verify-tag", "verify-github-state"}, validated)
 
-    def test_tag_validation_jobs_have_minimum_github_api_permissions(self) -> None:
-        artifact_job = self.job("distribution-build")
-        release_job = self.job("release")
-        for job_name, job in (
-            ("distribution-build", artifact_job),
-            ("release", release_job),
-        ):
-            with self.subTest(job=job_name):
-                self.assertIn("actions: read", job)
-                self.assertIn("issues: read", job)
-                self.assertIn("pull-requests: read", job)
-                self.assertNotIn("write-all", job)
-        self.assertIn("contents: read", artifact_job)
-        self.assertNotIn("contents: write", artifact_job)
-        self.assertIn("contents: write", release_job)
-        self.assertEqual(1, self.workflow.count("contents: write"))
-        self.assertNotIn("write-all", self.workflow)
-        self.assertNotIn("actions: write", self.workflow)
-        self.assertNotIn("issues: write", self.workflow)
-        self.assertNotIn("pull-requests: write", self.workflow)
+    def test_release_jobs_have_only_required_github_permissions(self) -> None:
+        self.assertEqual({"contents": "read"}, self.workflow["permissions"])
+        for name, job in self.jobs.items():
+            permissions = job.get("permissions", self.workflow["permissions"])
+            self.assertIsInstance(permissions, dict)
+            self.assertFalse(
+                any(
+                    value == "write" and (name != "release" or key != "contents")
+                    for key, value in permissions.items()
+                )
+            )
+        api_reads = {"actions": "read", "issues": "read", "pull-requests": "read"}
+        self.assertEqual(
+            {"contents": "read", **api_reads},
+            self.jobs["distribution-build"]["permissions"],
+        )
+        self.assertEqual(
+            {"contents": "write", **api_reads}, self.jobs["release"]["permissions"]
+        )
 
 
 if __name__ == "__main__":

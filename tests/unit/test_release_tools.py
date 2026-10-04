@@ -21,6 +21,7 @@ from scripts.release_tools import (
     _DOCS_THEME_ASSET_LICENSES,
     _DOCS_THEME_ASSET_SHA256,
     _github_api_json,
+    _verify_documentation_exclusions,
     create_dist_manifest,
     create_release_archives,
     expected_tag,
@@ -46,6 +47,29 @@ from scripts.smoke_installed_wheel import (
 
 
 class ReleaseToolTests(unittest.TestCase):
+    _manifest_seed: tuple[tuple[Path, bytes], ...] | None = None
+
+    def copy_manifest_repository(self, root: Path) -> Path:
+        # Keep the expensive valid archive set as immutable bytes. Every case
+        # writes independent files: archive mutation cannot contaminate the seed
+        # or another case, including on filesystems with hard-link support.
+        if type(self)._manifest_seed is None:
+            with tempfile.TemporaryDirectory() as temporary:
+                source = self.make_repository(Path(temporary))
+                self.prepare_artifacts(source)
+                create_dist_manifest(source, "a" * 40, source / "dist/manifest.json")
+                type(self)._manifest_seed = tuple(
+                    (path.relative_to(source), path.read_bytes())
+                    for path in sorted(source.rglob("*"))
+                    if path.is_file()
+                )
+        repository = root / "repository"
+        for relative, contents in type(self)._manifest_seed:
+            destination = repository / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes(contents)
+        return repository
+
     def theme_asset_payloads(self) -> dict[str, bytes]:
         theme = resources.files("mkdocs").joinpath("themes", "readthedocs")
         return {
@@ -366,29 +390,37 @@ class ReleaseToolTests(unittest.TestCase):
                 self.assertIn("examples/hypersonic/pressure_models.csv", names)
                 self.assertFalse(any(name.endswith((".npz", ".xls")) for name in names))
 
-    def test_wheel_and_docs_zip_reject_developer_or_removed_pages(self) -> None:
-        forbidden_docs = (
+    def test_documentation_validator_rejects_every_forbidden_page_family(self) -> None:
+        for relative in (
             "development/setup.html",
             "adr/README.html",
             "history/README.html",
             "devdocs/README.html",
             "solvers/fmf-overview.html",
             "solvers/hypersonic-overview.html",
-        )
-        for relative in forbidden_docs:
+        ):
             with (
                 self.subTest(relative=relative),
-                tempfile.TemporaryDirectory() as temp_dir,
+                self.assertRaisesRegex(RuntimeError, "developer or removed"),
             ):
-                repository = self.make_repository(Path(temp_dir))
-                wheel = self.write_wheel(repository)
-                with zipfile.ZipFile(wheel, "a") as archive:
-                    archive.writestr(f"panelsolver/_docs_site/{relative}", b"forbidden")
-                with self.assertRaisesRegex(RuntimeError, "developer or removed"):
-                    verify_wheel_contents(repository, wheel)
-                with self.assertRaisesRegex(RuntimeError, "developer or removed"):
-                    create_release_archives(repository)
+                _verify_documentation_exclusions({relative}, artifact="test site")
 
+    def test_wheel_and_docs_zip_apply_documentation_exclusions(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repository = self.make_repository(Path(temp_dir))
+            wheel = self.write_wheel(repository)
+            with zipfile.ZipFile(wheel, "a") as archive:
+                archive.writestr(
+                    "panelsolver/_docs_site/devdocs/README.html", b"forbidden"
+                )
+            for check in (
+                lambda: verify_wheel_contents(repository, wheel),
+                lambda: create_release_archives(repository),
+            ):
+                with self.assertRaisesRegex(RuntimeError, "developer or removed"):
+                    check()
+
+        # Developer files outside the bundled site use a different wheel check.
         with tempfile.TemporaryDirectory() as temp_dir:
             repository = self.make_repository(Path(temp_dir))
             wheel = self.write_wheel(repository)
@@ -562,10 +594,10 @@ class ReleaseToolTests(unittest.TestCase):
     def test_manifest_rejects_missing_extra_hash_and_commit_tampering(self) -> None:
         for case in ("missing", "extra", "hash", "commit"):
             with self.subTest(case=case), tempfile.TemporaryDirectory() as temp_dir:
-                repository = self.make_repository(Path(temp_dir))
-                wheel, _sdist, docs, _examples = self.prepare_artifacts(repository)
+                repository = self.copy_manifest_repository(Path(temp_dir))
+                wheel = select_built_wheel(repository)
+                docs = repository / "dist" / "panelsolver-docs-v2.3.4.zip"
                 manifest_path = repository / "dist" / "manifest.json"
-                create_dist_manifest(repository, "b" * 40, manifest_path)
                 if case == "missing":
                     docs.unlink()
                     expected = "file is missing"
@@ -590,10 +622,8 @@ class ReleaseToolTests(unittest.TestCase):
     ) -> None:
         for case in ("order", "duplicate_filename", "unexpected_filename"):
             with self.subTest(case=case), tempfile.TemporaryDirectory() as temp_dir:
-                repository = self.make_repository(Path(temp_dir))
-                self.prepare_artifacts(repository)
+                repository = self.copy_manifest_repository(Path(temp_dir))
                 manifest_path = repository / "dist" / "manifest.json"
-                create_dist_manifest(repository, "d" * 40, manifest_path)
                 if case == "order":
                     self.mutate_manifest(
                         manifest_path, lambda value: value["artifacts"].reverse()
@@ -628,10 +658,8 @@ class ReleaseToolTests(unittest.TestCase):
     def test_manifest_rejects_wheel_metadata_and_docs_content_mismatch(self) -> None:
         for case in ("metadata", "docs"):
             with self.subTest(case=case), tempfile.TemporaryDirectory() as temp_dir:
-                repository = self.make_repository(Path(temp_dir))
-                self.prepare_artifacts(repository)
+                repository = self.copy_manifest_repository(Path(temp_dir))
                 manifest_path = repository / "dist" / "manifest.json"
-                create_dist_manifest(repository, "e" * 40, manifest_path)
                 if case == "metadata":
                     self.mutate_manifest(
                         manifest_path,
@@ -700,31 +728,29 @@ class ReleaseToolTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "tag target mismatch"):
                 verify_release_tag(repository, "v2.3.4", "refs/remotes/origin/main")
 
-    @pytest.mark.slow
     def test_release_tag_rejects_wrong_version_lock_and_changelog(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            repository = self.make_git_repository(Path(temp_dir))
-            self.git(repository, "tag", "-a", "v2.3.5", "-m", "wrong")
-            with self.assertRaisesRegex(RuntimeError, "tag/version mismatch"):
-                verify_release_tag(repository, "v2.3.5")
-        with tempfile.TemporaryDirectory() as temp_dir:
-            repository = self.make_git_repository(Path(temp_dir))
-            self.commit_file(
-                repository,
-                "uv.lock",
-                'version = 1\n\n[[package]]\nname = "panelsolver"\nversion = "2.3.5"\n',
-            )
-            self.git(repository, "tag", "-a", "v2.3.4", "-m", "wrong lock")
-            with self.assertRaisesRegex(RuntimeError, "uv.lock.*mismatch"):
-                verify_release_tag(repository, "v2.3.4")
-        with tempfile.TemporaryDirectory() as temp_dir:
-            repository = self.make_git_repository(Path(temp_dir))
-            self.commit_file(
-                repository, "CHANGELOG.md", "# Changelog\n\n## [Unreleased]\n"
-            )
-            self.git(repository, "tag", "-a", "v2.3.4", "-m", "no notes")
-            with self.assertRaisesRegex(RuntimeError, "no release section"):
-                verify_release_tag(repository, "v2.3.4")
+        # These checks precede verify_tag_target; constructing and committing a
+        # Git repository cannot add coverage to metadata rejection.
+        cases = (
+            ("version", "v2.3.5", "tag/version mismatch"),
+            ("lock", "v2.3.4", "uv.lock.*mismatch"),
+            ("changelog", "v2.3.4", "no release section"),
+        )
+        for case, tag, reason in cases:
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as temporary:
+                repository = self.make_repository(Path(temporary))
+                if case == "lock":
+                    (repository / "uv.lock").write_text(
+                        'version = 1\n\n[[package]]\nname = "panelsolver"\n'
+                        'version = "2.3.5"\n',
+                        encoding="utf-8",
+                    )
+                elif case == "changelog":
+                    (repository / "CHANGELOG.md").write_text(
+                        "# Changelog\n\n## [Unreleased]\n", encoding="utf-8"
+                    )
+                with self.assertRaisesRegex(RuntimeError, reason):
+                    verify_release_tag(repository, tag)
 
     def test_open_tracker_gate_exempts_only_accepted_issues(self) -> None:
         repository_payload = {"full_name": "pandorobo11/panelsolver"}

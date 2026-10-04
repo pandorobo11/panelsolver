@@ -11,45 +11,67 @@ from scripts.check import Mode, _venv_python, build_plan, main
 
 
 class CheckScriptTests(unittest.TestCase):
-    def test_quick_plan_runs_fast_tests_after_dependency_sync(self) -> None:
-        plan = build_plan(Mode.QUICK)
-
-        self.assertEqual(("uv", "sync"), plan[0].command[:2])
-        self.assertIn("--locked", plan[0].command)
-        commands = [step.command for step in plan if step.command is not None]
-        for tool in (("ruff", "format"), ("ruff", "check"), ("mypy",)):
-            with self.subTest(tool=tool):
-                self.assertTrue(
-                    any(command[3 : 3 + len(tool)] == tool for command in commands)
-                )
-        self.assertEqual(
-            ("uv", "run", "--no-sync", "pytest", "-m", "not slow"), plan[-1].command
+    def test_modes_keep_required_checks_once_in_execution_order(self) -> None:
+        common = ("sync", "format", "lint", "mypy", "pytest")
+        repository = ("us1976", "plots", "docs", "build")
+        deep = ("scheduler", "distributions", "installed-wheel")
+        modes = (
+            (Mode.QUICK, common, ("-m", "not slow")),
+            (Mode.STANDARD, common + repository, ()),
+            (Mode.FULL, common + repository + deep, ()),
         )
-
-    def test_standard_plan_runs_only_the_full_pytest_suite(self) -> None:
-        plan = build_plan(Mode.STANDARD)
-        pytest_commands = [
-            step.command
-            for step in plan
-            if step.command is not None and "pytest" in step.command
-        ]
-
-        self.assertEqual([("uv", "run", "--no-sync", "pytest")], pytest_commands)
-
-    def test_full_plan_extends_standard_with_deep_local_checks(self) -> None:
-        standard = build_plan(Mode.STANDARD)
-        full = build_plan(Mode.FULL)
-
-        self.assertEqual(standard, full[: len(standard)])
-        commands = [step.command or () for step in full[len(standard) :]]
-        self.assertTrue(
-            any(
-                "scripts/probe_scheduler_lifecycle.py" in command
-                for command in commands
-            )
-        )
-        self.assertTrue(any("verify-distributions" in command for command in commands))
-        self.assertTrue(any(step.action is not None for step in full[len(standard) :]))
+        command_kinds = {
+            ("uv", "sync"): "sync",
+            ("uv", "run", "--no-sync", "ruff", "format"): "format",
+            ("uv", "run", "--no-sync", "ruff", "check"): "lint",
+            ("uv", "run", "--no-sync", "mypy"): "mypy",
+            ("uv", "run", "--no-sync", "pytest"): "pytest",
+            ("uv", "run", "--no-sync", "mkdocs", "build"): "docs",
+            ("uv", "build"): "build",
+        }
+        scripts = {
+            "scripts/generate_us1976_sentman_table.py": "us1976",
+            "scripts/generate_docs_angle_response_plots.py": "plots",
+            "scripts/probe_scheduler_lifecycle.py": "scheduler",
+            "scripts/release_tools.py": "distributions",
+        }
+        for mode, expected, pytest_options in modes:
+            with self.subTest(mode=mode.value):
+                observed = []
+                for step in build_plan(mode):
+                    command = step.command
+                    if command is None:
+                        self.assertTrue(callable(step.action))
+                        observed.append("installed-wheel")
+                        continue
+                    matches = [
+                        kind
+                        for prefix, kind in command_kinds.items()
+                        if command[: len(prefix)] == prefix
+                    ]
+                    if command[:4] == ("uv", "run", "--no-sync", "python"):
+                        matches.append(scripts.get(command[4]))
+                    self.assertEqual(1, len(matches), command)
+                    kind = matches[0]
+                    self.assertIsNotNone(kind, command)
+                    observed.append(kind)
+                    if kind == "sync":
+                        self.assertIn("--locked", command)
+                        self.assertEqual(
+                            "rayaccel", command[command.index("--extra") + 1]
+                        )
+                        self.assertEqual("docs", command[command.index("--group") + 1])
+                    elif kind in {"format", "us1976", "plots"}:
+                        self.assertIn("--check", command)
+                    elif kind == "pytest":
+                        self.assertEqual(pytest_options, command[4:])
+                    elif kind == "docs":
+                        self.assertIn("--strict", command)
+                    elif kind == "distributions":
+                        self.assertIn("verify-distributions", command)
+                # Exact semantic stages protect required checks, ordering and
+                # duplicate execution without fixing names or argument layout.
+                self.assertEqual(expected, tuple(observed))
 
     def test_temporary_python_path_is_platform_specific(self) -> None:
         venv = Path("temporary-venv")
