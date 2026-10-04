@@ -36,8 +36,11 @@ and unavailable resolved fields. A physical solve failure is reported in batch
 errors; it cannot produce a signed result row.
 
 The intersection predicates use exact rational arithmetic on stored float64
-vertices, origins and normalized directions. Endpoint coordinates are rounded
-to float64. No epsilon snaps nearby surfaces together. Source topology is checked
+vertices, origins and normalized directions. Automatic plane offsets retain exact
+projected extrema and exact interpolation (the midpoint for one plane) through
+intersection testing. Only their reported positions and endpoint coordinates are
+rounded to float64; an explicitly supplied position uses the supplied float64
+value. No epsilon snaps nearby surfaces together. Source topology is checked
 against the same geometry validation used by sectional loads. Unrepresentable
 nonzero segments fail explicitly. Rational arithmetic costs more than a floating
 point-only slice; large meshes with many planes may be slower.

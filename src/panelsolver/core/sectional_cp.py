@@ -183,12 +183,12 @@ def compute_cp_sections(
                     (point[k] - origin[k]) * direction[k] for k in range(3)
                 )
     start, stop = definition.start_m, definition.stop_m
+    auto_bounds = None
     if start is None:
-        start, stop = float(min(projected.values())), float(max(projected.values()))
+        auto_bounds = min(projected.values()), max(projected.values())
+        start, stop = map(float, auto_bounds)
         if definition.section_count == 1:
-            start = stop = float(
-                (min(projected.values()) + max(projected.values())) / 2
-            )
+            start = stop = float(sum(auto_bounds) / 2)
     if definition.section_count == 1:
         positions = float_array([start], field="positions_m", shape=(1,))
     else:
@@ -198,8 +198,18 @@ def compute_cp_sections(
             )
         positions = _uniform_bins(start, stop, definition.section_count - 1)[0]
     planes = []
-    for position in positions:
-        offset = Fraction(float(position))
+    for plane_index, position in enumerate(positions):
+        # Keep the existing float64 range/spacing validation above, but do not
+        # feed rounded automatic positions back into the exact predicates.
+        if auto_bounds is None:
+            offset = Fraction(float(position))
+        elif definition.section_count == 1:
+            offset = sum(auto_bounds) / 2
+        else:
+            auto_start, auto_stop = auto_bounds
+            offset = auto_start + (auto_stop - auto_start) * Fraction(
+                plane_index, definition.section_count - 1
+            )
         indices, endpoints = [], []
         message = ""
         for face in faces:
@@ -227,7 +237,7 @@ def compute_cp_sections(
         selected = np.asarray(indices, dtype=np.int64)
         planes.append(
             CpPlane(
-                float(position),
+                float(offset),
                 "failed" if message else "ok" if indices else "empty",
                 message,
                 selected,

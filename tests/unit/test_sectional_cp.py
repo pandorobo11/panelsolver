@@ -68,6 +68,62 @@ def test_shared_edge_keeps_both_values():
     np.testing.assert_array_equal(plane.scalar_values, [0.3, 1.3])
 
 
+@pytest.mark.parametrize(
+    "section_count,tip_x,plane_index", [(2, 0, 1), (3, 0.2, 1), (1, 0.2, 0)]
+)
+def test_auto_oblique_plane_keeps_shared_edge(section_count, tip_x, plane_index):
+    mesh = make_mesh(
+        [
+            [[0, 0, 0], [0.1, 0, 0], [0, 0.1, 0]],
+            [[tip_x, 0, 1], [0.1, 0, 0], [0, 0.1, 0]],
+        ]
+    )
+    result = extract(
+        mesh,
+        definition(
+            axis_direction_stl=(1, 1, 0),
+            section_count=section_count,
+            start_m=None,
+            stop_m=None,
+        ),
+    )
+    plane = result.planes[plane_index]
+    assert plane.status == "ok"
+    assert plane.source_face_indices.tolist() == [0, 1]
+    np.testing.assert_array_equal(plane.scalar_values, [0.3, 1.3])
+    np.testing.assert_array_equal(
+        plane.endpoints_stl_m, [[[0.1, 0, 0], [0, 0.1, 0]]] * 2
+    )
+
+
+def test_auto_oblique_coplanar_triangle_fails():
+    mesh = make_mesh([[[0.1, 0, 0], [0, 0.1, 0], [0.1, 0, 1]]])
+    plane = extract(
+        mesh,
+        definition(axis_direction_stl=(1, 1, 0), start_m=None, stop_m=None),
+    ).planes[0]
+    assert plane.status == "failed"
+    assert "coplanar" in plane.message
+    assert plane.endpoints_stl_m.shape == (0, 2, 3)
+    assert plane.scalar_values.size == 0
+
+
+def test_explicit_oblique_position_is_not_snapped_to_auto_endpoint():
+    mesh = make_mesh([[[0, 0, 0], [0.1, 0, 0], [0, 0.1, 0]]])
+    spec = definition(axis_direction_stl=(1, 1, 0), start_m=None, stop_m=None)
+    rounded_endpoint = 0.1 * spec.axis_direction_hat_stl[0]
+    plane = extract(
+        mesh,
+        definition(
+            axis_direction_stl=(1, 1, 0),
+            start_m=rounded_endpoint,
+            stop_m=rounded_endpoint,
+        ),
+    ).planes[0]
+    # This float64 lies just beyond the exact projection of the shared edge.
+    assert plane.status == "empty"
+
+
 @pytest.mark.parametrize("location", [1.0, 2.0])
 def test_point_and_nonintersection_are_empty(location):
     plane = extract(spec=definition(start_m=location, stop_m=location)).planes[0]
