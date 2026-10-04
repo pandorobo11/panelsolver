@@ -95,13 +95,12 @@ def _run_probe(tmp_path: Path, *, group_signal: bool) -> None:
     ]
 
 
-def test_parallel_cli_worker_sigint_preserves_cooperative_cancellation(tmp_path):
-    # Exercise worker SIGINT and actual CLI parent handling on every platform.
-    _run_probe(tmp_path, group_signal=False)
-
-
-def test_parallel_cli_terminal_sigint_preserves_inflight_results(tmp_path):
-    # POSIX models the terminal delivery route exactly. Windows lacks killpg;
-    # local delivery to each real child plus the CLI parent exercises its
-    # supported Python SIGINT route without skipping cancellation coverage.
-    _run_probe(tmp_path, group_signal=os.name == "posix")
+@pytest.mark.parametrize(
+    "group_signal",
+    (False, True) if os.name == "posix" else (False,),
+    ids=lambda grouped: "terminal-group" if grouped else "worker-and-parent",
+)
+def test_parallel_cli_sigint_preserves_inflight_results(tmp_path, group_signal):
+    # POSIX has distinct worker-local and terminal process-group delivery.
+    # Windows supports only the former; do not repeat that same probe twice.
+    _run_probe(tmp_path, group_signal=group_signal)
