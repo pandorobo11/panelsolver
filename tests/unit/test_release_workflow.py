@@ -1,3 +1,4 @@
+import argparse
 import json
 import os
 import re
@@ -86,10 +87,6 @@ class ReleaseWorkflowTests(unittest.TestCase):
         pytest_arguments = pytest_arguments[pytest_arguments.index("pytest") + 1 :]
         for argument in pytest_arguments:
             self.assertTrue(argument.startswith("--durations="), pytest_command)
-        self.assertTrue(any("ray.has_embree" in command for command in source))
-        self.assertTrue(
-            any("probe_scheduler_lifecycle.py" in command for command in source)
-        )
         smoke_owners = {
             name
             for name in self.jobs
@@ -130,6 +127,43 @@ class ReleaseWorkflowTests(unittest.TestCase):
                 self.assertIn("--locked", matches[0])
             elif required[-1] == "format":
                 self.assertIn("--check", matches[0])
+
+    def test_embree_preflight_requires_an_available_backend(self) -> None:
+        command = next(run for run in self.runs("test") if "ray.has_embree" in run)
+        arguments = shlex.split(command)
+        code = arguments[arguments.index("-c") + 1]
+        for available in (False, True):
+            with self.subTest(has_embree=available):
+                # Replace only the external dependency, then execute the actual
+                # workflow body with normal Python exit semantics.
+                setup = (
+                    "import sys, types; "
+                    "trimesh = types.ModuleType('trimesh'); "
+                    "trimesh.__version__ = 'test'; "
+                    f"trimesh.ray = types.SimpleNamespace(has_embree={available}); "
+                    "sys.modules['trimesh'] = trimesh; "
+                )
+                run = subprocess.run(
+                    [sys.executable, "-c", setup + code],
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                    check=False,
+                )
+                self.assertEqual(available, run.returncode == 0, run.stderr)
+
+    def test_scheduler_stress_keeps_required_repetitions(self) -> None:
+        command = next(
+            run for run in self.runs("test") if "probe_scheduler_lifecycle.py" in run
+        )
+        arguments = shlex.split(command)
+        start = arguments.index("scripts/probe_scheduler_lifecycle.py") + 1
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--iterations", type=int, required=True)
+        parser.add_argument("--timeout-seconds", type=float, required=True)
+        options = parser.parse_args(arguments[start:])
+        self.assertGreaterEqual(options.iterations, 10)
+        self.assertGreaterEqual(options.timeout_seconds, 90)
 
     def test_build_once_and_consumers_verify_the_same_commit_bound_set(self) -> None:
         producers = [
