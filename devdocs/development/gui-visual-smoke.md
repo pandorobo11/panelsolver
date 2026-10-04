@@ -12,11 +12,33 @@ Prepare the locked local environment from the repository root:
 
 ```bash
 uv sync --locked --python 3.12 --extra rayaccel --group docs
+.venv/bin/python scripts/build_macos_visual_app.py
 ```
 
-The helper resolves the repository root from its own bundle location. It does
-not contain a developer-specific checkout path. It uses `.venv/bin/python` when
-available and otherwise falls back to `uv run`.
+The second command requires Xcode Command Line Tools (`xcrun clang`). It builds
+the native executable for the current Mac inside the existing app bundle. The
+generated executable is ignored by Git; build it after cloning and rebuild it
+after changes to `tools/macos/visual_launcher.m`. Close the helper before
+rebuilding it. No Python headers, fixed Python library link, or new production
+dependency is needed; the launcher uses macOS Foundation and `dlopen`.
+
+The helper resolves the repository root from its own bundle location. It uses
+`.venv/bin/python` when available and otherwise falls back to `uv run --locked`.
+A short isolated Python subprocess reports that interpreter's shared-library
+path; the native launcher loads it and calls `Py_BytesMain` in its own process.
+The GUI still runs `scripts/gui_visual_smoke.py` with the original arguments,
+checkout working directory and normal-display environment. Python's
+`sys.executable` remains the selected interpreter so multiprocessing workers
+start ordinary Python processes rather than recursively opening this app.
+
+No developer-specific checkout or interpreter path is compiled into the helper.
+Runtime discovery happens on every launch, including after moving the checkout
+or replacing its environment. CPython must provide a shared library or framework;
+discovery/load failures print a diagnostic to stderr and exit nonzero. The GUI
+script's exit status is returned unchanged. Use `open --stderr /tmp/visual.log`
+to retain diagnostics for Finder/Launch Services launches, or invoke
+`Contents/MacOS/PanelSolverVisualNative` directly when an automation needs the
+actual process exit status (`open -W` waits, but is not the child's exit status).
 
 ## Launch
 
@@ -125,10 +147,16 @@ Computer Use can reject the bundle-ID target as ambiguous. If that happens,
 switch to the current checkout's absolute app path; the path uniquely selects
 the intended copy without changing its bundle ID.
 
-The executable is Python, but the app bundle gives Computer Use a specific app
-target instead of relying on a generic `python3.12` process name. Inspect the
-fresh accessibility tree after every action and use it to locate the current
-controls.
+The app's native executable remains the running process while Python executes
+inside it. In a macOS 27.0.1 investigation, the former shell/`exec` launcher
+left `NSRunningApplication.processIdentifier` at `-1` despite a live Python
+process, and Computer Use timed out. A native launcher that also used `exec`
+reproduced the same failure; in-process Python kept a valid PID and permitted
+real GUI inspection. This is an observed launch-identity issue, not evidence
+that Qt accessibility or screen-recording permissions should be disabled.
+Inspect the fresh accessibility tree after every action and use it to locate
+the current controls. This helper does not change the installed
+`panelsolver-gui` command or the numerical product.
 
 Capture evidence should normally show:
 

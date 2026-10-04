@@ -15,3 +15,4 @@ site/
 .hatch-build/
 .reference/fmfsolver/
 .reference/newtsolver/
+/tools/macos/PanelSolverVisual.app/Contents/MacOS/PanelSolverVisualNative

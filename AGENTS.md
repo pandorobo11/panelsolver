@@ -33,6 +33,7 @@ helper in the current checkout from the repository root and use that same
 absolute path for both launch and the Computer Use app target:
 
 ```bash
+.venv/bin/python scripts/build_macos_visual_app.py
 visual_app="$(pwd -P)/tools/macos/PanelSolverVisual.app"
 printf '%s\n' "$visual_app"
 open "$visual_app" --args --domain fmf --theme system
