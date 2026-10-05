@@ -7,7 +7,7 @@
   <key>CFBundleDisplayName</key>
   <string>Panel Solver Visual Smoke</string>
   <key>CFBundleExecutable</key>
-  <string>PanelSolverVisual</string>
+  <string>PanelSolverVisualNative</string>
   <key>CFBundleIdentifier</key>
   <string>io.github.pandorobo11.panelsolver.visual-smoke</string>
   <key>CFBundleInfoDictionaryVersion</key>
