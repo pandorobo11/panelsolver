@@ -530,7 +530,7 @@ class SectionalDialogTests(unittest.TestCase):
         self.select(dialog.definition_table, 0)
         output = self.root / "previous.csv"
         self.assertTrue(dialog.start_run(output))
-        self.wait_until(lambda dialog=dialog: not dialog.is_running())
+        self.wait_until(lambda: not dialog.is_running())
         retained, status, contents = (
             dialog.batch_result,
             dialog.result_status.text(),
@@ -579,7 +579,7 @@ class SectionalDialogTests(unittest.TestCase):
         _window, _panel, dialog = self.make_window(runner=runner)
         self.select(dialog.definition_table, 0)
         self.assertTrue(dialog.start_run(self.root / "previous.csv"))
-        self.wait_until(lambda dialog=dialog: not dialog.is_running())
+        self.wait_until(lambda: not dialog.is_running())
         retained = dialog.batch_result
         output = self.root / "next.csv"
         output.write_text("existing valid output")
@@ -589,7 +589,7 @@ class SectionalDialogTests(unittest.TestCase):
         ):
             outcomes.append(outcome)
             self.assertTrue(dialog.start_run(output))
-            self.wait_until(lambda dialog=dialog: not dialog.is_running())
+            self.wait_until(lambda: not dialog.is_running())
             self.assertEqual("existing valid output", output.read_text())
             if isinstance(outcome, Exception):
                 self.assertIs(retained, dialog.batch_result)
@@ -607,7 +607,7 @@ class SectionalDialogTests(unittest.TestCase):
             "panelsolver.app.csv_writer.os.replace", side_effect=OSError("disk full")
         ):
             self.assertTrue(dialog.start_run(output))
-            self.wait_until(lambda dialog=dialog: not dialog.is_running())
+            self.wait_until(lambda: not dialog.is_running())
         self.assertIn("Save failed", dialog.result_status.text())
         self.assertEqual("old valid output", output.read_text())
         self.assertFalse(panel._external_run_active)
@@ -623,7 +623,7 @@ class SectionalDialogTests(unittest.TestCase):
                 return_value=(str(output), "CSV (*.csv)"),
             ):
                 dialog.btn_retry_save.click()
-                self.wait_until(lambda dialog=dialog: not dialog.is_running())
+                self.wait_until(lambda: not dialog.is_running())
         self.assertIs(retained, dialog.batch_result)
         self.assertIn("Saved completed", dialog.result_status.text())
         self.assertTrue(dialog.btn_retry_save.isHidden())
@@ -638,7 +638,7 @@ class SectionalDialogTests(unittest.TestCase):
         self.select(dialog.definition_table, 0, 1)
         output = self.root / "partial.csv"
         self.assertTrue(dialog.start_run(output))
-        self.wait_until(lambda dialog=dialog: not dialog.is_running())
+        self.wait_until(lambda: not dialog.is_running())
         self.assertEqual("failed", dialog.batch_result.status)
         with output.open(encoding="utf-8-sig", newline="") as handle:
             rows = list(csv.DictReader(handle))
@@ -657,7 +657,7 @@ class SectionalDialogTests(unittest.TestCase):
             sectional_dialog, "write_sectional_csv", side_effect=OSError("disk full")
         ):
             self.assertTrue(dialog.start_run(old_output))
-            self.wait_until(lambda dialog=dialog: not dialog.is_running())
+            self.wait_until(lambda: not dialog.is_running())
         retained = dialog.batch_result
         self.definition_path.write_text("invalid header\n")
         dialog.reload_definitions()
@@ -671,7 +671,7 @@ class SectionalDialogTests(unittest.TestCase):
             dialog, "_runner", side_effect=RuntimeError("new calculation failed")
         ):
             self.assertTrue(dialog.start_run(new_output))
-            self.wait_until(lambda dialog=dialog: not dialog.is_running())
+            self.wait_until(lambda: not dialog.is_running())
         self.assertIs(retained, dialog.batch_result)
         self.assertTrue(dialog.btn_retry_save.isEnabled())
         with patch.object(
@@ -695,7 +695,7 @@ class SectionalDialogTests(unittest.TestCase):
             ),
         ):
             dialog.btn_retry_save.click()
-            self.wait_until(lambda dialog=dialog: not dialog.is_running())
+            self.wait_until(lambda: not dialog.is_running())
         with output.open(encoding="utf-8-sig", newline="") as handle:
             rows = list(csv.DictReader(handle))
         self.assertEqual(
@@ -710,7 +710,7 @@ class SectionalDialogTests(unittest.TestCase):
             sectional_dialog, "write_sectional_csv", side_effect=OSError("disk full")
         ):
             self.assertTrue(dialog.start_run(self.root / "unsaved.csv"))
-            self.wait_until(lambda dialog=dialog: not dialog.is_running())
+            self.wait_until(lambda: not dialog.is_running())
         self.assertTrue(dialog.btn_retry_save.isEnabled())
         with patch.object(
             dialog,
@@ -718,7 +718,7 @@ class SectionalDialogTests(unittest.TestCase):
             return_value=SectionalBatchResult(None, "cancelled", 0, 4, 0, 2),
         ):
             self.assertTrue(dialog.start_run(self.root / "empty.csv"))
-            self.wait_until(lambda dialog=dialog: not dialog.is_running())
+            self.wait_until(lambda: not dialog.is_running())
         self.assertTrue(dialog.btn_retry_save.isHidden())
         self.assertFalse(dialog.retry_save())
         self.assertIsNone(dialog.batch_result.csv)
@@ -741,7 +741,7 @@ class SectionalDialogTests(unittest.TestCase):
         dialog.run_finished.connect(lambda: finished.append(True))
         output = self.root / "result.csv"
         self.assertTrue(dialog.start_run(output))
-        self.wait_until(lambda dialog=dialog: not dialog.is_running())
+        self.wait_until(lambda: not dialog.is_running())
         self.assertIn("Save failed", dialog.result_status.text())
         self.assertFalse(panel._external_run_active)
         self.assertEqual([True], finished)
@@ -752,7 +752,7 @@ class SectionalDialogTests(unittest.TestCase):
         link.unlink()
         link.symlink_to(self.definition_path)
         self.assertTrue(dialog._save_results(output))
-        self.wait_until(lambda dialog=dialog: not dialog.is_running())
+        self.wait_until(lambda: not dialog.is_running())
         self.assertIs(retained, dialog.batch_result)
         self.assertTrue(output.exists())
 
@@ -822,7 +822,7 @@ class SectionalDialogTests(unittest.TestCase):
         panel.case_rows[1]["case_id"] = "mutated"
         self.select(panel.case_table, 0)
         release.set()
-        self.wait_until(lambda dialog=dialog: not dialog.is_running())
+        self.wait_until(lambda: not dialog.is_running())
         request = captured["request"]
         self.assertEqual("case_1", request.rows[0]["case_id"])
         self.assertEqual("span", request.definitions[0].section_id)
@@ -838,7 +838,7 @@ class SectionalDialogTests(unittest.TestCase):
         self.select(dialog.definition_table, 0)
         output = self.root / "snapshot.csv"
         self.assertTrue(dialog._save_results(output))
-        self.wait_until(lambda dialog=dialog: not dialog.is_running())
+        self.wait_until(lambda: not dialog.is_running())
         with output.open(encoding="utf-8-sig", newline="") as handle:
             self.assertEqual(
                 {"span"}, {row["section_id"] for row in csv.DictReader(handle)}
@@ -857,7 +857,7 @@ class SectionalDialogTests(unittest.TestCase):
         self.select(panel.case_table, 0)
         self.select(dialog.definition_table, 0)
         self.assertTrue(dialog.start_run(self.root / "automatic.csv"))
-        self.wait_until(lambda dialog=dialog: not dialog.is_running())
+        self.wait_until(lambda: not dialog.is_running())
         self.assertTrue(
             panel.start_run(panel.case_rows, 1, 0, self.root / "normal.csv")
         )
@@ -903,7 +903,7 @@ class SectionalDialogTests(unittest.TestCase):
         self.wait_until(entered.is_set)
         dialog.cancel_run()
         self.assertIn("Cancelling", dialog.progress.text())
-        self.wait_until(lambda dialog=dialog: not dialog.is_running())
+        self.wait_until(lambda: not dialog.is_running())
         self.assertEqual("cancelled", dialog.batch_result.status)
         self.assertIn("Saved cancelled snapshot (1/4", dialog.result_status.text())
         with (self.root / "automatic.csv").open(
@@ -919,7 +919,7 @@ class SectionalDialogTests(unittest.TestCase):
             "panelsolver.app.csv_writer.os.replace", side_effect=OSError("disk failure")
         ):
             self.assertTrue(dialog._save_results(output))
-            self.wait_until(lambda dialog=dialog: not dialog.is_running())
+            self.wait_until(lambda: not dialog.is_running())
         self.assertIs(retained, dialog.batch_result)
         self.assertIn("Save failed", dialog.result_status.text())
         self.assertEqual("old valid contents", output.read_text())
@@ -927,7 +927,7 @@ class SectionalDialogTests(unittest.TestCase):
             sectional_batch, "execute_case", side_effect=AssertionError("recalculation")
         ):
             self.assertTrue(dialog._save_results(output))
-            self.wait_until(lambda dialog=dialog: not dialog.is_running())
+            self.wait_until(lambda: not dialog.is_running())
         self.assertIn("cancelled", dialog.result_status.text())
         self.assertEqual("warning", dialog.progress.property("fluentStatus"))
 
@@ -982,7 +982,7 @@ class SectionalDialogTests(unittest.TestCase):
         self.select(panel.case_table, 0)
         self.select(dialog.definition_table, 0)
         self.assertTrue(dialog.start_run(self.root / "automatic.csv"))
-        self.wait_until(lambda dialog=dialog: not dialog.is_running())
+        self.wait_until(lambda: not dialog.is_running())
         retained = dialog.batch_result
         new_definition = self.root / "new-sections.csv"
         new_definition.write_text(HEADER + "new-label,0,0,0,0,1,0,2\n")
@@ -998,12 +998,12 @@ class SectionalDialogTests(unittest.TestCase):
         for path in (new_definition, new_case_file, new_stl):
             original = path.read_bytes()
             self.assertTrue(dialog._save_results(path))
-            self.wait_until(lambda dialog=dialog: not dialog.is_running())
+            self.wait_until(lambda: not dialog.is_running())
             self.assertIn("Save failed", dialog.result_status.text())
             self.assertEqual(original, path.read_bytes())
             self.assertIs(retained, dialog.batch_result)
         self.assertTrue(dialog._save_results(self.root / "old-snapshot.csv"))
-        self.wait_until(lambda dialog=dialog: not dialog.is_running())
+        self.wait_until(lambda: not dialog.is_running())
         self.assertEqual(
             {"span"}, {row["section_id"] for row in dialog.batch_result.csv.rows}
         )
@@ -1020,11 +1020,11 @@ class SectionalDialogTests(unittest.TestCase):
         self.select(panel.case_table, 0)
         self.select(dialog.definition_table, 0)
         self.assertTrue(dialog.start_run(self.root / "automatic.csv"))
-        self.wait_until(lambda dialog=dialog: not dialog.is_running())
+        self.wait_until(lambda: not dialog.is_running())
         for path in (self.definition_path, replacement, panel.input_path):
             original = path.read_bytes()
             self.assertTrue(dialog._save_results(path))
-            self.wait_until(lambda dialog=dialog: not dialog.is_running())
+            self.wait_until(lambda: not dialog.is_running())
             self.assertIn("Save failed", dialog.result_status.text())
             self.assertEqual(original, path.read_bytes())
 
@@ -1045,11 +1045,11 @@ class SectionalDialogTests(unittest.TestCase):
         self.select(panel.case_table, 0)
         self.select(dialog.definition_table, 0)
         self.assertTrue(dialog.start_run(self.root / "automatic.csv"))
-        self.wait_until(lambda dialog=dialog: not dialog.is_running())
+        self.wait_until(lambda: not dialog.is_running())
         for target in (original, replacement, link):
             contents = target.read_bytes()
             self.assertTrue(dialog._save_results(target))
-            self.wait_until(lambda dialog=dialog: not dialog.is_running())
+            self.wait_until(lambda: not dialog.is_running())
             self.assertIn("Save failed", dialog.result_status.text())
             self.assertEqual(contents, target.read_bytes())
 
@@ -1091,7 +1091,7 @@ class SectionalDialogTests(unittest.TestCase):
             self.assertTrue(dialog.isVisible())
             self.assertTrue(dialog.is_running())
             release.set()
-            self.wait_until(lambda dialog=dialog: not dialog.is_running())
+            self.wait_until(lambda: not dialog.is_running())
         self.wait_until(lambda: not dialog.isVisible())
         self.assertEqual([True], finished)
         self.assertTrue((self.root / "slow.csv").exists())
