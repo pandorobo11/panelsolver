@@ -28,7 +28,8 @@ These open `Panel Solver — FMF` and `Panel Solver — Hypersonic`.
 5. Follow the progress state. Open **Diagnostics** for warnings and errors.
 
 After editing the case table externally, choose **Reload** beside **Select Input
-File** to reread the current CSV, XLSX, or XLSM without choosing it again. Reload
+File** to reread the current CSV, XLSX, or XLSM without choosing it again. These
+two buttons stay together and wrap below the input path when space is limited. Reload
 resets the case selection; select rows again to run a subset. The button is
 disabled until an input is loaded and during ordinary or sectional calculation
 and saving. If reading fails, the previous cases are cleared and cannot be run;

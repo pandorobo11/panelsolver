@@ -341,11 +341,14 @@ class CasesPanel(QtWidgets.QWidget):
     def _build_layout(self) -> None:
         layout = QtWidgets.QVBoxLayout(self)
         layout.setSpacing(8)
-        input_row = QtWidgets.QHBoxLayout()
-        input_row.addWidget(self.input_value, 1)
-        input_row.addWidget(self.btn_pick_input)
-        input_row.addWidget(self.btn_reload_input)
-        layout.addLayout(input_row)
+        self.input_actions_group = QtWidgets.QHBoxLayout()
+        self.input_actions_group.setContentsMargins(0, 0, 0, 0)
+        self.input_actions_group.addWidget(self.btn_pick_input)
+        self.input_actions_group.addWidget(self.btn_reload_input)
+        self.input_row = FlowLayout()
+        self.input_row.addWidget(self.input_value)
+        self.input_row.addLayout(self.input_actions_group)
+        layout.addLayout(self.input_row)
         summaries = FlowLayout()
         self.lbl_case_summary.setSizePolicy(
             QtWidgets.QSizePolicy.Policy.Expanding,
