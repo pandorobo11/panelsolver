@@ -15,7 +15,7 @@ computed as the average of the endpoints.
 | `selected_component_ids` | Resolved selection as semicolon-separated original IDs. |
 | `range_mode`, `resolved_start_m`, `resolved_stop_m`, `section_count` | Automatic/explicit positioning, actual first/last position, requested plane count. |
 | `plane_index`, `position_m` | Zero-based plane index and signed distance from the origin along the normal. |
-| `plane_status`, `message` | `ok`, `empty`, or `failed`, with failure detail. |
+| `plane_status`, `message` | `ok`, `empty`, `warning`, or `failed`, with warning/failure detail. |
 | `component_id`, `face_id` | Original component and mesh face indices. |
 | `x0_stl_m`, `y0_stl_m`, `z0_stl_m` | First endpoint. |
 | `x1_stl_m`, `y1_stl_m`, `z1_stl_m` | Second endpoint. |
@@ -41,9 +41,23 @@ projected extrema and exact interpolation (the midpoint for one plane) through
 intersection testing. Only their reported positions and endpoint coordinates are
 rounded to float64; an explicitly supplied position uses the supplied float64
 value. No epsilon snaps nearby surfaces together. Source topology is checked
-against the same geometry validation used by sectional loads. Unrepresentable
-nonzero segments fail explicitly. Rational arithmetic costs more than a floating
-point-only slice; large meshes with many planes may be slower.
+against the same geometry validation used by sectional loads.
+
+If both endpoints round to exactly the same float64 coordinates, that segment
+is omitted and the plane has `warning` status. Its `message` records the omitted
+segment count and original source face indices (zero-based). All remaining
+segments and their unchanged panel values are saved, with the warning repeated
+on each row. If none remain, one warning status row has blank segment/value
+fields. Such planes count as completed in the batch; GUI/CLI logs also report the
+warning. A coplanar triangle still fails the entire plane.
+
+This rule is exact equality after rounding, not a length threshold or epsilon.
+Representable short segments remain. When adjacent segments share the exact
+endpoints, omitting the collapsed segment preserves closure in the saved
+coordinates; no contour assembly, gap repair, or closure guarantee is added.
+The omitted panel's scalar is not transferred to adjacent panels. Rational
+arithmetic costs more than a floating point-only slice; large meshes with many
+planes may be slower.
 
 CSV output is atomic. Successful and failed plane records from completed
 extractions are saved even when batch status is failed. If no extraction returns

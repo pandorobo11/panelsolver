@@ -39,3 +39,17 @@ No new production dependency is required. Rational arithmetic is deliberately
 conservative and can be slow on large meshes; future acceleration must retain
 these predicates and values. Neither output order nor shared coordinates imply
 a connected or oriented contour.
+
+## Amendment: collapsed float64 segments (2026-10-07)
+
+User-approved change: omit a segment only when both exact intersection endpoints
+round to identical float64 coordinates. Preserve every other segment and its
+panel scalar, and use plane status `warning` with the omitted count and original
+source face indices in `message`. Emit a status-only CSV row if no segments remain;
+otherwise retain the warning on each segment row. Log warnings in GUI/CLI and
+count these extractions as completed. Coplanar triangles still fail their plane.
+No epsilon, minimum length, snapping, scalar averaging, or contour repair is added.
+This replaces the previous whole-plane failure for an unrepresentable segment.
+CSV columns and physical coefficients are unchanged; consumers must handle the
+new `warning` plane status and may receive segments previously discarded with
+the failed plane. The omitted panel values are intentionally not exported.

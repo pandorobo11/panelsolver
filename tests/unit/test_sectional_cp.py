@@ -342,3 +342,110 @@ def test_cp_spawn_matches_serial(domain):
     parallel = run_sectional_cases(rows, domain.RUNTIME_POLICY, definitions, workers=2)
     assert serial.status == parallel.status == "completed"
     assert serial.csv == parallel.csv
+
+
+def collapsed_loop():
+    a, b, c, d = [1, -1e-18, 1], [2, 1, 1], [1, 1, 2], [0, -1, 0]
+    return extract(
+        make_mesh([[a, b, c], [a, b, d], [a, c, d], [b, c, d]]),
+        definition(axis_direction_stl=(0, 1, 0), start_m=0, stop_m=0),
+    )
+
+
+def test_collapsed_segment_preserves_closed_loop_and_values():
+    from collections import Counter
+
+    from panelsolver.app.sectional_cp_csv import project_cp_sections
+
+    result = collapsed_loop()
+    plane = result.planes[0]
+    assert plane.status == "warning"
+    assert "Omitted 1 intersection segment(s)" in plane.message
+    assert "source face indices: 0" in plane.message
+    np.testing.assert_array_equal(plane.source_face_indices, [1, 2, 3])
+    np.testing.assert_array_equal(plane.scalar_values, [1.3, 2.3, 3.3])
+    # The three surviving segments form a closed loop in the saved coordinates.
+    counts = Counter(map(tuple, plane.endpoints_stl_m.reshape(-1, 3)))
+    assert len(counts) == 3 and set(counts.values()) == {2}
+    assert all(tuple(a) != tuple(b) for a, b in plane.endpoints_stl_m)
+    csv_result = project_cp_sections(result, "case", "section")
+    assert len(csv_result.rows) == 3
+    assert all(r["plane_status"] == "warning" for r in csv_result.rows)
+    assert [r["face_id"] for r in csv_result.rows] == [1, 2, 3]
+
+
+def test_all_collapsed_segments_keep_warning_status_row():
+    from panelsolver.app.sectional_cp_csv import project_cp_sections
+
+    triangle = [[1, -1e-18, 1], [2, 1, 1], [1, 1, 2]]
+    result = extract(
+        make_mesh([triangle, triangle]),
+        definition(axis_direction_stl=(0, 1, 0), start_m=0, stop_m=0),
+    )
+    plane = result.planes[0]
+    assert plane.status == "warning"
+    assert "Omitted 2 intersection segment(s)" in plane.message
+    assert "source face indices: 0;1" in plane.message
+    assert plane.endpoints_stl_m.shape == (0, 2, 3)
+    rows = project_cp_sections(result, "case", "section").rows
+    assert len(rows) == 1
+    assert rows[0]["plane_status"] == "warning"
+    assert rows[0]["face_id"] is None
+    assert rows[0]["scalar_value"] is None
+    assert rows[0]["x0_stl_m"] is None
+
+
+def test_tiny_representable_segment_is_not_omitted():
+    result = extract(
+        make_mesh([[[0, -1e-18, 0], [1, 1, 0], [0, 1, 1]]]),
+        definition(axis_direction_stl=(0, 1, 0), start_m=0, stop_m=0),
+    )
+    assert result.planes[0].status == "ok"
+    np.testing.assert_array_equal(
+        result.planes[0].endpoints_stl_m, [[[1e-18, 0, 0], [0, 0, 1e-18]]]
+    )
+
+
+def test_coplanar_failure_still_overrides_omissions():
+    result = extract(
+        make_mesh(
+            [
+                [[1, -1e-18, 1], [2, 1, 1], [1, 1, 2]],
+                [[0, 0, 0], [1, 0, 0], [0, 0, 1]],
+            ]
+        ),
+        definition(axis_direction_stl=(0, 1, 0), start_m=0, stop_m=0),
+    )
+    plane = result.planes[0]
+    assert plane.status == "failed"
+    assert "coplanar" in plane.message and "Omitted 1" in plane.message
+    assert plane.source_face_indices.size == 0
+
+
+def test_warning_batch_completes_and_saves(tmp_path):
+    row = hypersonic.read_cases("examples/hypersonic/basic.csv").iloc[0].to_dict()
+    result = collapsed_loop()
+    logs = []
+    with patch(
+        "panelsolver.app.sectional_batch.compute_cp_sections", return_value=result
+    ):
+        batch = run_sectional_cases(
+            [row, dict(row, case_id="second")],
+            hypersonic.RUNTIME_POLICY,
+            (SectionalDefinition("cut", result.definition),),
+            logfn=logs.append,
+        )
+    assert batch.status == "completed"
+    assert batch.completed_pairs == batch.completed_cases == 2
+    assert not batch.errors
+    assert (
+        sum("[WARNING]" in line and "source face indices: 0" in line for line in logs)
+        == 2
+    )
+    target = tmp_path / "warning.csv"
+    write_sectional_csv(target, batch, [])
+    with target.open(encoding="utf-8-sig") as stream:
+        rows = list(csv.DictReader(stream))
+    assert len(rows) == 6
+    assert all(r["plane_status"] == "warning" for r in rows)
+    assert all(r["batch_status"] == "completed" for r in rows)

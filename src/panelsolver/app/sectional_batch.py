@@ -242,6 +242,12 @@ def _run_sectional_case(
                     failed_pairs += 1
                     continue
                 projections.append(project_cp_sections(cp_result, case_id, section_id))
+                for plane in cp_result.planes:
+                    if plane.status == "warning":
+                        logfn(
+                            f"[WARNING] case_id={case_id!r} section_id={section_id!r}: "
+                            f"position {plane.position_m}: {plane.message}"
+                        )
                 failures = [
                     plane for plane in cp_result.planes if plane.status == "failed"
                 ]

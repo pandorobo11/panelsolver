@@ -54,7 +54,7 @@ def project_cp_sections(
             plane_status=plane.status,
             message=plane.message,
         )
-        if plane.status != "ok":
+        if len(plane.source_face_indices) == 0:
             rows.append({name: base.get(name) for name in CP_PAIR_COLUMNS})
         for j, face in enumerate(plane.source_face_indices):
             row = dict(

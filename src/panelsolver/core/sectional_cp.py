@@ -211,6 +211,7 @@ def compute_cp_sections(
                 plane_index, definition.section_count - 1
             )
         indices, endpoints = [], []
+        omitted_faces = []
         message = ""
         for face in faces:
             ids = [int(i) for i in mesh.faces[face]]
@@ -228,17 +229,27 @@ def compute_cp_sections(
             if len(points) == 2:
                 segment = [[float(x) for x in p] for p in points]
                 if segment[0] == segment[1]:
-                    message = f"Intersection of source face {face} is not representable as a nonzero float64 segment"
-                    break
+                    omitted_faces.append(int(face))
+                    continue
                 indices.append(int(face))
                 endpoints.append(segment)
         if message:
             indices, endpoints = [], []
+        status = "failed" if message else "ok" if indices else "empty"
+        if omitted_faces:
+            warning = (
+                f"Omitted {len(omitted_faces)} intersection segment(s) whose endpoints "
+                "round to the same float64 coordinates; source face indices: "
+                + ";".join(map(str, omitted_faces))
+            )
+            message = f"{message}; {warning}" if message else warning
+            if status != "failed":
+                status = "warning"
         selected = np.asarray(indices, dtype=np.int64)
         planes.append(
             CpPlane(
                 float(offset),
-                "failed" if message else "ok" if indices else "empty",
+                status,
                 message,
                 selected,
                 mesh.face_component_ids[selected],
