@@ -243,14 +243,15 @@ class CasesPanelTests(unittest.TestCase):
         panel, _ = self.make_panel(reader=reader)
         panel.reload_input_file()
         self.assertEqual([], reads)
-        panel.load_input_file("/tmp/input.csv")
+        source = Path("/tmp/input.csv").absolute()
+        panel.load_input_file(source)
         panel.case_table.selectRow(0)
         states = []
         panel.viewer_artifact_state_changed.connect(states.append)
         with patch.object(QtWidgets.QMessageBox, "critical") as error:
             panel.btn_reload_input.click()
         error.assert_called_once()
-        self.assertEqual([Path("/tmp/input.csv")] * 2, reads)
+        self.assertEqual([source] * 2, reads)
         self.assertEqual((), panel.case_rows)
         self.assertEqual(0, panel.case_table.rowCount())
         self.assertIsNone(panel.input_path)
