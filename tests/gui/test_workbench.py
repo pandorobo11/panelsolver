@@ -290,6 +290,9 @@ class WorkbenchTests(unittest.TestCase):
                 (
                     panel,
                     (
+                        panel.input_value,
+                        panel.btn_pick_input,
+                        panel.btn_reload_input,
                         panel.btn_run,
                         panel.btn_clear_selection,
                         panel.spin_workers,

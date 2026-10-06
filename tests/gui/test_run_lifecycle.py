@@ -420,6 +420,12 @@ class RunLifecycleTests(unittest.TestCase):
                     panel.start_run(rows, 1, DEFAULT_CHECKPOINT_CASES, "results.csv")
                 )
                 self.wait_until(entered.is_set)
+                self.assertFalse(panel.btn_reload_input.isEnabled())
+                with patch(
+                    "panelsolver.app.cases_panel.absolute_input_path"
+                ) as source_path:
+                    panel.reload_input_file()
+                source_path.assert_not_called()
                 if emit_progress:
                     self.wait_until(
                         lambda active_panel=panel: active_panel.progress.text() == "1/2"
@@ -436,6 +442,7 @@ class RunLifecycleTests(unittest.TestCase):
                 self.assertEqual("warning", panel.progress.property("fluentStatus"))
                 self.assertFalse(panel.progress.property("fluentBusy"))
                 self.assertIn("[CANCEL] Run canceled.", panel.log.toPlainText())
+                self.assertTrue(panel.btn_reload_input.isEnabled())
                 if emit_progress:
                     self.assertGreaterEqual(panel.progress.value(), 1)
 

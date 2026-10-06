@@ -27,6 +27,14 @@ These open `Panel Solver — FMF` and `Panel Solver — Hypersonic`.
    `<input_dir>/outputs/<input_stem>_result.csv`.
 5. Follow the progress state. Open **Diagnostics** for warnings and errors.
 
+After editing the case table externally, choose **Reload** beside **Select Input
+File** to reread the current CSV, XLSX, or XLSM without choosing it again. Reload
+resets the case selection; select rows again to run a subset. The button is
+disabled until an input is loaded and during ordinary or sectional calculation
+and saving. If reading fails, the previous cases are cleared and cannot be run;
+fix the source and open it again. Reload does not reread sectional definition
+CSVs; use **Reload** in the corresponding Sectional dialog for those files.
+
 The run writes the selected Summary CSV and, when enabled, one VTP per case at
 `<out_dir>/<case_id>.vtp`. Relative `out_dir` values use the input table's
 directory. See [Case files](../inputs/case-files.md#paths-vtp-destinations-and-components)
