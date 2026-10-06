@@ -130,7 +130,9 @@ class MainWindow(QtWidgets.QMainWindow):
         action = QtGui.QAction(example.label, self)
         action.setData(example.input_resource)
         if example.sectional_definition_resource is not None:
-            action.setEnabled(hasattr(self, "sectional_loads_action"))
+            action.setEnabled(
+                hasattr(self, f"sectional_{example.sectional_kind}_action")
+            )
         action.triggered.connect(
             lambda _checked=False, selected=example: self._new_from_example(selected)
         )
@@ -167,8 +169,13 @@ class MainWindow(QtWidgets.QMainWindow):
         ):
             return
         if example.sectional_definition_resource is not None:
-            self.open_sectional_loads()
-            self.sectional_dialog.load_definitions(
+            if example.sectional_kind == "cp":
+                self.open_sectional_cp()
+                dialog = self.sectional_cp_dialog
+            else:
+                self.open_sectional_loads()
+                dialog = self.sectional_dialog
+            dialog.load_definitions(
                 Path(destination).expanduser().resolve(strict=False)
                 / example.sectional_definition_resource
             )

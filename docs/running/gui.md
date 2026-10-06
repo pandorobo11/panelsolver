@@ -218,6 +218,13 @@ See [Troubleshooting](troubleshooting.md) for common problems.
 
 ## Sectional Cp batches
 
+Choose **File > New from Example > Sectional Cp** for a complete sample.
+After selecting a workspace folder, the application copies the case CSV, STL,
+and Cp definitions, replaces the displayed case table with the sample cases,
+and opens the Sectional Cp dialog with its definitions loaded. This follows the
+same flow and logging as other examples, with no extra confirmation dialog.
+Calculation starts only when you choose Run and an output CSV destination.
+
 Choose **File > Sectional Cp...**, open a [Cp definition CSV](../inputs/sectional-cp.md),
 select cases and definitions (empty selection means all), and run. Try
 `examples/sectional_cp.csv` with either domain's basic example. The read-only

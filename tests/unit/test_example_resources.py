@@ -28,9 +28,13 @@ class ExampleResourceTests(unittest.TestCase):
                         self.assertTrue(input_path.is_file())
                         if example.sectional_definition_resource is not None:
                             definitions = read_sectional_definitions(
-                                destination / example.sectional_definition_resource
+                                destination / example.sectional_definition_resource,
+                                cp=example.sectional_kind == "cp",
                             )
-                            self.assertEqual(3, len(definitions))
+                            self.assertEqual(
+                                2 if example.sectional_kind == "cp" else 3,
+                                len(definitions),
+                            )
                         frame = module.read_cases(input_path)
                         self.assertGreater(len(frame), 0)
                         resolved_destination = destination.resolve(strict=False)
