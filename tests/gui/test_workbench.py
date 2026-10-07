@@ -250,7 +250,7 @@ class WorkbenchTests(unittest.TestCase):
         self.app.setStyleSheet("")
         previous_style = self.app.style().objectName()
         try:
-            for style in dict.fromkeys((previous_style, "Windows")):
+            for style in dict.fromkeys((previous_style, "Fusion", "Windows")):
                 self.app.setStyle(style)
                 for mode in (None, ThemeMode.LIGHT, ThemeMode.DARK):
                     self.app.setStyleSheet(
@@ -263,14 +263,21 @@ class WorkbenchTests(unittest.TestCase):
                             font = self.app.font()
                             font.setPointSizeF(previous_font.pointSizeF() * scale)
                             self.app.setFont(font)
-                            self.assert_small_window_controls_fit()
+                            for spec_factory in (
+                                test_cases_panel.fmf_solver_spec,
+                                test_cases_panel.newt_solver_spec,
+                            ):
+                                with self.subTest(domain=spec_factory.__module__):
+                                    self.assert_small_window_controls_fit(spec_factory)
         finally:
             self.app.setStyle(previous_style)
             self.app.setStyleSheet(previous_qss)
             self.app.setFont(previous_font)
 
-    def assert_small_window_controls_fit(self):
-        panel = self.panel()
+    def assert_small_window_controls_fit(self, spec_factory):
+        panel = test_cases_panel.CasesPanelTests().make_panel(
+            spec_factory=spec_factory
+        )[0]
         viewer = self.viewer(panel.spec)
         window = MainWindow(
             panel.spec,
@@ -290,6 +297,9 @@ class WorkbenchTests(unittest.TestCase):
                 (
                     panel,
                     (
+                        panel.input_value,
+                        panel.btn_pick_input,
+                        panel.btn_reload_input,
                         panel.btn_run,
                         panel.btn_clear_selection,
                         panel.spin_workers,
@@ -323,6 +333,18 @@ class WorkbenchTests(unittest.TestCase):
                     self.assertTrue(owner.rect().contains(rect), diagnostics)
             self.assert_flow_groups_fit(viewer)
             self.assert_flow_groups_fit(panel)
+            pick = panel.btn_pick_input.geometry()
+            reload = panel.btn_reload_input.geometry()
+            self.assertEqual(pick.center().y(), reload.center().y(), diagnostics)
+            self.assertGreater(reload.left(), pick.right(), diagnostics)
+            for rect in (pick, reload):
+                self.assertFalse(
+                    panel.input_value.geometry().intersects(rect), diagnostics
+                )
+            for button in (panel.btn_pick_input, panel.btn_reload_input):
+                self.assertGreaterEqual(
+                    button.width(), button.minimumSizeHint().width(), diagnostics
+                )
         finally:
             window.close()
 

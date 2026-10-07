@@ -732,6 +732,10 @@ class SectionalDialogTests(unittest.TestCase):
         self.select(dialog.definition_table, 0)
         self.assertTrue(dialog.start_run(self.root / "automatic.csv"))
         self.wait_until(entered.is_set)
+        self.assertFalse(panel.btn_reload_input.isEnabled())
+        with patch.object(panel, "load_input_file") as reader:
+            panel.btn_reload_input.click()
+        reader.assert_not_called()
         self.assertFalse(dialog.start_run(self.root / "automatic.csv"))
         self.assertFalse(
             panel.start_run(panel.case_rows, 1, 0, self.root / "normal.csv")
@@ -746,6 +750,7 @@ class SectionalDialogTests(unittest.TestCase):
         self.select(panel.case_table, 0)
         release.set()
         self.wait_until(lambda: not dialog.is_running())
+        self.assertTrue(panel.btn_reload_input.isEnabled())
         request = captured["request"]
         self.assertEqual("case_1", request.rows[0]["case_id"])
         self.assertEqual("span", request.definitions[0].section_id)
