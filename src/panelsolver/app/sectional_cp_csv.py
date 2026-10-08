@@ -17,7 +17,7 @@ CP_PAIR_COLUMNS = (
     "plane_index",
     "position_m",
     "plane_status",
-    "message",
+    "omitted_segment_count",
     "component_id",
     "face_id",
     *(f"{a}{end}_stl_m" for end in (0, 1) for a in "xyz"),
@@ -52,7 +52,7 @@ def project_cp_sections(
             plane_index=i,
             position_m=plane.position_m,
             plane_status=plane.status,
-            message=plane.message,
+            omitted_segment_count=plane.omitted_segment_count,
         )
         if len(plane.source_face_indices) == 0:
             rows.append({name: base.get(name) for name in CP_PAIR_COLUMNS})
@@ -71,7 +71,7 @@ def project_cp_sections(
 
 
 def project_cp_failure(
-    definition, case_id: str, section_id: str, signature: str, message: str
+    definition, case_id: str, section_id: str, signature: str
 ) -> CsvProjection:
     """A definition that could not resolve against this case has no plane index."""
     base = {
@@ -80,7 +80,6 @@ def project_cp_failure(
         "section_id": section_id,
         "section_count": definition.section_count,
         "plane_status": "failed",
-        "message": message,
         "range_mode": "auto" if definition.start_m is None else "explicit",
     }
     for k, a in enumerate("xyz"):

@@ -619,7 +619,8 @@ returned `SectionalCp` exposes `definition`, `selected_component_ids`,
 `scalar_name`, `planes`, and `case_signature`. The definition contains the input
 fields above and `axis_direction_hat_stl`. Constructors remain internal.
 
-Each plane exposes `position_m`, `status` (`ok`, `empty`, `warning`, `failed`), `message`,
+Each plane exposes `omitted_segment_count` (a nonnegative integer, or `None`
+when extraction failed before completing the plane), `position_m`, `status` (`ok`, `empty`, `warning`, `failed`), `message`,
 `source_face_indices` and `component_ids` (int64, `(K,)`), `endpoints_stl_m`
 (float64, `(K, 2, 3)`), and `scalar_values` (float64, `(K,)`). Arrays are immutable,
 including after pickling. Empty/failed planes have zero-length arrays. Warning

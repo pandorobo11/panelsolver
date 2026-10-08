@@ -100,8 +100,14 @@ class CpPlane:
     component_ids: np.ndarray
     endpoints_stl_m: np.ndarray
     scalar_values: np.ndarray
+    omitted_segment_count: int | None = 0
 
     def __post_init__(self):
+        count = self.omitted_segment_count
+        if count is not None and (type(count) is not int or count < 0):
+            raise ContractValueError(
+                "omitted_segment_count", "must be a nonnegative integer or None"
+            )
         n = len(self.source_face_indices)
         for name in ("source_face_indices", "component_ids"):
             object.__setattr__(
@@ -129,6 +135,7 @@ class CpPlane:
                 self.component_ids,
                 self.endpoints_stl_m,
                 self.scalar_values,
+                self.omitted_segment_count,
             ),
         )
 
@@ -255,6 +262,7 @@ def compute_cp_sections(
                 mesh.face_component_ids[selected],
                 np.asarray(endpoints, dtype=float).reshape((-1, 2, 3)),
                 values[selected],
+                len(omitted_faces) if status != "failed" else None,
             )
         )
     return SectionalCp(

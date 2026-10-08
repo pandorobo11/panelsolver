@@ -235,17 +235,20 @@ def _run_sectional_case(
                             case_id,
                             section_id,
                             execution.signature.digest,
-                            message,
                         )
                     )
                     errors.append(SectionalFailure(case_id, section_id, message))
+                    logfn(
+                        f"[ERROR] case_id={case_id!r} section_id={section_id!r}: {message}"
+                    )
                     failed_pairs += 1
                     continue
                 projections.append(project_cp_sections(cp_result, case_id, section_id))
                 for plane in cp_result.planes:
-                    if plane.status == "warning":
+                    if plane.status in ("warning", "failed"):
+                        level = "WARNING" if plane.status == "warning" else "ERROR"
                         logfn(
-                            f"[WARNING] case_id={case_id!r} section_id={section_id!r}: "
+                            f"[{level}] case_id={case_id!r} section_id={section_id!r}: "
                             f"position {plane.position_m}: {plane.message}"
                         )
                 failures = [

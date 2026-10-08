@@ -449,3 +449,64 @@ def test_warning_batch_completes_and_saves(tmp_path):
     assert len(rows) == 6
     assert all(r["plane_status"] == "warning" for r in rows)
     assert all(r["batch_status"] == "completed" for r in rows)
+
+
+def test_compact_csv_counts_and_diagnostic_serialization():
+    from dataclasses import replace
+
+    from panelsolver.app.sectional_cp_csv import CP_CSV_COLUMNS, project_cp_sections
+
+    assert len(CP_CSV_COLUMNS) == 29
+    assert CP_CSV_COLUMNS[16:20] == (
+        "position_m",
+        "plane_status",
+        "omitted_segment_count",
+        "component_id",
+    )
+    assert "message" not in CP_CSV_COLUMNS
+    warning = collapsed_loop()
+    cases = [
+        (extract(), 0, "ok"),
+        (extract(spec=definition(start_m=2, stop_m=2)), 0, "empty"),
+        (warning, 1, "warning"),
+        (
+            extract(spec=definition(axis_direction_stl=(0, 0, 1), start_m=0, stop_m=0)),
+            None,
+            "failed",
+        ),
+    ]
+    for result, count, status in cases:
+        restored = pickle.loads(pickle.dumps(result))
+        assert restored.planes[0].omitted_segment_count == count
+        assert restored.planes[0].message == result.planes[0].message
+        # The numeric count must not depend on diagnostic text or its length.
+        plane = replace(restored.planes[0], message="long diagnostic " * 1000)
+        rows = project_cp_sections(
+            replace(restored, planes=(plane,)), "case", "cut"
+        ).rows
+        assert rows
+        for row in rows:
+            assert row["omitted_segment_count"] == count
+            assert row["plane_status"] == status
+            assert "message" not in row
+            assert "long diagnostic" not in str(row)
+
+
+def test_cp_failure_details_are_logged_not_exported():
+    row = hypersonic.read_cases("examples/hypersonic/basic.csv").iloc[0].to_dict()
+    definitions = (
+        SectionalDefinition("invalid", definition(component_ids=(999,))),
+        SectionalDefinition("coplanar", definition(start_m=0, stop_m=0)),
+    )
+    logs = []
+    batch = run_sectional_cases(
+        [row], hypersonic.RUNTIME_POLICY, definitions, logfn=logs.append
+    )
+    assert batch.status == "failed"
+    assert len(batch.errors) == 2
+    assert any("section_id='invalid'" in line and "[ERROR]" in line for line in logs)
+    assert any("section_id='coplanar'" in line and "coplanar" in line for line in logs)
+    assert all(
+        r["omitted_segment_count"] is None and "message" not in r
+        for r in batch.csv.rows
+    )

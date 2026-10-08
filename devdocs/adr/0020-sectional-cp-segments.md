@@ -53,3 +53,16 @@ This replaces the previous whole-plane failure for an unrepresentable segment.
 CSV columns and physical coefficients are unchanged; consumers must handle the
 new `warning` plane status and may receive segments previously discarded with
 the failed plane. The omitted panel values are intentionally not exported.
+
+## Amendment: compact CSV diagnostics (2026-10-08)
+
+User-approved change: replace CSV `message` with `omitted_segment_count` in the
+same column position. Keep `plane_status`; the CSV still has 29 columns. Counts
+are per plane and repeated on its segment rows: zero for ok/empty, positive for
+warning, and blank for failed/incomplete extraction rather than a partial count.
+Detailed warning face lists and failure reasons remain in GUI/CLI logs and
+Python diagnostics. The Python plane result gains a structured count (None on
+failure), preserved through pickling; CSV generation never parses message text.
+This supersedes the earlier repeated CSV diagnostic text contract. Consumers
+using `message` must switch to status/count and consult logs for details.
+No intersection decisions, endpoints, scalars, or batch completion rules change.

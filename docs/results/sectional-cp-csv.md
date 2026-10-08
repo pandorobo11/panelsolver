@@ -15,7 +15,8 @@ computed as the average of the endpoints.
 | `selected_component_ids` | Resolved selection as semicolon-separated original IDs. |
 | `range_mode`, `resolved_start_m`, `resolved_stop_m`, `section_count` | Automatic/explicit positioning, actual first/last position, requested plane count. |
 | `plane_index`, `position_m` | Zero-based plane index and signed distance from the origin along the normal. |
-| `plane_status`, `message` | `ok`, `empty`, `warning`, or `failed`, with warning/failure detail. |
+| `plane_status` | `ok`, `empty`, `warning`, or `failed`. |
+| `omitted_segment_count` | Number of collapsed segments omitted from this plane; zero for `ok`/`empty`, positive for `warning`, blank for `failed` because extraction is incomplete. |
 | `component_id`, `face_id` | Original component and mesh face indices. |
 | `x0_stl_m`, `y0_stl_m`, `z0_stl_m` | First endpoint. |
 | `x1_stl_m`, `y1_stl_m`, `z1_stl_m` | Second endpoint. |
@@ -44,12 +45,14 @@ value. No epsilon snaps nearby surfaces together. Source topology is checked
 against the same geometry validation used by sectional loads.
 
 If both endpoints round to exactly the same float64 coordinates, that segment
-is omitted and the plane has `warning` status. Its `message` records the omitted
-segment count and original source face indices (zero-based). All remaining
-segments and their unchanged panel values are saved, with the warning repeated
-on each row. If none remain, one warning status row has blank segment/value
+is omitted and the plane has `warning` status. `omitted_segment_count` records
+the plane-wide omitted count, repeated on each surviving segment row; do not sum
+this repeated value across rows of the same plane. All remaining segments and
+their unchanged panel values are saved. If none remain, one warning status row has blank segment/value
 fields. Such planes count as completed in the batch; GUI/CLI logs also report the
-warning. A coplanar triangle still fails the entire plane.
+warning, including original source face indices (zero-based). Failure reasons
+also go to the logs. CSV contains no `message` column or detailed diagnostic text.
+The Python API retains `message`. A coplanar triangle still fails the entire plane.
 
 This rule is exact equality after rounding, not a length threshold or epsilon.
 Representable short segments remain. When adjacent segments share the exact
