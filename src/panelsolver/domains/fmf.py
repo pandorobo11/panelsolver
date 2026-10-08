@@ -549,6 +549,13 @@ _GUI_EXAMPLES = (
         ("geometry/plate.stl",),
         sectional_definition_resource="sectional_loads.csv",
     ),
+    ExampleDefinition(
+        "Sectional Cp",
+        "fmf/flow_modes.csv",
+        ("geometry/plate.stl",),
+        sectional_definition_resource="sectional_cp.csv",
+        sectional_kind="cp",
+    ),
 )
 
 

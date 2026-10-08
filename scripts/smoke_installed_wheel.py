@@ -545,7 +545,8 @@ def _smoke_packaged_examples(staging: Path) -> None:
             input_path = library.copy_example(example, destination)
             if example.sectional_definition_resource is not None:
                 read_sectional_definitions(
-                    destination / example.sectional_definition_resource
+                    destination / example.sectional_definition_resource,
+                    cp=example.sectional_kind == "cp",
                 )
             frame = module.read_cases(input_path)
             if frame.empty:

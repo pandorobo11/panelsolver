@@ -27,6 +27,8 @@ Accepted ADRs are retained as the rationale for architectural decisions:
 18. [Generate every face normal from repaired geometry](0018-uniform-face-normal-generation.md)
 19. [Model-neutral sectional aerodynamic load distributions](0019-sectional-aerodynamic-load-distributions.md)
 
+20. [Panel-constant sectional Cp segments](0020-sectional-cp-segments.md)
+
 ADRs describe why the current contracts exist. Migration execution records and
 phase evidence are indexed separately in [History](../history/README.md).
 ADR 0013 defines the current project identity; older ADRs retain the

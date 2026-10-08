@@ -224,3 +224,25 @@ The **Help** menu provides:
   reports.
 
 See [Troubleshooting](troubleshooting.md) for common problems.
+
+## Sectional Cp batches
+
+Choose **File > New from Example > Sectional Cp** for a complete sample.
+After selecting a workspace folder, the application copies the case CSV, STL,
+and Cp definitions, replaces the displayed case table with the sample cases,
+and opens the Sectional Cp dialog with its definitions loaded. This follows the
+same flow and logging as other examples, with no extra confirmation dialog.
+Calculation starts only when you choose Run and an output CSV destination.
+
+Choose **File > Sectional Cp...**, open a [Cp definition CSV](../inputs/sectional-cp.md),
+select cases and definitions (empty selection means all), and run. Try
+`examples/sectional_cp.csv` with either domain's basic example. The read-only
+workflow, frozen selections, cancellation, automatic CSV saving, and **Retry
+Save...** follow Sectional Loads. The suggested output is
+`<input_stem>_sectional_cp.csv`.
+
+Each row saves both endpoints and the source panel's constant scalar. Hypersonic
+extracts Cp; FMF extracts its normal traction coefficient. The dialog explains
+this distinction; it does not plot or interpolate the result. Ordinary solving,
+Sectional Loads and Sectional Cp cannot run concurrently. Both definition files
+remain protected against overwriting while their dialogs are hidden.

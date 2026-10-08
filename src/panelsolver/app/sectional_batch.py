@@ -28,6 +28,7 @@ from panelsolver.core._sectional_integration import (
 )
 from panelsolver.core.execution import case_execution_affinity_hints
 from panelsolver.core.sectional import resolve_sectional_load_spec
+from panelsolver.core.sectional_cp import SectionalCpDefinition, compute_cp_sections
 
 from .csv_writer import validate_csv_output_path, write_csv_atomic
 from .environment import resolve_parallel_chunk_environment
@@ -37,6 +38,7 @@ from .runtime import (
     ProductRuntimePolicy,
     prepare_product_cases,
 )
+from .sectional_cp_csv import CP_CSV_COLUMNS, project_cp_failure, project_cp_sections
 from .sectional_definitions import SectionalDefinition
 
 type BatchStatus = Literal["completed", "failed", "cancelled"]
@@ -122,6 +124,7 @@ class _SectionalCaseResult:
     projections: tuple[CsvProjection, ...]
     errors: tuple[SectionalFailure, ...] = ()
     cancelled: bool = False
+    failed_pairs: int = 0
 
 
 def _project_pair(
@@ -198,6 +201,8 @@ def _run_sectional_case(
     case_id = prepared.physical.adapted.request.common_case.case_id
     projections: list[CsvProjection] = []
     section_id: str | None = None
+    errors = []
+    failed_pairs = 0
     try:
         if cancel_cb is not None and cancel_cb():
             return _SectionalCaseResult((), cancelled=True)
@@ -207,8 +212,58 @@ def _run_sectional_case(
         )
         for item in prepared.definitions:
             if cancel_cb is not None and cancel_cb():
-                return _SectionalCaseResult(tuple(projections), cancelled=True)
+                return _SectionalCaseResult(
+                    tuple(projections),
+                    tuple(errors),
+                    cancelled=True,
+                    failed_pairs=failed_pairs,
+                )
             section_id = item.section_id
+            if isinstance(item.definition, SectionalCpDefinition):
+                try:
+                    cp_result = compute_cp_sections(
+                        execution.mesh,
+                        execution.results.local_loads,
+                        item.definition,
+                        execution.signature.digest,
+                    )
+                except Exception as exc:
+                    message = str(exc) or type(exc).__name__
+                    projections.append(
+                        project_cp_failure(
+                            item.definition,
+                            case_id,
+                            section_id,
+                            execution.signature.digest,
+                        )
+                    )
+                    errors.append(SectionalFailure(case_id, section_id, message))
+                    logfn(
+                        f"[ERROR] case_id={case_id!r} section_id={section_id!r}: {message}"
+                    )
+                    failed_pairs += 1
+                    continue
+                projections.append(project_cp_sections(cp_result, case_id, section_id))
+                for plane in cp_result.planes:
+                    if plane.status in ("warning", "failed"):
+                        level = "WARNING" if plane.status == "warning" else "ERROR"
+                        logfn(
+                            f"[{level}] case_id={case_id!r} section_id={section_id!r}: "
+                            f"position {plane.position_m}: {plane.message}"
+                        )
+                failures = [
+                    plane for plane in cp_result.planes if plane.status == "failed"
+                ]
+                failed_pairs += bool(failures)
+                errors.extend(
+                    SectionalFailure(
+                        case_id,
+                        section_id,
+                        f"position {plane.position_m}: {plane.message}",
+                    )
+                    for plane in failures
+                )
+                continue
             numerical = integrate_sectional_loads(
                 execution.mesh,
                 resolve_sectional_load_spec(execution.mesh, item.definition),
@@ -224,9 +279,13 @@ def _run_sectional_case(
         message = str(exc) or type(exc).__name__
         logfn(f"[ERROR] case_id={case_id!r} section_id={section_id!r}: {message}")
         return _SectionalCaseResult(
-            tuple(projections), (SectionalFailure(case_id, section_id, message),)
+            tuple(projections),
+            (*errors, SectionalFailure(case_id, section_id, message)),
+            failed_pairs=failed_pairs,
         )
-    return _SectionalCaseResult(tuple(projections))
+    return _SectionalCaseResult(
+        tuple(projections), tuple(errors), failed_pairs=failed_pairs
+    )
 
 
 def _parallel_sectional_case(
@@ -243,27 +302,37 @@ def _finish_batch(
     extra_errors: Sequence[SectionalFailure] = (),
 ) -> SectionalBatchResult:
     available = tuple(result for result in completed if result is not None)
-    completed_pairs = sum(len(result.projections) for result in available)
+    completed_pairs = sum(
+        len(result.projections) - result.failed_pairs for result in available
+    )
+    columns = next(
+        (
+            CP_CSV_COLUMNS
+            if "plane_status" in projection.columns
+            else SECTIONAL_CSV_COLUMNS
+            for result in available
+            for projection in result.projections
+        ),
+        SECTIONAL_CSV_COLUMNS,
+    )
     requested_pairs = len(completed) * definitions_count
     values: dict[str, CsvCell] = {
         "batch_status": status,
     }
     rows = tuple(
-        {
-            name: values[name] if name in values else row[name]
-            for name in SECTIONAL_CSV_COLUMNS
-        }
+        {name: values[name] if name in values else row[name] for name in columns}
         for result in available
         for projection in result.projections
         for row in projection.rows
     )
     return SectionalBatchResult(
-        csv=CsvProjection(SECTIONAL_CSV_COLUMNS, rows) if rows else None,
+        csv=CsvProjection(columns, rows) if rows else None,
         status=status,
         completed_pairs=completed_pairs,
         requested_pairs=requested_pairs,
         completed_cases=sum(
-            len(result.projections) == definitions_count for result in available
+            len(result.projections) == definitions_count and not result.errors
+            for result in available
         ),
         total_cases=len(completed),
         errors=(
@@ -298,6 +367,9 @@ def run_sectional_cases(
         not isinstance(item, SectionalDefinition) for item in selected
     ):
         raise ValueError("definitions must contain SectionalDefinition values")
+    if len({type(item.definition) for item in selected}) != 1:
+        raise ValueError("cannot mix sectional loads and Cp definitions")
+    cp_mode = isinstance(selected[0].definition, SectionalCpDefinition)
     if len({item.section_id for item in selected}) != len(selected):
         raise ValueError("definitions must have unique section_id values")
     if isinstance(workers, bool) or not isinstance(workers, int) or workers < 1:
@@ -349,7 +421,7 @@ def run_sectional_cases(
         completed[index] = result
         if result.errors:
             status = "failed"
-            stop_requested = True
+            stop_requested = stop_requested or not cp_mode
         elif result.cancelled:
             if status != "failed":
                 status = "cancelled"

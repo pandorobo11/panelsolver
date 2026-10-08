@@ -35,8 +35,13 @@ class ExampleDefinition:
     input_resource: str
     supporting_resources: tuple[str, ...] = ()
     sectional_definition_resource: str | None = None
+    sectional_kind: str = "loads"
 
     def __post_init__(self) -> None:
+        if self.sectional_kind not in ("loads", "cp"):
+            raise ValueError("sectional_kind must be loads or cp")
+        if self.sectional_kind == "cp" and self.sectional_definition_resource is None:
+            raise ValueError("Cp examples require a sectional definition resource")
         if not isinstance(self.label, str) or not self.label.strip():
             raise ValueError("ExampleDefinition.label must be non-empty")
         input_resource = _resource_path(

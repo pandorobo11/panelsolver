@@ -100,3 +100,18 @@ are never emitted as zero results. Exit codes are 0 for complete success, 1 for
 validation/calculation/save failure, 2 for command argument errors, and 130 for
 cancellation when any requested partial save succeeds. If no pair succeeds,
 the output remains untouched. Save failure is reported independently and returns 1.
+
+## Sectional Cp batches
+
+Use [Cp definitions](../inputs/sectional-cp.md) to extract surface sections:
+
+```bash
+panelsolver hypersonic sectional-cp -i examples/hypersonic/basic.csv -d examples/sectional_cp.csv -o /tmp/hypersonic_sectional_cp.csv
+panelsolver fmf sectional-cp -i examples/fmf/basic.csv -d examples/sectional_cp.csv -o /tmp/fmf_sectional_cp.csv
+```
+
+The `--cases`, `--sections`, `--workers`, `--plain`, `--verbose` and `--debug`
+options follow `sectional-loads`. Each selected case is solved once. Outputs
+contain [panel segments and scalar values](../results/sectional-cp-csv.md), with
+no intermediate VTP or Summary CSV. A failed plane yields exit code 1 while other
+planes/definitions continue; cancellation returns 130.

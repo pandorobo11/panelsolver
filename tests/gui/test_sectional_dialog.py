@@ -78,6 +78,33 @@ class SectionalDialogTests(unittest.TestCase):
             time.sleep(0.002)
         self.app.processEvents()
 
+    def test_cp_dialog_runs_and_protects_both_definition_files(self):
+        for domain in (fmf, hypersonic):
+            with self.subTest(domain=domain.RUNTIME_POLICY.product_id):
+                window, panel, loads = self.make_window(domain)
+                cp_path = self.root / "cp.csv"
+                cp_path.write_text(
+                    HEADER.replace("bin_count", "section_count")
+                    + "cuts,0,0,0,0,1,0,3\n"
+                )
+                window.open_sectional_cp()
+                cp = window.sectional_cp_dialog
+                self.assertTrue(cp.load_definitions(cp_path))
+                self.assertIn("planes", cp.definition_model.columns)
+                self.assertIn(cp_path, panel.sectional_definition_paths)
+                self.assertIn(self.definition_path, panel.sectional_definition_paths)
+                output = self.root / "cp-result.csv"
+                self.assertTrue(cp.start_run(output))
+                self.assertFalse(loads.start_run(self.root / "loads.csv"))
+                self.assertFalse(loads.load_definitions(self.definition_path))
+                self.wait_until(lambda current=cp: not current.is_running())
+                self.assertTrue(output.exists())
+                self.assertEqual(cp.batch_result.status, "completed")
+                with output.open(encoding="utf-8-sig") as stream:
+                    rows = list(csv.DictReader(stream))
+                self.assertIn("x0_stl_m", rows[0])
+                self.assertTrue(loads.btn_run.isEnabled())
+
     def make_window(self, domain=fmf, *, runner=None, normal_runner=None):
         spec = domain.gui_spec()
         if runner is not None:
@@ -128,6 +155,56 @@ class SectionalDialogTests(unittest.TestCase):
                 QtCore.QItemSelectionModel.SelectionFlag.Select
                 | QtCore.QItemSelectionModel.SelectionFlag.Rows,
             )
+
+    def test_cp_example_replaces_cases_loads_definitions_and_runs_both_domains(self):
+        for domain in (fmf, hypersonic):
+            with self.subTest(domain=domain.RUNTIME_POLICY.product_id):
+                window, panel, loads_dialog = self.make_window(domain)
+                loads_dialog.close()
+                destination = self.root / domain.RUNTIME_POLICY.product_id
+                action = next(
+                    a for a in window.example_actions if a.text() == "Sectional Cp"
+                )
+                self.assertTrue(action.isEnabled())
+                original_input = panel.input_path
+                with patch.object(
+                    QtWidgets.QFileDialog, "getExistingDirectory", return_value=""
+                ):
+                    action.trigger()
+                self.assertEqual(original_input, panel.input_path)
+                self.assertIsNone(window.sectional_cp_dialog)
+                with patch.object(
+                    QtWidgets.QFileDialog,
+                    "getExistingDirectory",
+                    return_value=str(destination),
+                ):
+                    action.trigger()
+                dialog = window.sectional_cp_dialog
+                self.assertTrue(dialog.cp)
+                self.assertTrue(dialog.isVisible())
+                self.assertFalse(loads_dialog.isVisible())
+                self.assertTrue(panel.input_path.is_relative_to(destination.resolve()))
+                self.assertEqual(
+                    destination.resolve() / "sectional_cp.csv", dialog.definition_path
+                )
+                self.assertEqual(
+                    ["span", "center"], [d.section_id for d in dialog.definitions]
+                )
+                self.assertIsNone(dialog.batch_result)
+                self.assertTrue(dialog.btn_run.isEnabled())
+                target = destination / "cp.csv"
+                self.assertTrue(dialog.start_run(target))
+                self.wait_until(lambda dialog=dialog: not dialog.is_running())
+                self.assertEqual("completed", dialog.batch_result.status)
+                self.assertEqual(
+                    len(panel.case_rows) * 2, dialog.batch_result.completed_pairs
+                )
+                with target.open(encoding="utf-8-sig") as stream:
+                    rows = list(csv.DictReader(stream))
+                self.assertEqual(
+                    {"normal_traction_coeff" if domain is fmf else "cp"},
+                    {row["scalar_name"] for row in rows},
+                )
 
     def test_sectional_example_copies_loads_and_runs_both_domains(self):
         for domain in (fmf, hypersonic):
