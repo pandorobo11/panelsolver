@@ -235,9 +235,17 @@ class CasesPanel(QtWidgets.QWidget):
         self.input_value.setReadOnly(True)
         self.input_value.setPlaceholderText("CSV / XLSX / XLSM input file")
         self.btn_pick_input = QtWidgets.QPushButton("Select Input File")
+        self.btn_reload_input = QtWidgets.QPushButton("Reload")
+        self.btn_reload_input.setAccessibleName("Reload input file")
+        self.btn_reload_input.setToolTip(
+            "Reload the current input file from disk. "
+            "Available after loading an input file and while no calculation is running."
+        )
+        self.btn_reload_input.setEnabled(False)
         self.btn_run = QtWidgets.QPushButton("Run Selected Cases")
         self.btn_cancel = QtWidgets.QPushButton("Cancel")
         set_semantic_property(self.btn_pick_input, "fluentAppearance", "secondary")
+        set_semantic_property(self.btn_reload_input, "fluentAppearance", "secondary")
         set_semantic_property(self.btn_run, "fluentAppearance", "primary")
         set_semantic_property(self.btn_cancel, "fluentAppearance", "danger")
         # Reserve the longest native size hint so scope wording does not move layout.
@@ -323,6 +331,7 @@ class CasesPanel(QtWidgets.QWidget):
         self._set_diagnostics_expanded(False)
 
         self.btn_pick_input.clicked.connect(self.pick_input_file)
+        self.btn_reload_input.clicked.connect(self.reload_input_file)
         self.btn_run.clicked.connect(self.request_run)
         self.btn_cancel.clicked.connect(self.cancel_run)
         self.btn_diagnostics.toggled.connect(self._set_diagnostics_expanded)
@@ -332,10 +341,14 @@ class CasesPanel(QtWidgets.QWidget):
     def _build_layout(self) -> None:
         layout = QtWidgets.QVBoxLayout(self)
         layout.setSpacing(8)
-        input_row = QtWidgets.QHBoxLayout()
-        input_row.addWidget(self.input_value, 1)
-        input_row.addWidget(self.btn_pick_input)
-        layout.addLayout(input_row)
+        self.input_actions_group = QtWidgets.QHBoxLayout()
+        self.input_actions_group.setContentsMargins(0, 0, 0, 0)
+        self.input_actions_group.addWidget(self.btn_pick_input)
+        self.input_actions_group.addWidget(self.btn_reload_input)
+        self.input_row = FlowLayout()
+        self.input_row.addWidget(self.input_value)
+        self.input_row.addLayout(self.input_actions_group)
+        layout.addLayout(self.input_row)
         summaries = FlowLayout()
         self.lbl_case_summary.setSizePolicy(
             QtWidgets.QSizePolicy.Policy.Expanding,
@@ -443,6 +456,12 @@ class CasesPanel(QtWidgets.QWidget):
         if path:
             self.load_input_file(path)
 
+    @QtCore.Slot()
+    def reload_input_file(self) -> None:
+        """Reread the current source without opening a file picker."""
+        if self.input_path is not None:
+            self.load_input_file(self.input_path, remember_directory=False)
+
     def load_input_file(
         self,
         path: str | Path,
@@ -486,6 +505,7 @@ class CasesPanel(QtWidgets.QWidget):
         self.case_rows = normalized
         self._populate_case_table()
         self.btn_run.setEnabled(True)
+        self.btn_reload_input.setEnabled(True)
         if remember_directory:
             self._last_input_directory = self.input_path.parent
         self.logln(f"[OK] Loaded {len(self.case_rows)} case(s). Select and run.")
@@ -1033,6 +1053,7 @@ class CasesPanel(QtWidgets.QWidget):
     def _set_running_state(self, running: bool) -> None:
         busy = running or self._external_run_active
         self.btn_pick_input.setEnabled(not busy)
+        self.btn_reload_input.setEnabled(not busy and self.input_path is not None)
         self.spin_workers.setEnabled(not busy)
         self.case_table.setEnabled(not busy)
         self.btn_clear_selection.setEnabled(
@@ -1053,6 +1074,7 @@ class CasesPanel(QtWidgets.QWidget):
         self.case_table.setRowCount(0)
         self.case_table.setColumnCount(0)
         self.btn_run.setEnabled(False)
+        self.btn_reload_input.setEnabled(False)
         self.progress.setRange(0, 1)
         self.progress.setValue(0)
         self.progress.setFormat("Idle")

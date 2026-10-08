@@ -182,6 +182,84 @@ class CasesPanelTests(unittest.TestCase):
                 }
                 self.assertEqual(expected, actual)
 
+    def test_reload_rereads_current_case_file_without_picker_in_both_domains(self):
+        examples = Path(__file__).resolve().parents[2] / "examples"
+        for domain, spec_factory in (
+            ("fmf", fmf_solver_spec),
+            ("hypersonic", newt_solver_spec),
+        ):
+            with (
+                self.subTest(domain=domain),
+                tempfile.TemporaryDirectory() as directory,
+            ):
+                root = Path(directory)
+                (root / "geometry").mkdir()
+                (root / "geometry" / "plate.stl").write_bytes(
+                    (examples / "geometry" / "plate.stl").read_bytes()
+                )
+                source_dir = root / domain
+                source_dir.mkdir()
+                source = source_dir / "input.csv"
+                original = (examples / domain / "basic.csv").read_text()
+                source.write_text(original)
+                panel = CasesPanel(spec_factory())
+                self.addCleanup(panel.close)
+                self.assertFalse(panel.btn_reload_input.isEnabled())
+                self.assertTrue(panel.load_input_file(source))
+                self.assertTrue(panel.btn_reload_input.isEnabled())
+                panel.case_table.selectRow(0)
+                self.assertTrue(panel.selected_case_rows())
+                updates = []
+                panel.cases_updated.connect(updates.append)
+
+                source.write_text(
+                    original.replace(f"{domain}_basic", f"{domain}_updated").replace(
+                        ",10,0,", ",15,0,"
+                    )
+                )
+                with patch.object(QtWidgets.QFileDialog, "getOpenFileName") as picker:
+                    panel.btn_reload_input.click()
+                picker.assert_not_called()
+                self.assertEqual(f"{domain}_updated", panel.case_rows[0]["case_id"])
+                self.assertEqual(15.0, panel.case_rows[0]["alpha_deg"])
+                self.assertEqual(1, panel.case_table.rowCount())
+                self.assertEqual(
+                    f"{domain}_updated", panel.case_table.item(0, 0).text()
+                )
+                self.assertFalse(panel.selected_case_rows())
+                self.assertEqual([panel.case_rows], updates)
+                self.assertEqual(source, panel.input_path)
+                self.assertTrue(panel.btn_reload_input.isEnabled())
+
+    def test_failed_reload_clears_cases_and_disables_reload_and_run(self):
+        reads = []
+
+        def reader(path):
+            reads.append(Path(path))
+            if len(reads) > 1:
+                raise ValueError("input removed")
+            return _rows()
+
+        panel, _ = self.make_panel(reader=reader)
+        panel.reload_input_file()
+        self.assertEqual([], reads)
+        source = Path("/tmp/input.csv").absolute()
+        panel.load_input_file(source)
+        panel.case_table.selectRow(0)
+        states = []
+        panel.viewer_artifact_state_changed.connect(states.append)
+        with patch.object(QtWidgets.QMessageBox, "critical") as error:
+            panel.btn_reload_input.click()
+        error.assert_called_once()
+        self.assertEqual([source] * 2, reads)
+        self.assertEqual((), panel.case_rows)
+        self.assertEqual(0, panel.case_table.rowCount())
+        self.assertIsNone(panel.input_path)
+        self.assertEqual("", panel.input_value.text())
+        self.assertEqual(ArtifactViewStatus.EMPTY, states[-1].status)
+        self.assertFalse(panel.btn_run.isEnabled())
+        self.assertFalse(panel.btn_reload_input.isEnabled())
+
     def test_column_categories_project_to_engineering_alignment(self) -> None:
         rows = (
             {
@@ -708,6 +786,8 @@ class CasesPanelTests(unittest.TestCase):
                     remember_directory=False,
                 )
             )
+            self.assertEqual(remembered, panel.input_dialog_directory())
+            panel.btn_reload_input.click()
             self.assertEqual(remembered, panel.input_dialog_directory())
 
     def test_selected_case_signal_tracks_batch_export_availability(self) -> None:
