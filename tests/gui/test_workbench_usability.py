@@ -218,6 +218,11 @@ class WorkbenchUsabilityTests(unittest.TestCase):
             if viewer._controls_grid.itemAtPosition(row, 0) is not None
         ]
         self.assertEqual(["Scalar", "Range", "Display", "Camera"], labels)
+        # The toolbar wraps rather than raising the Viewer's minimum width.
+        self.assertLess(
+            viewer.viewer_toolbar.minimumSizeHint().width(),
+            viewer.viewer_toolbar.sizeHint().width(),
+        )
         self.assertEqual("Upstream", viewer.btn_view_wind.text())
         self.assertEqual("Downstream", viewer.btn_view_wind_rev.text())
 

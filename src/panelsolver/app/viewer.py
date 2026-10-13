@@ -259,7 +259,7 @@ class ViewerPanel(QtWidgets.QWidget):
         # File actions sit above the viewport, level with the Cases input row.
         self.viewer_toolbar = QtWidgets.QWidget()
         self.viewer_toolbar.setObjectName("viewerToolbar")
-        toolbar = QtWidgets.QHBoxLayout(self.viewer_toolbar)
+        toolbar = FlowLayout(self.viewer_toolbar)
         # Match the Cases pane's native top inset so both top rows align.
         toolbar.setContentsMargins(
             _VIEWER_CHROME_HORIZONTAL_INSET,
@@ -267,9 +267,15 @@ class ViewerPanel(QtWidgets.QWidget):
             _VIEWER_CHROME_HORIZONTAL_INSET,
             0,
         )
-        toolbar.setSpacing(8)
         toolbar.addWidget(self.btn_open_vtp)
-        toolbar.addStretch(1)
+        # Push exports right on one line; let them wrap below when narrow.
+        self._toolbar_spacer = QtWidgets.QWidget()
+        self._toolbar_spacer.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Expanding,
+            QtWidgets.QSizePolicy.Policy.Minimum,
+        )
+        self._toolbar_spacer.setFixedHeight(0)
+        toolbar.addWidget(self._toolbar_spacer)
         self.image_export_group = self._make_control_row()
         self.image_export_group.layout().addWidget(self.btn_save_image)
         self.image_export_group.layout().addWidget(self.btn_save_selected_images)
