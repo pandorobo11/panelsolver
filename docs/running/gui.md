@@ -16,15 +16,21 @@ These open `Panel Solver — FMF` and `Panel Solver — Hypersonic`.
 ## Run cases
 
 1. Choose **Select Input File** or **File > Open Input File...** and open a CSV,
-   XLSX, or XLSM case table. The platform's standard Open shortcut also works.
+   XLSX, or XLSM case table. The platform's standard Open shortcut also works,
+   and you can drop a case table onto the window. Before a table is loaded, the
+   empty case area offers **Select Input File...** and **New from Example**.
 2. Select one or more rows to run those cases. Use **Clear selection** to return
-   to running all loaded cases; **Run scope** shows the target and selected count.
-3. Leave **Workers** and **Checkpoint** at their defaults for a first run.
-   For larger batches, see [Batch execution and recovery](batch-execution-and-recovery.md).
+   to running all loaded cases; **Run scope** below the table shows the target,
+   for example `Run scope: all 5 cases` or `Run scope: 2 of 5 cases selected`.
+3. Leave **Workers** at its default for a first run. **Checkpoint** is an
+   advanced setting shown by **Show advanced**. For larger batches, see
+   [Batch execution and recovery](batch-execution-and-recovery.md).
    Both settings support direct entry, keyboard stepping, and minus/plus buttons.
 4. Choose **Run All Cases** or **Run Selected Cases**, as shown for the selected
    rows, and select the Summary CSV destination. The suggested location is
-   `<input_dir>/outputs/<input_stem>_result.csv`.
+   `<input_dir>/outputs/<input_stem>_result.csv`. **Run > Run Cases**
+   (Ctrl+R; ⌘R on macOS) does the same, and **Run > Cancel Run** (Ctrl+.; ⌘. on
+   macOS) cancels an active run.
 5. Follow the progress state. Open **Diagnostics** for warnings and errors.
 
 After editing the case table externally, choose **Reload** beside **Select Input
@@ -111,11 +117,12 @@ order. Headers show units, and Case ID stays pinned while scrolling horizontally
 Hover over a geometry cell to read its full path. When the input path is longer
 than its field, leading folders are shortened so the file name stays visible;
 hover over the field for the full path, or use **Copy Path** from its context
-menu.
+menu. Drag the grip between the case table and the Viewer to resize them.
 
-Window placement, split position, column widths, and Diagnostics visibility are
-remembered separately for each domain. Saved widths expand as needed to fit
-headers. **View > Reset Layout** restores the initial workspace layout.
+Window placement, split position, column widths, Diagnostics visibility, and
+the **Show advanced** state are remembered separately for each domain. Saved
+widths expand as needed to fit headers. **View > Reset Layout** restores the
+initial workspace layout.
 Input files, row selection, execution settings, and color-range values are not
 restored by this layout feature.
 
@@ -144,9 +151,9 @@ files, the center of the Viewer explains why a matching result is unavailable.
 
 *The `newt_pm` case with its matching VTP colored by `Cp`.*
 
-Use **File > Open VTP...** or the Viewer **Open VTP...** button to inspect a file
-manually, independently of the selected row. A file does not need to match a
-loaded case to be inspected.
+Use **File > Open VTP...**, the Viewer **Open VTP...** button, or drop a `.vtp`
+file onto the window to inspect a file manually, independently of the selected
+row. A file does not need to match a loaded case to be inspected.
 
 **Show info text** displays the case identity and conditions over the geometry.
 There is no separate status row above the display. An empty Viewer displays

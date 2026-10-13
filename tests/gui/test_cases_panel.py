@@ -1112,6 +1112,11 @@ class CasesPanelTests(unittest.TestCase):
         )
         default_text = checkpoint.text()
         self.assertEqual(str(DEFAULT_CHECKPOINT_CASES), default_text)
+        # Checkpoint is an advanced setting, collapsed until requested.
+        self.assertFalse(panel.lbl_checkpoint_unit.isVisible())
+        panel.btn_advanced_settings.setChecked(True)
+        self.app.processEvents()
+        self.assertEqual("Hide advanced", panel.btn_advanced_settings.text())
         self.assertTrue(panel.lbl_checkpoint_unit.isVisible())
         self.assertGreaterEqual(
             edit_field.width(),

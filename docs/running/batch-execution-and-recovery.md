@@ -21,8 +21,8 @@ The CLI exposes this setting as `--workers`; the GUI exposes it as **Workers**.
 
 ## Checkpoints
 
-The CLI `--checkpoint-every-cases N` option and GUI **Checkpoint every** control
-set the same interval. The default is `2000`. Each time another `N` cases have
+The CLI `--checkpoint-every-cases N` option and GUI **Checkpoint** control
+(shown by **Show advanced**) set the same interval. The default is `2000`. Each time another `N` cases have
 completed, Panel Solver saves the cases not yet saved successfully. The first
 checkpoint atomically replaces any previous run's Summary CSV; later checkpoints
 append only new results to that same file, without repeating its header. A failed

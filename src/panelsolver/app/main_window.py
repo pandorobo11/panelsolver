@@ -12,10 +12,14 @@ from panelsolver.docs_site import DocumentationSite
 
 from .cases_panel import CasesPanel
 from .examples import ExampleDefinition, ExampleLibrary
+from .gui_components import WorkbenchSplitter
 from .sectional_dialog import SectionalLoadsDialog
 from .solver_spec import SolverSpec
 from .versioning import panelsolver_distribution_version
 from .viewer import ViewerPanel
+
+_CASE_TABLE_SUFFIXES = frozenset({".csv", ".xlsx", ".xlsm"})
+_VTP_SUFFIXES = frozenset({".vtp"})
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -44,7 +48,7 @@ class MainWindow(QtWidgets.QMainWindow):
         central = QtWidgets.QWidget()
         self.setCentralWidget(central)
         layout = QtWidgets.QHBoxLayout(central)
-        self.splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
+        self.splitter = WorkbenchSplitter(QtCore.Qt.Orientation.Horizontal)
         layout.addWidget(self.splitter)
 
         self.cases_panel = cases_panel or CasesPanel(spec)
@@ -58,6 +62,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.sectional_dialog: SectionalLoadsDialog | None = None
         self.sectional_cp_dialog: SectionalLoadsDialog | None = None
         self._build_file_menu()
+        self._build_run_menu()
         self._build_help_menu()
         self._layout_settings = layout_settings if persist_layout else None
         self._saved_columns = {}
@@ -70,13 +75,18 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.cases_panel.show_diagnostics
             )
             self.cases_panel.cases_updated.connect(self._restore_case_columns)
+            self.cases_panel.set_example_menu(self.new_from_example_menu)
             self.cases_panel.run_finished.connect(
                 self.viewer_panel.refresh_selected_vtp_availability
             )
-            view_menu = self.menuBar().addMenu("View")
+            view_menu = QtWidgets.QMenu("View", self)
+            self.menuBar().insertMenu(self.help_menu.menuAction(), view_menu)
             reset = view_menu.addAction("Reset Layout")
             reset.triggered.connect(self.reset_layout)
             self._restore_layout()
+            self.setAcceptDrops(True)
+            # Start keyboard users on the first action rather than the path field.
+            self.cases_panel.btn_pick_input.setFocus()
 
         self.viewer_panel.log_message.connect(self.cases_panel.logln)
         self.cases_panel.vtp_loaded.connect(self.viewer_panel.load_vtp)
@@ -128,6 +138,85 @@ class MainWindow(QtWidgets.QMainWindow):
         self.exit_action = QtGui.QAction("Exit", self)
         self.exit_action.triggered.connect(self.close)
         self.file_menu.addAction(self.exit_action)
+
+    def _build_run_menu(self) -> None:
+        self.run_menu = self.menuBar().addMenu("Run")
+        self.run_action = QtGui.QAction("Run Cases", self)
+        self.run_action.setShortcut(QtGui.QKeySequence("Ctrl+R"))
+        self.cancel_action = QtGui.QAction("Cancel Run", self)
+        self.cancel_action.setShortcut(QtGui.QKeySequence("Ctrl+."))
+        self._run_action_buttons = {}
+        for action, button in (
+            (self.run_action, getattr(self.cases_panel, "btn_run", None)),
+            (self.cancel_action, getattr(self.cases_panel, "btn_cancel", None)),
+        ):
+            self.run_menu.addAction(action)
+            if not isinstance(button, QtWidgets.QAbstractButton):
+                action.setEnabled(False)
+                continue
+            self._run_action_buttons[button] = action
+            action.triggered.connect(
+                lambda _checked=False, target=button: (
+                    target.click() if target.isEnabled() else None
+                )
+            )
+            action.setEnabled(button.isEnabled())
+            button.installEventFilter(self)
+            shortcut = action.shortcut().toString(
+                QtGui.QKeySequence.SequenceFormat.NativeText
+            )
+            button.setToolTip(f"{action.text()} ({shortcut})")
+        self.run_menu.aboutToShow.connect(self._sync_run_action_text)
+
+    def _sync_run_action_text(self) -> None:
+        button = getattr(self.cases_panel, "btn_run", None)
+        if isinstance(button, QtWidgets.QAbstractButton):
+            self.run_action.setText(button.text())
+
+    def eventFilter(self, watched, event) -> bool:
+        if event.type() == QtCore.QEvent.Type.EnabledChange:
+            action = getattr(self, "_run_action_buttons", {}).get(watched)
+            if action is not None:
+                action.setEnabled(watched.isEnabled())
+        return super().eventFilter(watched, event)
+
+    @staticmethod
+    def _dropped_local_file(event) -> Path | None:
+        mime = event.mimeData()
+        if mime is None or not mime.hasUrls():
+            return None
+        urls = mime.urls()
+        if len(urls) != 1 or not urls[0].isLocalFile():
+            return None
+        path = Path(urls[0].toLocalFile())
+        suffix = path.suffix.lower()
+        if suffix not in _CASE_TABLE_SUFFIXES | _VTP_SUFFIXES:
+            return None
+        return path
+
+    def dragEnterEvent(self, event) -> None:
+        if self._dropped_local_file(event) is not None:
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def dragMoveEvent(self, event) -> None:
+        self.dragEnterEvent(event)
+
+    def dropEvent(self, event) -> None:
+        path = self._dropped_local_file(event)
+        if path is None:
+            event.ignore()
+            return
+        event.acceptProposedAction()
+        if path.suffix.lower() in _VTP_SUFFIXES:
+            self.viewer_panel.load_vtp(str(path))
+        elif self.cases_panel.is_running() or self._sectional_running():
+            self.cases_panel.logln(
+                "[WARN] Cannot open another input while cases are running."
+            )
+        else:
+            self.cases_panel.load_input_file(path)
 
     def _add_example_action(self, example: ExampleDefinition) -> QtGui.QAction:
         action = QtGui.QAction(example.label, self)
@@ -316,7 +405,10 @@ class MainWindow(QtWidgets.QMainWindow):
             )
 
     def _layout_disclosures(self):
-        return (("diagnostics", self.cases_panel.btn_diagnostics),)
+        return (
+            ("diagnostics", self.cases_panel.btn_diagnostics),
+            ("advanced_settings", self.cases_panel.btn_advanced_settings),
+        )
 
     def _restore_case_columns(self, _rows=None) -> None:
         if self._saved_columns:

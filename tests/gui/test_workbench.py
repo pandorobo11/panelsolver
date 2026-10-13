@@ -286,6 +286,8 @@ class WorkbenchTests(unittest.TestCase):
             persist_layout=False,
         )
         try:
+            # Measure the widest settings state: advanced checkpoint controls shown.
+            panel.btn_advanced_settings.setChecked(True)
             window.resize(1100, 720)
             window.show()
             self.app.processEvents()
@@ -410,6 +412,7 @@ class WorkbenchTests(unittest.TestCase):
                         persist_layout=False,
                     )
                     panel.load_input_file("/tmp/input.csv")
+                    panel.btn_advanced_settings.setChecked(True)
                     window.show()
                     self.app.processEvents()
                     controls = (

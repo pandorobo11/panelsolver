@@ -146,6 +146,63 @@ class FittedComboBox(QtWidgets.QComboBox):
         return self._with_reserved_width(super().minimumSizeHint())
 
 
+class _GripSplitterHandle(QtWidgets.QSplitterHandle):
+    """Paint a visible divider and grip so the pane boundary reads as movable."""
+
+    def __init__(self, orientation, parent) -> None:
+        super().__init__(orientation, parent)
+        self.setAttribute(QtCore.Qt.WidgetAttribute.WA_Hover)
+
+    def event(self, event) -> bool:
+        if event.type() in (
+            QtCore.QEvent.Type.HoverEnter,
+            QtCore.QEvent.Type.HoverLeave,
+        ):
+            self.update()
+        return super().event(event)
+
+    def paintEvent(self, _event) -> None:
+        painter = QtGui.QPainter(self)
+        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
+        palette = self.palette()
+        role = QtGui.QPalette.ColorRole
+        horizontal = self.orientation() == QtCore.Qt.Orientation.Horizontal
+        rect = self.rect()
+        divider = QtCore.QRectF(rect)
+        if horizontal:
+            divider.setLeft(rect.center().x())
+            divider.setWidth(1)
+        else:
+            divider.setTop(rect.center().y())
+            divider.setHeight(1)
+        painter.fillRect(divider, palette.color(role.Midlight))
+        if self.underMouse():
+            grip_color = palette.color(role.Highlight)
+        else:
+            grip_color = QtGui.QColor(palette.color(role.Dark))
+            grip_color.setAlphaF(0.45)
+        length, thickness = 40, 4
+        if horizontal:
+            grip = QtCore.QRectF(0, 0, thickness, length)
+        else:
+            grip = QtCore.QRectF(0, 0, length, thickness)
+        grip.moveCenter(QtCore.QRectF(rect).center())
+        painter.setPen(QtCore.Qt.PenStyle.NoPen)
+        painter.setBrush(grip_color)
+        painter.drawRoundedRect(grip, thickness / 2, thickness / 2)
+
+
+class WorkbenchSplitter(QtWidgets.QSplitter):
+    """Splitter whose handle shows a divider and a grip in both themes."""
+
+    def __init__(self, orientation, parent=None) -> None:
+        super().__init__(orientation, parent)
+        self.setHandleWidth(9)
+
+    def createHandle(self) -> QtWidgets.QSplitterHandle:
+        return _GripSplitterHandle(self.orientation(), self)
+
+
 class FlowLayout(QtWidgets.QLayout):
     """Wrap complete control groups without hiding commands at narrow widths."""
 

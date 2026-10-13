@@ -130,6 +130,7 @@ class ViewerPanel(QtWidgets.QWidget):
         )
         empty_layout.addStretch(1)
         self._root_layout.addWidget(interactor, 6)
+        interactor.setAcceptDrops(False)
         interactor.installEventFilter(self)
 
         self._init_controls()

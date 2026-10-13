@@ -258,7 +258,6 @@ class CasesPanel(QtWidgets.QWidget):
         self.btn_run.setText("Run Cases")
         self.btn_cancel.setEnabled(False)
         self.btn_run.setEnabled(False)
-        self.lbl_case_summary = QtWidgets.QLabel("No cases loaded")
         self.spin_workers = WorkbenchSpinBox()
         self.spin_workers.setAccessibleName("Workers")
         self.spin_workers.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
@@ -330,10 +329,18 @@ class CasesPanel(QtWidgets.QWidget):
         self.btn_clear_selection = QtWidgets.QPushButton("Clear selection")
         self.btn_clear_selection.setToolTip("Clear selection to run all loaded cases")
         self.btn_clear_selection.clicked.connect(self.case_table.clearSelection)
-        self.lbl_run_scope = QtWidgets.QLabel("Load an input file to begin")
+        self.lbl_run_scope = QtWidgets.QLabel()
         self.lbl_run_scope.setWordWrap(True)
+        self.btn_advanced_settings = QtWidgets.QPushButton("Show advanced")
+        self.btn_advanced_settings.setCheckable(True)
+        self.btn_advanced_settings.setAccessibleName("Advanced run settings")
+        set_semantic_property(
+            self.btn_advanced_settings, "fluentAppearance", "secondary"
+        )
+        self._build_empty_state()
         self._build_layout()
         self._set_diagnostics_expanded(False)
+        self._set_advanced_settings_expanded(False)
         self._refresh_summary()
 
         self.btn_pick_input.clicked.connect(self.pick_input_file)
@@ -341,6 +348,7 @@ class CasesPanel(QtWidgets.QWidget):
         self.btn_run.clicked.connect(self.request_run)
         self.btn_cancel.clicked.connect(self.cancel_run)
         self.btn_diagnostics.toggled.connect(self._set_diagnostics_expanded)
+        self.btn_advanced_settings.toggled.connect(self._set_advanced_settings_expanded)
         self.case_table.itemSelectionChanged.connect(self.on_case_selection_changed)
         self.run_requested.connect(self.start_run)
 
@@ -355,16 +363,18 @@ class CasesPanel(QtWidgets.QWidget):
         self.input_row.addWidget(self.input_value)
         self.input_row.addLayout(self.input_actions_group)
         layout.addLayout(self.input_row)
-        summaries = FlowLayout()
-        self.lbl_case_summary.setSizePolicy(
+        self.case_table_stack = QtWidgets.QStackedWidget()
+        self.case_table_stack.addWidget(self.empty_cases)
+        self.case_table_stack.addWidget(self.case_table)
+        layout.addWidget(self.case_table_stack, 4)
+        scope = FlowLayout()
+        self.lbl_run_scope.setSizePolicy(
             QtWidgets.QSizePolicy.Policy.Expanding,
             QtWidgets.QSizePolicy.Policy.Preferred,
         )
-        summaries.addWidget(self.lbl_case_summary)
-        summaries.addWidget(self.btn_clear_selection)
-        layout.addLayout(summaries)
-        layout.addWidget(self.case_table, 4)
-        layout.addWidget(self.lbl_run_scope)
+        scope.addWidget(self.lbl_run_scope)
+        scope.addWidget(self.btn_clear_selection)
+        layout.addLayout(scope)
         self.lbl_workers = QtWidgets.QLabel("Workers")
         self.lbl_checkpoint_every_cases = QtWidgets.QLabel("Checkpoint")
         self.lbl_checkpoint_unit = QtWidgets.QLabel("cases")
@@ -377,7 +387,8 @@ class CasesPanel(QtWidgets.QWidget):
         self.workers_group.addWidget(self.lbl_workers)
         self.workers_group.addWidget(self.spin_workers)
 
-        self.checkpoint_group = QtWidgets.QHBoxLayout()
+        self.checkpoint_settings = QtWidgets.QWidget()
+        self.checkpoint_group = QtWidgets.QHBoxLayout(self.checkpoint_settings)
         self.checkpoint_group.setContentsMargins(0, 0, 0, 0)
         self.checkpoint_group.setSpacing(_INLINE_LABEL_CONTROL_SPACING)
         self.checkpoint_group.addWidget(self.lbl_checkpoint_every_cases)
@@ -392,7 +403,8 @@ class CasesPanel(QtWidgets.QWidget):
 
         self.settings_row = FlowLayout(spacing=_RUN_SETTINGS_GROUP_SPACING)
         self.settings_row.addLayout(self.workers_group)
-        self.settings_row.addLayout(self.checkpoint_group)
+        self.settings_row.addWidget(self.btn_advanced_settings)
+        self.settings_row.addWidget(self.checkpoint_settings)
         layout.addLayout(self.settings_row)
 
         self.execution_row = FlowLayout(spacing=_RUN_ACTION_SPACING)
@@ -405,6 +417,61 @@ class CasesPanel(QtWidgets.QWidget):
         diagnostics.addWidget(self.btn_clear_diagnostics)
         layout.addWidget(self.diagnostics_row)
         layout.addWidget(self.log, 2)
+
+    def _build_empty_state(self) -> None:
+        self.empty_cases = QtWidgets.QFrame()
+        self.empty_cases.setObjectName("casesEmptyState")
+        self.empty_cases.setAccessibleName("No case table loaded")
+        # Guidance must not widen the pane beyond what the table itself needs.
+        self.empty_cases.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Ignored,
+            QtWidgets.QSizePolicy.Policy.Preferred,
+        )
+        layout = QtWidgets.QVBoxLayout(self.empty_cases)
+        layout.addStretch(1)
+        title = QtWidgets.QLabel("Load a case table")
+        title.setProperty("workbenchHeading", True)
+        title.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        hint = QtWidgets.QLabel(
+            "Select a CSV, XLSX, or XLSM file, drop one onto the window,\n"
+            "or start from an example."
+        )
+        hint.setWordWrap(True)
+        hint.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        self.btn_empty_pick_input = QtWidgets.QPushButton("Select Input File...")
+        self.btn_empty_example = QtWidgets.QPushButton("New from Example")
+        self.btn_empty_example.setProperty("workbenchMenuButton", True)
+        self.btn_empty_example.hide()
+        for button in (self.btn_empty_pick_input, self.btn_empty_example):
+            set_semantic_property(button, "fluentAppearance", "secondary")
+        self.btn_empty_pick_input.clicked.connect(self.pick_input_file)
+        actions = QtWidgets.QHBoxLayout()
+        actions.addStretch(1)
+        actions.addWidget(self.btn_empty_pick_input)
+        actions.addWidget(self.btn_empty_example)
+        actions.addStretch(1)
+        layout.addWidget(title)
+        layout.addWidget(hint)
+        layout.addSpacing(4)
+        layout.addLayout(actions)
+        layout.addStretch(1)
+
+    def set_example_menu(self, menu: QtWidgets.QMenu | None) -> None:
+        """Offer the window's example menu from the empty case-table state."""
+        self.btn_empty_example.setMenu(menu)
+        self.btn_empty_example.setVisible(menu is not None and menu.isEnabled())
+
+    @QtCore.Slot(bool)
+    def _set_advanced_settings_expanded(self, expanded: bool) -> None:
+        self.checkpoint_settings.setVisible(expanded)
+        self.btn_advanced_settings.setText(
+            "Hide advanced" if expanded else "Show advanced"
+        )
+        description = (
+            "Hide checkpoint settings" if expanded else "Show checkpoint settings"
+        )
+        self.btn_advanced_settings.setToolTip(description)
+        self.btn_advanced_settings.setAccessibleDescription(description)
 
     def logln(self, message: str) -> None:
         self.log.appendPlainText(message)
@@ -1059,6 +1126,7 @@ class CasesPanel(QtWidgets.QWidget):
     def _set_running_state(self, running: bool) -> None:
         busy = running or self._external_run_active
         self.btn_pick_input.setEnabled(not busy)
+        self.btn_empty_pick_input.setEnabled(not busy)
         self.btn_reload_input.setEnabled(not busy and self.input_path is not None)
         self.spin_workers.setEnabled(not busy)
         self.case_table.setEnabled(not busy)
@@ -1095,19 +1163,22 @@ class CasesPanel(QtWidgets.QWidget):
     def _refresh_summary(self) -> None:
         total = len(self.case_rows)
         selected = len(self.case_table.selectionModel().selectedRows())
-        self.lbl_case_summary.setText(
-            "No cases loaded" if total == 0 else f"Loaded: {total} case(s)"
+        self.case_table_stack.setCurrentWidget(
+            self.case_table if total else self.empty_cases
         )
         self.btn_clear_selection.setEnabled(
             selected > 0 and self.case_table.isEnabled()
         )
-        self.lbl_run_scope.setText(
-            "Load an input file to begin"
-            if not total
-            else f"Run scope: {selected} selected case(s)"
-            if selected
-            else f"Run scope: all {total} cases"
-        )
+        if not total:
+            scope = "No cases loaded"
+        elif selected:
+            noun = "case" if total == 1 else "cases"
+            scope = f"Run scope: {selected} of {total} {noun} selected"
+        else:
+            scope = (
+                "Run scope: 1 case" if total == 1 else f"Run scope: all {total} cases"
+            )
+        self.lbl_run_scope.setText(scope)
         self._refresh_run_action()
 
     def _refresh_run_action(self) -> None:
