@@ -156,6 +156,61 @@ class SectionalDialogTests(unittest.TestCase):
                 | QtCore.QItemSelectionModel.SelectionFlag.Rows,
             )
 
+    def test_definitions_scope_and_actions_are_presented_for_reading(self):
+        _window, panel, dialog = self.make_window()
+        model = dialog.definition_model
+        headers = [
+            model.headerData(column, QtCore.Qt.Orientation.Horizontal)
+            for column in range(model.columnCount())
+        ]
+        self.assertEqual("Section ID", headers[0])
+        self.assertIn("Bins", headers)
+        start = model.columns.index("start [m]")
+        self.assertEqual("Start\n[m]", headers[start])
+        self.assertEqual(
+            "Start [m]",
+            model.headerData(
+                start,
+                QtCore.Qt.Orientation.Horizontal,
+                QtCore.Qt.ItemDataRole.ToolTipRole,
+            ),
+        )
+        self.assertEqual("Origin STL\n[m]", headers[1])
+        self.assertEqual("Direction STL", headers[2])
+        self.assertFalse(dialog.definition_table.showGrid())
+        alignment = QtCore.Qt.ItemDataRole.TextAlignmentRole
+        right = QtCore.Qt.AlignmentFlag.AlignRight
+        for name in ("start [m]", "stop [m]", "bins"):
+            column = model.columns.index(name)
+            for row in range(model.rowCount()):
+                # "auto" and numbers share one alignment per column.
+                self.assertTrue(
+                    model.data(model.index(row, column), alignment) & right, name
+                )
+        for name in ("section_id", "origin STL [m]", "components"):
+            column = model.columns.index(name)
+            self.assertFalse(model.data(model.index(0, column), alignment) & right)
+        self.assertIn("bins", model.columns)
+        self.assertEqual(str(self.definition_path), dialog.path_value.text())
+        self.assertEqual(str(self.definition_path), dialog.path_value.toolTip())
+        status = dialog.selection_status.text()
+        self.assertIn("Run scope: all 2 loaded cases × all 2 sections", status)
+        self.assertIn("Cases: case_0, case_1.", status)
+        self.select(panel.case_table, 1)
+        status = dialog.selection_status.text()
+        self.assertIn("Run scope: 1 selected case × all 2 sections", status)
+        self.assertIn("Cases: case_1.", status)
+        self.assertEqual("neutral", dialog.progress.property("fluentStatus"))
+        dialog.resize(1040, 500)
+        dialog.show()
+        self.app.processEvents()
+        run, close = dialog.btn_run.geometry(), dialog.btn_close.geometry()
+        self.assertLessEqual(
+            abs(dialog.progress.geometry().center().y() - run.center().y()), 1
+        )
+        self.assertGreater(close.top(), dialog.result_status.geometry().bottom())
+        self.assertGreater(close.left(), run.right())
+
     def test_cp_example_replaces_cases_loads_definitions_and_runs_both_domains(self):
         for domain in (fmf, hypersonic):
             with self.subTest(domain=domain.RUNTIME_POLICY.product_id):
@@ -488,7 +543,11 @@ class SectionalDialogTests(unittest.TestCase):
                 self.select(panel.case_table, *selected)
                 self.select(dialog.definition_table, *sections)
                 self.assertIn(
-                    "selected" if selected else "all loaded",
+                    "1 selected case" if selected else "all 2 loaded cases",
+                    dialog.selection_status.text(),
+                )
+                self.assertIn(
+                    "1 selected section" if sections else "all 2 sections",
                     dialog.selection_status.text(),
                 )
                 self.assertIn("Selected" if selected else "All", dialog.btn_run.text())

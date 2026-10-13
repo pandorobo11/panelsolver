@@ -191,6 +191,36 @@ class WorkbenchUsabilityTests(unittest.TestCase):
         }
         self.assertGreaterEqual(len(colors), 3)
 
+    def test_viewer_keeps_file_actions_on_top_and_four_control_rows(self) -> None:
+        _window, _panel, viewer = self.make_window()
+        for button in (
+            viewer.btn_open_vtp,
+            viewer.btn_save_image,
+            viewer.btn_save_selected_images,
+        ):
+            self.assertTrue(viewer.viewer_toolbar.isAncestorOf(button))
+        labels = [
+            viewer._controls_grid.itemAtPosition(row, 0).widget().text()
+            for row in range(viewer._controls_grid.rowCount())
+            if viewer._controls_grid.itemAtPosition(row, 0) is not None
+        ]
+        self.assertEqual(["Scalar", "Range", "Display", "Camera"], labels)
+        self.assertEqual("Upstream", viewer.btn_view_wind.text())
+        self.assertEqual("Downstream", viewer.btn_view_wind_rev.text())
+
+    def test_fit_refits_without_rotating(self) -> None:
+        _window, _panel, viewer = self.make_window()
+        self.assertFalse(viewer.btn_fit_view.isEnabled())
+        viewer.load_vtp("/tmp/case.vtp", FakePoly({"cp": [0.2, 0.5]}))
+        plotter = viewer.plotter
+        resets, views = plotter.reset_count, list(plotter.view_vectors)
+        plotter.camera.parallel_scale = 2.0
+        self.assertTrue(viewer.btn_fit_view.isEnabled())
+        viewer.btn_fit_view.click()
+        self.assertEqual(resets + 1, plotter.reset_count)
+        self.assertEqual(views, plotter.view_vectors)
+        self.assertAlmostEqual(2.0 * 1.32, plotter.camera.parallel_scale)
+
     def test_colorbar_title_is_drawn_apart_from_tick_labels(self) -> None:
         plotter = _ScalarBarPlotter()
         viewer = ViewerPanel(

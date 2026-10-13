@@ -124,12 +124,12 @@ class WorkbenchTests(unittest.TestCase):
             (name, getattr(viewer, name))
             for name in (
                 "controls_chrome",
+                "viewer_toolbar",
                 "scalar_row",
                 "colorbar_row",
                 "display_row",
                 "camera_row",
                 "camera_axis_group",
-                "export_row",
                 "cmb_scalar",
                 "cmb_cmap",
                 "edit_vmin",

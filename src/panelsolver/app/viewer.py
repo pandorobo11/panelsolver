@@ -61,6 +61,7 @@ _CONTROL_COLUMN_SPACING = 6
 _COLORBAR_POSITION_Y = 0.035
 _COLORBAR_HEIGHT = 0.06
 _COLORBAR_TITLE_GAP = 0.012
+_FIT_PARALLEL_SCALE_MARGIN = 1.32
 
 
 class ViewerPanel(QtWidgets.QWidget):
@@ -240,10 +241,11 @@ class ViewerPanel(QtWidgets.QWidget):
         self.btn_view_zn = QtWidgets.QPushButton("-Z")
         self.btn_view_iso_1 = QtWidgets.QPushButton("-X -Y +Z")
         self.btn_view_iso_2 = QtWidgets.QPushButton("+X -Y -Z")
-        self.btn_view_wind = QtWidgets.QPushButton("Wind +")
-        self.btn_view_wind_rev = QtWidgets.QPushButton("Wind -")
+        self.btn_view_wind = QtWidgets.QPushButton("Upstream")
+        self.btn_view_wind_rev = QtWidgets.QPushButton("Downstream")
+        self.btn_fit_view = QtWidgets.QPushButton("Fit")
         self.btn_save_image = QtWidgets.QPushButton("Save Image...")
-        self.btn_save_selected_images = QtWidgets.QPushButton("Save Selected...")
+        self.btn_save_selected_images = QtWidgets.QPushButton("Save Selected Images...")
         for button in (
             self.btn_open_vtp,
             self.btn_save_image,
@@ -254,6 +256,26 @@ class ViewerPanel(QtWidgets.QWidget):
         self.btn_save_selected_images.setEnabled(False)
 
     def _build_controls_layout(self) -> None:
+        # File actions sit above the viewport, level with the Cases input row.
+        self.viewer_toolbar = QtWidgets.QWidget()
+        self.viewer_toolbar.setObjectName("viewerToolbar")
+        toolbar = QtWidgets.QHBoxLayout(self.viewer_toolbar)
+        # Match the Cases pane's native top inset so both top rows align.
+        toolbar.setContentsMargins(
+            _VIEWER_CHROME_HORIZONTAL_INSET,
+            self.style().pixelMetric(QtWidgets.QStyle.PixelMetric.PM_LayoutTopMargin),
+            _VIEWER_CHROME_HORIZONTAL_INSET,
+            0,
+        )
+        toolbar.setSpacing(8)
+        toolbar.addWidget(self.btn_open_vtp)
+        toolbar.addStretch(1)
+        self.image_export_group = self._make_control_row()
+        self.image_export_group.layout().addWidget(self.btn_save_image)
+        self.image_export_group.layout().addWidget(self.btn_save_selected_images)
+        toolbar.addWidget(self.image_export_group)
+        self._root_layout.insertWidget(0, self.viewer_toolbar)
+
         self.controls_chrome = QtWidgets.QWidget()
         self.controls_chrome.setObjectName("viewerControlsChrome")
         self._controls_grid = QtWidgets.QGridLayout(self.controls_chrome)
@@ -266,15 +288,10 @@ class ViewerPanel(QtWidgets.QWidget):
         self.lbl_colorbar = QtWidgets.QLabel("Range")
         self.lbl_display = QtWidgets.QLabel("Display")
         self.lbl_camera = QtWidgets.QLabel("Camera")
-        self.lbl_export = QtWidgets.QLabel("Export")
         self.lbl_scalar.setBuddy(self.cmb_scalar)
         self.scalar_row = QtWidgets.QWidget()
         scalar = FlowLayout(self.scalar_row)
         self.scalar_selectors = self._make_control_row()
-        self.scalar_selectors.setSizePolicy(
-            QtWidgets.QSizePolicy.Policy.Expanding,
-            QtWidgets.QSizePolicy.Policy.Preferred,
-        )
         selectors = self.scalar_selectors.layout()
         selectors.addWidget(self.cmb_scalar)
         selectors.addSpacing(8)
@@ -282,10 +299,7 @@ class ViewerPanel(QtWidgets.QWidget):
         cmap_label.setBuddy(self.cmb_cmap)
         selectors.addWidget(cmap_label)
         selectors.addWidget(self.cmb_cmap)
-        selectors.addStretch(1)
         scalar.addWidget(self.scalar_selectors)
-        scalar.addWidget(self.btn_open_vtp)
-
         self.colorbar_row = QtWidgets.QWidget()
         colorbar = FlowLayout(self.colorbar_row)
         self.range_inputs = self._make_control_row()
@@ -333,12 +347,21 @@ class ViewerPanel(QtWidgets.QWidget):
             *self._camera_isometric_buttons,
             *self._camera_wind_buttons,
         )
-        for button in self._camera_buttons:
+        for button in (*self._camera_buttons, self.btn_fit_view):
             button.setProperty("viewerCameraControl", True)
+        for button in self._camera_axis_buttons:
             button.setToolTip(
-                "Camera looks from this direction toward the model in STL coordinates; Wind uses the case flow direction."
+                f"View from {button.text()} toward the model in STL coordinates"
             )
         self.btn_view_iso_1.setToolTip("View from (-X, -Y, +Z) in STL coordinates")
+        self.btn_view_iso_2.setToolTip("View from (+X, -Y, -Z) in STL coordinates")
+        self.btn_view_wind.setToolTip(
+            "View from upstream, looking along the case flow direction"
+        )
+        self.btn_view_wind_rev.setToolTip(
+            "View from downstream, looking against the case flow direction"
+        )
+        self.btn_fit_view.setToolTip("Fit the model in the view without rotating")
         self.camera_row = QtWidgets.QWidget()
         camera = FlowLayout(self.camera_row, spacing=8)
         self.camera_axis_group = QtWidgets.QWidget()
@@ -351,27 +374,22 @@ class ViewerPanel(QtWidgets.QWidget):
             self._camera_isometric_buttons
         )
         self.camera_wind_group = self._make_camera_group(self._camera_wind_buttons)
+        self.camera_fit_group = self._make_camera_group((self.btn_fit_view,))
         self._camera_groups = (
             self.camera_axis_group,
             self.camera_isometric_group,
             self.camera_wind_group,
+            self.camera_fit_group,
         )
         for group in self._camera_groups:
             camera.addWidget(group)
 
-        self.export_row = QtWidgets.QWidget()
-        export = FlowLayout(self.export_row)
-        self.image_export_group = self._make_control_row()
-        self.image_export_group.layout().addWidget(self.btn_save_image)
-        self.image_export_group.layout().addWidget(self.btn_save_selected_images)
-        export.addWidget(self.image_export_group)
         for row_index, (label, control) in enumerate(
             (
                 (self.lbl_scalar, self.scalar_row),
                 (self.lbl_colorbar, self.colorbar_row),
                 (self.lbl_display, self.display_row),
                 (self.lbl_camera, self.camera_row),
-                (self.lbl_export, self.export_row),
             )
         ):
             self._controls_grid.addWidget(
@@ -381,9 +399,11 @@ class ViewerPanel(QtWidgets.QWidget):
         self._controls_grid.setColumnStretch(1, 1)
         self._root_layout.addWidget(self.controls_chrome)
         order = (
+            self.btn_open_vtp,
+            self.btn_save_image,
+            self.btn_save_selected_images,
             self.cmb_scalar,
             self.cmb_cmap,
-            self.btn_open_vtp,
             self.edit_vmin,
             self.edit_vmax,
             self.btn_auto_range,
@@ -392,8 +412,7 @@ class ViewerPanel(QtWidgets.QWidget):
             self.chk_overlay_text,
             self.cmb_background,
             *self._camera_buttons,
-            self.btn_save_image,
-            self.btn_save_selected_images,
+            self.btn_fit_view,
         )
         for first, second in pairwise(order):
             QtWidgets.QWidget.setTabOrder(first, second)
@@ -451,6 +470,7 @@ class ViewerPanel(QtWidgets.QWidget):
         self.btn_view_iso_2.clicked.connect(lambda: self.set_view_vector((1, -1, -1)))
         self.btn_view_wind.clicked.connect(self.set_view_wind)
         self.btn_view_wind_rev.clicked.connect(self.set_view_wind_reverse)
+        self.btn_fit_view.clicked.connect(self.fit_view)
         self.btn_save_image.clicked.connect(self.save_view_image)
         self.btn_save_selected_images.clicked.connect(
             self.save_selected_images_requested.emit
@@ -765,6 +785,7 @@ class ViewerPanel(QtWidgets.QWidget):
             self.chk_shield_transparent,
             self.chk_overlay_text,
             *self._camera_buttons,
+            self.btn_fit_view,
         ):
             control.setEnabled(has_data)
             if not has_data:
@@ -985,6 +1006,19 @@ class ViewerPanel(QtWidgets.QWidget):
     def set_view_vector(self, vector: tuple[float, float, float]) -> None:
         self.plotter.view_vector(vector)
         self.plotter.render()
+
+    def fit_view(self) -> None:
+        """Refit the displayed model while keeping the current view direction."""
+        if self._poly is None:
+            return
+        self.plotter.reset_camera()
+        self._apply_fit_margin()
+        self.plotter.render()
+
+    def _apply_fit_margin(self) -> None:
+        camera = getattr(self.plotter, "camera", None)
+        if camera is not None and hasattr(camera, "parallel_scale"):
+            camera.parallel_scale *= _FIT_PARALLEL_SCALE_MARGIN
 
     def _current_velocity_hat(self) -> np.ndarray | None:
         if self._display_case_row is None or self.spec.adapters is None:
@@ -1218,9 +1252,7 @@ class ViewerPanel(QtWidgets.QWidget):
         if not self._restore_camera_state(previous_camera):
             self.plotter.reset_camera()
             self.plotter.view_vector(self._default_view_vec)
-            camera = getattr(self.plotter, "camera", None)
-            if camera is not None and hasattr(camera, "parallel_scale"):
-                camera.parallel_scale *= 1.32
+            self._apply_fit_margin()
         self._camera_initialized = True
         self.plotter.render()
 
