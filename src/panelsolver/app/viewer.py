@@ -12,7 +12,7 @@ import pyvista as pv
 from PySide6 import QtCore, QtGui, QtWidgets
 from pyvistaqt import QtInteractor
 
-from .gui_components import FlowLayout
+from .gui_components import FittedComboBox, FlowLayout
 from .gui_theme import set_semantic_property
 from .path_resolution import (
     absolute_input_path,
@@ -55,6 +55,12 @@ def _process_gui_events() -> None:
 
 _VIEWER_CHROME_HORIZONTAL_INSET = 12
 _CONTROL_COLUMN_SPACING = 6
+# Horizontal colorbar frame in normalized viewport coordinates. Tick labels sit
+# below the bar and the title is drawn separately above it, because VTK places
+# its own title against the tick labels and they overlap at the bar center.
+_COLORBAR_POSITION_Y = 0.035
+_COLORBAR_HEIGHT = 0.06
+_COLORBAR_TITLE_GAP = 0.012
 
 
 class ViewerPanel(QtWidgets.QWidget):
@@ -132,6 +138,7 @@ class ViewerPanel(QtWidgets.QWidget):
 
         self._case_rows: tuple[CaseRow, ...] = ()
         self._selected_case_rows: tuple[CaseRow, ...] = ()
+        self._selected_vtp_available = False
         self._input_path: Path | None = None
         self._image_directory_input_path: Path | None = None
         self._last_image_directory: Path | None = None
@@ -140,6 +147,7 @@ class ViewerPanel(QtWidgets.QWidget):
         self._display_case_row: CaseRow | None = None
         self._scalar_fields: dict[str, ScalarField] = {}
         self._overlay_actor = None
+        self._scalar_title_actor = None
         self._default_view_vec = (-1, -1, 1)
         self._camera_initialized = False
         self._plotter_closed = False
@@ -205,8 +213,9 @@ class ViewerPanel(QtWidgets.QWidget):
             self.cmb_background.addItem(label, value)
         self.cmb_background.setAccessibleName("Viewer background")
         self.cmb_background.currentIndexChanged.connect(self._apply_background)
-        self.cmb_scalar = QtWidgets.QComboBox()
+        self.cmb_scalar = FittedComboBox()
         self.cmb_scalar.setMinimumWidth(145)
+        self.cmb_scalar.set_reserved_texts(self.spec.scalar_labels.values())
         self.chk_edges = QtWidgets.QCheckBox("Show edges")
         self.chk_edges.setChecked(True)
         self.chk_shield_transparent = QtWidgets.QCheckBox("Shielded transparent")
@@ -452,6 +461,7 @@ class ViewerPanel(QtWidgets.QWidget):
     def set_case_rows(self, rows: Sequence[CaseRow] | None) -> None:
         self._case_rows = () if rows is None else tuple(rows)
         self._selected_case_rows = ()
+        self._selected_vtp_available = False
         self._refresh_manual_artifact_context()
         self._update_export_controls()
 
@@ -482,6 +492,7 @@ class ViewerPanel(QtWidgets.QWidget):
 
     def set_selected_case_rows(self, rows: Sequence[CaseRow] | None) -> None:
         self._selected_case_rows = () if rows is None else tuple(rows)
+        self._refresh_selected_vtp_availability()
         if (
             not self._selected_case_rows
             and self._artifact_view_state.status is ArtifactViewStatus.CURRENT
@@ -497,6 +508,7 @@ class ViewerPanel(QtWidgets.QWidget):
                 self._last_image_directory = None
             self._image_directory_input_path = resolved
         self._input_path = resolved
+        self._refresh_selected_vtp_availability()
         self._update_export_controls()
 
     def _input_path_context(self) -> Path:
@@ -759,6 +771,25 @@ class ViewerPanel(QtWidgets.QWidget):
             else:
                 control.setAccessibleDescription("")
 
+    @QtCore.Slot()
+    def refresh_selected_vtp_availability(self) -> None:
+        """Recheck selected-case VTP files, for example after a run writes them."""
+        self._refresh_selected_vtp_availability()
+        self._update_export_controls()
+
+    def _refresh_selected_vtp_availability(self) -> None:
+        input_path = self._input_path
+        self._selected_vtp_available = input_path is not None and any(
+            self._case_vtp_exists(row, input_path) for row in self._selected_case_rows
+        )
+
+    def _case_vtp_exists(self, row: CaseRow, input_path: Path) -> bool:
+        try:
+            return bool(self._path_exists(resolve_case_vtp_path(row, input_path)))
+        except Exception:
+            # Unresolvable rows are reported by the export itself.
+            return False
+
     def _update_export_controls(self) -> None:
         self.btn_save_image.setEnabled(
             self._poly is not None and self._selected_scalar_name() is not None
@@ -768,13 +799,20 @@ class ViewerPanel(QtWidgets.QWidget):
             if self._poly is not None
             else "Load a result before saving an image"
         )
-        self.btn_save_selected_images.setToolTip(
-            "Export images for selected cases; select rows in the case table first"
-        )
-        self.btn_save_selected_images.setEnabled(
+        has_selection = (
             self._input_path is not None
             and bool(self._case_rows)
             and bool(self._selected_case_rows)
+        )
+        if not has_selection:
+            tooltip = "Select rows in the case table to export their images"
+        elif not self._selected_vtp_available:
+            tooltip = "No saved VTP results exist for the selected cases"
+        else:
+            tooltip = "Export images for the selected cases"
+        self.btn_save_selected_images.setToolTip(tooltip)
+        self.btn_save_selected_images.setEnabled(
+            has_selection and self._selected_vtp_available
         )
 
     def _standard_view_image_path(self) -> Path | None:
@@ -1055,6 +1093,31 @@ class ViewerPanel(QtWidgets.QWidget):
         prop.SetVerticalJustificationToTop()
         prop.SetLineSpacing(1.4)
 
+    def _place_scalar_bar_title(self, title: str) -> None:
+        """Draw the colorbar title above the bar, clear of its tick labels."""
+        bars = getattr(self.plotter, "scalar_bars", None)
+        if bars is not None and title in bars:
+            bar = bars[title]
+            bar.SetTitle("")
+            bar.SetTextPositionToPrecedeScalarBar()
+        self._scalar_title_actor = self.plotter.add_text(
+            title,
+            color=self._viewport_foreground,
+            position=(
+                0.5,
+                _COLORBAR_POSITION_Y + _COLORBAR_HEIGHT + _COLORBAR_TITLE_GAP,
+            ),
+            viewport=True,
+            font="arial",
+            font_size=6,
+            shadow=False,
+            render=False,
+        )
+        prop = self._scalar_title_actor.GetTextProperty()
+        prop.SetFontSize(self._viewer_font_size() + 1)
+        prop.SetJustificationToCentered()
+        prop.SetVerticalJustificationToBottom()
+
     def _viewer_font_size(self) -> int:
         # Use one Qt-derived size for VTK text instead of viewport-driven sizing.
         return max(10, round(self.font().pointSizeF()))
@@ -1092,6 +1155,7 @@ class ViewerPanel(QtWidgets.QWidget):
             self._capture_camera_state() if self._camera_initialized else None
         )
         self.plotter.clear()
+        self._scalar_title_actor = None
         scalar_name = self._selected_scalar_name()
         common = {
             "scalars": scalar_name,
@@ -1107,9 +1171,9 @@ class ViewerPanel(QtWidgets.QWidget):
                 "title_font_size": self._viewer_font_size() + 1,
                 "bold": False,
                 "position_x": 0.18,
-                "position_y": 0.02,
+                "position_y": _COLORBAR_POSITION_Y,
                 "width": 0.64,
-                "height": 0.08,
+                "height": _COLORBAR_HEIGHT,
                 "color": self._viewport_foreground,
             }
             field = self._scalar_fields[scalar_name]
@@ -1146,6 +1210,8 @@ class ViewerPanel(QtWidgets.QWidget):
             self.plotter.add_mesh(self._poly, opacity=1.0, **common)
         else:
             self._add_shield_groups(shield, common)
+        if scalar_name is not None:
+            self._place_scalar_bar_title(common["scalar_bar_args"]["title"])
         self._update_overlay()
         self.plotter.add_axes(color=self._viewport_foreground)
         if not self._restore_camera_state(previous_camera):

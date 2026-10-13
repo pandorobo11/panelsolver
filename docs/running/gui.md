@@ -108,7 +108,10 @@ For an FMF example, open `examples/fmf/flow_modes.csv`; for Hypersonic, open
 
 The case table shows all input fields, including extra fields, in their declared
 order. Headers show units, and Case ID stays pinned while scrolling horizontally.
-Hover over a geometry cell to read its full path.
+Hover over a geometry cell to read its full path. When the input path is longer
+than its field, leading folders are shortened so the file name stays visible;
+hover over the field for the full path, or use **Copy Path** from its context
+menu.
 
 Window placement, split position, column widths, and Diagnostics visibility are
 remembered separately for each domain. Saved widths expand as needed to fit
@@ -153,6 +156,7 @@ and write errors include a **Diagnostics** button below the central explanation.
 ### Choose surface data and coloring
 
 Select a cell scalar, colormap, and camera direction below the Viewer. The
+colorbar shows the scalar name above the bar and the tick values below it. The
 scalar labels correspond to these [VTP fields](../results/vtp.md):
 
 | VTP field | GUI label |
@@ -187,7 +191,8 @@ manual VTP, the suggestion is under `images/` beside that VTP. Choose another
 directory or name in the dialog as needed. Unsafe filename characters are
 adjusted automatically.
 
-**Save Selected...** exports images for the selected cases. The suggested
+**Save Selected...** exports images for the selected cases. It is available
+when at least one selected case has a saved VTP. The suggested
 directory is `images/` under their common output directory, or
 `<input_dir>/outputs/images` if they use different output directories. Batch
 export preserves existing images by adding a numeric suffix to duplicate names.

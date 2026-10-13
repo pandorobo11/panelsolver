@@ -11,7 +11,12 @@ import pyvista as pv
 from PySide6 import QtCore, QtWidgets
 
 from .csv_writer import validate_csv_output_path
-from .gui_components import FlowLayout, FrozenCaseTable, WorkbenchSpinBox
+from .gui_components import (
+    ElidedPathField,
+    FlowLayout,
+    FrozenCaseTable,
+    WorkbenchSpinBox,
+)
 from .gui_theme import set_semantic_property
 from .output_status import OutputKind, OutputPhase
 from .path_resolution import (
@@ -231,8 +236,8 @@ class CasesPanel(QtWidgets.QWidget):
         self.sectional_definition_paths: tuple[Path, ...] = ()
         self._table_columns: tuple[str, ...] = ()
 
-        self.input_value = QtWidgets.QLineEdit()
-        self.input_value.setReadOnly(True)
+        self.input_value = ElidedPathField()
+        self.input_value.setAccessibleName("Input file")
         self.input_value.setPlaceholderText("CSV / XLSX / XLSM input file")
         self.btn_pick_input = QtWidgets.QPushButton("Select Input File")
         self.btn_reload_input = QtWidgets.QPushButton("Reload")
@@ -329,6 +334,7 @@ class CasesPanel(QtWidgets.QWidget):
         self.lbl_run_scope.setWordWrap(True)
         self._build_layout()
         self._set_diagnostics_expanded(False)
+        self._refresh_summary()
 
         self.btn_pick_input.clicked.connect(self.pick_input_file)
         self.btn_reload_input.clicked.connect(self.reload_input_file)

@@ -14,7 +14,7 @@ from panelsolver.core.sectional_cp import SectionalCpDefinition
 
 from .cases_panel import CasesPanel
 from .csv_writer import validate_csv_output_path
-from .gui_components import FlowLayout
+from .gui_components import ElidedPathField, FlowLayout
 from .gui_theme import set_semantic_property
 from .path_resolution import default_summary_output_path
 from .sectional_batch import (
@@ -174,8 +174,7 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
         self._cancel_requested = False
         self._operation = ""
 
-        self.path_value = QtWidgets.QLineEdit()
-        self.path_value.setReadOnly(True)
+        self.path_value = ElidedPathField()
         self.path_value.setPlaceholderText("Open sectional definition CSV")
         self.path_value.setAccessibleName("Sectional definition CSV")
         self.btn_open = QtWidgets.QPushButton("Open Definitions...")

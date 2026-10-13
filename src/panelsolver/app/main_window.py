@@ -70,6 +70,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.cases_panel.show_diagnostics
             )
             self.cases_panel.cases_updated.connect(self._restore_case_columns)
+            self.cases_panel.run_finished.connect(
+                self.viewer_panel.refresh_selected_vtp_availability
+            )
             view_menu = self.menuBar().addMenu("View")
             reset = view_menu.addAction("Reset Layout")
             reset.triggered.connect(self.reset_layout)
