@@ -136,6 +136,7 @@ def _system_palette_tokens(
             "brand_pressed": active(role.Highlight),
             "brand_selected": active(role.Highlight),
             "brand_text": active(role.HighlightedText),
+            "brand_stroke": active(role.Highlight),
             "focus_border": active(role.Highlight),
             "disabled_background": disabled(role.Button),
             "disabled_text": disabled(role.Text),

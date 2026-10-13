@@ -96,6 +96,19 @@ QPushButton[fluentBusy="true"], QToolButton[fluentBusy="true"] {
     border-color: @{brand_background};
 }
 
+/* Buttons that open a menu reserve room for a themed chevron. */
+QPushButton[workbenchMenuButton="true"] {
+    padding-right: 30px;
+}
+QPushButton::menu-indicator {
+    image: url("@{chevron_down}");
+    subcontrol-origin: border;
+    subcontrol-position: center right;
+    width: 12px;
+    height: 12px;
+    right: 10px;
+}
+
 QPushButton:focus, QToolButton:focus {
     border: 1px solid @{focus_border};
 }
@@ -180,6 +193,15 @@ QProgressBar::chunk {
     border-radius: 2px;
 }
 
+/* An idle status reads as quiet text, not as an input or a button. */
+QProgressBar[fluentStatus="neutral"] {
+    background-color: transparent;
+    color: @{text_secondary};
+    border-color: transparent;
+    text-align: left;
+    padding-left: 0px;
+}
+
 QProgressBar[fluentStatus="info"] {
     border-color: @{link};
 }
@@ -250,8 +272,14 @@ QAbstractItemView {
     border: 1px solid @{border_subtle};
 }
 
+/* A brand stroke marks a focused table without a heavy black/white frame. */
 QAbstractItemView:focus {
-    border: 1px solid @{focus_border};
+    border: 1px solid @{brand_stroke};
+}
+
+QFrame#casesEmptyState {
+    background-color: @{canvas_background};
+    border: 1px solid @{border_subtle};
 }
 
 /* Case tables use row rules and quiet headers, with no vertical grid. */
