@@ -99,16 +99,25 @@ class WorkbenchUsabilityTests(unittest.TestCase):
     def test_input_path_keeps_file_name_and_full_path(self) -> None:
         field = ElidedPathField()
         self.addCleanup(field.close)
-        field.resize(240, 30)
         field.show()
         path = "/Users/example/work/very/long/checkout/workspace/hypersonic/pressure_models.csv"
+        tail = "/hypersonic/pressure_models.csv"
+        # Size from the platform font: room for the elided tail, not the path.
+        metrics = field.fontMetrics()
+        needed = metrics.horizontalAdvance(f"…work{tail}")
+        width = 40
+        field.resize(width, 30)
+        while field._available_text_width() < needed:
+            width += 4
+            field.resize(width, 30)
+        self.assertLess(field._available_text_width(), metrics.horizontalAdvance(path))
         field.setText(path)
         self.app.processEvents()
         shown = field.displayed_text()
         self.assertEqual(path, field.text())
         self.assertEqual(path, field.toolTip())
         self.assertTrue(shown.startswith("…"), shown)
-        self.assertTrue(shown.endswith("/hypersonic/pressure_models.csv"), shown)
+        self.assertTrue(shown.endswith(tail), shown)
         self.assertLessEqual(
             field.fontMetrics().horizontalAdvance(shown),
             field._available_text_width(),
