@@ -6,6 +6,7 @@ import os
 import re
 import unittest
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
@@ -153,16 +154,21 @@ class WorkbenchUsabilityTests(unittest.TestCase):
         window, panel, viewer = self.make_window()
         self.assertTrue(window.acceptDrops())
         self.assertFalse(panel.input_value.acceptDrops())
-        ignored = self.drop_event("/tmp/notes.txt")
-        window.dragEnterEvent(ignored)
-        self.assertFalse(ignored.isAccepted())
+        with TemporaryDirectory() as directory:
+            # Native file drops contain absolute paths, including a drive on Windows.
+            root = Path(directory).resolve()
+            ignored = self.drop_event(str(root / "notes.txt"))
+            window.dragEnterEvent(ignored)
+            self.assertFalse(ignored.isAccepted())
 
-        window.dropEvent(self.drop_event("/tmp/dropped.csv"))
-        self.assertEqual(Path("/tmp/dropped.csv"), panel.input_path)
+            case_path = root / "dropped cases.csv"
+            window.dropEvent(self.drop_event(str(case_path)))
+            self.assertEqual(case_path, panel.input_path)
 
-        with patch.object(viewer, "load_vtp") as load_vtp:
-            window.dropEvent(self.drop_event("/tmp/result.vtp"))
-        load_vtp.assert_called_once_with(str(Path("/tmp/result.vtp")))
+            vtp_path = root / "result view.vtp"
+            with patch.object(viewer, "load_vtp") as load_vtp:
+                window.dropEvent(self.drop_event(str(vtp_path)))
+            load_vtp.assert_called_once_with(str(vtp_path))
 
     def test_run_menu_shortcuts_follow_run_and_cancel_buttons(self) -> None:
         window, panel, _viewer = self.make_window()
