@@ -69,7 +69,8 @@ For your own files:
    [sectional definition CSV](../inputs/sectional-loads.md).
 3. Select definitions in the read-only table to run a subset, or leave the
    selection empty to run all loaded definitions. Case and definition selections
-   are independent; the run scope shows both effective counts.
+   are independent; the run scope shows both effective counts and lists the
+   target case IDs.
 4. Choose **Run All Cases × Sections** or **Run Selected Cases × Sections**, then
    select the [sectional result CSV](../results/sectional-loads-csv.md) destination.
    The suggested path is `<input_dir>/outputs/<input_stem>_sectional_loads.csv`.
@@ -126,9 +127,10 @@ initial workspace layout.
 Input files, row selection, execution settings, and color-range values are not
 restored by this layout feature.
 
-Viewer controls remain available below the display. Related controls wrap
-together in a narrow window, as do each run setting and its label; run and cancel
-actions stay together.
+Viewer file actions (**Open VTP...**, **Save Image...**, **Save Selected
+Images...**) sit above the display; scalar, range, display, and camera controls
+remain available below it. Related controls wrap together in a narrow window,
+as do each run setting and its label; run and cancel actions stay together.
 
 ## Start from an example
 
@@ -183,6 +185,10 @@ Set **Min** and **Max** to choose color limits; leave either endpoint blank for
 an automatic limit. The colorbar shows the actual range. Invalid numeric text
 falls back to automatic, with the input marked and a tooltip explaining why.
 
+**Camera** views the model from an STL axis direction, from one of two
+isometric directions, or from **Upstream** or **Downstream** along the case
+flow direction. **Fit** refits the model in the view without rotating it.
+
 **Background** offers **Follow theme** (initial), **White**, and **Black**.
 Following the theme uses white in light mode and black in dark mode. An explicit
 color stays selected across theme changes for the current window. Text and axes
@@ -198,8 +204,8 @@ manual VTP, the suggestion is under `images/` beside that VTP. Choose another
 directory or name in the dialog as needed. Unsafe filename characters are
 adjusted automatically.
 
-**Save Selected...** exports images for the selected cases. It is available
-when at least one selected case has a saved VTP. The suggested
+**Save Selected Images...** exports images for the selected cases. It is
+available when at least one selected case has a saved VTP. The suggested
 directory is `images/` under their common output directory, or
 `<input_dir>/outputs/images` if they use different output directories. Batch
 export preserves existing images by adding a numeric suffix to duplicate names.

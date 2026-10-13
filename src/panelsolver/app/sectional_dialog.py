@@ -25,6 +25,22 @@ from .sectional_batch import (
 from .sectional_definitions import SectionalDefinition, read_sectional_definitions
 from .solver_spec import GuiSectionalRunRequest, RunSectionalCasesCallback, SolverSpec
 
+_DEFINITION_COLUMN_LABELS = MappingProxyType(
+    {
+        "section_id": "Section ID",
+        "origin STL [m]": "Origin STL [m]",
+        "direction STL": "Direction STL",
+        "start [m]": "Start [m]",
+        "stop [m]": "Stop [m]",
+        "bins": "Bins",
+        "planes": "Planes",
+        "components": "Components",
+    }
+)
+# Numeric columns align right even when a cell holds the text "auto".
+_NUMERIC_DEFINITION_COLUMNS = frozenset({"start [m]", "stop [m]", "bins", "planes"})
+_LISTED_CASE_IDS = 5
+
 
 class _ReadOnlyModel(QtCore.QAbstractTableModel):
     """Display immutable records without per-cell widgets or numerical copies."""
@@ -33,11 +49,21 @@ class _ReadOnlyModel(QtCore.QAbstractTableModel):
         super().__init__(parent)
         self.columns: tuple[str, ...] = ()
         self.rows: tuple[Mapping[str, object], ...] = ()
+        self.labels: Mapping[str, str] = {}
+        self.right_aligned: frozenset[str] = frozenset()
 
-    def replace(self, columns, rows) -> None:
+    def replace(
+        self,
+        columns,
+        rows,
+        labels: Mapping[str, str] | None = None,
+        right_aligned=(),
+    ) -> None:
         self.beginResetModel()
         self.columns = tuple(columns)
         self.rows = tuple(rows)
+        self.labels = {} if labels is None else dict(labels)
+        self.right_aligned = frozenset(right_aligned)
         self.endResetModel()
 
     def rowCount(self, parent=None) -> int:
@@ -60,20 +86,25 @@ class _ReadOnlyModel(QtCore.QAbstractTableModel):
         if role == QtCore.Qt.ItemDataRole.TextAlignmentRole:
             horizontal = (
                 QtCore.Qt.AlignmentFlag.AlignRight
-                if isinstance(value, (int, float)) and not isinstance(value, bool)
+                if self.columns[index.column()] in self.right_aligned
                 else QtCore.Qt.AlignmentFlag.AlignLeft
             )
             return horizontal | QtCore.Qt.AlignmentFlag.AlignVCenter
         return None
 
     def headerData(self, section, orientation, role=QtCore.Qt.ItemDataRole.DisplayRole):
-        if role != QtCore.Qt.ItemDataRole.DisplayRole:
-            return None
-        return (
-            self.columns[section]
-            if orientation == QtCore.Qt.Orientation.Horizontal
-            else str(section + 1)
-        )
+        if orientation != QtCore.Qt.Orientation.Horizontal:
+            return (
+                str(section + 1) if role == QtCore.Qt.ItemDataRole.DisplayRole else None
+            )
+        name = self.columns[section]
+        label = self.labels.get(name, name)
+        if role == QtCore.Qt.ItemDataRole.DisplayRole:
+            # Match the case table: put a bracketed unit on its own line.
+            return label.replace(" [", "\n[", 1)
+        if role == QtCore.Qt.ItemDataRole.ToolTipRole:
+            return label
+        return None
 
 
 class _SectionalWorker(QtCore.QObject):
@@ -186,6 +217,7 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
         self.definition_table = self._table("Sectional definitions")
         self.definition_model = _ReadOnlyModel(self)
         self.definition_table.setModel(self.definition_model)
+        self.definition_table.horizontalHeader().setStretchLastSection(True)
         self.selection_status = QtWidgets.QLabel()
         self.selection_status.setWordWrap(True)
         self.btn_run = QtWidgets.QPushButton("Run Selected Cases × Sections")
@@ -197,6 +229,8 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
         self.progress.setRange(0, 1)
         self.progress.setValue(0)
         self.progress.setFormat("Idle")
+        set_semantic_property(self.progress, "fluentStatus", "neutral")
+        set_semantic_property(self.progress, "fluentBusy", False)
         self.result_status = QtWidgets.QLabel("No computed sectional results.")
         self.result_status.setWordWrap(True)
         self.result_status.setTextInteractionFlags(
@@ -228,17 +262,21 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
         layout.addWidget(self.definition_status)
         layout.addWidget(self.definition_table, 1)
         layout.addWidget(self.selection_status)
-        actions = FlowLayout()
-        for button in (
-            self.btn_run,
-            self.btn_cancel,
-            self.btn_retry_save,
-            self.btn_close,
-        ):
-            actions.addWidget(button)
-        layout.addLayout(actions)
-        layout.addWidget(self.progress)
+        # Match the main window: status first, then run and cancel together.
+        run_actions = QtWidgets.QHBoxLayout()
+        run_actions.setContentsMargins(0, 0, 0, 0)
+        run_actions.setSpacing(8)
+        for button in (self.btn_run, self.btn_cancel, self.btn_retry_save):
+            run_actions.addWidget(button)
+        execution = FlowLayout()
+        execution.addWidget(self.progress)
+        execution.addLayout(run_actions)
+        layout.addLayout(execution)
         layout.addWidget(self.result_status)
+        close_row = QtWidgets.QHBoxLayout()
+        close_row.addStretch(1)
+        close_row.addWidget(self.btn_close)
+        layout.addLayout(close_row)
 
         self.btn_open.clicked.connect(self.open_definitions)
         self.btn_reload.clicked.connect(self.reload_definitions)
@@ -259,6 +297,9 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
     def _table(name: str) -> QtWidgets.QTableView:
         table = QtWidgets.QTableView()
         table.setAccessibleName(name)
+        # Share the case table's quiet headers and row rules.
+        table.setProperty("workbenchCases", True)
+        table.setShowGrid(False)
         table.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
         table.setSelectionBehavior(
             QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows
@@ -301,10 +342,32 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
         sections_selected = bool(self.selected_definitions())
         sections = len(self.selected_or_all_definitions())
         reason = " — ordinary solve running" if self._normal_running else ""
+        case_noun = "case" if cases == 1 else "cases"
+        section_noun = "section" if sections == 1 else "sections"
+        every = "" if cases == 1 else "all "
+        case_scope = (
+            f"{cases} selected {case_noun}"
+            if selected
+            else f"{every}{cases} loaded {case_noun}"
+        )
+        every = "" if sections == 1 else "all "
+        section_scope = (
+            f"{sections} selected {section_noun}"
+            if sections_selected
+            else f"{every}{sections} {section_noun}"
+        )
+        case_ids = [
+            str(row.get("case_id", "")).strip()
+            for row in self.cases_panel.selected_or_all_case_rows()
+        ]
+        listed = ", ".join(case_ids[:_LISTED_CASE_IDS])
+        if len(case_ids) > _LISTED_CASE_IDS:
+            listed += f", … (+{len(case_ids) - _LISTED_CASE_IDS} more)"
+        hint = "" if selected else " Select rows in the main window to run a subset."
         self.selection_status.setText(
-            f"Run scope: {cases} {'selected' if selected else 'all loaded'} case(s) × "
-            f"{sections} {'selected' if sections_selected else 'all loaded'} section(s). "
-            f"Leave either selection empty to run all its rows. Workers: {self.cases_panel.spin_workers.value()}{reason}"
+            f"Run scope: {case_scope} × {section_scope} · "
+            f"Workers: {self.cases_panel.spin_workers.value()}{reason}\n"
+            + (f"Cases: {listed}.{hint}" if case_ids else "No cases loaded.")
         )
         self.btn_run.setText(
             f"Run {'Selected' if selected else 'All'} Cases × Sections"
@@ -417,7 +480,12 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
                     )
                 )
             )
-        self.definition_model.replace(columns, records)
+        self.definition_model.replace(
+            columns,
+            records,
+            _DEFINITION_COLUMN_LABELS,
+            _NUMERIC_DEFINITION_COLUMNS,
+        )
         self.definition_table.resizeColumnsToContents()
         self._ensure_header_widths(self.definition_table)
         self.definition_status.setText(
