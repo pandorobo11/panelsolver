@@ -71,6 +71,10 @@ class WorkbenchUsabilityTests(unittest.TestCase):
     def test_empty_case_table_offers_input_actions_until_cases_load(self) -> None:
         window, panel, _viewer = self.make_window()
         self.assertIs(panel.empty_cases, panel.case_table_stack.currentWidget())
+        self.assertLessEqual(
+            panel.case_table_stack.minimumSizeHint().width(),
+            panel.case_table.minimumSizeHint().width(),
+        )
         self.assertEqual("No cases loaded", panel.lbl_run_scope.text())
         self.assertFalse(panel.btn_clear_selection.isEnabled())
         self.assertFalse(panel.btn_run.isEnabled())

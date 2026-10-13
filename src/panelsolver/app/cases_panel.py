@@ -422,6 +422,11 @@ class CasesPanel(QtWidgets.QWidget):
         self.empty_cases = QtWidgets.QFrame()
         self.empty_cases.setObjectName("casesEmptyState")
         self.empty_cases.setAccessibleName("No case table loaded")
+        # Guidance must not widen the pane beyond what the table itself needs.
+        self.empty_cases.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Ignored,
+            QtWidgets.QSizePolicy.Policy.Preferred,
+        )
         layout = QtWidgets.QVBoxLayout(self.empty_cases)
         layout.addStretch(1)
         title = QtWidgets.QLabel("Load a case table")
