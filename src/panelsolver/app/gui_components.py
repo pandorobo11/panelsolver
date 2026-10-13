@@ -1,6 +1,6 @@
 """Small Qt-native workbench components; no domain or execution policy."""
 
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 
 class WorkbenchSpinBox(QtWidgets.QSpinBox):
@@ -15,6 +15,135 @@ class WorkbenchSpinBox(QtWidgets.QSpinBox):
         size = super().minimumSizeHint()
         size.setHeight(self.sizeHint().height())
         return size
+
+
+class ElidedPathField(QtWidgets.QLineEdit):
+    """Read-only path display that keeps the file name and nearest folders.
+
+    When the path is too wide, leading folders are replaced by an ellipsis.
+    ``text()`` and the tooltip keep the full path; only the painted text is
+    shortened to the current width.
+    """
+
+    def __init__(self, parent=None) -> None:
+        super().__init__(parent)
+        self._full_text = ""
+        self.setReadOnly(True)
+        # A read-only field must not swallow file drops meant for the window.
+        self.setAcceptDrops(False)
+
+    def text(self) -> str:
+        return self._full_text
+
+    def setText(self, text: str) -> None:
+        self._full_text = str(text)
+        self.setToolTip(self._full_text)
+        self.setAccessibleDescription(self._full_text)
+        self._apply_elision()
+
+    def clear(self) -> None:
+        self.setText("")
+
+    def displayed_text(self) -> str:
+        return super().text()
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        self._apply_elision()
+
+    def changeEvent(self, event) -> None:
+        super().changeEvent(event)
+        if event.type() in (
+            QtCore.QEvent.Type.FontChange,
+            QtCore.QEvent.Type.StyleChange,
+        ):
+            self._apply_elision()
+
+    def keyPressEvent(self, event) -> None:
+        if event.matches(QtGui.QKeySequence.StandardKey.Copy):
+            self._copy_full_text()
+            event.accept()
+            return
+        super().keyPressEvent(event)
+
+    def contextMenuEvent(self, event) -> None:
+        menu = QtWidgets.QMenu(self)
+        action = menu.addAction("Copy Path")
+        action.setEnabled(bool(self._full_text))
+        action.triggered.connect(self._copy_full_text)
+        menu.exec(event.globalPos())
+
+    def _copy_full_text(self) -> None:
+        if self._full_text:
+            QtWidgets.QApplication.clipboard().setText(self._full_text)
+
+    def _available_text_width(self) -> int:
+        option = QtWidgets.QStyleOptionFrame()
+        self.initStyleOption(option)
+        contents = self.style().subElementRect(
+            QtWidgets.QStyle.SubElement.SE_LineEditContents, option, self
+        )
+        margins = self.textMargins()
+        # QLineEdit keeps a fixed 2px horizontal text margin on each side.
+        return max(0, contents.width() - margins.left() - margins.right() - 4)
+
+    def _elided_text(self, width: int) -> str:
+        metrics = self.fontMetrics()
+        text = self._full_text
+        if metrics.horizontalAdvance(text) <= width:
+            return text
+        split = max(text.rfind("/"), text.rfind("\\")) + 1
+        folder, name = text[:split], text[split:]
+        folder_width = width - metrics.horizontalAdvance(name)
+        if folder and folder_width > metrics.horizontalAdvance("…"):
+            return (
+                metrics.elidedText(
+                    folder, QtCore.Qt.TextElideMode.ElideLeft, folder_width
+                )
+                + name
+            )
+        return metrics.elidedText(text, QtCore.Qt.TextElideMode.ElideMiddle, width)
+
+    def _apply_elision(self) -> None:
+        super().setText(self._elided_text(self._available_text_width()))
+        self.setCursorPosition(0)
+
+
+class FittedComboBox(QtWidgets.QComboBox):
+    """Combo box whose width reserves the longest of a known set of texts.
+
+    Selecting a different item then neither clips its text nor reflows the
+    surrounding controls.
+    """
+
+    def __init__(self, parent=None) -> None:
+        super().__init__(parent)
+        self._reserved_texts: tuple[str, ...] = ()
+
+    def set_reserved_texts(self, texts) -> None:
+        self._reserved_texts = tuple(str(text) for text in texts)
+        self.updateGeometry()
+
+    def _with_reserved_width(self, size: QtCore.QSize) -> QtCore.QSize:
+        if not self._reserved_texts:
+            return size
+        metrics = self.fontMetrics()
+        width = max(metrics.horizontalAdvance(text) for text in self._reserved_texts)
+        option = QtWidgets.QStyleOptionComboBox()
+        self.initStyleOption(option)
+        reserved = self.style().sizeFromContents(
+            QtWidgets.QStyle.ContentsType.CT_ComboBox,
+            option,
+            QtCore.QSize(width, metrics.height()),
+            self,
+        )
+        return QtCore.QSize(max(size.width(), reserved.width()), size.height())
+
+    def sizeHint(self) -> QtCore.QSize:
+        return self._with_reserved_width(super().sizeHint())
+
+    def minimumSizeHint(self) -> QtCore.QSize:
+        return self._with_reserved_width(super().minimumSizeHint())
 
 
 class FlowLayout(QtWidgets.QLayout):

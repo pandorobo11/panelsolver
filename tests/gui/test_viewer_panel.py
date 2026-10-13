@@ -1111,7 +1111,10 @@ class ViewerPanelTests(unittest.TestCase):
             )
 
     def test_export_buttons_follow_viewport_and_loaded_case_state(self) -> None:
-        viewer, _plotter = self.make_viewer()
+        saved_vtps: set[str] = set()
+        viewer, _plotter = self.make_viewer(
+            path_exists=lambda path: path.name in saved_vtps
+        )
         batch_requests = []
         viewer.save_selected_images_requested.connect(
             lambda: batch_requests.append(True)
@@ -1122,6 +1125,11 @@ class ViewerPanelTests(unittest.TestCase):
         viewer.set_case_rows(({"case_id": "one"},))
         self.assertFalse(viewer.btn_save_selected_images.isEnabled())
         viewer.set_selected_case_rows(({"case_id": "one"},))
+        # A selection without any saved VTP has nothing to export.
+        self.assertFalse(viewer.btn_save_selected_images.isEnabled())
+        self.assertIn("No saved VTP", viewer.btn_save_selected_images.toolTip())
+        saved_vtps.add("one.vtp")
+        viewer.refresh_selected_vtp_availability()
         self.assertTrue(viewer.btn_save_selected_images.isEnabled())
         viewer.btn_save_selected_images.click()
         self.assertEqual([True], batch_requests)
