@@ -320,6 +320,71 @@ class ViewerPanelTests(unittest.TestCase):
             viewer.load_vtp("/tmp/second.vtp", mesh)
             self.assertEqual(2, prepare.call_count)
 
+    def test_smooth_switch_does_not_scan_fields_or_read_panel_shield_mask(self):
+        viewer, plotter = self.make_viewer(spec=newt_solver_spec())
+        mesh = pv.Plane(i_resolution=1, j_resolution=1).triangulate()
+        mesh.cell_data["cp"] = [0.0, 1.0]
+        mesh.cell_data["temperature"] = [10.0, 20.0]
+        viewer.load_vtp("/tmp/scalars.vtp", mesh)
+        with (
+            patch(
+                "panelsolver.app.viewer.discover_scalar_fields",
+                side_effect=AssertionError("rediscovery"),
+            ),
+            patch(
+                "panelsolver.app.viewer_data.discover_scalar_fields",
+                side_effect=AssertionError("rediscovery"),
+            ),
+            patch.object(
+                viewer, "_shield_mask", side_effect=AssertionError("unused mask")
+            ),
+        ):
+            viewer.chk_smooth_colors.setChecked(True)
+            viewer.cmb_scalar.setCurrentIndex(viewer.cmb_scalar.findData("temperature"))
+            self.assertIn(15.0, plotter.mesh_calls[0][0].point_data["temperature"])
+            self.assertNotIn("interpolate_before_map", plotter.mesh_calls[0][1])
+
+    def test_many_components_need_at_most_two_smooth_actors(self):
+        viewer, plotter = self.make_viewer(spec=newt_solver_spec())
+        parts = []
+        for component in range(50):
+            part = pv.Plane(i_resolution=1, j_resolution=1).triangulate()
+            part.cell_data["cp"] = [float(component), float(component + 1)]
+            part.cell_data["stl_index"] = [component, component]
+            part.cell_data["shielded"] = [0, 1]
+            parts.append(part)
+        mesh = parts[0].append_polydata(*parts[1:])
+        viewer.load_vtp("/tmp/components.vtp", mesh)
+        viewer.chk_smooth_colors.setChecked(True)
+        self.assertEqual(2, len(plotter.mesh_calls))
+        self.assertEqual(
+            [1.0, 0.3], [opts["opacity"] for _, opts in plotter.mesh_calls]
+        )
+        self.assertEqual([50, 50], [part.n_cells for part, _ in plotter.mesh_calls])
+        viewer.chk_shield_transparent.setChecked(False)
+        self.assertEqual(
+            [1.0, 1.0], [opts["opacity"] for _, opts in plotter.mesh_calls]
+        )
+
+    def test_invalid_boundaries_are_rejected_in_both_display_modes(self):
+        for smooth in (False, True):
+            for name in ("shielded", "stl_index"):
+                for values in ([[0, 1], [1, 0]], [0], [0, np.nan], ["a", "b"]):
+                    with self.subTest(smooth=smooth, name=name, values=values):
+                        viewer, plotter = self.make_viewer(spec=newt_solver_spec())
+                        viewer.chk_smooth_colors.setChecked(smooth)
+                        self.assertFalse(
+                            viewer.load_vtp(
+                                "/tmp/invalid.vtp",
+                                FakePoly({"cp": [0.0, 1.0], name: values}),
+                            )
+                        )
+                        self.assertEqual(
+                            ArtifactViewStatus.INVALID_DATA,
+                            viewer.artifact_view_state.status,
+                        )
+                        self.assertFalse(plotter.mesh_calls)
+
     def test_smooth_geometry_failure_is_remembered_until_reload(self):
         viewer, plotter = self.make_viewer(spec=newt_solver_spec())
         mesh = pv.PolyData(
@@ -375,10 +440,10 @@ class ViewerPanelTests(unittest.TestCase):
         messages = []
         viewer.log_message.connect(messages.append)
 
-        def fail_cp(poly, name, geometry):
-            if name == "cp":
+        def fail_cp(poly, field, geometry):
+            if field.name == "cp":
                 raise ValueError("scalar interpolation failure")
-            return interpolated_surfaces(poly, name, geometry)
+            return interpolated_surfaces(poly, field, geometry)
 
         with patch(
             "panelsolver.app.viewer.interpolated_surfaces", side_effect=fail_cp

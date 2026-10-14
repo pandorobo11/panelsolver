@@ -6,10 +6,19 @@ import numpy as np
 import pytest
 import pyvista as pv
 
+from panelsolver.app.viewer_data import discover_scalar_fields
 from panelsolver.app.viewer_interpolation import (
     interpolated_surfaces,
     prepare_interpolation_geometry,
 )
+
+
+def scalar(mesh, name):
+    return next(
+        field
+        for field in discover_scalar_fields(mesh.cell_data, n_cells=mesh.n_cells)
+        if field.name == name
+    )
 
 
 def test_cleaning_cannot_silently_drop_degenerate_source_cells():
@@ -70,7 +79,7 @@ def test_shared_vertices_average_without_modifying_source(separate_points):
     mesh.point_data["cp"] = np.full(mesh.n_points, 99.0)
     mesh.field_data["case_id"] = ["source"]
     before = mesh.copy(deep=True)
-    ((surface, masked),) = interpolated_surfaces(mesh, "cp")
+    ((surface, masked),) = interpolated_surfaces(mesh, scalar(mesh, "cp"))
     assert not masked
     assert surface.n_cells == 2
     np.testing.assert_array_equal(mesh.points, before.points)
@@ -91,16 +100,24 @@ def test_shared_vertices_average_without_modifying_source(separate_points):
 def test_component_and_shield_boundaries_do_not_average(boundary):
     mesh = two_triangles()
     mesh.cell_data[boundary] = [0, 1]
-    surfaces = interpolated_surfaces(mesh, "cp")
-    assert len(surfaces) == 2
-    for value, (surface, masked) in enumerate(surfaces):
-        np.testing.assert_array_equal(surface.point_data["cp"], np.full(3, value))
-        assert masked == (boundary == "shielded" and value == 1)
+    surfaces = interpolated_surfaces(mesh, scalar(mesh, "cp"))
+    assert len(surfaces) == (2 if boundary == "shielded" else 1)
+    assert sum(surface.n_points for surface, _ in surfaces) == 6
+    for surface, masked in surfaces:
+        for cell_index in range(surface.n_cells):
+            cell = surface.get_cell(cell_index)
+            values = surface.point_data["cp"][cell.point_ids]
+            # Each source triangle stays constant, even when its component is
+            # appended into the same actor as a coincident neighbor.
+            assert len(set(values)) == 1
+            expected = float(np.any(np.all(cell.points == [1, 1, 0], axis=1)))
+            np.testing.assert_array_equal(values, expected)
+            assert masked == (boundary == "shielded" and expected == 1)
 
 
 def test_sharp_edge_preserves_jump_and_flat_lighting():
     mesh = two_triangles(folded=True)
-    ((surface, _),) = interpolated_surfaces(mesh, "cp")
+    ((surface, _),) = interpolated_surfaces(mesh, scalar(mesh, "cp"))
     assert surface.n_points == 6
     assert set(surface.point_data["cp"]) == {0.0, 1.0}
     assert "Normals" not in surface.point_data
@@ -109,7 +126,7 @@ def test_sharp_edge_preserves_jump_and_flat_lighting():
 def test_integer_scalar_averages_in_floating_point():
     mesh = two_triangles()
     mesh.cell_data["count"] = np.array([0, 1], dtype=np.int32)
-    ((surface, _),) = interpolated_surfaces(mesh, "count")
+    ((surface, _),) = interpolated_surfaces(mesh, scalar(mesh, "count"))
     assert 0.5 in surface.point_data["count"]
 
 
@@ -118,21 +135,21 @@ def test_categorical_arrays_are_not_interpolated(name):
     mesh = two_triangles()
     mesh.cell_data[name] = [False, True] if name == "boolean" else [0, 1]
     with pytest.raises(ValueError, match="continuous"):
-        interpolated_surfaces(mesh, name)
+        interpolated_surfaces(mesh, scalar(mesh, name))
 
 
 def test_invalid_boundary_fails_instead_of_blending_components():
     mesh = two_triangles()
     mesh.cell_data["stl_index"] = [0, np.nan]
     with pytest.raises(ValueError, match="boundary"):
-        interpolated_surfaces(mesh, "cp")
+        interpolated_surfaces(mesh, scalar(mesh, "cp"))
 
 
 def test_opposite_winding_coplanar_faces_stay_separate_and_preserve_source():
     mesh = two_triangles()
     mesh.faces = [3, 0, 1, 2, 3, 1, 2, 3]
     before = mesh.faces.copy()
-    ((surface, _),) = interpolated_surfaces(mesh, "cp")
+    ((surface, _),) = interpolated_surfaces(mesh, scalar(mesh, "cp"))
     assert surface.n_points == 6
     assert set(surface.point_data["cp"]) == {0.0, 1.0}
     np.testing.assert_array_equal(mesh.faces, before)
@@ -144,8 +161,8 @@ def test_geometry_reuse_keeps_scalar_arrays_independent():
     mesh = two_triangles()
     mesh.cell_data["temperature"] = [10.0, 20.0]
     geometry = prepare_interpolation_geometry(mesh)
-    ((first, _),) = interpolated_surfaces(mesh, "cp", geometry)
-    ((second, _),) = interpolated_surfaces(mesh, "temperature", geometry)
+    ((first, _),) = interpolated_surfaces(mesh, scalar(mesh, "cp"), geometry)
+    ((second, _),) = interpolated_surfaces(mesh, scalar(mesh, "temperature"), geometry)
     assert 0.5 in first.point_data["cp"]
     assert 15.0 in second.point_data["temperature"]
     assert not first.cell_data and not second.cell_data
@@ -164,7 +181,7 @@ def test_split_uses_original_normal_angle(angle_deg, reverse):
     mesh = pv.PolyData(points, np.column_stack([np.full(2, 3), faces]))
     mesh.cell_data["cp"] = [0.0, 1.0]
     original_faces = mesh.faces.copy()
-    ((surface, _),) = interpolated_surfaces(mesh, "cp")
+    ((surface, _),) = interpolated_surfaces(mesh, scalar(mesh, "cp"))
     normal_angle = 180 - angle_deg if reverse else angle_deg
     edge = np.isclose(surface.points[:, 1], 0, atol=1e-12) & np.isclose(
         surface.points[:, 2], 0, atol=1e-12
@@ -175,3 +192,38 @@ def test_split_uses_original_normal_angle(angle_deg, reverse):
         assert set(surface.point_data["cp"][edge]) == {0.0, 1.0}
     np.testing.assert_array_equal(mesh.faces, original_faces)
     np.testing.assert_array_equal(mesh.cell_data["cp"], [0.0, 1.0])
+
+
+@pytest.mark.parametrize("shielded", [False, True])
+def test_many_components_append_without_averaging_across_components(shielded):
+    parts = []
+    for component in range(50):
+        part = two_triangles()
+        part.cell_data["stl_index"] = [component, component]
+        part.cell_data["shielded"] = [0, int(shielded)]
+        part.cell_data["cp"] = [2.0 * component, 2.0 * component + 1]
+        parts.append(part)
+    # All components coincide deliberately: appending must never merge points.
+    mesh = parts[0].append_polydata(*parts[1:])
+    geometry = prepare_interpolation_geometry(mesh)
+    surfaces = interpolated_surfaces(mesh, scalar(mesh, "cp"), geometry)
+    assert len(surfaces) == (2 if shielded else 1)
+    assert sum(surface.n_cells for surface, _ in surfaces) == 100
+    for item, (surface, masked) in zip(geometry, surfaces, strict=True):
+        for cell_index, source_cell in enumerate(item.source_cells):
+            values = surface.point_data["cp"][surface.get_cell(cell_index).point_ids]
+            original = mesh.cell_data["cp"][source_cell]
+            if shielded:
+                np.testing.assert_array_equal(values, original)
+            else:
+                np.testing.assert_array_equal(
+                    np.sort(values),
+                    sorted(
+                        [
+                            original,
+                            2 * (source_cell // 2) + 0.5,
+                            2 * (source_cell // 2) + 0.5,
+                        ]
+                    ),
+                )
+            assert masked == bool(mesh.cell_data["shielded"][source_cell])

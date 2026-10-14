@@ -102,11 +102,7 @@ class ScalarField:
     name: str
     dtype: np.dtype
     categorical: bool
-
-    @property
-    def interpolable(self) -> bool:
-        """Whether this field may be averaged for display (IDs stay discrete)."""
-        return not self.categorical and self.name != "stl_index"
+    interpolable: bool
 
     def __post_init__(self) -> None:
         if not isinstance(self.name, str) or not self.name.strip():
@@ -121,6 +117,8 @@ class ScalarField:
         object.__setattr__(self, "dtype", dtype)
         if not isinstance(self.categorical, bool):
             raise TypeError("ScalarField.categorical must be bool")
+        if not isinstance(self.interpolable, bool):
+            raise TypeError("ScalarField.interpolable must be bool")
 
 
 def _data_attribute(artifact: object, name: str) -> object | None:
@@ -252,7 +250,13 @@ def resolve_matching_case_row(
     return None
 
 
-def _eligible_scalar(name: str, value: object, *, n_cells: int) -> ScalarField | None:
+# Discrete fields and whether they use the fixed boolean color range. Register
+# additional ID fields here; integer-valued physical scalars remain continuous.
+_DISCRETE_SCALARS = {"stl_index": False, "shielded": True}
+
+
+def _scalar_array(value: object, *, n_cells: int) -> np.ndarray | None:
+    """The shared shape/type/finite boundary for viewer cell arrays."""
     try:
         array = np.asarray(value)
     except (TypeError, ValueError):
@@ -261,10 +265,30 @@ def _eligible_scalar(name: str, value: object, *, n_cells: int) -> ScalarField |
         return None
     if array.dtype.kind == "f" and not np.isfinite(array).all():
         return None
+    return array
+
+
+def boundary_array(cell_data: object, name: str, *, n_cells: int) -> np.ndarray:
+    """Read a boundary array; absence means one group, malformed data is invalid."""
+    value = cell_data.get(name)
+    if value is None and name not in cell_data:
+        return np.zeros(n_cells, dtype=np.int64)
+    array = _scalar_array(value, n_cells=n_cells)
+    if array is None:
+        raise ValueError(f"Invalid {name} boundary data")
+    return array
+
+
+def _eligible_scalar(name: str, value: object, *, n_cells: int) -> ScalarField | None:
+    array = _scalar_array(value, n_cells=n_cells)
+    if array is None:
+        return None
+    categorical = array.dtype.kind == "b" or _DISCRETE_SCALARS.get(name, False)
     return ScalarField(
         name=name,
         dtype=array.dtype,
-        categorical=name == "shielded" or array.dtype.kind == "b",
+        categorical=categorical,
+        interpolable=not categorical and name not in _DISCRETE_SCALARS,
     )
 
 

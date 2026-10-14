@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import numpy as np
 import pyvista as pv
 
-from .viewer_data import discover_scalar_fields
+from .viewer_data import ScalarField, boundary_array
 
 
 @dataclass(frozen=True)
@@ -23,16 +23,10 @@ def prepare_interpolation_geometry(
     """Prepare display topology once per artifact, independent of its scalar."""
     if not isinstance(poly, pv.PolyData) or poly.n_cells != poly.n_faces:
         raise ValueError("Smooth colors requires a polygon surface")
-    groups = []
-    for name in ("stl_index", "shielded"):
-        array = np.asarray(poly.cell_data.get(name, np.zeros(poly.n_cells)))
-        if (
-            array.shape != (poly.n_cells,)
-            or array.dtype.kind not in "biuf"
-            or not np.isfinite(array).all()
-        ):
-            raise ValueError(f"Invalid {name} boundary data")
-        groups.append(array)
+    groups = [
+        boundary_array(poly.cell_data, name, n_cells=poly.n_cells)
+        for name in ("stl_index", "shielded")
+    ]
     keys, group_ids = np.unique(np.column_stack(groups), axis=0, return_inverse=True)
     # NumPy 2.0.0 may return a column-shaped inverse for axis=0.
     group_ids = group_ids.ravel()
@@ -40,7 +34,7 @@ def prepare_interpolation_geometry(
     # arrays, including imported normals, before the VTK filters see them.
     display = pv.PolyData(poly.points.copy(), poly.faces.copy())
     display.cell_data["source_cells"] = np.arange(poly.n_cells)
-    surfaces = []
+    opacity_groups: dict[bool, list[pv.PolyData]] = {False: [], True: []}
     order = np.argsort(group_ids, kind="stable")
     boundaries = np.flatnonzero(np.diff(group_ids[order])) + 1
     for indices, (_component, shielded) in zip(
@@ -76,21 +70,29 @@ def prepare_interpolation_geometry(
             raise ValueError(
                 "Interpolation topology did not preserve every source cell"
             )
-        part.cell_data.clear()
-        surfaces.append(InterpolationGeometry(part, source_cells, bool(shielded)))
+        opacity_groups[bool(shielded)].append(part)
+    surfaces = []
+    for masked, parts in opacity_groups.items():
+        if not parts:
+            continue
+        # Append without merging points: component and crease boundaries remain
+        # disconnected. Carry source IDs through VTK rather than assuming order.
+        surface = parts[0].append_polydata(*parts[1:]) if len(parts) > 1 else parts[0]
+        source_cells = np.array(surface.cell_data["source_cells"], copy=True)
+        surface.cell_data.clear()
+        surfaces.append(InterpolationGeometry(surface, source_cells, masked))
     return tuple(surfaces)
 
 
 def interpolated_surfaces(
     poly: pv.PolyData,
-    scalar_name: str,
+    field: ScalarField,
     geometry: tuple[InterpolationGeometry, ...] | None = None,
 ) -> tuple[tuple[pv.PolyData, bool], ...]:
     """Interpolate only the selected scalar on reusable display topology."""
-    fields = discover_scalar_fields(poly.cell_data, n_cells=poly.n_cells)
-    field = next((field for field in fields if field.name == scalar_name), None)
-    if field is None or not field.interpolable:
+    if not field.interpolable:
         raise ValueError("Smooth colors requires a finite continuous cell scalar")
+    scalar_name = field.name
     if geometry is None:
         geometry = prepare_interpolation_geometry(poly)
     values = np.asarray(poly.cell_data[scalar_name], dtype=np.float64)

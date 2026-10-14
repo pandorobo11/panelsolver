@@ -29,6 +29,7 @@ from .viewer_data import (
     ArtifactViewState,
     ArtifactViewStatus,
     ScalarField,
+    boundary_array,
     discover_scalar_fields,
     field_data_scalar,
     manual_artifact_view_state,
@@ -735,6 +736,8 @@ class ViewerPanel(QtWidgets.QWidget):
         else:
             loaded = poly
         try:
+            for name in ("stl_index", "shielded"):
+                boundary_array(loaded.cell_data, name, n_cells=loaded.n_cells)
             fields = discover_scalar_fields(
                 loaded.cell_data,
                 n_cells=loaded.n_cells,
@@ -853,7 +856,7 @@ class ViewerPanel(QtWidgets.QWidget):
                         self._poly
                     )
                 surfaces = interpolated_surfaces(
-                    self._poly, name, self._interpolation_geometry
+                    self._poly, self._scalar_fields[name], self._interpolation_geometry
                 )
             except Exception as exc:
                 if self._interpolation_geometry is None:
@@ -1276,7 +1279,6 @@ class ViewerPanel(QtWidgets.QWidget):
         }
         if surfaces is not None:
             common["preference"] = "point"
-            common["interpolate_before_map"] = True
         if scalar_name is not None:
             common["scalar_bar_args"] = {
                 "title": self.spec.scalar_labels.get(scalar_name, scalar_name),
@@ -1329,12 +1331,11 @@ class ViewerPanel(QtWidgets.QWidget):
                 " (panel values; interpolation failed)"
             )
         self._refresh_range_validation()
-        shield = self._shield_mask()
         if surfaces is not None:
             for surface, masked in surfaces:
                 opacity = self._shield_opacity(masked)
                 self.plotter.add_mesh(surface, opacity=opacity, **common)
-        elif shield is None:
+        elif (shield := self._shield_mask()) is None:
             self.plotter.add_mesh(self._poly, opacity=1.0, **common)
         else:
             self._add_shield_groups(shield, common)
@@ -1352,13 +1353,11 @@ class ViewerPanel(QtWidgets.QWidget):
     def _shield_mask(self) -> np.ndarray | None:
         if self._poly is None:
             return None
-        try:
-            values = np.asarray(self._poly.cell_data["shielded"])
-        except Exception:
+        if "shielded" not in self._poly.cell_data:
             return None
-        if values.shape != (self._poly.n_cells,):
-            return None
-        return values.astype(bool)
+        return boundary_array(
+            self._poly.cell_data, "shielded", n_cells=self._poly.n_cells
+        ).astype(bool)
 
     def _shield_opacity(self, masked: bool) -> float:
         return 0.30 if masked and self.chk_shield_transparent.isChecked() else 1.0

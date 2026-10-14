@@ -226,7 +226,13 @@ interpolated view to fall back instead of displaying a partial surface.
 With Smooth colors off, imported VTPs retain
 PyVista’s existing preference for point data when a name exists in both
 associations. Display topology is cached per loaded result; scalar changes only
-repeat the cell-to-point averaging. The Viewer does not repair winding or
+repeat the selected field's cell-to-point averaging and finite-value check,
+without rescanning the other cell arrays. Prepared components are appended
+without joining points, giving at most two surface actors (one per shielding
+state). Boundary arrays (`stl_index` and `shielded`) share the same cell-aligned,
+finite numeric validation in both display modes. Missing arrays imply a single
+component or no shielding; malformed arrays reject the VTP at load time rather
+than silently displaying it with different boundaries in each mode. The Viewer does not repair winding or
 reorient normals: the 30-degree split uses normals from the original face
 winding. Oppositely oriented coplanar faces therefore remain separate rather
 than being averaged. The exact threshold is subject to floating-point precision;
