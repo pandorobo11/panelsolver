@@ -218,7 +218,12 @@ continuous scalar is selected. The choice applies to subsequent loaded results
 and image exports in the current window. If interpolation fails, the Viewer
 keeps the requested setting, uses panel values for that display only, labels the
 colorbar with the failure, and logs the reason in Diagnostics. Subsequent valid
-results resume interpolation. With Smooth colors off, imported VTPs retain
+results resume interpolation. Geometry failures are remembered for the loaded
+result; scalar failures are remembered only for that scalar. Redrawing or
+toggling Smooth colors does not repeat a known failure or its warning. Reload
+the VTP to retry. Any cell lost during display preparation causes the entire
+interpolated view to fall back instead of displaying a partial surface.
+With Smooth colors off, imported VTPs retain
 PyVista’s existing preference for point data when a name exists in both
 associations. Display topology is cached per loaded result; scalar changes only
 repeat the cell-to-point averaging. The Viewer does not repair winding or

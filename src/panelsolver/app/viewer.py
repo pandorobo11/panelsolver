@@ -146,6 +146,8 @@ class ViewerPanel(QtWidgets.QWidget):
         self._image_directory_input_path: Path | None = None
         self._last_image_directory: Path | None = None
         self._interpolation_geometry = None
+        self._interpolation_geometry_failed = False
+        self._interpolation_failed_scalars: set[str] = set()
         self._poly: object | None = None
         self._interpolated_cache: (
             tuple[str, tuple[tuple[pv.PolyData, bool], ...]] | None
@@ -658,6 +660,8 @@ class ViewerPanel(QtWidgets.QWidget):
         self._poly = None
         self._interpolated_cache = None
         self._interpolation_geometry = None
+        self._interpolation_geometry_failed = False
+        self._interpolation_failed_scalars: set[str] = set()
         self._loaded_vtp_path = None
         self._display_case_row = None
         self._scalar_fields = {}
@@ -748,6 +752,8 @@ class ViewerPanel(QtWidgets.QWidget):
         self._poly = loaded
         self._interpolated_cache = None
         self._interpolation_geometry = None
+        self._interpolation_geometry_failed = False
+        self._interpolation_failed_scalars: set[str] = set()
         if case_row is not None:
             self._display_case_row = dict(case_row)
             state = ArtifactViewState(
@@ -836,6 +842,8 @@ class ViewerPanel(QtWidgets.QWidget):
             name is None
             or not self.chk_smooth_colors.isEnabled()
             or not self.chk_smooth_colors.isChecked()
+            or self._interpolation_geometry_failed
+            or name in self._interpolation_failed_scalars
         ):
             return None
         if self._interpolated_cache is None or self._interpolated_cache[0] != name:
@@ -848,6 +856,10 @@ class ViewerPanel(QtWidgets.QWidget):
                     self._poly, name, self._interpolation_geometry
                 )
             except Exception as exc:
+                if self._interpolation_geometry is None:
+                    self._interpolation_geometry_failed = True
+                else:
+                    self._interpolation_failed_scalars.add(name)
                 self.logln(
                     f"[WARN] Smooth colors unavailable; showing panel values: {exc}"
                 )

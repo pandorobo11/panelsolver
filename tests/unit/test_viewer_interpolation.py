@@ -1,10 +1,52 @@
 """Exercise the actual VTK filters without creating a render window."""
 
+from unittest.mock import patch
+
 import numpy as np
 import pytest
 import pyvista as pv
 
-from panelsolver.app.viewer_interpolation import interpolated_surfaces
+from panelsolver.app.viewer_interpolation import (
+    interpolated_surfaces,
+    prepare_interpolation_geometry,
+)
+
+
+def test_cleaning_cannot_silently_drop_degenerate_source_cells():
+    mesh = pv.PolyData(
+        np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 0, 0]], dtype=float),
+        [3, 0, 1, 2, 3, 0, 1, 3],
+    )
+    mesh.cell_data["cp"] = [0.0, 1.0]
+    before = mesh.copy(deep=True)
+    with pytest.raises(ValueError, match="every source cell"):
+        prepare_interpolation_geometry(mesh)
+    np.testing.assert_array_equal(mesh.points, before.points)
+    np.testing.assert_array_equal(mesh.faces, before.faces)
+    np.testing.assert_array_equal(mesh.cell_data["cp"], before.cell_data["cp"])
+
+
+@pytest.mark.parametrize("multiple_groups", [False, True])
+def test_column_shaped_unique_inverse_preserves_all_cells(multiple_groups):
+    mesh = two_triangles()
+    mesh.cell_data["stl_index"] = [0, int(multiple_groups)]
+    unique = np.unique
+
+    def numpy_200_unique(*args, **kwargs):
+        result = unique(*args, **kwargs)
+        if kwargs.get("axis") == 0 and kwargs.get("return_inverse"):
+            keys, inverse = result
+            return keys, inverse.reshape(-1, 1)
+        return result
+
+    with patch(
+        "panelsolver.app.viewer_interpolation.np.unique", side_effect=numpy_200_unique
+    ):
+        geometry = prepare_interpolation_geometry(mesh)
+    assert sum(item.surface.n_cells for item in geometry) == mesh.n_cells
+    np.testing.assert_array_equal(
+        np.sort(np.concatenate([item.source_cells for item in geometry])), [0, 1]
+    )
 
 
 def two_triangles(*, separate_points=False, folded=False):

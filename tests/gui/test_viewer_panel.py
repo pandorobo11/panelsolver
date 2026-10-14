@@ -320,6 +320,80 @@ class ViewerPanelTests(unittest.TestCase):
             viewer.load_vtp("/tmp/second.vtp", mesh)
             self.assertEqual(2, prepare.call_count)
 
+    def test_smooth_geometry_failure_is_remembered_until_reload(self):
+        viewer, plotter = self.make_viewer(spec=newt_solver_spec())
+        mesh = pv.PolyData(
+            np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 0, 0]], dtype=float),
+            [3, 0, 1, 2, 3, 0, 1, 3],
+        )
+        mesh.cell_data["cp"] = [0.0, 1.0]
+        mesh.cell_data["temperature"] = [10.0, 20.0]
+        messages = []
+        viewer.log_message.connect(messages.append)
+        viewer.load_vtp("/tmp/degenerate.vtp", mesh)
+        from panelsolver.app.viewer_interpolation import prepare_interpolation_geometry
+
+        with patch(
+            "panelsolver.app.viewer.prepare_interpolation_geometry",
+            wraps=prepare_interpolation_geometry,
+        ) as prepare:
+            viewer.chk_smooth_colors.setChecked(True)
+            viewer.cmb_cmap.setCurrentText("viridis")
+            viewer.chk_edges.setChecked(False)
+            viewer.edit_vmin.setText("0")
+            viewer.update_view()
+            viewer.cmb_background.setCurrentIndex(1)
+            viewer.cmb_scalar.setCurrentIndex(viewer.cmb_scalar.findData("temperature"))
+            viewer.chk_smooth_colors.setChecked(False)
+            viewer.chk_smooth_colors.setChecked(True)
+            self.assertEqual(1, prepare.call_count)
+            self.assertEqual(1, sum("[WARN]" in message for message in messages))
+            self.assertTrue(viewer.chk_smooth_colors.isChecked())
+            self.assertIs(mesh, plotter.mesh_calls[0][0])
+            self.assertEqual(2, plotter.mesh_calls[0][0].n_cells)
+            self.assertIn(
+                "interpolation failed",
+                plotter.mesh_calls[0][1]["scalar_bar_args"]["title"],
+            )
+            viewer.load_vtp("/tmp/degenerate.vtp", mesh)
+            self.assertEqual(2, prepare.call_count)
+        viewer.clear_view()
+        self.assertFalse(viewer._interpolation_geometry_failed)
+        valid = pv.Plane(i_resolution=1, j_resolution=1).triangulate()
+        valid.cell_data["cp"] = [0.0, 1.0]
+        viewer.load_vtp("/tmp/good.vtp", valid)
+        self.assertEqual("point", plotter.mesh_calls[0][1]["preference"])
+
+    def test_smooth_scalar_failure_does_not_disable_other_scalars(self):
+        from panelsolver.app.viewer_interpolation import interpolated_surfaces
+
+        viewer, plotter = self.make_viewer(spec=newt_solver_spec())
+        mesh = pv.Plane(i_resolution=1, j_resolution=1).triangulate()
+        mesh.cell_data["cp"] = [0.0, 1.0]
+        mesh.cell_data["temperature"] = [10.0, 20.0]
+        viewer.load_vtp("/tmp/scalars.vtp", mesh)
+        messages = []
+        viewer.log_message.connect(messages.append)
+
+        def fail_cp(poly, name, geometry):
+            if name == "cp":
+                raise ValueError("scalar interpolation failure")
+            return interpolated_surfaces(poly, name, geometry)
+
+        with patch(
+            "panelsolver.app.viewer.interpolated_surfaces", side_effect=fail_cp
+        ) as interpolate:
+            viewer.chk_smooth_colors.setChecked(True)
+            viewer.update_view()
+            viewer.cmb_scalar.setCurrentIndex(viewer.cmb_scalar.findData("temperature"))
+            self.assertEqual("point", plotter.mesh_calls[0][1]["preference"])
+            viewer.cmb_scalar.setCurrentIndex(viewer.cmb_scalar.findData("cp"))
+            self.assertEqual(2, interpolate.call_count)
+            self.assertEqual(1, sum("[WARN]" in message for message in messages))
+            self.assertTrue(viewer.chk_smooth_colors.isChecked())
+        viewer.load_vtp("/tmp/scalars.vtp", mesh)
+        self.assertEqual("point", plotter.mesh_calls[0][1]["preference"])
+
     def test_smooth_colors_categorical_selection_reload_and_clear(self):
         viewer, plotter = self.make_viewer(spec=newt_solver_spec())
         mesh = pv.Plane(i_resolution=1, j_resolution=1).triangulate()
