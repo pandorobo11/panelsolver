@@ -29,15 +29,20 @@ from .viewer_data import (
     ArtifactViewState,
     ArtifactViewStatus,
     ScalarField,
-    boundary_array,
+    ViewerBoundaries,
     discover_scalar_fields,
     field_data_scalar,
     manual_artifact_view_state,
     match_artifact_case,
+    read_viewer_boundaries,
     resolve_matching_case_row,
     scalar_color_limits,
 )
-from .viewer_interpolation import interpolated_surfaces, prepare_interpolation_geometry
+from .viewer_interpolation import (
+    InterpolationGeometry,
+    interpolated_surfaces,
+    prepare_interpolation_geometry,
+)
 
 
 def _path_exists(path: Path) -> bool:
@@ -146,13 +151,9 @@ class ViewerPanel(QtWidgets.QWidget):
         self._input_path: Path | None = None
         self._image_directory_input_path: Path | None = None
         self._last_image_directory: Path | None = None
-        self._interpolation_geometry = None
-        self._interpolation_geometry_failed = False
-        self._interpolation_failed_scalars: set[str] = set()
+        self._reset_interpolation_state()
+        self._boundaries: ViewerBoundaries | None = None
         self._poly: object | None = None
-        self._interpolated_cache: (
-            tuple[str, tuple[tuple[pv.PolyData, bool], ...]] | None
-        ) = None
         self._loaded_vtp_path: Path | None = None
         self._display_case_row: CaseRow | None = None
         self._scalar_fields: dict[str, ScalarField] = {}
@@ -656,13 +657,19 @@ class ViewerPanel(QtWidgets.QWidget):
             self.empty_panel.raise_()
         self._update_render_controls()
 
+    def _reset_interpolation_state(self) -> None:
+        self._interpolation_geometry: tuple[InterpolationGeometry, ...] | None = None
+        self._interpolation_geometry_failed = False
+        self._interpolation_failed_scalars: set[str] = set()
+        self._interpolated_cache: (
+            tuple[str, tuple[tuple[pv.PolyData, bool], ...]] | None
+        ) = None
+
     def _clear_rendered_artifact(self) -> None:
         """Clear geometry and render controls without choosing a status reason."""
         self._poly = None
-        self._interpolated_cache = None
-        self._interpolation_geometry = None
-        self._interpolation_geometry_failed = False
-        self._interpolation_failed_scalars: set[str] = set()
+        self._boundaries = None
+        self._reset_interpolation_state()
         self._loaded_vtp_path = None
         self._display_case_row = None
         self._scalar_fields = {}
@@ -736,8 +743,6 @@ class ViewerPanel(QtWidgets.QWidget):
         else:
             loaded = poly
         try:
-            for name in ("stl_index", "shielded"):
-                boundary_array(loaded.cell_data, name, n_cells=loaded.n_cells)
             fields = discover_scalar_fields(
                 loaded.cell_data,
                 n_cells=loaded.n_cells,
@@ -753,10 +758,10 @@ class ViewerPanel(QtWidgets.QWidget):
 
         self._loaded_vtp_path = Path(path).expanduser()
         self._poly = loaded
-        self._interpolated_cache = None
-        self._interpolation_geometry = None
-        self._interpolation_geometry_failed = False
-        self._interpolation_failed_scalars: set[str] = set()
+        self._boundaries = read_viewer_boundaries(
+            loaded.cell_data, n_cells=loaded.n_cells, fields=fields
+        )
+        self._reset_interpolation_state()
         if case_row is not None:
             self._display_case_row = dict(case_row)
             state = ArtifactViewState(
@@ -841,9 +846,10 @@ class ViewerPanel(QtWidgets.QWidget):
         )
 
     def _display_surfaces(self, name: str | None):
+        field = self._scalar_fields.get(name)
         if (
-            name is None
-            or not self.chk_smooth_colors.isEnabled()
+            field is None
+            or not field.interpolable
             or not self.chk_smooth_colors.isChecked()
             or self._interpolation_geometry_failed
             or name in self._interpolation_failed_scalars
@@ -853,10 +859,10 @@ class ViewerPanel(QtWidgets.QWidget):
             try:
                 if self._interpolation_geometry is None:
                     self._interpolation_geometry = prepare_interpolation_geometry(
-                        self._poly
+                        self._poly, self._boundaries
                     )
                 surfaces = interpolated_surfaces(
-                    self._poly, self._scalar_fields[name], self._interpolation_geometry
+                    self._poly, field, self._interpolation_geometry
                 )
             except Exception as exc:
                 if self._interpolation_geometry is None:
@@ -1324,7 +1330,7 @@ class ViewerPanel(QtWidgets.QWidget):
             common["scalar_bar_args"]["title"] += " (interpolated)"
         elif (
             scalar_name is not None
-            and self.chk_smooth_colors.isEnabled()
+            and self._scalar_fields[scalar_name].interpolable
             and self.chk_smooth_colors.isChecked()
         ):
             common["scalar_bar_args"]["title"] += (
@@ -1351,13 +1357,7 @@ class ViewerPanel(QtWidgets.QWidget):
         self.plotter.render()
 
     def _shield_mask(self) -> np.ndarray | None:
-        if self._poly is None:
-            return None
-        if "shielded" not in self._poly.cell_data:
-            return None
-        return boundary_array(
-            self._poly.cell_data, "shielded", n_cells=self._poly.n_cells
-        ).astype(bool)
+        return None if self._boundaries is None else self._boundaries.shielded
 
     def _shield_opacity(self, masked: bool) -> float:
         return 0.30 if masked and self.chk_shield_transparent.isChecked() else 1.0

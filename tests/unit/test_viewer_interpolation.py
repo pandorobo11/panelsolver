@@ -227,3 +227,68 @@ def test_many_components_append_without_averaging_across_components(shielded):
                     ),
                 )
             assert masked == bool(mesh.cell_data["shielded"][source_cell])
+
+
+def test_nonzero_shield_values_share_one_interpolation_group():
+    mesh = two_triangles()
+    mesh.cell_data["shielded"] = [1, 2]
+    ((surface, masked),) = interpolated_surfaces(mesh, scalar(mesh, "cp"))
+    assert masked
+    assert 0.5 in surface.point_data["cp"]
+
+
+def test_direct_group_construction_supports_mixed_polygon_sizes():
+    mesh = pv.PolyData(
+        np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [2, 0, 0], [2, 1, 0]], dtype=float),
+        [3, 0, 1, 2, 4, 1, 3, 4, 2],
+    )
+    mesh.cell_data["cp"] = [0.0, 1.0]
+    with patch.object(
+        pv.PolyData,
+        "extract_cells",
+        side_effect=AssertionError("whole-mesh extraction"),
+    ):
+        ((surface, _),) = interpolated_surfaces(mesh, scalar(mesh, "cp"))
+    assert [surface.get_cell(i).n_points for i in range(2)] == [3, 4]
+    np.testing.assert_array_equal(
+        np.sort(surface.point_data["cp"]), [0, 0.5, 0.5, 1, 1]
+    )
+
+
+@pytest.mark.parametrize("folded", [False, True])
+@pytest.mark.parametrize("association", ["point", "cell", "both"])
+@pytest.mark.parametrize("separate_points", [False, True])
+def test_imported_normals_are_preserved_without_affecting_averages(
+    association, separate_points, folded
+):
+    mesh = two_triangles(separate_points=separate_points, folded=folded)
+    if association in ("point", "both"):
+        # Deliberately different shading normals at coincident corners.
+        normals = np.array([[0, 0, 1], [0, 0.6, 0.8], [0.6, 0, 0.8]] * 2)[
+            : mesh.n_points
+        ]
+        mesh.point_data["custom_normals"] = normals
+        mesh.point_data.active_normals_name = "custom_normals"
+    if association in ("cell", "both"):
+        mesh.cell_data["cell_normals"] = np.array([[0, 0, 1], [0, 0.6, 0.8]])
+        mesh.cell_data.active_normals_name = "cell_normals"
+    before = mesh.copy(deep=True)
+    ((surface, _),) = interpolated_surfaces(mesh, scalar(mesh, "cp"))
+    for i in range(2):
+        source_ids = mesh.get_cell(i).point_ids
+        display_ids = surface.get_cell(i).point_ids
+        if association in ("point", "both"):
+            np.testing.assert_array_equal(
+                surface.point_data.active_normals[display_ids],
+                mesh.point_data.active_normals[source_ids],
+            )
+        if association in ("cell", "both"):
+            np.testing.assert_array_equal(
+                surface.cell_data.active_normals[i], mesh.cell_data.active_normals[i]
+            )
+    assert (0.5 in surface.point_data["cp"]) == (not folded)
+    np.testing.assert_array_equal(mesh.faces, before.faces)
+    for name in mesh.point_data:
+        np.testing.assert_array_equal(mesh.point_data[name], before.point_data[name])
+    for name in mesh.cell_data:
+        np.testing.assert_array_equal(mesh.cell_data[name], before.cell_data[name])

@@ -229,16 +229,19 @@ associations. Display topology is cached per loaded result; scalar changes only
 repeat the selected field's cell-to-point averaging and finite-value check,
 without rescanning the other cell arrays. Prepared components are appended
 without joining points, giving at most two surface actors (one per shielding
-state). Boundary arrays (`stl_index` and `shielded`) share the same cell-aligned,
-finite numeric validation in both display modes. Missing arrays imply a single
-component or no shielding; malformed arrays reject the VTP at load time rather
-than silently displaying it with different boundaries in each mode. The Viewer does not repair winding or
+state). Boundary validation is performed during scalar discovery and cached for
+the loaded result. Missing arrays imply a single component or no shielding.
+Malformed boundary arrays do not prevent ordinary VTP inspection; Smooth falls
+back to panel values with a cached warning. Both modes treat every nonzero
+`shielded` value as shielded. Imported point/cell shading normals are preserved
+separately from the topology used for averaging, including different normals
+at coincident corners. The Viewer does not repair winding or
 reorient normals: the 30-degree split uses normals from the original face
 winding. Oppositely oriented coplanar faces therefore remain separate rather
 than being averaged. The exact threshold is subject to floating-point precision;
 non-manifold junctions may also remain separated. Mesh orientation problems
 should be resolved before calculation, not hidden by display interpolation.
-PyVista 0.47 or newer is required for the surface extraction API.
+The supported PyVista dependency remains 0.47 or newer.
 
 ### Save images
 

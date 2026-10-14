@@ -268,15 +268,44 @@ def _scalar_array(value: object, *, n_cells: int) -> np.ndarray | None:
     return array
 
 
-def boundary_array(cell_data: object, name: str, *, n_cells: int) -> np.ndarray:
-    """Read a boundary array; absence means one group, malformed data is invalid."""
-    value = cell_data.get(name)
-    if value is None and name not in cell_data:
-        return np.zeros(n_cells, dtype=np.int64)
-    array = _scalar_array(value, n_cells=n_cells)
-    if array is None:
-        raise ValueError(f"Invalid {name} boundary data")
-    return array
+@dataclass(frozen=True)
+class ViewerBoundaries:
+    components: np.ndarray | None
+    shielded: np.ndarray | None
+    error: str | None
+
+
+def read_viewer_boundaries(
+    cell_data: object, *, n_cells: int, fields: Sequence[ScalarField]
+) -> ViewerBoundaries:
+    """Cache discovery's validation and the legacy panel shielding mask once.
+
+    Invalid boundary data prevents smoothing, not ordinary VTP inspection.
+    Scalar discovery already checked shape, numeric dtype and finiteness.
+    """
+    valid = {field.name for field in fields}
+    error = None
+    for name in ("stl_index", "shielded"):
+        if name in cell_data and name not in valid:
+            error = f"Invalid {name} boundary data"
+            break
+    components = (
+        np.asarray(cell_data["stl_index"])
+        if "stl_index" in valid
+        else np.zeros(n_cells, dtype=np.int64)
+        if "stl_index" not in cell_data
+        else None
+    )
+    # Preserve ordinary panel display's permissive conversion, including NaN
+    # and nonzero values. Strict smoothing eligibility is recorded separately.
+    shielded = None
+    try:
+        values = np.asarray(cell_data["shielded"])
+        if values.shape == (n_cells,):
+            shielded = values.astype(bool)
+    except (KeyError, TypeError, ValueError):
+        pass
+    return ViewerBoundaries(components, shielded, error)
 
 
 def _eligible_scalar(name: str, value: object, *, n_cells: int) -> ScalarField | None:
