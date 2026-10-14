@@ -202,6 +202,7 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
         self._worker: _SectionalWorker | _ExportWorker | None = None
         self._normal_running = cases_panel.is_running()
         self._close_when_finished = False
+        self._retry_after_cleanup = False
         self._cancel_requested = False
         self._operation = ""
 
@@ -642,6 +643,51 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
     def retry_save(self) -> bool:
         return self._save_failed and self._save_results()
 
+    def unsaved_result_description(self) -> str | None:
+        result = self.batch_result
+        if not self._save_failed or result is None or result.csv is None:
+            return None
+        kind = "Cp" if self.cp else "Loads"
+        return (
+            f"The Sectional {kind} CSV for the retained {result.status} run "
+            f"({result.completed_pairs}/{result.requested_pairs} case × section pairs) "
+            "has not been saved."
+        )
+
+    def confirm_unsaved_close(self) -> bool:
+        """Offer recovery before hiding this dialog or closing its main window."""
+        description = self.unsaved_result_description()
+        if description is None:
+            return True
+        buttons = QtWidgets.QMessageBox.StandardButton
+        choice = QtWidgets.QMessageBox.warning(
+            self,
+            f"Unsaved Sectional {'Cp' if self.cp else 'Loads'} CSV",
+            f"{description}\n\nSave it before closing? If you discard it, the "
+            "cases must be recalculated to recreate the CSV.",
+            buttons.Save | buttons.Discard | buttons.Cancel,
+            buttons.Save,
+        )
+        if choice == buttons.Discard:
+            self.batch_result = None
+            self._save_failed = False
+            self._save_path = None
+            self._protected_paths = ()
+            self.result_status.setText("Unsaved results discarded.")
+            self.progress.setFormat("Discarded")
+            set_semantic_property(self.progress, "fluentStatus", "neutral")
+            self._refresh_controls()
+            return True
+        if choice == buttons.Save and self.retry_save():
+            self._close_when_finished = True
+        return False
+
+    def _request_save_retry(self) -> None:
+        if self.is_running():
+            self._retry_after_cleanup = True
+        else:
+            QtCore.QTimer.singleShot(0, self, self.retry_save)
+
     def _save_results(self, path: str | Path | None = None) -> bool:
         if (
             self.is_running()
@@ -735,6 +781,17 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
         self.cases_panel.logln(f"[ERROR] Sectional save: {message}")
         self._refresh_controls()
         self.export_failed.emit()
+        buttons = QtWidgets.QMessageBox.StandardButton
+        choice = QtWidgets.QMessageBox.warning(
+            self,
+            f"Sectional {'Cp' if self.cp else 'Loads'} CSV Save Failed",
+            f"{message}\n\nComputed results are retained. Fix the cause, then "
+            "choose Retry to save without recalculating, or use Retry Save... later.",
+            buttons.Retry | buttons.Close,
+            buttons.Close,
+        )
+        if choice == buttons.Retry:
+            self._request_save_retry()
 
     @QtCore.Slot()
     def _cleanup_worker(self) -> None:
@@ -751,6 +808,9 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
         set_semantic_property(self.progress, "fluentBusy", False)
         self._refresh_controls()
         self.run_finished.emit()
+        if self._retry_after_cleanup:
+            self._retry_after_cleanup = False
+            QtCore.QTimer.singleShot(0, self, self.retry_save)
         if self._close_when_finished:
             self._close_when_finished = False
             QtCore.QTimer.singleShot(0, self.close)
@@ -761,6 +821,9 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
             self.cancel_run()
             event.ignore()
             return
+        if not self.confirm_unsaved_close():
+            event.ignore()
+            return
         super().closeEvent(event)
 
     def reject(self) -> None:
@@ -768,6 +831,8 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
         if self.is_running():
             self._close_when_finished = True
             self.cancel_run()
+            return
+        if not self.confirm_unsaved_close():
             return
         super().reject()
 
