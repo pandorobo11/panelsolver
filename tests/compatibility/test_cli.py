@@ -71,6 +71,11 @@ class PanelSolverCliTests(unittest.TestCase):
                         "--debug",
                     ):
                         self.assertIn(option, delegated)
+                    for subcommand in ("sectional-loads", "sectional-cp"):
+                        self.assertIn(subcommand, delegated)
+                        self.assertIn(
+                            f"panelsolver {domain} {subcommand} --help", delegated
+                        )
 
     def test_default_checkpoint_and_explicit_empty_case_selection(self) -> None:
         for builder in (build_fmf_parser, build_hypersonic_parser):
