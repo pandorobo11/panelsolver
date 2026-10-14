@@ -550,14 +550,14 @@ _GUI_EXAMPLES = (
     ),
     ExampleDefinition(
         "Sectional Loads",
-        "fmf/flow_modes.csv",
-        ("geometry/plate.stl",),
+        "fmf/sphere_cone.csv",
+        ("geometry/sphere_cone.stl",),
         sectional_definition_resource="sectional_loads.csv",
     ),
     ExampleDefinition(
         "Sectional Cp",
-        "fmf/flow_modes.csv",
-        ("geometry/plate.stl",),
+        "fmf/sphere_cone.csv",
+        ("geometry/sphere_cone.stl",),
         sectional_definition_resource="sectional_cp.csv",
         sectional_kind="cp",
     ),

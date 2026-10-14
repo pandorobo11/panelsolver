@@ -52,7 +52,7 @@ remain directly under `outputs/`.
 | Flow Modes (FMF) | Plate | Mode A and atmosphere-resolved Mode B give matching coefficients |
 | Pressure Models (Hypersonic) | Plate and cube | Windward equations and leeward Prandtl–Meyer expansion |
 | Shielding | Double plate | Ray shielding off and on |
-| Sectional Loads, Sectional Cp | Plate | GUI-only: sectional definitions applied to the Basic (Hypersonic) or Flow Modes (FMF) table; see [GUI operation](../docs/running/gui.md) |
+| Sectional Loads, Sectional Cp | Sphere-cone | Axial and vertical strip loads and surface sections of the angle-effect cases; see [below](#sectional-loads-and-sectional-cp) |
 
 Both domains offer **File > New from Example > Sphere-cone: Angle Effects**.
 It copies the selected domain's three-case table and the shared STL to your
@@ -222,6 +222,55 @@ method and its exact-zero load consequence.
 - Observe: the resolved freestream direction and all eight coefficients agree
   within the algebraic hypersonic tolerance (`1e-10`).
 - Output: `examples/hypersonic/outputs/attitude_modes/`.
+
+## Sectional Loads and Sectional Cp
+
+`sectional_loads.csv` and `sectional_cp.csv` are written for the shared
+`geometry/sphere_cone.stl` and work with either domain's `sphere_cone.csv`.
+Each case is solved once and every definition is applied to that solution.
+**File > New from Example > Sectional Loads** and **Sectional Cp** copy the
+current domain's sphere-cone table, the STL and the matching definition file;
+see [GUI operation](../docs/running/gui.md#sectional-load-batches). From the
+repository root:
+
+```bash
+panelsolver fmf sectional-loads -i examples/fmf/sphere_cone.csv -d examples/sectional_loads.csv -o examples/fmf/outputs/sphere_cone_sectional_loads.csv
+panelsolver hypersonic sectional-cp -i examples/hypersonic/sphere_cone.csv -d examples/sectional_cp.csv -o examples/hypersonic/outputs/sphere_cone_sectional_cp.csv
+```
+
+Swap the domain or the subcommand to run the other combinations.
+
+### `sectional_loads.csv`
+
+- `axial`: +X_STL from the nose, automatic range over the whole body, 25 bins.
+- `vertical`: +Z_STL, automatic range, 10 bins.
+- `forebody`: +X_STL, explicit 0–0.3 m in 0.05 m bins, component 0 only. It
+  covers the spherical nose (which ends at x ≈ 0.148 m) and the start of the
+  cone, so `covers_selected_geometry` is false.
+- Observe: at zero alpha every `delta_CN` is zero to round-off and `vertical`
+  is symmetric about z = 0. With alpha, `delta_CN` grows along the cone towards
+  the base, where the circumference is larger, and `vertical` load moves to the −Z_STL
+  (windward) bins, because increasing alpha tilts the flow towards +Z_STL. The
+  `axial` and `vertical` bins each sum to the case's Summary coefficients.
+
+### `sectional_cp.csv`
+
+- `nose_stations`: four planes normal to +X_STL at x = 0.02, 0.06, 0.10 and
+  0.14 m, on the spherical nose.
+- `cone_station`: one plane at x = 0.8 m, on the cone.
+- `pitch_profile`: one plane normal to +Y_STL at y = 1 mm. It traces the
+  windward (z < 0) and leeward (z > 0) lines from nose to base. The 1 mm offset
+  makes the plane cut panel interiors; an exact y = 0 plane grazes the
+  pitch-meridian vertices, whose stored y values are round-off near zero, and
+  reports collapsed segments.
+- Observe: each station is a ring of panel segments. At zero alpha its values
+  are constant around the ring; with alpha the −Z_STL side rises and the
+  +Z_STL side falls. Values fall from the nose stations to the cone and are
+  nearly constant along each cone line of `pitch_profile`, because both models
+  depend on local panel inclination. Hypersonic rows are `cp`; FMF rows are
+  `normal_traction_coeff`, not Cp.
+- To plot, use the midpoint of each segment's endpoints: its angle
+  `atan2(z, y)` around a station, or x along `pitch_profile`.
 
 ## Sphere-cone geometry and comparison
 

@@ -68,8 +68,8 @@ Both domains can calculate finite-width sectional loads from a separate
 [definition CSV](../inputs/sectional-loads.md):
 
 ```bash
-panelsolver fmf sectional-loads -i examples/fmf/flow_modes.csv -d examples/sectional_loads.csv -o outputs/fmf_sections.csv
-panelsolver hypersonic sectional-loads -i examples/hypersonic/basic.csv -d examples/sectional_loads.csv -o outputs/hypersonic_sections.csv
+panelsolver fmf sectional-loads -i examples/fmf/sphere_cone.csv -d examples/sectional_loads.csv -o outputs/fmf_sections.csv
+panelsolver hypersonic sectional-loads -i examples/hypersonic/sphere_cone.csv -d examples/sectional_loads.csv -o outputs/hypersonic_sections.csv
 ```
 
 These commands work from the repository root with the supplied examples.
@@ -106,8 +106,8 @@ the output remains untouched. Save failure is reported independently and returns
 Use [Cp definitions](../inputs/sectional-cp.md) to extract surface sections:
 
 ```bash
-panelsolver hypersonic sectional-cp -i examples/hypersonic/basic.csv -d examples/sectional_cp.csv -o /tmp/hypersonic_sectional_cp.csv
-panelsolver fmf sectional-cp -i examples/fmf/basic.csv -d examples/sectional_cp.csv -o /tmp/fmf_sectional_cp.csv
+panelsolver hypersonic sectional-cp -i examples/hypersonic/sphere_cone.csv -d examples/sectional_cp.csv -o /tmp/hypersonic_sectional_cp.csv
+panelsolver fmf sectional-cp -i examples/fmf/sphere_cone.csv -d examples/sectional_cp.csv -o /tmp/fmf_sectional_cp.csv
 ```
 
 The `--cases`, `--sections`, `--workers`, `--plain`, `--verbose` and `--debug`

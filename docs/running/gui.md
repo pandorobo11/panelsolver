@@ -77,8 +77,8 @@ explains cancellation boundaries and which outputs remain available.
 ## Sectional load batches
 
 To start with a complete example, choose **File > New from Example > Sectional
-Loads** and select a workspace directory. This copies the current domain's case
-table (FMF Flow Modes or Hypersonic Basic), its STL geometry, and
+Loads** and select a workspace directory. This copies the current domain's
+Sphere-cone: Angle Effects table, the shared sphere-cone STL, and
 `sectional_loads.csv`. The case table and the Sectional Loads dialog open with
 those copied inputs, ready to run. Existing modified files are not overwritten.
 Edit the copied definition CSV externally and use **Reload** to try changes.
@@ -140,8 +140,9 @@ independently when both hold unsaved results. Results are held only in the curre
 application session.
 No intermediate Summary CSV or VTP is required or created by sectional runs.
 
-For an FMF example, open `examples/fmf/flow_modes.csv`; for Hypersonic, open
-`examples/hypersonic/basic.csv`. Both work with `examples/sectional_loads.csv`.
+For either domain, open `examples/<domain>/sphere_cone.csv` with
+`examples/sectional_loads.csv`. `examples/README.md` in the checkout and
+examples archive describes the definitions and what to compare.
 
 ## Organize the workspace
 
@@ -331,9 +332,9 @@ Calculation starts only when you choose Run and an output CSV destination.
 
 Choose **File > Sectional Cp...**, open a [Cp definition CSV](../inputs/sectional-cp.md),
 select cases and definitions (empty selection means all), and run. Try
-`examples/sectional_cp.csv` with either domain's basic example. The read-only
-workflow, frozen selections, cancellation, automatic CSV saving, and **Retry
-Save...** follow Sectional Loads. The suggested output is
+`examples/sectional_cp.csv` with either domain's `sphere_cone.csv` example.
+The read-only workflow, frozen selections, cancellation, automatic CSV saving,
+and **Retry Save...** follow Sectional Loads. The suggested output is
 `<input_stem>_sectional_cp.csv`.
 
 Each row saves both endpoints and the source panel's constant scalar. Hypersonic
