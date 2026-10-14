@@ -24,7 +24,7 @@ from .path_resolution import (
     default_summary_output_path,
     resolve_case_vtp_path,
 )
-from .run_lifecycle import CaseRunWorker
+from .run_lifecycle import CaseRunWorker, SummaryExportWorker
 from .runtime import DEFAULT_CHECKPOINT_CASES
 from .solver_spec import (
     CaseColumnKind,
@@ -33,6 +33,7 @@ from .solver_spec import (
     GuiRunResult,
     SolverSpec,
 )
+from .summary_export import SummaryCsvSnapshot, summary_protected_paths
 from .viewer_data import (
     ArtifactViewState,
     ArtifactViewStatus,
@@ -212,6 +213,7 @@ class CasesPanel(QtWidgets.QWidget):
     run_requested = QtCore.Signal(object, int, int, object)
     run_finished = QtCore.Signal()
     run_state_changed = QtCore.Signal(bool)
+    summary_save_failed = QtCore.Signal()
 
     def __init__(
         self,
@@ -249,10 +251,19 @@ class CasesPanel(QtWidgets.QWidget):
         self.btn_reload_input.setEnabled(False)
         self.btn_run = QtWidgets.QPushButton("Run Selected Cases")
         self.btn_cancel = QtWidgets.QPushButton("Cancel")
+        self.btn_retry_save = QtWidgets.QPushButton("Retry Save...")
+        self.btn_retry_save.setToolTip(
+            "Save the retained Summary CSV without rerunning calculations or VTP output"
+        )
+        self.btn_retry_save.hide()
+        self.lbl_summary_save = QtWidgets.QLabel()
+        self.lbl_summary_save.setWordWrap(True)
+        self.lbl_summary_save.hide()
         set_semantic_property(self.btn_pick_input, "fluentAppearance", "secondary")
         set_semantic_property(self.btn_reload_input, "fluentAppearance", "secondary")
         set_semantic_property(self.btn_run, "fluentAppearance", "primary")
         set_semantic_property(self.btn_cancel, "fluentAppearance", "danger")
+        set_semantic_property(self.btn_retry_save, "fluentAppearance", "secondary")
         # Reserve the longest native size hint so scope wording does not move layout.
         self.btn_run.setMinimumWidth(self.btn_run.sizeHint().width())
         self.btn_run.setText("Run Cases")
@@ -318,9 +329,13 @@ class CasesPanel(QtWidgets.QWidget):
         set_semantic_property(self.progress, "fluentBusy", False)
         self._run_thread: QtCore.QThread | None = None
         self._external_run_active = False
-        self._run_worker: CaseRunWorker | None = None
+        self._run_worker: CaseRunWorker | SummaryExportWorker | None = None
         self._run_rows: tuple[CaseRow, ...] = ()
         self._run_output_path: Path | None = None
+        self._run_protected_paths: tuple[Path, ...] = ()
+        self._run_input_name = "input"
+        self._summary_retry: SummaryCsvSnapshot | None = None
+        self._retry_summary_after_cleanup = False
         self._invalid_current_vtp_artifacts: set[tuple[str, Path]] = set()
         self._cancel_requested = False
         self._warning_messages = 0
@@ -347,6 +362,7 @@ class CasesPanel(QtWidgets.QWidget):
         self.btn_reload_input.clicked.connect(self.reload_input_file)
         self.btn_run.clicked.connect(self.request_run)
         self.btn_cancel.clicked.connect(self.cancel_run)
+        self.btn_retry_save.clicked.connect(self.retry_summary_save)
         self.btn_diagnostics.toggled.connect(self._set_diagnostics_expanded)
         self.btn_advanced_settings.toggled.connect(self._set_advanced_settings_expanded)
         self.case_table.itemSelectionChanged.connect(self.on_case_selection_changed)
@@ -400,6 +416,7 @@ class CasesPanel(QtWidgets.QWidget):
         self.run_actions_group.setSpacing(_RUN_ACTION_SPACING)
         self.run_actions_group.addWidget(self.btn_run)
         self.run_actions_group.addWidget(self.btn_cancel)
+        self.run_actions_group.addWidget(self.btn_retry_save)
 
         self.settings_row = FlowLayout(spacing=_RUN_SETTINGS_GROUP_SPACING)
         self.settings_row.addLayout(self.workers_group)
@@ -411,6 +428,7 @@ class CasesPanel(QtWidgets.QWidget):
         self.execution_row.addWidget(self.progress)
         self.execution_row.addLayout(self.run_actions_group)
         layout.addLayout(self.execution_row)
+        layout.addWidget(self.lbl_summary_save)
         self.diagnostics_row = QtWidgets.QWidget()
         diagnostics = FlowLayout(self.diagnostics_row, spacing=8)
         diagnostics.addWidget(self.btn_diagnostics)
@@ -902,8 +920,16 @@ class CasesPanel(QtWidgets.QWidget):
         if not selected:
             self.logln("[WARN] No cases are available to run.")
             return False
+        try:
+            self._run_protected_paths = self._current_summary_protected_paths(selected)
+        except Exception as exc:
+            self.logln(f"[ERROR] Cannot protect Summary CSV inputs: {exc}")
+            return False
         self._run_rows = selected
         self._run_output_path = Path(output_path)
+        self._run_input_name = (
+            self.input_path.name if self.input_path is not None else "input"
+        )
         total = len(selected)
         self.progress.setRange(0, total)
         self.progress.setValue(0)
@@ -924,6 +950,7 @@ class CasesPanel(QtWidgets.QWidget):
         )
         self._run_thread = thread
         self._run_worker = worker
+        self._refresh_summary_retry()
         worker.moveToThread(thread)
 
         thread.started.connect(worker.run)
@@ -945,7 +972,9 @@ class CasesPanel(QtWidgets.QWidget):
 
     def cancel_run(self) -> None:
         """Request cooperative cancellation at the next scheduler boundary."""
-        if self._run_worker is None:
+        if self._run_worker is None or isinstance(
+            self._run_worker, SummaryExportWorker
+        ):
             return
         self._cancel_requested = True
         self.progress.setFormat("Cancelling…")
@@ -977,6 +1006,23 @@ class CasesPanel(QtWidgets.QWidget):
 
     @QtCore.Slot(object)
     def _on_run_completed(self, result: GuiRunResult) -> None:
+        self._summary_retry = None
+        if result.unsaved_summary_csv is not None:
+            assert self._run_output_path is not None
+            self._summary_retry = SummaryCsvSnapshot(
+                result.unsaved_summary_csv,
+                self._run_protected_paths,
+                self._run_output_path,
+                self._run_input_name,
+                len(self._run_rows),
+                any(
+                    issue.kind is not OutputKind.SUMMARY_CSV
+                    or issue.phase is not OutputPhase.FINAL
+                    for issue in result.output_issues
+                ),
+            )
+            self.summary_save_failed.emit()
+        self._refresh_summary_retry()
         self._update_current_vtp_artifact_validity(result)
         total = len(self._run_rows)
         self.progress.setRange(0, max(total, 1))
@@ -990,13 +1036,135 @@ class CasesPanel(QtWidgets.QWidget):
         set_semantic_property(self.progress, "fluentBusy", False)
         if self._run_output_path is not None and result.summary_csv_saved is not False:
             self.logln(f"[OK] Wrote results: {self._run_output_path}")
-        if result.output_issues:
+        if result.output_issues and self._summary_retry is not None:
+            buttons = QtWidgets.QMessageBox.StandardButton
+            choice = QtWidgets.QMessageBox.warning(
+                self,
+                "Output Errors",
+                self._output_error_summary(result),
+                buttons.Retry | buttons.Close,
+                buttons.Close,
+            )
+            if choice == buttons.Retry:
+                self._request_summary_retry()
+        elif result.output_issues:
             QtWidgets.QMessageBox.warning(
                 self,
                 "Output Errors",
                 self._output_error_summary(result),
             )
         self._refresh_first_result(result)
+
+    def _current_summary_protected_paths(self, extra_rows=()) -> tuple[Path, ...]:
+        paths = tuple(
+            dict.fromkeys(
+                (
+                    *self._loaded_input_paths,
+                    *self.sectional_definition_paths,
+                    *summary_protected_paths(
+                        self.input_path, (*self.case_rows, *extra_rows)
+                    ),
+                )
+            )
+        )
+        return tuple(dict.fromkeys(p for path in paths for p in (path, path.resolve())))
+
+    def unsaved_summary_description(self) -> str | None:
+        """Describe the retained Summary CSV that closing would discard."""
+        snapshot = self._summary_retry
+        if snapshot is None:
+            return None
+        return (
+            f"The Summary CSV for {snapshot.case_count} case(s) from "
+            f"{snapshot.input_name} has not been saved."
+        )
+
+    def _request_summary_retry(self) -> None:
+        # The completed run's thread may still be cleaning up; retry once idle.
+        if self.is_running():
+            self._retry_summary_after_cleanup = True
+        else:
+            QtCore.QTimer.singleShot(0, self, self.retry_summary_save)
+
+    def _refresh_summary_retry(self) -> None:
+        snapshot = self._summary_retry
+        self.btn_retry_save.setVisible(snapshot is not None)
+        self.btn_retry_save.setEnabled(
+            snapshot is not None
+            and not self.is_running()
+            and not self._external_run_active
+        )
+        self.lbl_summary_save.setVisible(snapshot is not None)
+        if snapshot is not None:
+            self.lbl_summary_save.setText(
+                f"Summary CSV not saved: {snapshot.case_count} case(s) from "
+                f"{snapshot.input_name}. Results retained; Retry Save saves that run."
+            )
+
+    def retry_summary_save(self) -> bool:
+        snapshot = self._summary_retry
+        if snapshot is None or self.is_running() or self._external_run_active:
+            return False
+        selected, _ = QtWidgets.QFileDialog.getSaveFileName(
+            self, "Retry Saving Summary CSV", str(snapshot.output_path), "CSV (*.csv)"
+        )
+        if not selected:
+            return False
+        try:
+            protected = self._current_summary_protected_paths()
+            path = validate_csv_output_path(
+                selected, (*snapshot.protected_paths, *protected)
+            )
+        except Exception as exc:
+            self._on_summary_export_failed(str(exc))
+            return False
+        thread = QtCore.QThread(self)
+        worker = SummaryExportWorker(path, snapshot, protected)
+        self._run_thread, self._run_worker = thread, worker
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.completed.connect(self._on_summary_exported)
+        worker.failed.connect(self._on_summary_export_failed)
+        worker.completed.connect(thread.quit)
+        worker.failed.connect(thread.quit)
+        worker.completed.connect(worker.deleteLater)
+        worker.failed.connect(worker.deleteLater)
+        thread.finished.connect(self._cleanup_run_worker)
+        thread.finished.connect(thread.deleteLater)
+        self.progress.setFormat("Saving Summary CSV…")
+        set_semantic_property(self.progress, "fluentStatus", "info")
+        set_semantic_property(self.progress, "fluentBusy", True)
+        self._set_running_state(True)
+        thread.start()
+        return True
+
+    @QtCore.Slot(object)
+    def _on_summary_exported(self, path: Path) -> None:
+        assert self._summary_retry is not None
+        other_errors = self._summary_retry.other_output_errors
+        self._summary_retry = None
+        self.progress.setFormat(
+            "Summary CSV saved; other output errors remain"
+            if other_errors
+            else "Summary CSV saved"
+        )
+        set_semantic_property(
+            self.progress, "fluentStatus", "warning" if other_errors else "success"
+        )
+        set_semantic_property(self.progress, "fluentBusy", False)
+        self.logln(f"[OK] Saved retained Summary CSV: {path}")
+        self._refresh_summary_retry()
+
+    @QtCore.Slot(str)
+    def _on_summary_export_failed(self, message: str) -> None:
+        self.progress.setFormat("Summary CSV save failed")
+        set_semantic_property(self.progress, "fluentStatus", "danger")
+        set_semantic_property(self.progress, "fluentBusy", False)
+        self.logln(
+            f"[ERROR] Summary CSV save failed: {message}. Results retained; choose Retry Save."
+        )
+        self._refresh_summary_retry()
+        self.summary_save_failed.emit()
 
     @staticmethod
     def _vtp_artifact_key(case_id: object, path: str | Path) -> tuple[str, Path]:
@@ -1068,6 +1236,16 @@ class CasesPanel(QtWidgets.QWidget):
         remaining = len(result.output_issues) - len(shown)
         if remaining:
             lines.append(f"  ... and {remaining} more")
+        if result.unsaved_summary_csv is not None:
+            lines.extend(
+                (
+                    "",
+                    (
+                        "Results are retained. Choose Retry to save the Summary "
+                        "CSV without recalculating, or use Retry Save... later."
+                    ),
+                )
+            )
         lines.extend(("", "See the log for full details."))
         return "\n".join(lines)
 
@@ -1120,8 +1298,13 @@ class CasesPanel(QtWidgets.QWidget):
         self._run_thread = None
         self._run_rows = ()
         self._run_output_path = None
+        self._run_protected_paths = ()
+        self._run_input_name = "input"
         self._set_running_state(False)
         self.run_finished.emit()
+        if self._retry_summary_after_cleanup:
+            self._retry_summary_after_cleanup = False
+            QtCore.QTimer.singleShot(0, self, self.retry_summary_save)
 
     def _set_running_state(self, running: bool) -> None:
         busy = running or self._external_run_active
@@ -1133,8 +1316,11 @@ class CasesPanel(QtWidgets.QWidget):
         self.btn_clear_selection.setEnabled(
             not busy and bool(self.selected_case_rows())
         )
-        self.btn_cancel.setEnabled(running)
+        self.btn_cancel.setEnabled(
+            running and not isinstance(self._run_worker, SummaryExportWorker)
+        )
         self.btn_run.setEnabled((not busy) and bool(self.case_rows))
+        self._refresh_summary_retry()
         self.run_state_changed.emit(running)
 
     def clear_loaded_cases(self) -> None:

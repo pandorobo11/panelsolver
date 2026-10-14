@@ -74,6 +74,13 @@ If a VTP write fails, an older file can remain at the planned path. Check the
 current run's diagnostics and Summary `vtp_path` to identify successful writes.
 The GUI suppresses automatic loading of the older file after that failure.
 
+For a failed **final** Summary CSV save, the GUI retains the complete input-ordered
+CSV in memory and offers **Retry Save...**. It exports the same values without
+rerunning calculations or VTP output. This session-only recovery does not apply
+to CLI runs, interrupted calculations, or checkpoint-only failures when the
+final save succeeds. See the [GUI guide](gui.md#run-cases) for snapshot lifetime
+and protected destinations. Retrying does not erase earlier output diagnostics.
+
 ## Write durability guarantee
 
 Initial checkpoint, final Summary CSV, and VTP writes use a temporary file and
