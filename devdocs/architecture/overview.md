@@ -139,6 +139,13 @@ result and protected input paths. The GUI has no general Export action; a save
 failure exposes Retry Save for that retained snapshot without a solve. The
 viewer's VTP and ordinary solve results are never sectional inputs.
 
+Both sectional modes also offer Retry from the save-error dialog, deferring the
+save chooser until export thread cleanup. Dialog close, Escape, and main-window
+close check retained failed-save results and offer Save/Discard/Cancel. Save
+defers closing until export succeeds; failure withdraws pending close requests.
+Discard releases only that dialog's unsaved snapshot. Main-window close checks
+both persistent dialogs even when hidden, and resumes after each requested save.
+
 ## Execution and artifacts
 
 The one-case engine loads ordered STL components, validates geometry, resolves

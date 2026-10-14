@@ -458,6 +458,12 @@ class MainWindow(QtWidgets.QMainWindow):
         if not self._confirm_unsaved_summary_close():
             event.ignore()
             return
+        for dialog in (self.sectional_dialog, self.sectional_cp_dialog):
+            if dialog is not None and not dialog.confirm_unsaved_close():
+                if dialog.is_running():
+                    self._close_when_run_finishes = True
+                event.ignore()
+                return
         self._save_layout()
         for dialog in (self.sectional_dialog, self.sectional_cp_dialog):
             if dialog is not None:
