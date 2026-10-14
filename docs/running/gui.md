@@ -47,9 +47,11 @@ The run writes the selected Summary CSV and, when enabled, one VTP per case at
 directory. See [Case files](../inputs/case-files.md#paths-vtp-destinations-and-components)
 for path rules.
 
-If the final Summary CSV cannot be saved, **Retry Save...** appears beside
-**Cancel**. Choose it to save the retained result to the same or another CSV
-destination without recalculating cases or writing VTP files again. The message
+If the final Summary CSV cannot be saved, the **Output Errors** message offers
+**Retry**, and **Retry Save...** appears beside **Cancel** for later use. Either
+saves the retained result to the same or another CSV destination without
+recalculating cases or writing VTP files again. Fix the cause first, such as
+freeing disk space or closing a program that holds the file open. The message
 below the progress bar identifies the retained run's input filename and case
 count. Reloading inputs or changing selections does not change that result.
 Original and currently loaded case tables, STL files, planned VTP outputs, and
@@ -62,7 +64,10 @@ unsaved result available; they do not add their partial results to it. Results
 are retained only for the current application session. Saving runs in the
 background and temporarily disables ordinary and sectional calculations. If a
 pending window close meets a Summary CSV save failure, the window remains open
-for retry. Other output errors, such as a VTP failure, remain in Diagnostics.
+for retry. Closing the window while a result is retained asks whether to save
+it first: **Save** closes after a successful save, **Discard** closes without
+it, and **Cancel** keeps the window open. Other output errors, such as a VTP
+failure, remain in Diagnostics.
 
 During cancellation, progress shows **Cancelling** until workers finish cleanup.
 Closing the window during a run also requests cancellation and waits for cleanup.

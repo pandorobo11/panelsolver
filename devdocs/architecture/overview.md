@@ -157,7 +157,8 @@ the original run's protected paths; a Qt export worker rechecks those paths plus
 currently loaded inputs before atomic serialization. No full execution/mesh is
 retained for this recovery. Ordinary and sectional runs remain excluded until
 export thread cleanup. A pending main-window close is withdrawn on save failure
-so the snapshot stays available. CLI/checkpoint behavior is unchanged.
+so the snapshot stays available, and closing while a snapshot is retained asks
+to save or discard it. CLI/checkpoint behavior is unchanged.
 
 CSV and VTP projections receive explicit domain-owned policy. Shared code does
 not branch on a concrete model name to invent a universal schema. The shared

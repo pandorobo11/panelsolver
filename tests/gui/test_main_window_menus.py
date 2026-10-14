@@ -50,6 +50,9 @@ class _Cases(QtWidgets.QWidget):
     def is_running(self) -> bool:
         return False
 
+    def unsaved_summary_description(self):
+        return None
+
 
 class _Viewer(QtWidgets.QWidget):
     log_message = QtCore.Signal(str)
