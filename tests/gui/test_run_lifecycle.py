@@ -26,7 +26,12 @@ from panelsolver.app import (
 )
 from panelsolver.app.cases_panel import CasesPanel
 from panelsolver.app.main_window import MainWindow
-from panelsolver.core import CaseSignature, SchedulerCancelled, canonical_json
+from panelsolver.core import (
+    CaseSignature,
+    CsvProjection,
+    SchedulerCancelled,
+    canonical_json,
+)
 from panelsolver.domains.fmf import gui_spec as fmf_solver_spec
 from panelsolver.domains.hypersonic import gui_spec as newt_solver_spec
 
@@ -379,6 +384,331 @@ class RunLifecycleTests(unittest.TestCase):
         self.assertEqual("Completed with output errors", panel.progress.text())
         self.assertIn("Summary CSV: failed", warning.call_args.args[2])
         self.assertNotIn("[OK] Wrote results", panel.log.toPlainText())
+
+    @staticmethod
+    def unsaved_result():
+        return GuiRunResult(
+            calculation_completed_cases=2,
+            calculation_total_cases=2,
+            summary_csv_saved=False,
+            output_issues=(
+                OutputIssue(
+                    OutputKind.SUMMARY_CSV,
+                    OutputPhase.FINAL,
+                    "results.csv",
+                    "disk full",
+                ),
+            ),
+            unsaved_summary_csv=CsvProjection(
+                ("case_id", "CA"),
+                ({"case_id": "one", "CA": 0.25}, {"case_id": "two", "CA": 0.5}),
+            ),
+        )
+
+    def test_retry_summary_after_reload_saves_original_snapshot_without_solving(self):
+        for factory in (fmf_solver_spec, newt_solver_spec):
+            with (
+                self.subTest(domain=factory.__module__),
+                tempfile.TemporaryDirectory() as directory,
+            ):
+                calls = []
+
+                def runner(request, captured=calls):
+                    captured.append(request)
+                    return self.unsaved_result()
+
+                panel, rows, _ = self.make_panel(runner, spec_factory=factory)
+                with patch.object(QtWidgets.QMessageBox, "warning"):
+                    panel.start_run(rows, 1, 0, Path(directory) / "result.csv")
+                    self.wait_until(lambda active=panel: not active.is_running())
+                retained = panel._summary_retry
+                self.assertFalse(panel.btn_retry_save.isHidden())
+                self.assertTrue(panel.btn_retry_save.isEnabled())
+                panel.clear_loaded_cases()
+                panel.input_path = Path(directory) / "new.csv"
+                panel.case_rows = ({"case_id": "new", "stl_path": "new.stl"},)
+                self.assertIs(retained, panel._summary_retry)
+                self.assertIn("cases.csv", panel.lbl_summary_save.text())
+                output = Path(directory) / "recovered.csv"
+                output.write_text("previous valid file")
+                with patch.object(
+                    QtWidgets.QFileDialog,
+                    "getSaveFileName",
+                    return_value=(str(output), ""),
+                ):
+                    with patch(
+                        "panelsolver.app.csv_writer.os.replace",
+                        side_effect=OSError("disk full"),
+                    ):
+                        self.assertTrue(panel.retry_summary_save())
+                        self.wait_until(lambda active=panel: not active.is_running())
+                    self.assertEqual(output.read_text(), "previous valid file")
+                    self.assertIs(retained, panel._summary_retry)
+                    self.assertTrue(panel.retry_summary_save())
+                    self.wait_until(lambda active=panel: not active.is_running())
+                self.assertEqual(len(calls), 1)
+                self.assertIn("one,0.25", output.read_text(encoding="utf-8-sig"))
+                self.assertNotIn("new", output.read_text())
+                self.assertIsNone(panel._summary_retry)
+                self.assertTrue(panel.btn_retry_save.isHidden())
+                self.assertEqual(panel.progress.text(), "Summary CSV saved")
+
+    def test_retry_summary_protects_old_and_current_unselected_inputs_and_aliases(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            rows = (
+                {"case_id": "one", "stl_path": "one.stl"},
+                {"case_id": "two", "stl_path": "two.stl"},
+            )
+            panel, rows, _ = self.make_panel(lambda _: self.unsaved_result(), rows=rows)
+            panel.input_path = root / "old.csv"
+            panel.sectional_definition_paths = (root / "sections.csv",)
+            with patch.object(QtWidgets.QMessageBox, "warning"):
+                panel.start_run(rows[:1], 1, 0, root / "result.csv")
+                self.wait_until(lambda: not panel.is_running())
+            panel.input_path = root / "new.csv"
+            panel.case_rows = ({"case_id": "new", "stl_path": "new.stl"},)
+            paths = [
+                root / name
+                for name in (
+                    "old.csv",
+                    "one.stl",
+                    "two.stl",
+                    "sections.csv",
+                    "new.csv",
+                    "new.stl",
+                    "outputs/two.vtp",
+                    "outputs/new.vtp",
+                )
+            ]
+            for path in paths:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("protected")
+            alias = root / "alias.csv"
+            os.link(root / "two.stl", alias)
+            symlink = root / "link.csv"
+            symlink.symlink_to(root / "one.stl")
+            for path in (*paths, alias, symlink):
+                with (
+                    self.subTest(path=path.name),
+                    patch.object(
+                        QtWidgets.QFileDialog,
+                        "getSaveFileName",
+                        return_value=(str(path), ""),
+                    ),
+                ):
+                    self.assertFalse(panel.retry_summary_save())
+                    self.assertEqual(path.read_text(), "protected")
+                    self.assertTrue(panel.btn_retry_save.isEnabled())
+
+    def test_retry_summary_cancel_and_new_failed_run_keep_snapshot_success_replaces_it(
+        self,
+    ):
+        outcomes = [
+            self.unsaved_result(),
+            RuntimeError("new solve failed"),
+            SchedulerCancelled("cancelled"),
+            GuiRunResult(summary_csv_saved=True),
+        ]
+
+        def runner(_):
+            result = outcomes.pop(0)
+            if isinstance(result, Exception):
+                raise result
+            return result
+
+        panel, rows, _ = self.make_panel(runner)
+        with patch.object(QtWidgets.QMessageBox, "warning"):
+            panel.start_run(rows, 1, 0, "result.csv")
+            self.wait_until(lambda: not panel.is_running())
+        retained = panel._summary_retry
+        with patch.object(
+            QtWidgets.QFileDialog, "getSaveFileName", return_value=("", "")
+        ):
+            self.assertFalse(panel.retry_summary_save())
+        panel.set_external_run_active(True)
+        self.assertFalse(panel.btn_retry_save.isEnabled())
+        self.assertFalse(panel.retry_summary_save())
+        panel.set_external_run_active(False)
+        for _ in range(2):
+            panel.start_run(rows, 1, 0, "new.csv")
+            self.assertFalse(panel.btn_retry_save.isEnabled())
+            self.wait_until(lambda: not panel.is_running())
+            self.assertIs(retained, panel._summary_retry)
+        panel.start_run(rows, 1, 0, "new.csv")
+        self.wait_until(lambda: not panel.is_running())
+        self.assertIsNone(panel._summary_retry)
+
+    def test_summary_failure_during_pending_close_preserves_results_even_after_cancel(
+        self,
+    ):
+        entered, release = threading.Event(), threading.Event()
+
+        def runner(_):
+            entered.set()
+            release.wait(3)
+            return self.unsaved_result()
+
+        panel, rows, _ = self.make_panel(runner)
+        window = MainWindow(panel.spec, cases_panel=panel, viewer_panel=_FakeViewer())
+        self.own_widget(window)
+        window.show()
+        with patch.object(QtWidgets.QMessageBox, "warning"):
+            panel.start_run(rows, 1, 0, "result.csv")
+            self.wait_until(entered.is_set)
+            window.close()
+            self.assertTrue(window._close_when_run_finishes)
+            release.set()
+            self.wait_until(lambda: not panel.is_running())
+        self.assertTrue(window.isVisible())
+        self.assertFalse(window._close_when_run_finishes)
+        self.assertTrue(panel.btn_retry_save.isEnabled())
+        self.discard_and_close(window)
+
+    def test_summary_retry_worker_blocks_runs_and_keeps_window_open_on_failure(self):
+        from panelsolver.app import run_lifecycle
+
+        panel, rows, _ = self.make_panel(lambda _: self.unsaved_result())
+        window = MainWindow(panel.spec, cases_panel=panel, viewer_panel=_FakeViewer())
+        self.own_widget(window)
+        window.show()
+        with patch.object(QtWidgets.QMessageBox, "warning"):
+            panel.start_run(rows, 1, 0, "result.csv")
+            self.wait_until(lambda: not panel.is_running())
+        entered, release = threading.Event(), threading.Event()
+
+        def fail(*_):
+            entered.set()
+            release.wait(3)
+            raise OSError("disk full")
+
+        with (
+            patch.object(run_lifecycle, "write_summary_snapshot", side_effect=fail),
+            patch.object(
+                QtWidgets.QFileDialog, "getSaveFileName", return_value=("retry.csv", "")
+            ),
+        ):
+            panel.retry_summary_save()
+            self.wait_until(entered.is_set)
+            self.assertFalse(panel.btn_cancel.isEnabled())
+            self.assertFalse(panel.btn_run.isEnabled())
+            self.assertFalse(panel.btn_reload_input.isEnabled())
+            self.assertFalse(panel.start_run(rows, 1, 0, "other.csv"))
+            window.close()
+            self.assertTrue(window._close_when_run_finishes)
+            release.set()
+            self.wait_until(lambda: not panel.is_running())
+        self.assertTrue(window.isVisible())
+        self.assertFalse(window._close_when_run_finishes)
+        self.assertTrue(panel.btn_retry_save.isEnabled())
+        self.discard_and_close(window)
+
+    def discard_and_close(self, window) -> None:
+        with patch.object(
+            QtWidgets.QMessageBox,
+            "warning",
+            return_value=QtWidgets.QMessageBox.StandardButton.Discard,
+        ):
+            window.close()
+        self.assertFalse(window.isVisible())
+
+    def test_output_errors_dialog_offers_retry_that_saves_after_cleanup(self):
+        panel, rows, _ = self.make_panel(lambda _: self.unsaved_result())
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "recovered.csv"
+            with (
+                patch.object(
+                    QtWidgets.QMessageBox,
+                    "warning",
+                    return_value=QtWidgets.QMessageBox.StandardButton.Retry,
+                ) as warning,
+                patch.object(
+                    QtWidgets.QFileDialog,
+                    "getSaveFileName",
+                    return_value=(str(output), ""),
+                ) as chooser,
+            ):
+                panel.start_run(rows, 1, 0, Path(directory) / "result.csv")
+                self.wait_until(lambda: output.exists() and not panel.is_running())
+            message = warning.call_args.args[2]
+            self.assertIn("Summary CSV: failed", message)
+            self.assertIn("Results are retained", message)
+            self.assertIn("Retry Save...", message)
+            chooser.assert_called_once()
+            self.assertIn("one,0.25", output.read_text(encoding="utf-8-sig"))
+        self.assertIsNone(panel._summary_retry)
+        self.assertTrue(panel.btn_retry_save.isHidden())
+
+    def test_output_errors_dialog_close_keeps_retained_summary(self):
+        panel, rows, _ = self.make_panel(lambda _: self.unsaved_result())
+        with (
+            patch.object(
+                QtWidgets.QMessageBox,
+                "warning",
+                return_value=QtWidgets.QMessageBox.StandardButton.Close,
+            ),
+            patch.object(QtWidgets.QFileDialog, "getSaveFileName") as chooser,
+        ):
+            panel.start_run(rows, 1, 0, "result.csv")
+            self.wait_until(lambda: not panel.is_running())
+            self.app.processEvents()
+        chooser.assert_not_called()
+        self.assertIsNotNone(panel._summary_retry)
+        self.assertTrue(panel.btn_retry_save.isEnabled())
+
+    def test_close_with_unsaved_summary_asks_before_discarding(self):
+        buttons = QtWidgets.QMessageBox.StandardButton
+        panel, rows, _ = self.make_panel(lambda _: self.unsaved_result())
+        window = MainWindow(panel.spec, cases_panel=panel, viewer_panel=_FakeViewer())
+        self.own_widget(window)
+        window.show()
+        with patch.object(QtWidgets.QMessageBox, "warning"):
+            panel.start_run(rows, 1, 0, "result.csv")
+            self.wait_until(lambda: not panel.is_running())
+        with patch.object(
+            QtWidgets.QMessageBox, "warning", return_value=buttons.Cancel
+        ) as warning:
+            window.close()
+        self.assertTrue(window.isVisible())
+        self.assertIn("2 case(s) from cases.csv", warning.call_args.args[2])
+        with (
+            patch.object(QtWidgets.QMessageBox, "warning", return_value=buttons.Save),
+            patch.object(
+                QtWidgets.QFileDialog, "getSaveFileName", return_value=("", "")
+            ),
+        ):
+            window.close()
+        self.assertTrue(window.isVisible())
+        self.assertFalse(window._close_when_run_finishes)
+        self.assertIsNotNone(panel._summary_retry)
+        self.discard_and_close(window)
+
+    def test_close_save_choice_closes_window_after_successful_retry(self):
+        panel, rows, _ = self.make_panel(lambda _: self.unsaved_result())
+        window = MainWindow(panel.spec, cases_panel=panel, viewer_panel=_FakeViewer())
+        self.own_widget(window)
+        window.show()
+        with patch.object(QtWidgets.QMessageBox, "warning"):
+            panel.start_run(rows, 1, 0, "result.csv")
+            self.wait_until(lambda: not panel.is_running())
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            patch.object(
+                QtWidgets.QMessageBox,
+                "warning",
+                return_value=QtWidgets.QMessageBox.StandardButton.Save,
+            ),
+            patch.object(
+                QtWidgets.QFileDialog,
+                "getSaveFileName",
+                return_value=(str(Path(directory) / "recovered.csv"), ""),
+            ),
+        ):
+            window.close()
+            self.assertTrue(window._close_when_run_finishes)
+            self.wait_until(lambda: not window.isVisible())
+            self.assertTrue((Path(directory) / "recovered.csv").exists())
+        self.assertIsNone(panel._summary_retry)
 
     def test_complete_checkpoint_summary_is_not_displayed_as_failed(self) -> None:
         def runner(_request):

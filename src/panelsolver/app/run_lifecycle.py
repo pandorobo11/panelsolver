@@ -11,6 +11,7 @@ from PySide6 import QtCore
 from panelsolver.core import SchedulerCancelled
 
 from .solver_spec import CaseRow, GuiRunRequest, GuiRunResult, RunCasesCallback
+from .summary_export import SummaryCsvSnapshot, write_summary_snapshot
 
 
 class CaseRunWorker(QtCore.QObject):
@@ -63,7 +64,7 @@ class CaseRunWorker(QtCore.QObject):
             self.failed.emit(str(exc))
             return
 
-        if self._cancel_event.is_set():
+        if self._cancel_event.is_set() and result.unsaved_summary_csv is None:
             self.canceled.emit()
             return
         self.completed.emit(result)
@@ -73,4 +74,28 @@ class CaseRunWorker(QtCore.QObject):
         self._cancel_event.set()
 
 
-__all__ = ("CaseRunWorker",)
+class SummaryExportWorker(QtCore.QObject):
+    """Save a retained CSV without solving or blocking the GUI thread."""
+
+    completed = QtCore.Signal(object)
+    failed = QtCore.Signal(str)
+
+    def __init__(self, path: Path, snapshot: SummaryCsvSnapshot, protected_paths):
+        super().__init__()
+        self._path = path
+        self._snapshot = snapshot
+        self._protected_paths = protected_paths
+
+    @QtCore.Slot()
+    def run(self) -> None:
+        try:
+            path = write_summary_snapshot(
+                self._path, self._snapshot, self._protected_paths
+            )
+        except Exception as exc:
+            self.failed.emit(str(exc))
+            return
+        self.completed.emit(path)
+
+
+__all__ = ("CaseRunWorker", "SummaryExportWorker")

@@ -103,6 +103,7 @@ class MainWindow(QtWidgets.QMainWindow):
         )
         self.cases_panel.input_path_changed.connect(self.viewer_panel.set_input_path)
         self.cases_panel.run_finished.connect(self._on_case_run_finished)
+        self.cases_panel.summary_save_failed.connect(self._on_summary_save_failed)
         self.viewer_panel.save_selected_images_requested.connect(
             self._on_save_selected_images
         )
@@ -454,6 +455,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.cases_panel.logln("[CLOSE] Waiting for the active run to stop...")
             event.ignore()
             return
+        if not self._confirm_unsaved_summary_close():
+            event.ignore()
+            return
         self._save_layout()
         for dialog in (self.sectional_dialog, self.sectional_cp_dialog):
             if dialog is not None:
@@ -463,11 +467,37 @@ class MainWindow(QtWidgets.QMainWindow):
         self._documentation_site.close()
         super().closeEvent(event)
 
+    def _confirm_unsaved_summary_close(self) -> bool:
+        """Return whether closing may discard a retained unsaved Summary CSV."""
+        description = self.cases_panel.unsaved_summary_description()
+        if description is None:
+            return True
+        buttons = QtWidgets.QMessageBox.StandardButton
+        choice = QtWidgets.QMessageBox.warning(
+            self,
+            "Unsaved Summary CSV",
+            f"{description}\n\nSave it before closing? If you discard it, the "
+            "cases must be recalculated to recreate the Summary CSV.",
+            buttons.Save | buttons.Discard | buttons.Cancel,
+            buttons.Save,
+        )
+        if choice == buttons.Discard:
+            return True
+        if choice == buttons.Save and self.cases_panel.retry_summary_save():
+            # Close after a successful save; a failed save withdraws this request.
+            self._close_when_run_finishes = True
+        return False
+
     @QtCore.Slot()
     def _on_sectional_export_failed(self) -> None:
         if self._close_when_run_finishes:
             self._close_when_run_finishes = False
             self.open_sectional_loads()
+
+    @QtCore.Slot()
+    def _on_summary_save_failed(self) -> None:
+        # Keep retained results available when a pending close meets a save error.
+        self._close_when_run_finishes = False
 
     @QtCore.Slot()
     def _on_case_run_finished(self) -> None:
