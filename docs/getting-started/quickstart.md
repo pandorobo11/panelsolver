@@ -118,30 +118,3 @@ two FMF input modes, the Hypersonic pressure methods, shielding, multi-part
 geometry, attitude inputs, sectional loads and Cp, and sphere-cone angle
 effects. For runs with many cases, see
 [Batch runs and recovery](../guides/batch-runs.md).
-
-### Sphere-cone: angle effects
-
-In either domain, choose **File > New from Example > Sphere-cone: Angle
-Effects**, select all three rows, and run them. From the CLI:
-
-```bash
-panelsolver fmf --input examples/fmf/sphere_cone.csv
-panelsolver hypersonic --input examples/hypersonic/sphere_cone.csv
-```
-
-Both tables use the same closed sphere-cone with 9,216 panels. Only the angle
-of attack changes (0, 15, and 30 degrees), with no sideslip. FMF uses `S=5`
-and `Ti_K=Tw_K=300`. Hypersonic uses Mach 6, gamma 1.4, Modified Newtonian on
-windward panels, and `Cp = 0` on leeward panels.
-
-Look at the normal and tangential traction in FMF, or `Cp` in Hypersonic, and
-compare `CL` and `CD` in the Summary CSV. Keep the same camera and color range
-between cases so the pictures are comparable.
-
-The two domains model different flow regimes. These are idealized examples,
-not validation data. `examples/README.md` lists the geometry, reference
-quantities, and how the mesh was generated.
-
-The Cube **Attitude Modes** example is different: it shows several ways of
-writing the same flow direction. The sphere-cone example changes the actual
-direction to show how surface loads respond.
