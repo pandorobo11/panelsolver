@@ -6,16 +6,18 @@ rely only on these, your inputs, scripts, and result readers keep working.
 ## What is supported
 
 - The commands `panelsolver fmf` and `panelsolver hypersonic`, including their
-  `sectional-loads` subcommands.
+  `sectional-loads` and `sectional-cp` subcommands.
 - The GUI commands `panelsolver-gui fmf` and `panelsolver-gui hypersonic`, used
   in the normal way through their windows and menus.
 - The seven package-root imports and the `panelsolver.postprocess` sectional
-  load functions described in the [Python API reference](../reference/python-api.md).
+  load and sectional Cp functions described in the
+  [Python API reference](../reference/python-api.md).
 - CSV, XLSX, and XLSM case tables with the documented columns and defaults.
 - The documented meaning of the [Summary CSV](../reference/summary-csv.md) and
   [VTP](../reference/vtp.md) fields.
-- The [sectional definition CSV](../reference/sectional-definitions.md#sectional-load-definitions)
-  and [sectional load CSV](../reference/sectional-loads-csv.md).
+- The [sectional definition CSVs](../reference/sectional-definitions.md), the
+  [sectional load CSV](../reference/sectional-loads-csv.md), and the
+  [sectional Cp CSV](../reference/sectional-cp-csv.md).
 - The documented numerical values, signs, axes, normalizations, and model
   behavior.
 

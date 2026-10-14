@@ -91,17 +91,22 @@ from panelsolver import (
 )
 ```
 
-Sectional postprocessing has a separate supported import:
+Sectional postprocessing has separate supported imports:
 
 ```python
-from panelsolver.postprocess import SectionalLoads, compute_sectional_loads
+from panelsolver.postprocess import (
+    SectionalCp,
+    SectionalLoads,
+    compute_sectional_cp,
+    compute_sectional_loads,
+)
 ```
 
 Compatibility covers these imports, the callable signatures, and returned fields
 documented below. Nested result objects are accessed through the returned result;
 their defining modules and direct constructors remain implementation details.
-`SectionalLoads` is exposed for type annotations and result checks, not direct
-construction. Package-root exports are unchanged.
+`SectionalLoads` and `SectionalCp` are exposed for type annotations and result
+checks, not direct construction. Package-root exports are unchanged.
 See [Compatibility policy](../about/compatibility.md) for the full support boundary.
 
 ## Attitude resolution

@@ -56,6 +56,13 @@ and exits with a nonzero status. Add `--debug` to see the full traceback. If a
 result file cannot be written, the CLI also exits with a nonzero status after
 saving what it can; see [Batch runs and recovery](batch-runs.md).
 
+| Exit code | Meaning |
+|---|---|
+| `0` | All cases were calculated and every result file was written. |
+| `1` | The case table was invalid, a case failed to calculate, or a result file could not be written. |
+| `2` | The command-line arguments are invalid, for example `--workers 0`. |
+| `130` | The run was cancelled with Ctrl-C. |
+
 ## Output destinations
 
 Before running anything, the CLI checks that the Summary CSV will not overwrite

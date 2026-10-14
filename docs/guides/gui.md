@@ -42,6 +42,16 @@ Each run writes the Summary CSV and, unless `save_vtp_on=0`, one VTP per case at
 `<out_dir>/<case_id>.vtp`. A relative `out_dir` is relative to the case table's
 folder; see [Preparing cases](preparing-cases.md#paths-vtp-destinations-and-components).
 
+### If the case table has errors
+
+When a case table has problems, the **Input Validation Errors** window lists
+every problem found, with its **Row**, **Case ID**, **Field**, and
+**Message**. No cases are loaded. Choose **Copy** to copy the list as
+tab-separated text, which you can paste into a spreadsheet or a problem report.
+Fix the table, then open it again. The
+[common validation](preparing-cases.md#common-validation) list describes the
+checks.
+
 ### Edit and reload
 
 After you edit the case table in another program, choose **Reload** (next to
@@ -80,7 +90,8 @@ Choose **File > New from Example** and pick an example. Select a folder; the GUI
 copies the case table and its geometry there and opens the copied table.
 Existing files that you have changed are not overwritten. Edit and run this
 copy freely. The [Quickstart](../getting-started/quickstart.md) walks through
-the **Basic** example.
+the **Basic** example, and [Examples](../getting-started/examples.md) describes
+the others.
 
 ## Work with the case table
 
@@ -109,7 +120,7 @@ and the warning and error counts.
 
 | Status | What it means | What to do |
 |---|---|---|
-| Input validation error | The case table has a problem. The message names the row, case ID, and column. | Fix the table, then reload or reopen it. |
+| Input validation error | The case table has a problem. The **Input Validation Errors** window names the row, case ID, and column. | Fix the table, then reopen it. |
 | **Failed** | A case could not be calculated, for example because its geometry could not be loaded. | Read Diagnostics for the cause. |
 | **Completed with output errors** | All cases were calculated, but a VTP or the Summary CSV could not be written. | Read the error summary and Diagnostics. |
 

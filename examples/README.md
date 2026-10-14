@@ -52,7 +52,7 @@ remain directly under `outputs/`.
 | Flow Modes (FMF) | Plate | Mode A and atmosphere-resolved Mode B give matching coefficients |
 | Pressure Models (Hypersonic) | Plate and cube | Windward equations and leeward Prandtl–Meyer expansion |
 | Shielding | Double plate | Ray shielding off and on |
-| Sectional Loads, Sectional Cp | Plate | GUI-only: sectional definitions applied to the Basic (Hypersonic) or Flow Modes (FMF) table; see [GUI operation](../docs/guides/gui.md) |
+| Sectional Loads, Sectional Cp | Plate | Sectional definitions applied to the Basic (Hypersonic) or Flow Modes (FMF) table, from the GUI or the CLI; see [Sectional loads and Cp](../docs/guides/sectional.md) |
 
 Both domains offer **File > New from Example > Sphere-cone: Angle Effects**.
 It copies the selected domain's three-case table and the shared STL to your

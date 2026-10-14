@@ -38,6 +38,8 @@ quantities, and result files. Only the flow-condition columns differ.
 [Installation](getting-started/installation.md) and the
 [Quickstart](getting-started/quickstart.md) take you from installing Panel Solver
 to running a supplied example and reading its first results.
+[Examples](getting-started/examples.md) lists the other supplied examples and
+what each one shows.
 
 ### Guides
 
@@ -66,6 +68,7 @@ Look up exact columns, fields, and options:
   [sectional Cp CSV](reference/sectional-cp-csv.md).
 - [Python API](reference/python-api.md) and
   [environment variables](reference/environment-variables.md).
+- [Glossary](reference/glossary.md) of the terms used in this documentation.
 
 ### Methods
 

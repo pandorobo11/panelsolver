@@ -113,10 +113,10 @@ To use your own geometry and conditions, continue with
 
 ## Try more examples
 
-`examples/README.md` (in the checkout and in the examples archive) describes
-every example and what it shows: the two FMF input modes, the Hypersonic
-pressure methods, shielding, multi-part geometry, attitude inputs, and
-sphere-cone angle effects. For runs with many cases, see
+[Examples](examples.md) lists every supplied example and what it shows: the
+two FMF input modes, the Hypersonic pressure methods, shielding, multi-part
+geometry, attitude inputs, sectional loads and Cp, and sphere-cone angle
+effects. For runs with many cases, see
 [Batch runs and recovery](../guides/batch-runs.md).
 
 ### Sphere-cone: angle effects
