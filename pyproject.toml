@@ -20,7 +20,7 @@ dependencies = [
   # QTBUG-149612: newer Cocoa table accessibility can delete live interfaces.
   "pyside6==6.9.0; sys_platform == 'darwin'",
   "pyside6>=6.9.3,<7; sys_platform != 'darwin'",
-  "pyvista",
+  "pyvista>=0.47",
   "pyvistaqt>=0.12",
   "rich>=15,<16",
   "rich-argparse>=1.8,<2",

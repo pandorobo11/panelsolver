@@ -103,6 +103,11 @@ class ScalarField:
     dtype: np.dtype
     categorical: bool
 
+    @property
+    def interpolable(self) -> bool:
+        """Whether this field may be averaged for display (IDs stay discrete)."""
+        return not self.categorical and self.name != "stl_index"
+
     def __post_init__(self) -> None:
         if not isinstance(self.name, str) or not self.name.strip():
             raise ValueError("ScalarField.name must be a non-empty string")

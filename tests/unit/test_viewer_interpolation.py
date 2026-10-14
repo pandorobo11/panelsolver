@@ -39,17 +39,10 @@ def test_shared_vertices_average_without_modifying_source(separate_points):
         for name in original:
             np.testing.assert_array_equal(original[name], current[name])
     assert set(surface.point_data) == {"cp"}
-    assert set(surface.cell_data) == {"cp"}
+    assert not surface.cell_data
     for point, value in zip(surface.points, surface.point_data["cp"], strict=True):
         expected = {(0, 0, 0): 0.0, (1, 0, 0): 0.5, (0, 1, 0): 0.5, (1, 1, 0): 1.0}
         assert value == expected[tuple(point)]
-    # Filters may renumber vertices, but each panel's geometry/value must survive.
-    for value in (0.0, 1.0):
-        ids = np.flatnonzero(surface.cell_data["cp"] == value)
-        original_ids = np.flatnonzero(mesh.cell_data["cp"] == value)
-        np.testing.assert_array_equal(
-            surface.cell_centers().points[ids], mesh.cell_centers().points[original_ids]
-        )
 
 
 @pytest.mark.parametrize("boundary", ["stl_index", "shielded"])
@@ -58,8 +51,7 @@ def test_component_and_shield_boundaries_do_not_average(boundary):
     mesh.cell_data[boundary] = [0, 1]
     surfaces = interpolated_surfaces(mesh, "cp")
     assert len(surfaces) == 2
-    for surface, masked in surfaces:
-        value = surface.cell_data["cp"][0]
+    for value, (surface, masked) in enumerate(surfaces):
         np.testing.assert_array_equal(surface.point_data["cp"], np.full(3, value))
         assert masked == (boundary == "shielded" and value == 1)
 
@@ -92,3 +84,27 @@ def test_invalid_boundary_fails_instead_of_blending_components():
     mesh.cell_data["stl_index"] = [0, np.nan]
     with pytest.raises(ValueError, match="boundary"):
         interpolated_surfaces(mesh, "cp")
+
+
+def test_opposite_winding_coplanar_faces_average_and_preserve_source():
+    mesh = two_triangles()
+    mesh.faces = [3, 0, 1, 2, 3, 1, 2, 3]
+    before = mesh.faces.copy()
+    ((surface, _),) = interpolated_surfaces(mesh, "cp")
+    assert surface.n_points == 4
+    assert 0.5 in surface.point_data["cp"]
+    np.testing.assert_array_equal(mesh.faces, before)
+
+
+def test_geometry_reuse_keeps_scalar_arrays_independent():
+    from panelsolver.app.viewer_interpolation import prepare_interpolation_geometry
+
+    mesh = two_triangles()
+    mesh.cell_data["temperature"] = [10.0, 20.0]
+    geometry = prepare_interpolation_geometry(mesh)
+    ((first, _),) = interpolated_surfaces(mesh, "cp", geometry)
+    ((second, _),) = interpolated_surfaces(mesh, "temperature", geometry)
+    assert 0.5 in first.point_data["cp"]
+    assert 15.0 in second.point_data["temperature"]
+    assert not first.cell_data and not second.cell_data
+    assert not geometry[0].surface.cell_data

@@ -216,7 +216,14 @@ smooth surface may blur. Switch it off to inspect original panel values.
 control is disabled for these fields and resumes its previous choice when a
 continuous scalar is selected. The choice applies to subsequent loaded results
 and image exports in the current window. If interpolation fails, the Viewer
-switches it off, keeps panel values visible, and logs the reason in Diagnostics.
+keeps the requested setting, uses panel values for that display only, labels the
+colorbar with the failure, and logs the reason in Diagnostics. Subsequent valid
+results resume interpolation. With Smooth colors off, imported VTPs retain
+PyVista’s existing preference for point data when a name exists in both
+associations. Display topology is cached per loaded result; scalar changes only
+repeat the cell-to-point averaging. Winding consistency is repaired only in the
+display copy before sharp-edge splitting; non-manifold junctions may remain
+separated. PyVista 0.47 or newer is required for the surface extraction API.
 
 ### Save images
 
