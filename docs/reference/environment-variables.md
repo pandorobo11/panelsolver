@@ -18,4 +18,4 @@ The stable package-root Python API does not expose these tuning arguments.
 
 For the geometric method and backend choices, see [Ray shielding](../methods/ray-shielding.md).
 For worker counts, checkpoints, and result ordering, see
-[Batch execution and recovery](../running/batch-execution-and-recovery.md).
+[Batch execution and recovery](../guides/batch-runs.md).

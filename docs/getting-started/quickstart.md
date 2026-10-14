@@ -76,8 +76,8 @@ is expected. Hypersonic `cp` is about 1.94 for this orientation.
 
 These are dimensionless coefficients. Reference quantities and signs are
 defined in [Load and coefficient conventions](../methods/load-and-coefficient-conventions.md).
-Use the [Summary CSV reference](../results/summary-csv.md) and
-[VTP reference](../results/vtp.md) when you need every field's meaning.
+Use the [Summary CSV reference](../reference/summary-csv.md) and
+[VTP reference](../reference/vtp.md) when you need every field's meaning.
 
 ## Change the attitude and rerun
 
@@ -92,7 +92,7 @@ Compare `outputs/alpha20_result.csv` with `outputs/basic_result.csv` and inspect
 Hypersonic case `cp` decreases to about 1.77 as the flow becomes less normal to
 the plate. The distinct case ID keeps the original VTP available for comparison.
 
-Next, follow [Case files](../inputs/case-files.md#adapt-an-example-to-your-own-case)
+Next, follow [Case files](../guides/preparing-cases.md#adapt-an-example-to-your-own-case)
 to replace the plate with your STL, flow conditions, and reference quantities.
 
 ## Try the feature examples next
@@ -102,7 +102,7 @@ commands, main inputs, and expected relationships for each feature example:
 FMF flow modes, Hypersonic pressure methods, shielding, components, attitude
 representations, and sphere-cone angle effects. Use those examples for the
 feature you need. For larger runs, see
-[Batch execution and recovery](../running/batch-execution-and-recovery.md).
+[Batch execution and recovery](../guides/batch-runs.md).
 
 ### Curved surfaces: sphere-cone angle effects
 

@@ -13,7 +13,7 @@ this boundary after A1 resolution through `postprocess.compute_sectional_loads`.
 Its public `SectionalLoads` subtype adds the original physical case signature,
 reusing these nested immutable objects without duplicate coefficient state.
 The public returned fields are specified in the
-[Python API reference](../../docs/running/python-api.md#sectional-aerodynamic-load-distributions);
+[Python API reference](../../docs/reference/python-api.md#sectional-aerodynamic-load-distributions);
 core constructors remain internal. The integrator calls
 `compute_sectional_fragment_geometry(mesh, spec)` once, consuming A2's exact
 [`SectionalFragmentGeometry` interface](sectional-geometry.md#geometry-handoff):

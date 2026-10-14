@@ -10,7 +10,7 @@ Choose the flow domain below, follow
 [Installation](getting-started/installation.md), then use the
 [Quickstart](getting-started/quickstart.md) to run a supplied plate example,
 read its results, and change its attitude. When you are ready to use your own
-geometry, continue with [Case files](inputs/case-files.md).
+geometry, continue with [Case files](guides/preparing-cases.md).
 
 ## Choosing a solver
 
@@ -26,43 +26,54 @@ geometry, continue with [Case files](inputs/case-files.md).
 Choose a model whose assumptions match your flow regime and geometry. Each
 solver page explains its equations and applicability.
 
-## Choose a path by task
+## How this documentation is organized
 
-### Understand the method
+### Getting started
 
-Use **Methods and conventions** for the definitions that govern both domains:
-[coordinate and attitude](methods/coordinate-and-attitude-conventions.md),
-[panel loads and coefficients](methods/load-and-coefficient-conventions.md),
-and [ray shielding](methods/ray-shielding.md). Then read the
-[FMF / Sentman model](methods/fmf.md) or
-[Hypersonic pressure methods](methods/hypersonic.md) for domain-specific
-equations, assumptions, and limits.
+[Installation](getting-started/installation.md) and the
+[Quickstart](getting-started/quickstart.md) take you from installing Panel Solver
+to running a supplied example and reading its first results.
 
-### Prepare inputs
+### Guides
 
-Start with [Case tables and geometry](inputs/case-files.md) for file,
-path, component, attitude-input, and common validation rules. Continue with the
-[FMF input reference](inputs/fmf-input.md) or
-[Hypersonic input reference](inputs/hypersonic-input.md) for the selected
-domain's accepted columns, defaults, and validation.
+Task-based instructions for everyday use:
 
-### Run calculations
+- [Preparing cases](guides/preparing-cases.md): set up a case table and STL
+  geometry for your own vehicle.
+- [Using the GUI](guides/gui.md) and
+  [viewing results in the GUI](guides/gui-viewer.md).
+- [Using the CLI](guides/cli.md) for scripted or batch runs.
+- [Sectional loads and Cp](guides/sectional.md): load and pressure
+  distributions along an axis.
+- [Batch runs and recovery](guides/batch-runs.md): workers, checkpoints,
+  cancellation, and what remains after a failure.
+- [Troubleshooting](guides/troubleshooting.md) for common problems.
 
-Choose the [GUI](running/gui.md), [CLI](running/cli.md), or stable
-[Python API](running/python-api.md) workflow. For multiple cases, workers,
-checkpoints, cancellation, or partial failures, use
-[Batch execution and recovery](running/batch-execution-and-recovery.md).
+### Reference
 
-### Interpret results
+Look up exact columns, fields, and options:
 
-Use the [Summary CSV reference](results/summary-csv.md) for integrated total
-and component rows, and the [VTP reference](results/vtp.md) for mesh,
-per-panel, and provenance data.
+- Case tables: [FMF](reference/fmf-case-table.md),
+  [Hypersonic](reference/hypersonic-case-table.md), and
+  [sectional definitions](reference/sectional-definitions.md).
+- Results: [Summary CSV](reference/summary-csv.md), [VTP](reference/vtp.md),
+  [sectional load CSV](reference/sectional-loads-csv.md), and
+  [sectional Cp CSV](reference/sectional-cp-csv.md).
+- [Python API](reference/python-api.md) and
+  [environment variables](reference/environment-variables.md).
 
-### Diagnose a problem or check support
+### Methods
 
-Start with [Troubleshooting](running/troubleshooting.md) for operational
-problems. Use **Product reference** for
-[environment variables](product-reference/environment-variables.md) and the
-[compatibility and versioning policy](product-reference/compatibility.md), including
-the supported commands, files, artifacts, and Python surface.
+The definitions and equations behind the results:
+[coordinate and attitude conventions](methods/coordinate-and-attitude-conventions.md),
+[load and coefficient conventions](methods/load-and-coefficient-conventions.md),
+the [FMF / Sentman model](methods/fmf.md), the
+[Hypersonic pressure methods](methods/hypersonic.md), and
+[ray shielding](methods/ray-shielding.md).
+
+### About
+
+The [compatibility and versioning policy](about/compatibility.md) lists what is
+supported between releases. Data sources and licenses are in
+[US1976 data provenance](about/us1976-data-provenance.md) and
+[License and third-party notices](about/license-and-third-party-notices.md).

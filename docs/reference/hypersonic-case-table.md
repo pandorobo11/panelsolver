@@ -1,11 +1,11 @@
-# FMF input reference
+# Hypersonic input reference
 
-This page defines the FMF case-table schema. Input columns may be in any
+This page defines the Hypersonic case-table schema. Input columns may be in any
 order. The standard input columns are written to Summary CSV in the order shown
 below, followed by extra input columns in their original relative order.
-[Case files](case-files.md) defines accepted formats, path
-resolution, and [common validation](case-files.md#common-validation).
-See [Columns and defaults](case-files.md#columns-and-defaults) for
+[Case files](../guides/preparing-cases.md) defines accepted formats, path
+resolution, and [common validation](../guides/preparing-cases.md#common-validation).
+See [Columns and defaults](../guides/preparing-cases.md#columns-and-defaults) for
 omitted-column and empty-cell behavior.
 
 | Column | Required | Default | Unit / values | Meaning |
@@ -13,11 +13,10 @@ omitted-column and empty-cell behavior.
 | `case_id` | yes | — | portable text | Unique case ID and VTP filename stem |
 | `stl_path` | yes | — | path; `;` separates components | Ordered STL sources |
 | `stl_scale_m_per_unit` | yes | — | m / STL unit, > 0 | Geometry scale |
-| `S` | Mode A | blank | dimensionless, > 0 | Molecular speed ratio, `V_inf / sqrt(2 R Ti)`; `R` is the incident gas's specific gas constant |
-| `Ti_K` | Mode A | blank | K, > 0 | Free-stream incident translational (static) temperature; not total/stagnation temperature |
-| `Mach` | Mode B | blank | dimensionless, > 0 | Mach used to derive `S` |
-| `Altitude_km` | Mode B | blank | km, 0–1000 inclusive | Geometric altitude for the bundled-atmosphere lookup |
-| `Tw_K` | yes | — | K, > 0 | Wall temperature, used as the diffusely reflected molecular temperature |
+| `Mach` | yes | — | dimensionless, > 0 | Freestream Mach number |
+| `gamma` | yes | — | dimensionless, > 1 | Specific-heat ratio |
+| `windward_eq` | no | `newtonian` | see below | Windward pressure equation(s) |
+| `leeward_eq` | no | `shield` | see below | Leeward pressure equation(s) |
 | `alpha_deg` | yes | — | degrees | First attitude value; interpretation depends on `attitude_input` |
 | `beta_or_bank_deg` | yes | — | degrees | Second attitude value; interpretation depends on `attitude_input` |
 | `attitude_input` | no | `beta_sin` | `beta_sin`, `beta_tan`, `bank` | Attitude representation used to interpret the two values |
@@ -30,16 +29,18 @@ omitted-column and empty-cell behavior.
 | `Lref_Cn_m` | yes | — | m, > 0 | Yaw-moment reference length |
 | `shielding_on` | no | `0` | `0` or `1` | Enable the [ray-occlusion shielding method](../methods/ray-shielding.md) |
 | `ray_backend` | no | `auto` | `auto`, `rtree`, `embree` | [Ray-shielding backend](../methods/ray-shielding.md#backend-behavior) |
-| `out_dir` | no | `outputs` | path | Per-case VTP directory; resolution and path rules are in [Case files](case-files.md#paths-vtp-destinations-and-components) |
+| `out_dir` | no | `outputs` | path | Per-case VTP directory; resolution and path rules are in [Case files](../guides/preparing-cases.md#paths-vtp-destinations-and-components) |
 | `save_vtp_on` | no | `1` | `0` or `1` | `1` writes the case VTP; `0` skips it |
 
-Mode A requires both `S` and `Ti_K`; Mode B requires both `Mach` and
-`Altitude_km`. Specify exactly one complete pair.
+Windward values are `newtonian`, `modified_newtonian`, `tangent_wedge`, and
+`tangent_cone`. Leeward values are `shield` and `prandtl_meyer`. One value
+applies to all STL components; otherwise the number of semicolon-separated
+entries must equal the STL count. Modified Newtonian, tangent wedge, tangent
+cone, and Prandtl–Meyer require `Mach > 1`.
 
-The [FMF solver page](../methods/fmf.md#flow-inputs) explains the Mode B
-atmosphere conversion and the wall-temperature assumption.
-
-See [Case files](case-files.md#attitude-modes) for attitude mode
-selection and accepted ranges, and
+See [Case files](../guides/preparing-cases.md#attitude-modes) for mode selection and
+accepted ranges, and
 [Coordinate and attitude conventions](../methods/coordinate-and-attitude-conventions.md)
-for axes, signs, and geometric definitions.
+for axes, signs, and geometric definitions. The Hypersonic
+[pressure-model equations](../methods/hypersonic.md#pressure-model-equations)
+explain the method choices and physical applicability.

@@ -5,7 +5,7 @@ calculation. It reads the requested STL files and returns a `SolveResult` in
 memory.
 
 Use this API to work directly with coefficients and per-panel arrays.
-The [CLI](cli.md) and [GUI](gui.md) provide case-table
+The [CLI](../guides/cli.md) and [GUI](../guides/gui.md) provide case-table
 workflows for writing result files.
 
 ## Minimal examples
@@ -100,7 +100,7 @@ documented below. Nested result objects are accessed through the returned result
 their defining modules and direct constructors remain implementation details.
 `SectionalLoads` is exposed for type annotations and result checks, not direct
 construction. Package-root exports are unchanged.
-See [Compatibility policy](../product-reference/compatibility.md) for the full support boundary.
+See [Compatibility policy](../about/compatibility.md) for the full support boundary.
 
 ## Attitude resolution
 
@@ -252,7 +252,7 @@ are invalid. `modified_newtonian`, `tangent_wedge`, `tangent_cone`, and
 `prandtl_meyer` require `mach > 1`. The equations and physical applicability
 limits are in [Hypersonic Panel Methods](../methods/hypersonic.md); the
 case-table names and rules are in the
-[Hypersonic input reference](../inputs/hypersonic-input.md).
+[Hypersonic input reference](hypersonic-case-table.md).
 
 As with `FMFCase`, `stl_paths` corresponds to ordered `stl_path`, while
 `moment_reference_stl_m` combines `ref_x_m`, `ref_y_m`, and `ref_z_m`.
@@ -390,8 +390,8 @@ are in the [FMF](../methods/fmf.md) and
 `theta_deg` definition is in
 [Load and coefficient conventions](../methods/load-and-coefficient-conventions.md#common-panel-angle).
 The corresponding VTP arrays are documented under
-[common cell data](../results/vtp.md#common-cell-data) and
-[model-specific cell data](../results/vtp.md#model-specific-cell-data).
+[common cell data](vtp.md#common-cell-data) and
+[model-specific cell data](vtp.md#model-specific-cell-data).
 
 FMF metadata contains `mode` (always `A` for this API), `S`, `Ti_K`, and
 `Tw_K`. Hypersonic metadata contains `Mach`, `gamma`, `windward_eq`, and
@@ -572,7 +572,7 @@ that exists only in output files.
 
 The API does not return output paths, timestamps, solver-version provenance,
 VTP points/connectivity, or the original case-table row. See the
-[Summary CSV](../results/summary-csv.md) and [VTP](../results/vtp.md)
+[Summary CSV](summary-csv.md) and [VTP](vtp.md)
 references for those fields.
 
 ## Validation and errors
@@ -594,8 +594,8 @@ private exception subclasses, and exact messages are outside the stable API.
 
 The solve functions read every path in `stl_paths` and return their results in
 memory. They create no output directories or result files (Summary CSV, VTP,
-PNG, or checkpoints). Use the [CLI](cli.md) or
-[GUI](gui.md) to write calculation outputs.
+PNG, or checkpoints). Use the [CLI](../guides/cli.md) or
+[GUI](../guides/gui.md) to write calculation outputs.
 
 ## Sectional Cp sections
 
@@ -629,5 +629,5 @@ count and source face indices of segments omitted because their endpoints round
 to the same float64 coordinates. Hypersonic
 values are `cp`; FMF values are `normal_traction_coeff`. Check plane statuses
 before using results. Invalid mesh-dependent definitions raise validation errors.
-See [input rules](../inputs/sectional-cp.md) and
-[intersection semantics](../results/sectional-cp-csv.md).
+See [input rules](sectional-definitions.md#sectional-cp-definitions) and
+[intersection semantics](sectional-cp-csv.md).

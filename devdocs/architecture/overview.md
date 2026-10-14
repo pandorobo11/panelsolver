@@ -56,7 +56,7 @@ and [Load and coefficient conventions](../../docs/methods/load-and-coefficient-c
 The package root provides a small stable in-memory Python API that adapts domain
 cases into the shared numerical pipeline without serializing artifacts. The
 exact supported exports and their user-facing contract are defined in the
-[Python API reference](../../docs/running/python-api.md).
+[Python API reference](../../docs/reference/python-api.md).
 
 `panelsolver.core`, `panelsolver.models`, `panelsolver.app`, and
 `panelsolver.domains` are lower-level composition modules. They expose typed

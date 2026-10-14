@@ -39,7 +39,7 @@ Panel Solver when automatic loading is required; they are unsupported.
 
 ## A canceled run does not stop immediately
 
-See [Cancellation and calculation failures](batch-execution-and-recovery.md#cancellation-and-calculation-failures)
+See [Cancellation and calculation failures](batch-runs.md#cancellation-and-calculation-failures)
 for the cooperative boundary and how to recover completed artifacts.
 
 ## macOS GUI crashes during accessibility inspection
@@ -55,11 +55,11 @@ This is a known limitation of v0.1.0. Keep the documented dependency version:
 Qt 6.9.1 fixes this defect but fails a separate selected-cell accessibility
 regression. A replacement will be evaluated when both defects are addressed.
 After a crash, restart the GUI and inspect saved outputs using the
-[recovery guidance](batch-execution-and-recovery.md). Include the Qt version
+[recovery guidance](batch-runs.md). Include the Qt version
 and any active accessibility or automation tools when reporting a crash.
 
 ## A Python import fails
 
 The installed distribution and Python package are both `panelsolver`. Use the
-imports listed in the [Python API reference](python-api.md#supported-imports-and-scope).
+imports listed in the [Python API reference](../reference/python-api.md#supported-imports-and-scope).
 Code using predecessor-product package names must migrate to these imports.

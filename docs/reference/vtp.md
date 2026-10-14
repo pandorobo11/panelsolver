@@ -1,7 +1,7 @@
 # VTP reference
 
 A VTP is the mesh and surface-distribution result for one case. Open it in the
-[Panel Solver GUI](../running/gui.md#view-and-export), ParaView, or another
+[Panel Solver GUI](../guides/gui-viewer.md), ParaView, or another
 VTK-capable tool to see where the surface load acts. The GUI normally loads a
 selected case's matching result automatically; **Open VTP...** also allows
 manual inspection.
@@ -16,9 +16,9 @@ traction components. These surface scalars describe individual panels; use the
 Each `.vtp` is VTK XML PolyData containing the SI-scaled mesh, one result value
 per triangle for each cell array, and case-level provenance. The tables below
 define every supported field. Per-case paths are in
-[Case files](../inputs/case-files.md#paths-vtp-destinations-and-components),
+[Case files](../guides/preparing-cases.md#paths-vtp-destinations-and-components),
 and write failures are covered by
-[Batch execution and recovery](../running/batch-execution-and-recovery.md).
+[Batch execution and recovery](../guides/batch-runs.md).
 
 ## Guaranteed VTP contents
 

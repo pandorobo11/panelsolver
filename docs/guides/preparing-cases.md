@@ -3,8 +3,8 @@
 Both domains accept CSV, XLSX, and XLSM. Excel input uses the first worksheet.
 Convert Excel 97–2003 BIFF `.xls` files to `.xlsx` or CSV before opening them.
 Column names and defaults are defined in the
-[FMF input reference](fmf-input.md) and
-[Hypersonic input reference](hypersonic-input.md).
+[FMF input reference](../reference/fmf-case-table.md) and
+[Hypersonic input reference](../reference/hypersonic-case-table.md).
 
 CSV case tables use UTF-8, with or without a byte-order mark (BOM).
 
@@ -81,8 +81,8 @@ total within numerical tolerance. The exact equations and signs are in
 ## Columns and defaults
 
 Input columns may appear in any order: headers identify the fields. Use the
-exact names in the [FMF](fmf-input.md) or
-[Hypersonic](hypersonic-input.md) input reference. The order shown
+exact names in the [FMF](../reference/fmf-case-table.md) or
+[Hypersonic](../reference/hypersonic-case-table.md) input reference. The order shown
 there is the order of the standard input columns in the **Summary CSV**, not an
 input ordering requirement.
 
@@ -101,8 +101,8 @@ directory, not the process working directory. Absolute paths are used as
 specified, and `~` is expanded. When VTP saving is enabled, the per-case path is
 `<resolved_out_dir>/<case_id>.vtp`. The domain input references define the
 `out_dir` and `save_vtp_on` defaults and accepted values; the
-[VTP reference](../results/vtp.md) defines the saved content, and
-[Batch execution and recovery](../running/batch-execution-and-recovery.md) explains write
+[VTP reference](../reference/vtp.md) defines the saved content, and
+[Batch execution and recovery](batch-runs.md) explains write
 failures.
 
 Use semicolons to list multiple STL components in input order:

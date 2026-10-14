@@ -12,7 +12,7 @@ are dimensionless coefficients. `CD` and `CL` use the resolved-alpha rotation
 defined in [Load and coefficient conventions](../methods/load-and-coefficient-conventions.md#stability-axis-force-coefficients).
 
 The exhaustive columns below follow the case inputs from the
-[FMF](../inputs/fmf-input.md) or [Hypersonic](../inputs/hypersonic-input.md)
+[FMF](fmf-case-table.md) or [Hypersonic](hypersonic-case-table.md)
 input reference. For surface distributions, use the [VTP result](vtp.md).
 
 ## File format and column order
@@ -23,7 +23,7 @@ guarantees the parsed columns and values described here.
 Columns are written in this order:
 
 1. schema-defined input columns for the selected domain;
-2. extra input columns allowed by [Case files](../inputs/case-files.md#common-validation), in their source-table order;
+2. extra input columns allowed by [Case files](../guides/preparing-cases.md#common-validation), in their source-table order;
 3. the domain result columns below.
 
 ### FMF result columns
@@ -115,7 +115,7 @@ The exact axes and angle transformations are defined in
 
 Use `vtp_path` to identify files written by the current run. For handling older
 retained files, checkpoints, and write failures, see
-[Batch execution and recovery](../running/batch-execution-and-recovery.md).
+[Batch execution and recovery](../guides/batch-runs.md).
 
 ## Force and moment coefficient fields
 

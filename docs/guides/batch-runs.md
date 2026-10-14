@@ -5,9 +5,9 @@ and recovery from calculation or output-file failures.
 These checkpoint rules describe ordinary solves. Sectional batches use the same
 case scheduler but retain compact results for a final or repeated atomic export;
 their distinct partial-result rules are in the
-[sectional result reference](../results/sectional-loads-csv.md#failures-and-repeated-export).
-Use the [Summary CSV reference](../results/summary-csv.md) and
-[VTP reference](../results/vtp.md) to interpret saved result fields.
+[sectional result reference](../reference/sectional-loads-csv.md#failures-and-repeated-export).
+Use the [Summary CSV reference](../reference/summary-csv.md) and
+[VTP reference](../reference/vtp.md) to interpret saved result fields.
 
 ## Workers and visible ordering
 
@@ -36,7 +36,7 @@ a calculation failure does not trigger an additional save.
 
 After a checkpoint is written, it is available at the selected Summary CSV
 destination and has the fields and rows described in the
-[Summary CSV reference](../results/summary-csv.md). It retains results from
+[Summary CSV reference](../reference/summary-csv.md). It retains results from
 completed cases when a later calculation fails or a run is canceled. A
 checkpoint can be opened directly as a CSV and stores results rather than
 resumable calculation state. Use CLI
@@ -66,7 +66,7 @@ failures.
 
 | Failure | What Panel Solver does | What remains usable |
 |---|---|---|
-| Per-case output-directory or VTP write failure | Keeps that case's calculated result and continues with later cases. | A later checkpoint or final Summary CSV that is written successfully includes the calculated case. The [Summary CSV reference](../results/summary-csv.md) defines when its `vtp_path` is blank. Other VTP files written successfully during this run remain available. |
+| Per-case output-directory or VTP write failure | Keeps that case's calculated result and continues with later cases. | A later checkpoint or final Summary CSV that is written successfully includes the calculated case. The [Summary CSV reference](../reference/summary-csv.md) defines when its `vtp_path` is blank. Other VTP files written successfully during this run remain available. |
 | Checkpoint Summary CSV write failure | Records the error and continues calculations. A failed append is rolled back to the previous file length and synchronized before retrying at a later checkpoint. If rollback fails, further appends are disabled; the final atomic write is still attempted. | After a successful rollback, the previous checkpoint remains usable. If rollback fails, the CSV tail may be incomplete. An initial atomic checkpoint failure leaves a pre-existing CSV unchanged. VTP files written successfully remain. |
 | Final Summary CSV write failure | Leaves the calculations completed but reports that the final Summary CSV could not be saved. | The latest checkpoint written successfully or pre-existing Summary CSV, if any, is left in place, as are VTP files written successfully during this run. Treat the retained Summary CSV according to the run diagnostics; it may not represent the completed batch. |
 

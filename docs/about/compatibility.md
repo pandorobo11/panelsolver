@@ -8,12 +8,12 @@ Panel Solver supports:
 - normal launcher-driven GUI operation;
 - the seven package-root solve imports and the dedicated
   `panelsolver.postprocess` sectional-load surface described in the
-  [Python API reference](../running/python-api.md);
+  [Python API reference](../reference/python-api.md);
 - documented CSV, XLSX, and XLSM case files and their domain schemas/defaults;
-- documented [Summary CSV](../results/summary-csv.md) and
-  [VTP](../results/vtp.md) semantics;
-- separate [sectional definition CSV](../inputs/sectional-loads.md) and
-  [sectional result CSV](../results/sectional-loads-csv.md) semantics;
+- documented [Summary CSV](../reference/summary-csv.md) and
+  [VTP](../reference/vtp.md) semantics;
+- separate [sectional definition CSV](../reference/sectional-definitions.md#sectional-load-definitions) and
+  [sectional result CSV](../reference/sectional-loads-csv.md) semantics;
 - documented numerical values, signs, frames, normalizations, and
   model-specific behavior.
 
@@ -23,7 +23,7 @@ text and tracebacks, object identity, pickle globals, and cache internals—are
 outside this guarantee.
 
 Known limitations include the
-[macOS table-accessibility crash](../running/troubleshooting.md#macos-gui-crashes-during-accessibility-inspection).
+[macOS table-accessibility crash](../guides/troubleshooting.md#macos-gui-crashes-during-accessibility-inspection).
 
 ## Updating predecessor workflows
 

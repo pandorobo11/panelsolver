@@ -19,7 +19,7 @@ Both modes also require positive wall temperature `Tw_K`. The model assumes
 complete thermal accommodation, using the wall temperature as the diffusely
 reflected molecular temperature (`T_r = T_w`).
 
-The [FMF input reference](../inputs/fmf-input.md) lists columns, defaults,
+The [FMF input reference](../reference/fmf-case-table.md) lists columns, defaults,
 and validity requirements.
 
 ## Sentman local-load equation
@@ -176,7 +176,7 @@ between surfaces are outside this approximation.
 Mode B uses the same free-molecular model. Its bundled atmosphere table provides
 conditions within the tabulated altitude range. Table sources, rounding, and
 reproducibility are documented in
-[US1976 data provenance](../appendix/us1976-data-provenance.md).
+[US1976 data provenance](../about/us1976-data-provenance.md).
 
 ## Outputs and scope
 
@@ -184,8 +184,8 @@ FMF VTP includes the local `normal_traction_coeff`, `tangential_traction_coeff`,
 and `theta_deg` scalars. Summary CSV records the resolved `mode`, `out_S`, and
 `out_Ti_K`; `Tw_K` remains an input column.
 
-See the [VTP reference](../results/vtp.md#fmf) for array types and units, and the
-[Summary CSV reference](../results/summary-csv.md#fmf-resolved-state-fields) for
+See the [VTP reference](../reference/vtp.md#fmf) for array types and units, and the
+[Summary CSV reference](../reference/summary-csv.md#fmf-resolved-state-fields) for
 resolved-state columns. Interpret results within the
 [model assumptions](#assumptions-and-implementation-scope) above.
 
