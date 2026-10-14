@@ -122,7 +122,7 @@ CL/CD in the Summary CSV. Use a fixed camera and color range between cases.
 
 The domains represent different flow regimes; these are idealized panel-model
 examples, not physical validation data.
-Geometry, reference quantities and figure reproduction commands are documented
+Geometry, reference quantities and generation commands are documented
 in `examples/README.md` in the checkout and examples archive.
 
 Keep the Cube **Attitude Modes** example for comparing input representations of

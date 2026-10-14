@@ -236,19 +236,16 @@ or a physical validation comparison. The Hypersonic model does not resolve a
 shock layer, viscosity or wake; FMF includes both normal and tangential traction.
 The default mesh supports visualization and is not a discretization-error bound.
 
-In a source checkout, regenerate the supplied STL and both CSVs, run them, then
-plot their VTP cell values without interpolation:
+In a source checkout, regenerate the supplied STL and both CSVs, then run them:
 
 ```bash
 uv sync --locked --extra rayaccel --group docs
 uv run --no-sync python scripts/generate_sphere_cone_example.py
 uv run --no-sync panelsolver fmf -i examples/fmf/sphere_cone.csv
 uv run --no-sync panelsolver hypersonic -i examples/hypersonic/sphere_cone.csv
-uv run --no-sync python scripts/plot_sphere_cone_example.py
 ```
 
-The PNG/PDF comparison is written to `outputs/sphere_cone/` at the checkout root.
 Generated VTPs and summaries are excluded from distribution archives and the
-wheel. The generator and plotting script are source-checkout/sdist tools, not
-required to run the bundled examples. Generate a finer mesh in a separate tree
-with `--destination PATH --refinement 2`; plotting accepts `--examples-root PATH`.
+wheel. The geometry generator is a source-checkout/sdist tool, not required to
+run the bundled examples. Generate a finer mesh in a separate tree with
+`--destination PATH --refinement 2`.

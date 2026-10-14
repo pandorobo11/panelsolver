@@ -8,7 +8,7 @@ migration baselines and runtime artifact version semantics are recorded in ADR
 
 - Add a shared sphere-cone example to FMF and Hypersonic, available from
   New from Example and the CLI, with 0/15/30-degree angle-of-attack cases,
-  reproducible geometry/plots and domain-appropriate surface load fields.
+  reproducible geometry and domain-appropriate surface load fields.
 
 - Simplify sectional result CSV: retain only `delta_CA`, `delta_CY`, `delta_CN`,
   `delta_Cl`, `delta_Cm`, `delta_Cn`, `delta_CD`, and `delta_CL` as load columns.
