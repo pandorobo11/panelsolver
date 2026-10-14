@@ -9,6 +9,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import numpy as np
+import pyvista as pv
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -262,6 +263,322 @@ class ViewerPanelTests(unittest.TestCase):
         )
         self.assertEqual(0, plotter.mesh_calls[0][1]["scalar_bar_args"]["n_labels"])
         self.assertEqual(1, len(plotter.mesh_calls[0][1]["cmap"]))
+
+    def test_smooth_colors_toggle_preserves_data_camera_range_and_marks_exports(self):
+        for spec, scalar in (
+            (newt_solver_spec(), "cp"),
+            (fmf_solver_spec(), "normal_traction_coeff"),
+        ):
+            with self.subTest(scalar=scalar):
+                viewer, plotter = self.make_viewer(spec=spec)
+                self.assertFalse(viewer.chk_smooth_colors.isEnabled())
+                self.assertFalse(viewer.chk_smooth_colors.isChecked())
+                mesh = pv.Plane(i_resolution=1, j_resolution=1).triangulate()
+                mesh.cell_data[scalar] = [0.0, 1.0]
+                viewer.load_vtp("/tmp/smooth.vtp", mesh)
+                self.assertNotIn("preference", plotter.mesh_calls[0][1])
+                before = viewer._capture_camera_state()
+                viewer.chk_smooth_colors.setChecked(True)
+                displayed, options = plotter.mesh_calls[0]
+                self.assertEqual("point", options["preference"])
+                self.assertIn(0.5, displayed.point_data[scalar])
+                self.assertEqual((0.0, 1.0), options["clim"])
+                self.assertIn("(interpolated)", options["scalar_bar_args"]["title"])
+                self.assertEqual(before, viewer._capture_camera_state())
+                np.testing.assert_array_equal(mesh.cell_data[scalar], [0.0, 1.0])
+                self.assertNotIn(scalar, mesh.point_data)
+                viewer.chk_edges.setChecked(False)
+                self.assertIs(displayed, plotter.mesh_calls[0][0])
+                viewer.chk_smooth_colors.setChecked(False)
+                self.assertIs(mesh, plotter.mesh_calls[0][0])
+                self.assertNotIn(
+                    "interpolated", plotter.mesh_calls[0][1]["scalar_bar_args"]["title"]
+                )
+
+    def test_smooth_geometry_is_reused_across_scalars_and_reset_on_reload(self):
+        from panelsolver.app.viewer_interpolation import prepare_interpolation_geometry
+
+        viewer, plotter = self.make_viewer(spec=newt_solver_spec())
+        self.assertEqual(
+            "Load a result to use this control",
+            viewer.chk_smooth_colors.accessibleDescription(),
+        )
+        mesh = pv.Plane(i_resolution=1, j_resolution=1).triangulate()
+        mesh.cell_data["cp"] = [0.0, 1.0]
+        mesh.cell_data["temperature"] = [10.0, 20.0]
+        mesh.point_data["cp"] = np.full(mesh.n_points, 0.75)
+        viewer.load_vtp("/tmp/first.vtp", mesh)
+        self.assertNotIn("preference", plotter.mesh_calls[0][1])
+        with patch(
+            "panelsolver.app.viewer.prepare_interpolation_geometry",
+            wraps=prepare_interpolation_geometry,
+        ) as prepare:
+            viewer.chk_smooth_colors.setChecked(True)
+            for name in ("temperature", "cp", "temperature"):
+                viewer.cmb_scalar.setCurrentIndex(viewer.cmb_scalar.findData(name))
+            self.assertEqual(1, prepare.call_count)
+            viewer.load_vtp("/tmp/second.vtp", mesh)
+            self.assertEqual(2, prepare.call_count)
+
+    def test_smooth_switch_does_not_scan_fields_or_read_panel_shield_mask(self):
+        viewer, plotter = self.make_viewer(spec=newt_solver_spec())
+        mesh = pv.Plane(i_resolution=1, j_resolution=1).triangulate()
+        mesh.cell_data["cp"] = [0.0, 1.0]
+        mesh.cell_data["temperature"] = [10.0, 20.0]
+        viewer.load_vtp("/tmp/scalars.vtp", mesh)
+        with (
+            patch(
+                "panelsolver.app.viewer.discover_scalar_fields",
+                side_effect=AssertionError("rediscovery"),
+            ),
+            patch(
+                "panelsolver.app.viewer_data.discover_scalar_fields",
+                side_effect=AssertionError("rediscovery"),
+            ),
+            patch.object(
+                viewer, "_shield_mask", side_effect=AssertionError("unused mask")
+            ),
+        ):
+            viewer.chk_smooth_colors.setChecked(True)
+            viewer.cmb_scalar.setCurrentIndex(viewer.cmb_scalar.findData("temperature"))
+            self.assertIn(15.0, plotter.mesh_calls[0][0].point_data["temperature"])
+            self.assertNotIn("interpolate_before_map", plotter.mesh_calls[0][1])
+
+    def test_many_components_need_at_most_two_smooth_actors(self):
+        viewer, plotter = self.make_viewer(spec=newt_solver_spec())
+        parts = []
+        for component in range(50):
+            part = pv.Plane(i_resolution=1, j_resolution=1).triangulate()
+            part.cell_data["cp"] = [float(component), float(component + 1)]
+            part.cell_data["stl_index"] = [component, component]
+            part.cell_data["shielded"] = [0, 1]
+            parts.append(part)
+        mesh = parts[0].append_polydata(*parts[1:])
+        viewer.load_vtp("/tmp/components.vtp", mesh)
+        viewer.chk_smooth_colors.setChecked(True)
+        self.assertEqual(2, len(plotter.mesh_calls))
+        self.assertEqual(
+            [1.0, 0.3], [opts["opacity"] for _, opts in plotter.mesh_calls]
+        )
+        self.assertEqual([50, 50], [part.n_cells for part, _ in plotter.mesh_calls])
+        viewer.chk_shield_transparent.setChecked(False)
+        self.assertEqual(
+            [1.0, 1.0], [opts["opacity"] for _, opts in plotter.mesh_calls]
+        )
+
+    def test_invalid_boundaries_still_allow_panel_inspection(self):
+        for smooth in (False, True):
+            for name in ("shielded", "stl_index"):
+                for values in ([[0, 1], [1, 0]], [0], [0, np.nan], ["a", "b"]):
+                    with self.subTest(smooth=smooth, name=name, values=values):
+                        viewer, plotter = self.make_viewer(spec=newt_solver_spec())
+                        viewer.chk_smooth_colors.setChecked(smooth)
+                        self.assertTrue(
+                            viewer.load_vtp(
+                                "/tmp/invalid.vtp",
+                                FakePoly({"cp": [0.0, 1.0], name: values}),
+                            )
+                        )
+                        self.assertNotEqual(
+                            ArtifactViewStatus.INVALID_DATA,
+                            viewer.artifact_view_state.status,
+                        )
+                        self.assertTrue(plotter.mesh_calls)
+                        self.assertNotIn("preference", plotter.mesh_calls[0][1])
+                        self.assertEqual(
+                            "interpolation failed"
+                            in plotter.mesh_calls[0][1]["scalar_bar_args"]["title"],
+                            smooth,
+                        )
+
+    def test_boundary_validation_is_cached_and_disabled_parent_keeps_smooth(self):
+        from panelsolver.app.viewer_data import _scalar_array
+
+        viewer, plotter = self.make_viewer(spec=newt_solver_spec())
+        mesh = pv.Plane(i_resolution=1, j_resolution=1).triangulate()
+        mesh.cell_data.clear()
+        mesh.cell_data["cp"] = [0.0, 1.0]
+        mesh.cell_data["temperature"] = [10.0, 20.0]
+        mesh.cell_data["stl_index"] = [0, 0]
+        mesh.cell_data["shielded"] = [1, 2]
+        with patch(
+            "panelsolver.app.viewer_data._scalar_array", wraps=_scalar_array
+        ) as validate:
+            viewer.load_vtp("/tmp/boundaries.vtp", mesh)
+            self.assertEqual(4, validate.call_count)
+            mask = viewer._shield_mask()
+            viewer.chk_smooth_colors.setChecked(True)
+            viewer.setEnabled(False)
+            viewer.update_view()
+            self.assertFalse(viewer.chk_smooth_colors.isEnabled())
+            self.assertIn(
+                "interpolated", plotter.mesh_calls[0][1]["scalar_bar_args"]["title"]
+            )
+            self.assertIn(0.5, plotter.mesh_calls[0][0].point_data["cp"])
+            viewer.cmb_scalar.setCurrentIndex(viewer.cmb_scalar.findData("temperature"))
+            self.assertIn(15.0, plotter.mesh_calls[0][0].point_data["temperature"])
+            self.assertEqual(1, len(plotter.mesh_calls))
+            self.assertEqual(0.3, plotter.mesh_calls[0][1]["opacity"])
+            self.assertIs(mask, viewer._shield_mask())
+            self.assertEqual(4, validate.call_count)
+            viewer.load_vtp("/tmp/boundaries.vtp", mesh)
+            self.assertEqual(8, validate.call_count)
+        viewer.clear_view()
+        self.assertIsNone(viewer._boundaries)
+
+    def test_malformed_real_vtp_boundary_falls_back_once_and_keeps_loading(self):
+        viewer, plotter = self.make_viewer(spec=newt_solver_spec())
+        mesh = pv.Plane(i_resolution=1, j_resolution=1).triangulate()
+        mesh.cell_data["cp"] = [0.0, 1.0]
+        mesh.cell_data["shielded"] = [0.0, np.nan]
+        messages = []
+        viewer.log_message.connect(messages.append)
+        self.assertTrue(viewer.load_vtp("/tmp/nonfinite-shield.vtp", mesh))
+        self.assertEqual(
+            [1.0, 0.3], [opts["opacity"] for _, opts in plotter.mesh_calls]
+        )
+        viewer.chk_smooth_colors.setChecked(True)
+        viewer.setEnabled(False)
+        viewer.update_view()
+        self.assertIn(
+            "interpolation failed", plotter.mesh_calls[0][1]["scalar_bar_args"]["title"]
+        )
+        self.assertEqual(
+            1, sum("Invalid shielded boundary data" in message for message in messages)
+        )
+
+    def test_smooth_geometry_failure_is_remembered_until_reload(self):
+        viewer, plotter = self.make_viewer(spec=newt_solver_spec())
+        mesh = pv.PolyData(
+            np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 0, 0]], dtype=float),
+            [3, 0, 1, 2, 3, 0, 1, 3],
+        )
+        mesh.cell_data["cp"] = [0.0, 1.0]
+        mesh.cell_data["temperature"] = [10.0, 20.0]
+        messages = []
+        viewer.log_message.connect(messages.append)
+        viewer.load_vtp("/tmp/degenerate.vtp", mesh)
+        from panelsolver.app.viewer_interpolation import prepare_interpolation_geometry
+
+        with patch(
+            "panelsolver.app.viewer.prepare_interpolation_geometry",
+            wraps=prepare_interpolation_geometry,
+        ) as prepare:
+            viewer.chk_smooth_colors.setChecked(True)
+            viewer.cmb_cmap.setCurrentText("viridis")
+            viewer.chk_edges.setChecked(False)
+            viewer.edit_vmin.setText("0")
+            viewer.update_view()
+            viewer.cmb_background.setCurrentIndex(1)
+            viewer.cmb_scalar.setCurrentIndex(viewer.cmb_scalar.findData("temperature"))
+            viewer.chk_smooth_colors.setChecked(False)
+            viewer.chk_smooth_colors.setChecked(True)
+            self.assertEqual(1, prepare.call_count)
+            self.assertEqual(1, sum("[WARN]" in message for message in messages))
+            self.assertTrue(viewer.chk_smooth_colors.isChecked())
+            self.assertIs(mesh, plotter.mesh_calls[0][0])
+            self.assertEqual(2, plotter.mesh_calls[0][0].n_cells)
+            self.assertIn(
+                "interpolation failed",
+                plotter.mesh_calls[0][1]["scalar_bar_args"]["title"],
+            )
+            viewer.load_vtp("/tmp/degenerate.vtp", mesh)
+            self.assertEqual(2, prepare.call_count)
+        viewer.clear_view()
+        self.assertFalse(viewer._interpolation_geometry_failed)
+        valid = pv.Plane(i_resolution=1, j_resolution=1).triangulate()
+        valid.cell_data["cp"] = [0.0, 1.0]
+        viewer.load_vtp("/tmp/good.vtp", valid)
+        self.assertEqual("point", plotter.mesh_calls[0][1]["preference"])
+
+    def test_smooth_scalar_failure_does_not_disable_other_scalars(self):
+        from panelsolver.app.viewer_interpolation import interpolated_surfaces
+
+        viewer, plotter = self.make_viewer(spec=newt_solver_spec())
+        mesh = pv.Plane(i_resolution=1, j_resolution=1).triangulate()
+        mesh.cell_data["cp"] = [0.0, 1.0]
+        mesh.cell_data["temperature"] = [10.0, 20.0]
+        viewer.load_vtp("/tmp/scalars.vtp", mesh)
+        messages = []
+        viewer.log_message.connect(messages.append)
+
+        def fail_cp(poly, field, geometry):
+            if field.name == "cp":
+                raise ValueError("scalar interpolation failure")
+            return interpolated_surfaces(poly, field, geometry)
+
+        with patch(
+            "panelsolver.app.viewer.interpolated_surfaces", side_effect=fail_cp
+        ) as interpolate:
+            viewer.chk_smooth_colors.setChecked(True)
+            viewer.update_view()
+            viewer.cmb_scalar.setCurrentIndex(viewer.cmb_scalar.findData("temperature"))
+            self.assertEqual("point", plotter.mesh_calls[0][1]["preference"])
+            viewer.cmb_scalar.setCurrentIndex(viewer.cmb_scalar.findData("cp"))
+            self.assertEqual(2, interpolate.call_count)
+            self.assertEqual(1, sum("[WARN]" in message for message in messages))
+            self.assertTrue(viewer.chk_smooth_colors.isChecked())
+        viewer.load_vtp("/tmp/scalars.vtp", mesh)
+        self.assertEqual("point", plotter.mesh_calls[0][1]["preference"])
+
+    def test_smooth_colors_categorical_selection_reload_and_clear(self):
+        viewer, plotter = self.make_viewer(spec=newt_solver_spec())
+        mesh = pv.Plane(i_resolution=1, j_resolution=1).triangulate()
+        mesh.cell_data["cp"] = [0.0, 1.0]
+        mesh.cell_data["shielded"] = [0, 0]
+        mesh.cell_data["stl_index"] = [2, 2]
+        mesh.cell_data["flag"] = [False, True]
+        viewer.load_vtp("/tmp/first.vtp", mesh)
+        viewer.chk_smooth_colors.setChecked(True)
+        for name in ("shielded", "stl_index", "flag"):
+            viewer.cmb_scalar.setCurrentIndex(viewer.cmb_scalar.findData(name))
+            self.assertFalse(viewer.chk_smooth_colors.isEnabled())
+            self.assertNotIn("preference", plotter.mesh_calls[0][1])
+        viewer.cmb_scalar.setCurrentIndex(viewer.cmb_scalar.findData("cp"))
+        self.assertTrue(viewer.chk_smooth_colors.isEnabled())
+        self.assertEqual("point", plotter.mesh_calls[0][1]["preference"])
+        other = mesh.copy()
+        other.cell_data["cp"] = [3.0, 3.0]
+        viewer.load_vtp("/tmp/second.vtp", other)
+        np.testing.assert_array_equal(plotter.mesh_calls[0][0].point_data["cp"], 3.0)
+        self.assertIn(
+            "= 3 (interpolated)", plotter.mesh_calls[0][1]["scalar_bar_args"]["title"]
+        )
+        viewer.clear_view()
+        self.assertFalse(viewer.chk_smooth_colors.isEnabled())
+        self.assertIsNone(viewer._interpolated_cache)
+
+    def test_smooth_colors_preserves_shield_opacity_and_falls_back_on_error(self):
+        viewer, plotter = self.make_viewer(spec=newt_solver_spec())
+        mesh = pv.Plane(i_resolution=1, j_resolution=1).triangulate()
+        mesh.cell_data["cp"] = [1.0, 0.0]
+        mesh.cell_data["shielded"] = [0, 1]
+        viewer.load_vtp("/tmp/shield.vtp", mesh)
+        viewer.chk_smooth_colors.setChecked(True)
+        self.assertEqual(
+            [1.0, 0.3], [opts["opacity"] for _, opts in plotter.mesh_calls]
+        )
+        for surface, _ in plotter.mesh_calls:
+            self.assertEqual(1, len(np.unique(surface.point_data["cp"])))
+        viewer.chk_shield_transparent.setChecked(False)
+        self.assertEqual(
+            [1.0, 1.0], [opts["opacity"] for _, opts in plotter.mesh_calls]
+        )
+        messages = []
+        viewer.log_message.connect(messages.append)
+        with patch(
+            "panelsolver.app.viewer.interpolated_surfaces",
+            side_effect=ValueError("bad surface"),
+        ):
+            viewer.load_vtp("/tmp/failure.vtp", mesh)
+        self.assertTrue(viewer.chk_smooth_colors.isChecked())
+        self.assertNotIn("preference", plotter.mesh_calls[0][1])
+        self.assertIn(
+            "interpolation failed", plotter.mesh_calls[0][1]["scalar_bar_args"]["title"]
+        )
+        self.assertIn("showing panel values", messages[-1])
+        viewer.load_vtp("/tmp/valid-again.vtp", mesh)
+        self.assertEqual("point", plotter.mesh_calls[0][1]["preference"])
 
     def test_small_scalar_variation_and_manual_range_keep_gradient(self):
         viewer, plotter = self.make_viewer(spec=newt_solver_spec())

@@ -146,6 +146,20 @@ defers closing until export succeeds; failure withdraws pending close requests.
 Discard releases only that dialog's unsaved snapshot. Main-window close checks
 both persistent dialogs even when hidden, and resumes after each requested save.
 
+The viewer's Smooth colors mode is display-only and lives in
+`app.viewer_interpolation`. `load_vtp` validates `stl_index`/`shielded` once
+during scalar discovery and caches the result as `ViewerBoundaries`; malformed
+boundary arrays disable only smoothing. Display topology is prepared once per
+loaded result and is independent of the scalar: cells are grouped by (STL
+component, shielding), each group is cleaned and split at the 30-degree feature
+angle, and the groups are appended without joining points, giving at most two
+surface actors (one per shielding state). A scalar change repeats only the
+selected field's cell-to-point averaging and finite-value check. Geometry
+failures are cached for the loaded result and scalar failures per scalar, so a
+known failure is neither recomputed nor logged again until the VTP is reloaded.
+Imported point/cell shading normals are kept on a separate render surface,
+including distinct normals at coincident corners.
+
 ## Execution and artifacts
 
 The one-case engine loads ordered STL components, validates geometry, resolves
