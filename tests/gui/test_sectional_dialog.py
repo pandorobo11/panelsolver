@@ -37,6 +37,14 @@ class SectionalDialogTests(unittest.TestCase):
         cls.app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
     def setUp(self) -> None:
+        self.real_warning = QtWidgets.QMessageBox.warning
+        warning = patch.object(
+            QtWidgets.QMessageBox,
+            "warning",
+            return_value=QtWidgets.QMessageBox.StandardButton.Close,
+        )
+        self.warning = warning.start()
+        self.addCleanup(warning.stop)
         temporary = tempfile.TemporaryDirectory(prefix="sectional-gui-")
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name)
@@ -66,7 +74,12 @@ class SectionalDialogTests(unittest.TestCase):
             if panel.is_running():
                 panel.cancel_run()
                 self.wait_until(lambda active=panel: not active.is_running())
-        widget.close()
+        with patch.object(
+            QtWidgets.QMessageBox,
+            "warning",
+            return_value=QtWidgets.QMessageBox.StandardButton.Discard,
+        ):
+            widget.close()
         delete(widget)
 
     def wait_until(self, predicate, timeout=8.0) -> None:
@@ -155,6 +168,286 @@ class SectionalDialogTests(unittest.TestCase):
                 QtCore.QItemSelectionModel.SelectionFlag.Select
                 | QtCore.QItemSelectionModel.SelectionFlag.Rows,
             )
+
+    def make_unsaved(self, domain=fmf, *, cp=False):
+        window, panel, dialog = self.make_window(domain)
+        if cp:
+            dialog.close()
+            window.open_sectional_cp()
+            dialog = window.sectional_cp_dialog
+            self.assertTrue(dialog.load_definitions(ROOT / "examples/sectional_cp.csv"))
+        window.show()
+        with patch.object(
+            sectional_dialog, "write_sectional_csv", side_effect=OSError("disk full")
+        ):
+            self.assertTrue(dialog.start_run(self.root / "unsaved.csv"))
+            self.wait_until(lambda: not dialog.is_running())
+        self.assertIsNotNone(dialog.unsaved_result_description())
+        return window, panel, dialog
+
+    def test_error_dialog_retry_reuses_snapshot_after_cleanup_for_both_kinds_and_domains(
+        self,
+    ):
+        for domain in (fmf, hypersonic):
+            for cp in (False, True):
+                with self.subTest(domain=domain.RUNTIME_POLICY.product_id, cp=cp):
+                    _window, _panel, dialog = self.make_unsaved(domain, cp=cp)
+                    retained = dialog.batch_result
+                    output = (
+                        self.root
+                        / f"recovered-{domain.RUNTIME_POLICY.product_id}-{cp}.csv"
+                    )
+                    # One further failure offers Retry; the next write succeeds.
+                    original = sectional_dialog.write_sectional_csv
+                    calls = []
+
+                    def writer(*args, calls=calls, original=original):
+                        calls.append(args[1])
+                        if len(calls) == 1:
+                            raise OSError("file locked")
+                        return original(*args)
+
+                    with (
+                        patch.object(
+                            QtWidgets.QMessageBox,
+                            "warning",
+                            return_value=QtWidgets.QMessageBox.StandardButton.Retry,
+                        ) as warning,
+                        patch.object(
+                            QtWidgets.QFileDialog,
+                            "getSaveFileName",
+                            return_value=(str(output), ""),
+                        ) as chooser,
+                        patch.object(
+                            sectional_dialog, "write_sectional_csv", side_effect=writer
+                        ),
+                        patch.object(
+                            sectional_batch,
+                            "execute_case",
+                            side_effect=AssertionError("must not solve"),
+                        ),
+                    ):
+                        self.assertTrue(dialog.retry_save())
+                        self.wait_until(
+                            lambda output=output, dialog=dialog: (
+                                output.exists() and not dialog.is_running()
+                            )
+                        )
+                    self.assertEqual(chooser.call_count, 2)
+                    self.assertEqual(len(calls), 2)
+                    self.assertTrue(all(result is retained for result in calls))
+                    self.assertIn(
+                        "Computed results are retained", warning.call_args.args[2]
+                    )
+                    self.assertIsNone(dialog.unsaved_result_description())
+                    self.assertTrue(dialog.btn_retry_save.isHidden())
+
+    def test_close_routes_cancel_save_cancel_and_discard_for_both_sectional_kinds(self):
+        buttons = QtWidgets.QMessageBox.StandardButton
+        for cp in (False, True):
+            for route in ("dialog", "escape", "main"):
+                with self.subTest(cp=cp, route=route):
+                    window, _panel, dialog = self.make_unsaved(cp=cp)
+                    retained = dialog.batch_result
+
+                    def close(route=route, dialog=dialog, window=window):
+                        if route == "escape":
+                            dialog.reject()
+                        else:
+                            (window if route == "main" else dialog).close()
+
+                    with patch.object(
+                        QtWidgets.QMessageBox, "warning", return_value=buttons.Cancel
+                    ):
+                        close()
+                    self.assertTrue(dialog.isVisible())
+                    self.assertTrue(window.isVisible())
+                    with (
+                        patch.object(
+                            QtWidgets.QMessageBox, "warning", return_value=buttons.Save
+                        ),
+                        patch.object(
+                            QtWidgets.QFileDialog,
+                            "getSaveFileName",
+                            return_value=("", ""),
+                        ),
+                    ):
+                        close()
+                    self.assertTrue(dialog.isVisible())
+                    self.assertIs(retained, dialog.batch_result)
+                    self.assertFalse(dialog._close_when_finished)
+                    self.assertFalse(window._close_when_run_finishes)
+                    with patch.object(
+                        QtWidgets.QMessageBox, "warning", return_value=buttons.Discard
+                    ):
+                        close()
+                    self.assertFalse(dialog.isVisible())
+                    self.assertIsNone(dialog.batch_result)
+                    self.assertIsNone(dialog.unsaved_result_description())
+                    if route == "main":
+                        self.assertFalse(window.isVisible())
+
+    def test_close_save_waits_for_success_and_failure_keeps_both_windows(self):
+        buttons = QtWidgets.QMessageBox.StandardButton
+        for cp in (False, True):
+            for route in ("dialog", "escape", "main"):
+                with self.subTest(cp=cp, route=route):
+                    window, _panel, dialog = self.make_unsaved(cp=cp)
+                    retained = dialog.batch_result
+                    output = self.root / f"close-{cp}-{route}.csv"
+
+                    def close(route=route, dialog=dialog, window=window):
+                        if route == "escape":
+                            dialog.reject()
+                        else:
+                            (window if route == "main" else dialog).close()
+
+                    def answer(_parent, title, *_args):
+                        return (
+                            buttons.Save
+                            if title.startswith("Unsaved")
+                            else buttons.Close
+                        )
+
+                    with (
+                        patch.object(
+                            QtWidgets.QMessageBox, "warning", side_effect=answer
+                        ),
+                        patch.object(
+                            QtWidgets.QFileDialog,
+                            "getSaveFileName",
+                            return_value=(str(output), ""),
+                        ),
+                    ):
+                        with patch.object(
+                            sectional_dialog,
+                            "write_sectional_csv",
+                            side_effect=OSError("still full"),
+                        ):
+                            close()
+                            self.wait_until(
+                                lambda dialog=dialog: not dialog.is_running()
+                            )
+                        self.assertTrue(window.isVisible())
+                        self.assertTrue(dialog.isVisible())
+                        self.assertIs(retained, dialog.batch_result)
+                        self.assertFalse(window._close_when_run_finishes)
+                        self.assertFalse(dialog._close_when_finished)
+                        close()
+                        self.wait_until(
+                            lambda dialog=dialog: (
+                                not dialog.is_running() and not dialog.isVisible()
+                            )
+                        )
+                    self.assertTrue(output.exists())
+                    self.assertEqual(window.isVisible(), route != "main")
+
+    def test_main_close_checks_hidden_and_multiple_unsaved_sectional_dialogs(self):
+        window, _panel, loads = self.make_unsaved()
+        window.open_sectional_cp()
+        cp = window.sectional_cp_dialog
+        cp.load_definitions(ROOT / "examples/sectional_cp.csv")
+        with patch.object(
+            sectional_dialog, "write_sectional_csv", side_effect=OSError("disk full")
+        ):
+            cp.start_run(self.root / "cp.csv")
+            self.wait_until(lambda: not cp.is_running())
+        loads.hide()
+        cp.hide()
+        buttons = QtWidgets.QMessageBox.StandardButton
+        with patch.object(
+            QtWidgets.QMessageBox,
+            "warning",
+            side_effect=[buttons.Discard, buttons.Cancel],
+        ) as warning:
+            window.close()
+        self.assertTrue(window.isVisible())
+        self.assertIsNone(loads.unsaved_result_description())
+        self.assertIsNotNone(cp.unsaved_result_description())
+        self.assertIn("Loads", warning.call_args_list[0].args[1])
+        self.assertIn("Cp", warning.call_args_list[1].args[1])
+
+    def test_real_error_dialog_retry_after_export_thread_cleanup(self):
+        _window, _panel, dialog = self.make_unsaved(cp=True)
+        output = self.root / "modal-retry.csv"
+        seen = []
+        timer = QtCore.QTimer()
+
+        def answer():
+            box = self.app.activeModalWidget()
+            if isinstance(box, QtWidgets.QMessageBox) and not dialog.is_running():
+                seen.append(True)
+                box.button(QtWidgets.QMessageBox.StandardButton.Retry).click()
+
+        timer.timeout.connect(answer)
+        timer.start(10)
+        original = sectional_dialog.write_sectional_csv
+        writes = []
+
+        def writer(*args):
+            writes.append(True)
+            if len(writes) == 1:
+                raise OSError("file locked")
+            return original(*args)
+
+        try:
+            with (
+                patch.object(
+                    QtWidgets.QMessageBox, "warning", side_effect=self.real_warning
+                ),
+                patch.object(
+                    QtWidgets.QFileDialog,
+                    "getSaveFileName",
+                    return_value=(str(output), ""),
+                ),
+                patch.object(
+                    sectional_dialog, "write_sectional_csv", side_effect=writer
+                ),
+            ):
+                dialog.retry_save()
+                self.wait_until(
+                    lambda output=output, dialog=dialog: (
+                        output.exists() and not dialog.is_running()
+                    )
+                )
+            self.assertEqual(seen, [True])
+        finally:
+            timer.stop()
+
+    def test_main_close_saves_both_sectional_snapshots_once_before_closing(self):
+        window, _panel, loads = self.make_unsaved()
+        window.open_sectional_cp()
+        cp = window.sectional_cp_dialog
+        cp.load_definitions(ROOT / "examples/sectional_cp.csv")
+        with patch.object(
+            sectional_dialog, "write_sectional_csv", side_effect=OSError("disk full")
+        ):
+            cp.start_run(self.root / "unsaved-cp.csv")
+            self.wait_until(lambda: not cp.is_running())
+        outputs = [self.root / "loads-saved.csv", self.root / "cp-saved.csv"]
+        with (
+            patch.object(
+                QtWidgets.QMessageBox,
+                "warning",
+                return_value=QtWidgets.QMessageBox.StandardButton.Save,
+            ),
+            patch.object(
+                QtWidgets.QFileDialog,
+                "getSaveFileName",
+                side_effect=[(str(path), "") for path in outputs],
+            ) as chooser,
+            patch.object(
+                sectional_batch,
+                "execute_case",
+                side_effect=AssertionError("must not solve"),
+            ),
+        ):
+            window.close()
+            self.wait_until(lambda: not window.isVisible())
+        self.assertEqual(chooser.call_count, 2)
+        self.assertTrue(all(path.exists() for path in outputs))
+        self.assertIsNone(loads.unsaved_result_description())
+        self.assertIsNone(cp.unsaved_result_description())
 
     def test_definitions_scope_and_actions_are_presented_for_reading(self):
         _window, panel, dialog = self.make_window()

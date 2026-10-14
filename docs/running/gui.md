@@ -114,8 +114,11 @@ Starting a run freezes both selections and definitions. Later selection/file
 changes do not relabel completed results. Run and export status are separate:
 cancelled or failed batches save any successful pairs to the chosen destination,
 with their actual terminal status. If no pair succeeds, the output is unchanged.
-A save failure retains the calculation and shows **Retry Save...** to select a
-destination and save it without rerunning physics. This action is hidden after
+A save failure retains the calculation and offers **Retry** in the error
+dialog. It opens the save chooser after the export worker has finished cleanup.
+**Close** dismisses that message; **Retry Save...** remains available to select a
+destination and save without rerunning physics. These actions also save retained
+partial results with their original failed or cancelled batch status. The button is hidden after
 successful saving and never substitutes current selections for the failed-save
 snapshot.
 Result rows include their actual case signatures, section IDs and terminal
@@ -127,7 +130,14 @@ Closing during a run requests cancellation and waits for calculation, automatic
 export of successful pairs, and worker cleanup. Ordinary runs remain disabled
 until both calculation and saving finish.
 If saving fails while a close request is waiting, the window remains open so
-you can use **Retry Save...** or close it yourself.
+you can use **Retry Save...**. Closing the Sectional dialog (including Esc) or
+the main window while a failed-save result is retained offers **Save**,
+**Discard**, and **Cancel**. Save closes only after a successful export; cancelling
+the file chooser or another save failure keeps the window and results available.
+Discard releases that dialog's unsaved result, and Cancel keeps it open.
+Main-window close also checks hidden Sectional dialogs and checks Loads and Cp
+independently when both hold unsaved results. Results are held only in the current
+application session.
 No intermediate Summary CSV or VTP is required or created by sectional runs.
 
 For an FMF example, open `examples/fmf/flow_modes.csv`; for Hypersonic, open
