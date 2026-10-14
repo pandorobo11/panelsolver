@@ -442,11 +442,14 @@ def _verify_release_zip(kind: str, archive_path: Path) -> None:
                 "examples/fmf/flow_modes.csv",
                 "examples/fmf/attitude_modes.csv",
                 "examples/fmf/shielding.csv",
+                "examples/fmf/sphere_cone.csv",
                 "examples/hypersonic/basic.csv",
                 "examples/hypersonic/pressure_models.csv",
                 "examples/hypersonic/attitude_modes.csv",
                 "examples/hypersonic/shielding.csv",
+                "examples/hypersonic/sphere_cone.csv",
                 "examples/geometry/plate.stl",
+                "examples/geometry/sphere_cone.stl",
             }
             if any(
                 part in {"outputs", "__pycache__", ".cache", ".pytest_cache"}

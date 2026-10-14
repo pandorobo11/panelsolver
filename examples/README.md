@@ -49,6 +49,10 @@ remain directly under `outputs/`.
 | Sphere-cone: Angle Effects | Sphere-cone | Different flow directions: surface loads and CL/CD change with angle of attack |
 | Attitude Modes | Cube | The same flow direction expressed through beta_sin, beta_tan and bank gives matching results |
 | Components | Cube and offset plate | Ordered multi-STL inputs and total/component loads |
+| Flow Modes (FMF) | Plate | Mode A and atmosphere-resolved Mode B give matching coefficients |
+| Pressure Models (Hypersonic) | Plate and cube | Windward equations and leeward Prandtl–Meyer expansion |
+| Shielding | Double plate | Ray shielding off and on |
+| Sectional Loads, Sectional Cp | Plate | GUI-only: sectional definitions applied to the Basic (Hypersonic) or Flow Modes (FMF) table; see [GUI operation](../docs/running/gui.md) |
 
 Both domains offer **File > New from Example > Sphere-cone: Angle Effects**.
 It copies the selected domain's three-case table and the shared STL to your
@@ -239,7 +243,7 @@ The default mesh supports visualization and is not a discretization-error bound.
 In a source checkout, regenerate the supplied STL and both CSVs, then run them:
 
 ```bash
-uv sync --locked --extra rayaccel --group docs
+uv sync --locked
 uv run --no-sync python scripts/generate_sphere_cone_example.py
 uv run --no-sync panelsolver fmf -i examples/fmf/sphere_cone.csv
 uv run --no-sync panelsolver hypersonic -i examples/hypersonic/sphere_cone.csv

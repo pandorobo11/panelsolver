@@ -136,11 +136,14 @@ class ReleaseToolTests(unittest.TestCase):
             "fmf/flow_modes.csv",
             "fmf/attitude_modes.csv",
             "fmf/shielding.csv",
+            "fmf/sphere_cone.csv",
             "hypersonic/basic.csv",
             "hypersonic/pressure_models.csv",
             "hypersonic/attitude_modes.csv",
             "hypersonic/shielding.csv",
+            "hypersonic/sphere_cone.csv",
             "geometry/plate.stl",
+            "geometry/sphere_cone.stl",
         )
         for relative in required:
             path = examples / relative
