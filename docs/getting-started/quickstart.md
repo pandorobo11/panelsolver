@@ -120,11 +120,8 @@ Hypersonic uses Mach 6, gamma 1.4, Modified Newtonian windward and zero leeward 
 Inspect normal and tangential traction for FMF, and Cp for Hypersonic; compare
 CL/CD in the Summary CSV. Use a fixed camera and color range between cases.
 
-![Sphere-cone angle effects: Hypersonic Cp and FMF normal and tangential traction](../assets/plots/sphere-cone-angle-effects.png)
-
-The figure uses cell values without interpolation, the same camera, and a fixed
-color range within each row. The domains represent different flow regimes;
-these are idealized panel-model examples, not physical validation data.
+The domains represent different flow regimes; these are idealized panel-model
+examples, not physical validation data.
 Geometry, reference quantities and figure reproduction commands are documented
 in `examples/README.md` in the checkout and examples archive.
 
