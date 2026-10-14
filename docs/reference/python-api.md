@@ -541,9 +541,9 @@ is first and follows increasing signed axis distance.
 | `Cl`, `Cm`, `Cn` | `(B,)`, dimensionless | Normalized body moment components. |
 
 The coefficient properties are views of the vectors above. Running totals and
-values per metre are not provided. When the range covers all selected
-geometry, the strips add up to the whole-case values, apart from small rounding
-differences. Signs and references follow the
+values per metre are not provided. When all components are selected and the
+range covers the geometry, the strips add up to the whole-case values, apart
+from small rounding differences. Signs and references follow the
 [load and coefficient conventions](../methods/load-and-coefficient-conventions.md).
 
 ## API ↔ Summary CSV / VTP correspondence

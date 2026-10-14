@@ -96,9 +96,10 @@ archive).
 | `-j`, `--workers` | Number of cases to run in parallel. Default: 1. |
 | `--plain`, `--verbose`, `--debug` | Same as for ordinary runs. |
 
-Cases run in case-table order and definitions in definition-file order. An
-unknown case or section ID is an error. The whole definition file is checked
-before any case runs.
+CSV results follow case-table order and then definition-file order. Case
+execution and progress messages can follow a different order, even with one
+worker. An unknown case or section ID is an error. The whole definition file
+is checked before any case runs.
 
 If a definition cannot be applied to a case's geometry, the batch stops and the
 pairs that already finished are saved. Press Ctrl-C to cancel; work already in

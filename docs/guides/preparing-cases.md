@@ -75,7 +75,7 @@ keep them the same across all cases in the comparison.
 
 | Input | How to choose it |
 |---|---|
-| `Aref_m2` | The reference area for all coefficients, for example a planform or frontal area. Use a fixed value that does not change with attitude. Doubling it halves every coefficient. |
+| `Aref_m2` | The reference area for integrated force and moment coefficients, for example a planform or frontal area. Use a fixed value that does not change with attitude. Doubling it halves those coefficients for the same geometry and flow, but does not change local Cp or traction coefficients. |
 | `ref_x_m`, `ref_y_m`, `ref_z_m` | The point about which moments are calculated, in metres in the (scaled) STL frame. Often the center of mass or the moment reference of a test. Moving it changes the moments but not the forces. |
 | `Lref_Cl_m`, `Lref_Cm_m`, `Lref_Cn_m` | Reference lengths for the roll, pitch, and yaw moments. For example, span for roll and yaw, and chord for pitch. They do not need to be equal. |
 

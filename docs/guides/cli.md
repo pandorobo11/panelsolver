@@ -41,8 +41,10 @@ panelsolver hypersonic -i cases.xlsx -o results.csv --cases baseline
 
 ## Case selection
 
-`--cases` needs at least one case ID. The selected cases run in their order in
-the case table. An unknown case ID stops the command before anything runs.
+`--cases` needs at least one case ID. The final Summary CSV keeps the selected
+cases in case-table order. Execution and progress messages can follow a
+different order, even with one worker. An unknown case ID stops the command
+before anything runs.
 
 ## Progress and errors
 

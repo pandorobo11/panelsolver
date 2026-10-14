@@ -9,9 +9,10 @@ CLI and the GUI. Sectional batches follow their own rules, described in
 ## Workers and result order
 
 **Workers** (GUI) or `--workers` (CLI) sets how many cases run at the same time.
-With `1`, cases run one after another. With more workers, cases can finish in
-any order, so progress messages and Diagnostics may not follow the table
-order. The final Summary CSV is always in case-table order.
+With `1`, cases run one after another. With any worker count, execution and
+completion order can differ from case-table order, so progress messages and
+Diagnostics may also differ. The final Summary CSV is always in case-table
+order.
 
 ## Checkpoints
 
