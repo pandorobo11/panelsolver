@@ -8,7 +8,7 @@ from enum import Enum
 from pathlib import Path
 from types import MappingProxyType
 
-from panelsolver.core import CaseSignature
+from panelsolver.core import CaseSignature, CsvProjection
 
 from .examples import ExampleDefinition
 from .output_status import OutputIssue
@@ -89,6 +89,7 @@ class GuiRunResult:
     vtp_requested: int = 0
     vtp_saved: int = 0
     output_issues: tuple[OutputIssue, ...] = ()
+    unsaved_summary_csv: CsvProjection | None = None
 
     def __post_init__(self) -> None:
         if self.first_vtp_path is not None:
@@ -123,6 +124,11 @@ class GuiRunResult:
                 "GuiRunResult.output_issues must contain OutputIssue values"
             )
         object.__setattr__(self, "output_issues", issues)
+        if self.unsaved_summary_csv is not None:
+            if not isinstance(self.unsaved_summary_csv, CsvProjection):
+                raise TypeError("unsaved_summary_csv must be a CsvProjection or None")
+            if self.summary_csv_saved is not False:
+                raise ValueError("unsaved_summary_csv requires a failed final save")
 
 
 type RunCasesCallback = Callable[[GuiRunRequest], GuiRunResult]
@@ -164,6 +170,7 @@ def gui_run_result_from_batch(
         vtp_requested=sum(bool(int(row.get("save_vtp_on", 1))) for row in request.rows),
         vtp_saved=sum(bool(case.vtp_path) for case in result.cases),
         output_issues=result.output_issues,
+        unsaved_summary_csv=result.csv if result.summary_csv_saved is False else None,
     )
 
 

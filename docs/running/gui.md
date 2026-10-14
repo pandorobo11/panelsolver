@@ -47,6 +47,23 @@ The run writes the selected Summary CSV and, when enabled, one VTP per case at
 directory. See [Case files](../inputs/case-files.md#paths-vtp-destinations-and-components)
 for path rules.
 
+If the final Summary CSV cannot be saved, **Retry Save...** appears beside
+**Cancel**. Choose it to save the retained result to the same or another CSV
+destination without recalculating cases or writing VTP files again. The message
+below the progress bar identifies the retained run's input filename and case
+count. Reloading inputs or changing selections does not change that result.
+Original and currently loaded case tables, STL files, planned VTP outputs, and
+sectional definition files are protected against overwriting, including file
+aliases and unselected cases.
+
+The button disappears after a successful retry or a later completed calculation
+replaces the retained result. Failed or cancelled calculations leave a previous
+unsaved result available; they do not add their partial results to it. Results
+are retained only for the current application session. Saving runs in the
+background and temporarily disables ordinary and sectional calculations. If a
+pending window close meets a Summary CSV save failure, the window remains open
+for retry. Other output errors, such as a VTP failure, remain in Diagnostics.
+
 During cancellation, progress shows **Cancelling** until workers finish cleanup.
 Closing the window during a run also requests cancellation and waits for cleanup.
 [Batch execution and recovery](batch-execution-and-recovery.md#cancellation-and-calculation-failures)

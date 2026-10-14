@@ -103,6 +103,7 @@ class MainWindow(QtWidgets.QMainWindow):
         )
         self.cases_panel.input_path_changed.connect(self.viewer_panel.set_input_path)
         self.cases_panel.run_finished.connect(self._on_case_run_finished)
+        self.cases_panel.summary_save_failed.connect(self._on_summary_save_failed)
         self.viewer_panel.save_selected_images_requested.connect(
             self._on_save_selected_images
         )
@@ -468,6 +469,11 @@ class MainWindow(QtWidgets.QMainWindow):
         if self._close_when_run_finishes:
             self._close_when_run_finishes = False
             self.open_sectional_loads()
+
+    @QtCore.Slot()
+    def _on_summary_save_failed(self) -> None:
+        # Keep retained results available when a pending close meets a save error.
+        self._close_when_run_finishes = False
 
     @QtCore.Slot()
     def _on_case_run_finished(self) -> None:

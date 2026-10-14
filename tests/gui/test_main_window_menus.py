@@ -26,6 +26,7 @@ class _Cases(QtWidgets.QWidget):
     selected_cases_changed = QtCore.Signal(object)
     input_path_changed = QtCore.Signal(object)
     run_finished = QtCore.Signal()
+    summary_save_failed = QtCore.Signal()
 
     def __init__(self) -> None:
         super().__init__()
