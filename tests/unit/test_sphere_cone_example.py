@@ -21,6 +21,7 @@ def test_sphere_cone_generator_reproduces_shared_geometry_and_tables(tmp_path):
     np.testing.assert_allclose(actual.bounds[:, 1:], [[-0.5, -0.5], [0.5, 0.5]])
     for domain in ("fmf", "hypersonic"):
         relative = Path(domain) / "sphere_cone.csv"
-        assert (tmp_path / relative).read_bytes() == (
+        # Git may check out the reference CSVs with CRLF on Windows.
+        assert (tmp_path / relative).read_text(encoding="utf-8") == (
             ROOT / "examples" / relative
-        ).read_bytes()
+        ).read_text(encoding="utf-8")
