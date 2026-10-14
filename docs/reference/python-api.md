@@ -246,7 +246,7 @@ HypersonicCase(
 | `Lref_Cm_m` | real number | — | m, > 0 | Pitch-moment reference length. |
 | `Lref_Cn_m` | real number | — | m, > 0 | Yaw-moment reference length. |
 | `mach` | real number | — | dimensionless, > 0 | Freestream Mach number; corresponds to case-table `Mach`. |
-| `gamma` | real number | — | dimensionless, > 1 | Specific-heat ratio; corresponds to case-table `gamma`. |
+| `gamma` | real number | — | dimensionless, > 1 | Specific-heat ratio; corresponds to `gamma`. |
 | `windward_equation` | `str` | `"newtonian"` | `newtonian`, `modified_newtonian`, `tangent_wedge`, or `tangent_cone` | Windward equation selection; corresponds to `windward_eq`. |
 | `leeward_equation` | `str` | `"shield"` | `shield` or `prandtl_meyer` | Leeward equation selection; corresponds to `leeward_eq`. |
 | `shielding` | `bool` | `False` | `False` or `True` | Enables common geometric ray shielding. This is distinct from the leeward `shield` pressure rule. |
@@ -546,9 +546,9 @@ is first and follows increasing signed axis distance.
 | `Cl`, `Cm`, `Cn` | `(B,)`, dimensionless | Normalized body moment components. |
 
 The coefficient properties are views of the vectors above. Running totals and
-values per metre are not provided. When the range covers all selected
-geometry, the strips add up to the whole-case values, apart from small rounding
-differences. Signs and references follow the
+values per metre are not provided. When all components are selected and the
+range covers the geometry, the strips add up to the whole-case values, apart
+from small rounding differences. Signs and references follow the
 [load and coefficient conventions](../methods/load-and-coefficient-conventions.md).
 
 ## API ↔ Summary CSV / VTP correspondence

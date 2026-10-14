@@ -12,7 +12,7 @@ or [`compute_sectional_cp`](python-api.md#sectional-cp-sections).
 
 | Column | Required | Meaning |
 |---|---|---|
-| `section_id` | yes | A label for the definition. Labels are case-sensitive. Leading and trailing spaces are removed, and labels must be unique. It is kept as text, so `001` stays `001`. |
+| `section_id` | yes | A label for the definition. Labels are case-sensitive. Leading and trailing spaces are removed and Unicode text is normalized to NFC; labels must be unique after these steps. It is kept as text, so `001` stays `001`. |
 | `origin_x_stl_m`, `origin_y_stl_m`, `origin_z_stl_m` | yes | The point where the axis position is zero, in STL coordinates and metres. |
 | `direction_x_stl`, `direction_y_stl`, `direction_z_stl` | yes | The axis direction in STL coordinates. Any nonzero length; it is normalized for you, keeping its sign. |
 | `start_m`, `stop_m` | no | The range along the axis in metres. Leave both empty to cover the selected geometry automatically, or fill both. |
@@ -37,9 +37,11 @@ known, and the column.
 
 **Automatic range.** With `start_m` and `stop_m` empty, the range covers the
 vertices of the selected parts, including shielded panels. It is worked out
-again for each case, so different geometries can get different positions. If
-the selected geometry has zero length along the axis, give the range
-explicitly.
+again for each case, so different geometries can get different positions.
+Sectional loads and multiple Cp planes require nonzero geometry length along
+the axis for an automatic range; otherwise, give the range explicitly. A
+single automatic Cp plane uses the midpoint even when that length is zero,
+but the coplanar-panel failure rule still applies.
 
 **Explicit range.** The same positions are used in every case. A range that
 covers only part of the geometry, or none of it, is allowed.
@@ -54,7 +56,7 @@ Sectional loads add one column:
 
 | Column | Required | Meaning |
 |---|---|---|
-| `bin_count` | yes | Number of equal-width strips. A whole number written without a decimal point or exponent: `30` is valid, `30.0` and `3e1` are not. |
+| `bin_count` | yes | Number of equal-width strips, at least `1`. A whole number written without a decimal point or exponent: `30` is valid, `30.0` and `3e1` are not. |
 
 ```csv
 section_id,origin_x_stl_m,origin_y_stl_m,origin_z_stl_m,direction_x_stl,direction_y_stl,direction_z_stl,start_m,stop_m,bin_count,component_ids
@@ -78,7 +80,7 @@ Sectional Cp uses `section_count` instead of `bin_count`:
 
 | Column | Required | Meaning |
 |---|---|---|
-| `section_count` | yes | Number of equally spaced cutting planes, a whole number. Both ends of the range get a plane. |
+| `section_count` | yes | Number of equally spaced cutting planes, at least `1`. Use the same whole-number notation as `bin_count`, without a decimal point or exponent. For multiple planes, both ends of the range get a plane. |
 
 ```csv
 section_id,origin_x_stl_m,origin_y_stl_m,origin_z_stl_m,direction_x_stl,direction_y_stl,direction_z_stl,start_m,stop_m,section_count,component_ids
