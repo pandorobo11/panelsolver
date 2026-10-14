@@ -553,6 +553,11 @@ _GUI_EXAMPLES = (
         ("geometry/plate.stl",),
     ),
     ExampleDefinition(
+        "Sphere-cone: Angle Effects",
+        "hypersonic/sphere_cone.csv",
+        ("geometry/sphere_cone.stl",),
+    ),
+    ExampleDefinition(
         "Attitude Modes",
         "hypersonic/attitude_modes.csv",
         ("geometry/cube.stl",),

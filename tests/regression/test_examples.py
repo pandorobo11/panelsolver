@@ -8,6 +8,7 @@ from pathlib import Path
 
 import numpy as np
 import pyvista as pv
+import trimesh
 
 from panelsolver.app import run_and_write_product_cases
 from panelsolver.app.csv_writer import CSV_ENCODING
@@ -126,6 +127,76 @@ class ExampleRegressionTests(unittest.TestCase):
         self.assertAlmostEqual(
             mode_a["out_Ti_K"], mode_b["out_Ti_K"], delta=SENTMAN_ATOL
         )
+
+    def test_sphere_cone_has_closed_mesh_and_incidence_dependent_cp(self) -> None:
+        # Independent normal-shock + isentropic stagnation pressure relation.
+        gamma, mach = 1.4, 6.0
+        pressure_ratio = (2 * gamma * mach**2 - (gamma - 1)) / (gamma + 1)
+        downstream_mach_sq = (1 + (gamma - 1) * mach**2 / 2) / (
+            gamma * mach**2 - (gamma - 1) / 2
+        )
+        stagnation_ratio = pressure_ratio * (
+            1 + (gamma - 1) * downstream_mach_sq / 2
+        ) ** (gamma / (gamma - 1))
+        cp_max = 2 * (stagnation_ratio - 1) / (gamma * mach**2)
+        name = "sphere_cone"
+        mesh = trimesh.load_mesh(self.root / "geometry" / f"{name}.stl")
+        self.assertTrue(mesh.is_volume)
+        self.assertTrue(np.all(mesh.area_faces > 0))
+        rows = self._total_rows("hypersonic", name)
+        self.assertEqual([0, 15, 30], [row["alpha_deg"] for row in rows])
+        self.assertAlmostEqual(float(rows[0]["CL"]), 0, delta=1e-10)
+        self.assertAlmostEqual(float(rows[0]["CY"]), 0, delta=1e-10)
+        fields = []
+        for alpha in (0, 15, 30):
+            poly = pv.read(self.artifacts[f"hypersonic_{name}_a{alpha:02d}"])
+            cp = np.asarray(poly.cell_data["cp"])
+            triangles = poly.points[poly.faces.reshape(-1, 4)[:, 1:]]
+            normal = np.cross(
+                triangles[:, 1] - triangles[:, 0],
+                triangles[:, 2] - triangles[:, 0],
+            )
+            normal /= np.linalg.norm(normal, axis=1)[:, None]
+            velocity = np.array(
+                [np.cos(np.deg2rad(alpha)), 0, np.sin(np.deg2rad(alpha))]
+            )
+            expected = cp_max * np.maximum(-normal @ velocity, 0) ** 2
+            np.testing.assert_allclose(cp, expected, rtol=0, atol=1e-12)
+            self.assertTrue(np.all(np.isfinite(cp)))
+            self.assertGreater(cp.max(), 1.7)
+            fields.append(cp)
+        self.assertGreater(np.max(np.abs(fields[2] - fields[0])), 0.5)
+
+    def test_fmf_sphere_cone_preserves_normal_and_tangential_loads(self) -> None:
+        rows = self._total_rows("fmf", "sphere_cone")
+        self.assertEqual([0, 15, 30], [row["alpha_deg"] for row in rows])
+        for coefficient in ("CY", "CN", "CL", "Cl", "Cm", "Cn"):
+            self.assertAlmostEqual(float(rows[0][coefficient]), 0, delta=1e-10)
+        fields = []
+        for alpha in (0, 15, 30):
+            poly = pv.read(self.artifacts[f"fmf_sphere_cone_a{alpha:02d}"])
+            normal = np.asarray(poly.cell_data["normal_traction_coeff"])
+            tangent = np.asarray(poly.cell_data["tangential_traction_coeff"])
+            self.assertTrue(np.all(np.isfinite(normal)))
+            self.assertTrue(np.all(np.isfinite(tangent)))
+            self.assertGreater(normal.max(), 2)
+            self.assertGreater(tangent.max(), 0.4)
+            self.assertNotIn("cp", poly.cell_data)
+            # CA/CN negate body X/Z, cancelling the STL-to-body sign flip.
+            force = np.asarray(poly.cell_data["C_face_stl"])
+            np.testing.assert_allclose(
+                force.sum(axis=0),
+                [
+                    rows[alpha // 15]["CA"],
+                    rows[alpha // 15]["CY"],
+                    rows[alpha // 15]["CN"],
+                ],
+                atol=1e-12,
+                rtol=0,
+            )
+            fields.append(normal)
+        self.assertGreater(np.max(np.abs(fields[2] - fields[0])), 0.5)
+        self.assertGreater(abs(float(rows[2]["CL"]) - float(rows[0]["CL"])), 0.05)
 
     def test_ray_shielding_masks_rear_faces_and_halves_force(self) -> None:
         for domain, tolerance in (

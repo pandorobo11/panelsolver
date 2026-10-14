@@ -99,6 +99,33 @@ to replace the plate with your STL, flow conditions, and reference quantities.
 
 The repository and examples archive include `examples/README.md`, which collects
 commands, main inputs, and expected relationships for each feature example:
-FMF flow modes, Hypersonic pressure methods, shielding, components, and attitude
-representations. Use those examples for the feature you need. For larger runs,
-see [Batch execution and recovery](../running/batch-execution-and-recovery.md).
+FMF flow modes, Hypersonic pressure methods, shielding, components, attitude
+representations, and sphere-cone angle effects. Use those examples for the
+feature you need. For larger runs, see
+[Batch execution and recovery](../running/batch-execution-and-recovery.md).
+
+### Curved surfaces: sphere-cone angle effects
+
+Choose **File > New from Example > Sphere-cone: Angle Effects** in either
+domain, select all three rows, and run them. For the CLI:
+
+```bash
+panelsolver fmf --input examples/fmf/sphere_cone.csv
+panelsolver hypersonic --input examples/hypersonic/sphere_cone.csv
+```
+
+Both tables share a closed 9,216-panel sphere-cone and vary only alpha
+(0, 15, 30 degrees), with beta = 0. FMF uses `S=5`, `Ti_K=Tw_K=300`;
+Hypersonic uses Mach 6, gamma 1.4, Modified Newtonian windward and zero
+leeward Cp.
+Inspect normal and tangential traction for FMF, and Cp for Hypersonic; compare
+CL/CD in the Summary CSV. Use a fixed camera and color range between cases.
+
+The domains represent different flow regimes; these are idealized panel-model
+examples, not physical validation data.
+Geometry, reference quantities and generation commands are documented
+in `examples/README.md` in the checkout and examples archive.
+
+Keep the Cube **Attitude Modes** example for comparing input representations of
+one flow direction. The sphere-cone example instead changes the actual direction
+to show its effect on surface loads.

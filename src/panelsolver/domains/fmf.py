@@ -528,6 +528,11 @@ _DEFAULT_ADAPTERS = object()
 _GUI_EXAMPLES = (
     ExampleDefinition("Basic", "fmf/basic.csv", ("geometry/plate.stl",)),
     ExampleDefinition(
+        "Sphere-cone: Angle Effects",
+        "fmf/sphere_cone.csv",
+        ("geometry/sphere_cone.stl",),
+    ),
+    ExampleDefinition(
         "Attitude Modes",
         "fmf/attitude_modes.csv",
         ("geometry/cube.stl",),
