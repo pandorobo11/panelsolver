@@ -81,6 +81,8 @@ include = [
   "/mkdocs.yml",
   "/pyproject.toml",
   "/scripts/generate_us1976_sentman_table.py",
+  "/scripts/generate_sphere_cone_example.py",
+  "/scripts/plot_sphere_cone_example.py",
   "/tools/reference/pdas/bigtables_v1_5.py",
   "/src",
 ]

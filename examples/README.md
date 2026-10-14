@@ -10,11 +10,13 @@ inspection: the basic tables use the `save_vtp_on=1` default, and the feature
 tables set it explicitly.
 
 The example STL coordinates are in metres (`stl_scale_m_per_unit=1`). Cases use
-an origin moment reference, `Aref_m2=1`, and 1 m moment reference lengths.
+an origin moment reference and 1 m moment reference lengths. Reference area
+is `Aref_m2=1`, except for the sphere-cone examples, which use the fixed maximum
+circular cross-section area, `pi * (0.5 m)^2`.
 Components use the same global references, so component rows add to the total
 for all eight coefficients. When adapting an example, choose your own
 [reference quantities](../docs/inputs/case-files.md#choose-reference-quantities).
-The four meshes in `geometry/` and the case tables are project material
+The five meshes in `geometry/` and the case tables are project material
 distributed under Apache-2.0.
 
 The examples archive is named `panelsolver-examples-v<version>.zip`. It preserves
@@ -39,6 +41,19 @@ The CLI summary for a table is
 VTP files in `examples/<domain>/outputs/<category>/<case_id>.vtp`; basic VTPs
 remain directly under `outputs/`.
 
+## Choosing an example
+
+| Example | Geometry | What it demonstrates |
+|---|---|---|
+| Basic | Plate | Minimal input, execution and result inspection |
+| Sphere-cone: Angle Effects | Sphere-cone | Different flow directions: surface loads and CL/CD change with angle of attack |
+| Attitude Modes | Cube | The same flow direction expressed through beta_sin, beta_tan and bank gives matching results |
+| Components | Cube and offset plate | Ordered multi-STL inputs and total/component loads |
+
+Both domains offer **File > New from Example > Sphere-cone: Angle Effects**.
+It copies the selected domain's three-case table and the shared STL to your
+workspace; select all three rows and run them normally.
+
 ## FMF
 
 ### `fmf/basic.csv`
@@ -50,6 +65,19 @@ remain directly under `outputs/`.
 - Observe: one total row and `outputs/fmf_basic.vtp` are produced. Read `CA`,
   `CD`, and `CL`; inspect normal and tangential traction in the Viewer.
 - Output: `examples/fmf/outputs/`.
+
+### `fmf/sphere_cone.csv`
+
+- Purpose: inspect curved-surface normal and tangential loads as alpha changes.
+- Run: `panelsolver fmf --input examples/fmf/sphere_cone.csv`
+- GUI file: `examples/fmf/sphere_cone.csv`.
+- Main inputs: shared `sphere_cone.stl`, Sentman Mode A, `S=5`,
+  `Ti_K=Tw_K=300`, alpha = 0, 15, 30 degrees and beta = 0.
+- Observe: nearly zero CL/CY at zero alpha; changing alpha produces asymmetric
+  normal and tangential traction and changes CL/CD. Inspect both
+  `normal_traction_coeff` and `tangential_traction_coeff`; FMF does not output Cp.
+- Output: `examples/fmf/outputs/sphere_cone/` for VTP and
+  `examples/fmf/outputs/sphere_cone_result.csv` for the summary.
 
 ### `fmf/flow_modes.csv`
 
@@ -116,6 +144,19 @@ remain directly under `outputs/`.
   `CA`, `CD`, and `CL`; inspect `cp` in the Viewer.
 - Output: `examples/hypersonic/outputs/`.
 
+### `hypersonic/sphere_cone.csv`
+
+- Purpose: inspect curved-surface pressure as alpha changes.
+- Run: `panelsolver hypersonic --input examples/hypersonic/sphere_cone.csv`
+- GUI file: `examples/hypersonic/sphere_cone.csv`.
+- Main inputs: shared `sphere_cone.stl`, `Mach=6`, `gamma=1.4`,
+  `modified_newtonian` windward and `shield` leeward, alpha = 0, 15, 30 degrees
+  and beta = 0; ray shielding is off.
+- Observe: nearly zero CL/CY at zero alpha, high nose Cp, and stronger windward
+  cone pressure with increasing alpha. Compare Cp and CL/CD between cases.
+- Output: `examples/hypersonic/outputs/sphere_cone/` for VTP and
+  `examples/hypersonic/outputs/sphere_cone_result.csv` for the summary.
+
 ### `hypersonic/pressure_models.csv`
 
 - Purpose: compare all four windward equations and exercise leeward
@@ -177,3 +218,37 @@ method and its exact-zero load consequence.
 - Observe: the resolved freestream direction and all eight coefficients agree
   within the algebraic hypersonic tolerance (`1e-10`).
 - Output: `examples/hypersonic/outputs/attitude_modes/`.
+
+## Sphere-cone geometry and comparison
+
+The shared `geometry/sphere_cone.stl` is an original idealized convex body with
+9,216 outward-oriented triangles (binary STL, 460,884 bytes). It has a spherical
+nose of radius 0.2 m tangent to a 15-degree half-angle cone, a base radius of
+0.5 m and a flat rear closure. Total length is approximately 1.293285 m.
+The nose is the origin and the body extends along +X_STL; zero-attitude flow
+travels along +X_STL. Moment reference is the nose, reference lengths are 1 m,
+and the fixed reference area is pi/4 m² at every attitude.
+
+Use the same camera and fixed color range between angles: 0–2 for Hypersonic
+Cp, 0–3 for FMF normal traction, and 0–1.5 for FMF tangential traction. These are
+separate domain examples at different flow regimes, not matched physical states
+or a physical validation comparison. The Hypersonic model does not resolve a
+shock layer, viscosity or wake; FMF includes both normal and tangential traction.
+The default mesh supports visualization and is not a discretization-error bound.
+
+In a source checkout, regenerate the supplied STL and both CSVs, run them, then
+plot their VTP cell values without interpolation:
+
+```bash
+uv sync --locked --extra rayaccel --group docs
+uv run --no-sync python scripts/generate_sphere_cone_example.py
+uv run --no-sync panelsolver fmf -i examples/fmf/sphere_cone.csv
+uv run --no-sync panelsolver hypersonic -i examples/hypersonic/sphere_cone.csv
+uv run --no-sync python scripts/plot_sphere_cone_example.py
+```
+
+The PNG/PDF comparison is written to `outputs/sphere_cone/` at the checkout root.
+Generated VTPs and summaries are excluded from distribution archives and the
+wheel. The generator and plotting script are source-checkout/sdist tools, not
+required to run the bundled examples. Generate a finer mesh in a separate tree
+with `--destination PATH --refinement 2`; plotting accepts `--examples-root PATH`.

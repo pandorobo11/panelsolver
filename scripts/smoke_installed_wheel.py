@@ -590,10 +590,12 @@ def _smoke_release_examples(
 ) -> None:
     cases = (
         ("fmf", "basic.csv"),
+        ("fmf", "sphere_cone.csv"),
         ("fmf", "flow_modes.csv"),
         ("fmf", "attitude_modes.csv"),
         ("fmf", "shielding.csv"),
         ("hypersonic", "basic.csv"),
+        ("hypersonic", "sphere_cone.csv"),
         ("hypersonic", "pressure_models.csv"),
         ("hypersonic", "attitude_modes.csv"),
         ("hypersonic", "shielding.csv"),
