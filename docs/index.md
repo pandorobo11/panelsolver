@@ -1,30 +1,35 @@
 # Panel Solver documentation
 
-Panel Solver estimates aerodynamic forces and moments on a triangulated STL
-surface. Supply one or more STL files and a case table of flow conditions,
-attitudes, and reference quantities. It calculates total and component force
-and moment coefficients, plus surface load distributions for inspection in
-the GUI or another VTK-capable viewer.
+Panel Solver estimates the aerodynamic forces and moments on a vehicle whose
+surface is given as a triangle mesh (STL). You describe each flight condition
+as one row of a case table. For each case, Panel Solver gives you:
 
-Choose the flow domain below, follow
-[Installation](getting-started/installation.md), then use the
-[Quickstart](getting-started/quickstart.md) to run a supplied plate example,
-read its results, and change its attitude. When you are ready to use your own
-geometry, continue with [Case files](guides/preparing-cases.md).
+- force and moment coefficients for the whole vehicle and for each STL part, in
+  a Summary CSV file;
+- the load on every surface panel, in a VTP file that you can view in the
+  Panel Solver GUI or in ParaView.
+
+New users should start with [Installation](getting-started/installation.md) and
+the [Quickstart](getting-started/quickstart.md), which runs a supplied example.
+When you are ready to use your own geometry, continue with
+[Preparing cases](guides/preparing-cases.md).
 
 ## Choosing a solver
 
-| Choice | FMF | Hypersonic |
-|---|---|---|
-| Physical applicability | Free-molecular flow, where intermolecular collisions near the body can be neglected | Hypersonic flow suited to a local, inviscid pressure approximation |
-| Surface/model assumptions | Sentman with complete diffuse reflection and complete thermal accommodation | Newtonian-family pressure methods; constant specific-heat ratio, no viscous shear or heat transfer |
-| Model input | `S` + `Ti_K`, or `Mach` + `Altitude_km`; always `Tw_K` | `Mach`, `gamma`, and surface equations |
-| Panel load | Sentman normal and tangential traction | Pressure-only normal traction |
-| Input/method choices | Two ways to specify the same Sentman model: Mode A or atmosphere-derived Mode B | Per-component windward/leeward equations |
-| Read next | [FMF](methods/fmf.md) | [Hypersonic](methods/hypersonic.md) |
+Panel Solver has two flow domains. Pick the one that matches your flight
+regime.
 
-Choose a model whose assumptions match your flow regime and geometry. Each
-solver page explains its equations and applicability.
+| | FMF | Hypersonic |
+|---|---|---|
+| Use it for | Very low-density flow, such as orbital altitudes, where gas molecules rarely collide with each other near the vehicle | High-Mach flow in a continuum gas, where a simple local pressure estimate per panel is good enough |
+| Model | Sentman free-molecular flow, with molecules re-emitted diffusely at the wall temperature | Newtonian-family pressure methods that you choose per surface |
+| Main inputs | Speed ratio `S` and temperature `Ti_K`, **or** `Mach` and `Altitude_km`; plus wall temperature `Tw_K` | `Mach`, `gamma`, and optional pressure methods |
+| Panel load | Pressure (normal) and shear (tangential) | Pressure only |
+| Not included | Specular reflection, partial accommodation | Viscosity, heat transfer, real-gas effects |
+| Read more | [FMF / Sentman model](methods/fmf.md) | [Hypersonic pressure methods](methods/hypersonic.md) |
+
+Both domains use the same case-table layout, attitude inputs, reference
+quantities, and result files. Only the flow-condition columns differ.
 
 ## How this documentation is organized
 

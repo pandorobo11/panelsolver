@@ -1,25 +1,32 @@
 # Quickstart
 
-After [installation](installation.md), choose the
-[flow domain](../index.md#choosing-a-solver) appropriate to your analysis and
-run its basic example below. Both examples use the same small plate, so you can
-learn the input and result workflow before preparing your own geometry.
+This page runs a small supplied example, shows where the results are, and
+then changes the attitude and runs it again. Pick the
+[flow domain](../index.md#choosing-a-solver) you plan to use. Both domains use
+the same plate, so the steps are the same.
 
-A checkout includes `examples/`. For a wheel installation, extract the matching
-`panelsolver-examples-v<version>.zip` from the release. Run CLI commands from
-the directory containing `examples/`. The GUI can copy bundled examples to a
-workspace as described below.
+## Get the examples
 
-## What the basic case represents
+- From a source checkout, the examples are in the `examples/` folder.
+- From a wheel installation, download `panelsolver-examples-v<version>.zip`
+  from the release page and extract it.
+- In the GUI, **File > New from Example** copies an example to a folder you
+  choose, so you do not need the archive.
 
-`examples/geometry/plate.stl` is a 1 m × 1 m square in the STL Y/Z plane,
-centered at the origin, with two triangular panels facing −X. At zero attitude
-the flow travels along +X, directly into that face. Both basic cases use
-`alpha_deg=10`, zero sideslip, `Aref_m2=1`, an origin moment reference, and
-1 m moment reference lengths. Ray shielding is off.
+Run the CLI commands below from the folder that contains `examples/`.
 
-This is an open, single-sided plate. A “Mesh is not watertight” warning is
-expected for this example and does not prevent calculation.
+## The basic example
+
+`examples/geometry/plate.stl` is a flat 1 m × 1 m plate in the STL Y/Z plane,
+centered at the origin. It has two triangles, both facing −X. With zero
+attitude the flow travels along +X, straight into the plate.
+
+Both basic cases use an angle of attack of `alpha_deg=10`, no sideslip, a
+reference area of `Aref_m2=1`, the origin as the moment reference point, and
+1 m reference lengths. Ray shielding is off.
+
+The plate is an open surface, so you will see a “Mesh is not watertight”
+warning. This is expected and does not stop the calculation.
 
 ## Run FMF
 
@@ -27,9 +34,9 @@ expected for this example and does not prevent calculation.
 panelsolver fmf --input examples/fmf/basic.csv
 ```
 
-This Sentman Mode A case uses molecular speed ratio `S=5`, incident static
-temperature `Ti_K=300 K`, and wall temperature `Tw_K=300 K`. It calculates both
-normal and tangential surface traction.
+This case gives the flow as a molecular speed ratio `S=5` and a gas temperature
+`Ti_K=300`, with a wall temperature `Tw_K=300`. FMF calculates both the
+pressure (normal) and shear (tangential) load on each panel.
 
 ## Run Hypersonic
 
@@ -37,95 +44,104 @@ normal and tangential surface traction.
 panelsolver hypersonic --input examples/hypersonic/basic.csv
 ```
 
-This case uses `Mach=6` and `gamma=1.4`. Omitted equation columns select
-Newtonian on windward panels and `Cp = 0` (`shield`) on leeward panels.
+This case uses `Mach=6` and `gamma=1.4`. The table does not set pressure
+methods, so the defaults apply: Newtonian on panels that face the flow and
+`Cp = 0` on panels that face away from it.
 
 ## Use the GUI
 
-Launch the GUI for your chosen domain:
+Start the GUI for your domain:
 
 ```bash
 panelsolver-gui fmf
 panelsolver-gui hypersonic
 ```
 
-Use **File > New from Example > Basic** to copy the table and geometry to a
-workspace, or **File > Open Input File...** to open the matching `basic.csv`.
-Select its row, choose **Run Selected Cases**, and accept the suggested Summary
-CSV destination. Leave the run settings at their defaults. After a successful
-run, the matching VTP appears in the Viewer.
+1. Choose **File > New from Example > Basic** and pick an empty folder. The
+   GUI copies the example there and opens it. (Or use **File > Open Input
+   File...** to open `basic.csv` directly.)
+2. Select the case row and choose **Run Selected Cases**.
+3. Accept the suggested Summary CSV location. Keep the other run settings as
+   they are.
+
+When the run finishes, the surface result appears in the Viewer.
 
 ## Read the first results
 
-A successful basic run writes these files under `examples/<domain>/outputs/`
-(or the corresponding directory in your GUI workspace):
+A run writes these files to `examples/<domain>/outputs/`, or to the
+`outputs/` folder of your GUI workspace:
 
-| File | First inspection |
+| File | What to look at first |
 |---|---|
-| `basic_result.csv` | Open in a spreadsheet or CSV reader. Find `case_id` and the row with `scope=total`; read `CA`, `CD`, and `CL`. |
-| `fmf_basic.vtp` (FMF) | In the Viewer select **Normal traction coeff.**, then **Tangential traction coeff.** |
-| `hypersonic_basic.vtp` (Hypersonic) | In the Viewer select **Cp**, the local pressure coefficient. |
+| `basic_result.csv` | Open it in a spreadsheet. Find the row with `scope` = `total`, then read `CA`, `CD`, and `CL`. |
+| `fmf_basic.vtp` (FMF) | In the Viewer, select **Normal traction coeff.**, then **Tangential traction coeff.** |
+| `hypersonic_basic.vtp` (Hypersonic) | In the Viewer, select **Cp**, the local pressure coefficient. |
 
-Each basic case produces one total row with finite coefficients and a VTP with
-two faces. `CA` is the body-axis axial coefficient; `CD` and `CL` are drag and
-lift in the documented stability axes. Both cases have positive `CA` and `CD`
-and negative `CL` for this attitude. They have near-zero moment coefficients
-(`Cl`, `Cm`, `Cn`) because the uniform plate load is centered on the moment
-reference. The two triangles have the same scalar values, so uniform coloring
-is expected. Hypersonic `cp` is about 1.94 for this orientation.
+What you should see:
 
-These are dimensionless coefficients. Reference quantities and signs are
-defined in [Load and coefficient conventions](../methods/load-and-coefficient-conventions.md).
-Use the [Summary CSV reference](../reference/summary-csv.md) and
-[VTP reference](../reference/vtp.md) when you need every field's meaning.
+- One `total` row with finite coefficients, and a VTP with two panels.
+- Positive `CA` (axial force) and `CD` (drag), and negative `CL` (lift) at
+  this attitude.
+- Moment coefficients `Cl`, `Cm`, and `Cn` close to zero, because the load is
+  spread evenly around the moment reference point.
+- Both panels have the same color, because they carry the same load.
+- In Hypersonic, `Cp` is about 1.94.
 
-## Change the attitude and rerun
+All coefficients are dimensionless. The
+[Summary CSV reference](../reference/summary-csv.md) and
+[VTP reference](../reference/vtp.md) describe every field, and
+[Load and coefficient conventions](../methods/load-and-coefficient-conventions.md)
+defines the axes and signs.
 
-Copy `basic.csv` to `alpha20.csv` in the same directory, so its relative STL
-path still works. In a text editor or spreadsheet, change `case_id` to
-`alpha20` and `alpha_deg` from `10` to `20`; keep the other cells unchanged.
-Save it, then run the same command with `alpha20.csv` as the input, or open
-that file in the GUI and run its row.
+## Change the attitude and run again
 
-Compare `outputs/alpha20_result.csv` with `outputs/basic_result.csv` and inspect
-`outputs/alpha20.vtp`. The changed angle changes `CD` and `CL`; in the
-Hypersonic case `cp` decreases to about 1.77 as the flow becomes less normal to
-the plate. The distinct case ID keeps the original VTP available for comparison.
+1. Copy `basic.csv` to `alpha20.csv` in the same folder, so the STL path in
+   the table still works.
+2. Open `alpha20.csv` in a text editor or spreadsheet. Change `case_id` to
+   `alpha20` and `alpha_deg` from `10` to `20`. Leave the other cells as they
+   are.
+3. Run it with the same command, using `alpha20.csv` as the input, or open it
+   in the GUI and run its row.
 
-Next, follow [Case files](../guides/preparing-cases.md#adapt-an-example-to-your-own-case)
-to replace the plate with your STL, flow conditions, and reference quantities.
+Compare `outputs/alpha20_result.csv` with `outputs/basic_result.csv`, and look
+at `outputs/alpha20.vtp`. `CD` and `CL` change. In Hypersonic, `Cp` drops to
+about 1.77, because the flow now hits the plate less directly. Because the
+case ID is new, the first VTP is kept for comparison.
 
-## Try the feature examples next
+To use your own geometry and conditions, continue with
+[Preparing cases](../guides/preparing-cases.md#adapt-an-example-to-your-own-case).
 
-The repository and examples archive include `examples/README.md`, which collects
-commands, main inputs, and expected relationships for each feature example:
-FMF flow modes, Hypersonic pressure methods, shielding, components, attitude
-representations, and sphere-cone angle effects. Use those examples for the
-feature you need. For larger runs, see
-[Batch execution and recovery](../guides/batch-runs.md).
+## Try more examples
 
-### Curved surfaces: sphere-cone angle effects
+`examples/README.md` (in the checkout and in the examples archive) describes
+every example and what it shows: the two FMF input modes, the Hypersonic
+pressure methods, shielding, multi-part geometry, attitude inputs, and
+sphere-cone angle effects. For runs with many cases, see
+[Batch runs and recovery](../guides/batch-runs.md).
 
-Choose **File > New from Example > Sphere-cone: Angle Effects** in either
-domain, select all three rows, and run them. For the CLI:
+### Sphere-cone: angle effects
+
+In either domain, choose **File > New from Example > Sphere-cone: Angle
+Effects**, select all three rows, and run them. From the CLI:
 
 ```bash
 panelsolver fmf --input examples/fmf/sphere_cone.csv
 panelsolver hypersonic --input examples/hypersonic/sphere_cone.csv
 ```
 
-Both tables share a closed 9,216-panel sphere-cone and vary only alpha
-(0, 15, 30 degrees), with beta = 0. FMF uses `S=5`, `Ti_K=Tw_K=300`;
-Hypersonic uses Mach 6, gamma 1.4, Modified Newtonian windward and zero
-leeward Cp.
-Inspect normal and tangential traction for FMF, and Cp for Hypersonic; compare
-CL/CD in the Summary CSV. Use a fixed camera and color range between cases.
+Both tables use the same closed sphere-cone with 9,216 panels. Only the angle
+of attack changes (0, 15, and 30 degrees), with no sideslip. FMF uses `S=5`
+and `Ti_K=Tw_K=300`. Hypersonic uses Mach 6, gamma 1.4, Modified Newtonian on
+windward panels, and `Cp = 0` on leeward panels.
 
-The domains represent different flow regimes; these are idealized panel-model
-examples, not physical validation data.
-Geometry, reference quantities and generation commands are documented
-in `examples/README.md` in the checkout and examples archive.
+Look at the normal and tangential traction in FMF, or `Cp` in Hypersonic, and
+compare `CL` and `CD` in the Summary CSV. Keep the same camera and color range
+between cases so the pictures are comparable.
 
-Keep the Cube **Attitude Modes** example for comparing input representations of
-one flow direction. The sphere-cone example instead changes the actual direction
-to show its effect on surface loads.
+The two domains model different flow regimes. These are idealized examples,
+not validation data. `examples/README.md` lists the geometry, reference
+quantities, and how the mesh was generated.
+
+The Cube **Attitude Modes** example is different: it shows several ways of
+writing the same flow direction. The sphere-cone example changes the actual
+direction to show how surface loads respond.

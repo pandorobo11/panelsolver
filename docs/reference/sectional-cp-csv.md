@@ -1,10 +1,10 @@
 # Sectional Cp CSV
 
-Each ordinary row represents **one line segment inside one source panel**.
-The CSV saves both endpoints, not the segment midpoint. The scalar is constant
-on that segment. Neighbouring panels keep their own values, with no interpolation,
-averaging, smoothing, or area normalization. A midpoint for plotting can be
-computed as the average of the endpoints.
+Each row is **one straight line segment where a cutting plane crosses one
+panel**. The row stores both end points of the segment and that panel's value.
+The value is constant along the segment. Values are not interpolated, averaged,
+or smoothed between neighbouring panels. To plot against position, you can use
+the midpoint of the two end points.
 
 | Columns | Meaning |
 |---|---|
@@ -22,48 +22,51 @@ computed as the average of the endpoints.
 | `x1_stl_m`, `y1_stl_m`, `z1_stl_m` | Second endpoint. |
 | `scalar_name`, `scalar_value` | Hypersonic `cp` or FMF `normal_traction_coeff`, and its dimensionless value. |
 
-Rows follow input case order, definition order, increasing plane index, then
-source face order. Endpoint order follows source triangle connectivity; it does
-not imply contour direction or upper/lower surface identity. Separate contours
-and overlapping components are not joined.
+## Row order
 
-Point-only contact produces no segment. When the plane contains a shared edge,
-both incident panels retain their segments and values: coordinates can repeat.
-A fully coplanar triangle makes that entire plane fail because its intersection
-is an area, not a unique line. Other planes and definitions continue. Empty or
-failed planes produce a status row with blank segment/value fields. A definition
-that cannot resolve against the mesh produces a failed row with blank plane index
-and unavailable resolved fields. A physical solve failure is reported in batch
-errors; it cannot produce a signed result row.
+Rows are ordered by case (case-table order), then definition (file order),
+then plane (increasing `plane_index`), then panel (mesh order). The two end
+points of a segment are in an arbitrary order: they do not tell you the
+direction around a contour or the upper or lower surface. Segments are not
+joined into contours, and separate parts are not merged.
 
-The intersection predicates use exact rational arithmetic on stored float64
-vertices, origins and normalized directions. Automatic plane offsets retain exact
-projected extrema and exact interpolation (the midpoint for one plane) through
-intersection testing. Only their reported positions and endpoint coordinates are
-rounded to float64; an explicitly supplied position uses the supplied float64
-value. No epsilon snaps nearby surfaces together. Source topology is checked
-against the same geometry validation used by sectional loads.
+## Special cases
 
-If both endpoints round to exactly the same float64 coordinates, that segment
-is omitted and the plane has `warning` status. `omitted_segment_count` records
-the plane-wide omitted count, repeated on each surviving segment row; do not sum
-this repeated value across rows of the same plane. All remaining segments and
-their unchanged panel values are saved. If none remain, one warning status row has blank segment/value
-fields. Such planes count as completed in the batch; GUI/CLI logs also report the
-warning, including original source face indices (zero-based). Failure reasons
-also go to the logs. CSV contains no `message` column or detailed diagnostic text.
-The Python API retains `message`. A coplanar triangle still fails the entire plane.
+- A plane that only touches a vertex produces no segment there.
+- A plane that runs exactly along an edge shared by two panels produces a
+  segment for each panel, with each panel's own value, so the same coordinates
+  can appear twice.
+- A plane that lies exactly in the plane of a triangle makes that whole plane
+  fail, because the cut is an area rather than a line. Other planes and
+  definitions still run.
+- An empty or failed plane gets one status row with the segment and value
+  columns empty.
+- A definition that cannot be applied to the case's geometry gets one failed
+  row, with `plane_index` and the resolved fields empty.
+- If the case itself cannot be solved, the error is reported in the batch
+  errors and no rows are written for it.
 
-This rule is exact equality after rounding, not a length threshold or epsilon.
-Representable short segments remain. When adjacent segments share the exact
-endpoints, omitting the collapsed segment preserves closure in the saved
-coordinates; no contour assembly, gap repair, or closure guarantee is added.
-The omitted panel's scalar is not transferred to adjacent panels. Rational
-arithmetic costs more than a floating point-only slice; large meshes with many
-planes may be slower.
+## Very short segments
 
-CSV output is atomic. Successful and failed plane records from completed
-extractions are saved even when batch status is failed. If no extraction returns
-records, the destination is unchanged. Cancellation occurs between definitions
-(serial), or between cases (parallel); an active extraction finishes first.
-Existing Summary CSV, sectional load CSV and VTP outputs are unchanged.
+If both end points of a segment round to exactly the same coordinates, that
+segment is left out and the plane gets status `warning`. All other segments
+are kept with their values. `omitted_segment_count` is the number of segments
+left out in that plane; it is repeated on every row of the plane, so do not add
+it up across rows. If no segments remain, the plane gets one warning row with
+empty segment and value columns. Warning planes count as completed. The GUI
+and CLI logs list the affected panel indices (zero-based). The CSV has no
+message column; the Python API keeps a `message` for each plane.
+
+Only segments that become a single point after rounding are left out; short
+segments are kept. No tolerance is applied to snap nearby surfaces together.
+The intersection is calculated exactly, which can be slow for large meshes
+with many planes.
+
+## Saving
+
+The CSV is written in one step, so an existing file is either fully replaced or
+left unchanged. Finished planes are saved even when the batch status is
+`failed`. If no extraction finished, the file is not written. Cancellation
+takes effect between definitions (one worker) or between cases (several
+workers); a plane that is being calculated finishes first. Running Sectional Cp
+does not change any Summary CSV, sectional load CSV, or VTP file.

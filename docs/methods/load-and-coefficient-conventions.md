@@ -19,7 +19,7 @@ whole case and, for multiple STLs, each component.
 All eight coefficients are dimensionless. Their magnitudes depend on your
 `Aref_m2`; moments also depend on the reference point and the three
 `Lref_*_m` lengths. Use the same reference conventions when comparing cases or
-external data. [Case files](../guides/preparing-cases.md#choose-reference-quantities)
+external data. [Preparing cases](../guides/preparing-cases.md#choose-reference-quantities)
 explains how to choose these inputs. The equations below give the exact area
 weighting, signs, frames, and normalization.
 

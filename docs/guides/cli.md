@@ -1,6 +1,7 @@
-# CLI guide
+# Using the CLI
 
-Select a physical flow domain with:
+The `panelsolver` command runs every case in a case table without opening the
+GUI. Choose the flow domain first:
 
 ```text
 panelsolver fmf --input PATH [--output PATH] [--workers N]
@@ -11,56 +12,58 @@ panelsolver hypersonic --input PATH [--output PATH] [--workers N]
                        [--verbose] [--plain] [--debug]
 ```
 
-| Selector | Flow regime | Method | Input table |
+| Domain | Flow regime | Model | Case table |
 |---|---|---|---|
-| `fmf` | free molecular flow | Sentman | FMF case table |
-| `hypersonic` | hypersonic pressure approximation | Newtonian-family methods | Hypersonic case table |
+| `fmf` | free-molecular flow | Sentman | [FMF case table](../reference/fmf-case-table.md) |
+| `hypersonic` | hypersonic flow | Newtonian-family pressure methods | [Hypersonic case table](../reference/hypersonic-case-table.md) |
 
-Both commands read CSV, XLSX, and XLSM case tables and write
-[Summary CSV](../reference/summary-csv.md) and optional per-case
-[VTP](../reference/vtp.md).
+Both commands read a CSV, XLSX, or XLSM case table. They write a
+[Summary CSV](../reference/summary-csv.md) and, for each case that has
+`save_vtp_on=1`, a [VTP file](../reference/vtp.md).
 
-| Option | Meaning | Default |
+| Option | What it does | Default |
 |---|---|---|
-| `-i`, `--input` | CSV/XLSX/XLSM case table | required |
-| `-o`, `--output` | Summary CSV destination | `<input_dir>/outputs/<input_stem>_result.csv` |
-| `-j`, `--workers` | Spawn workers; must be at least 1 | `1` |
-| `--cases` | Space- or comma-separated case IDs | all cases |
-| `--checkpoint-every-cases` | Append unsaved cases to the Summary CSV after N completed cases; final CSV uses input order; `0` disables intermediate saves | `2000` |
-| `--verbose` | Show case-level runtime messages in Rich mode | off |
-| `--plain` | Disable Rich run/progress output | off |
-| `--debug` | Show a Python traceback for CLI errors | off |
+| `-i`, `--input` | Case table to read. | required |
+| `-o`, `--output` | Where to write the Summary CSV. | `<input folder>/outputs/<input name>_result.csv` |
+| `-j`, `--workers` | Number of cases to run in parallel (at least 1). | `1` |
+| `--cases` | Run only these case IDs, separated by spaces or commas. | all cases |
+| `--checkpoint-every-cases` | Save results to the Summary CSV after every N finished cases, so you can open partial results during a long run. `0` saves only at the end. See [Batch runs and recovery](batch-runs.md#checkpoints). | `2000` |
+| `--verbose` | Show a message for each case. | off |
+| `--plain` | Use plain text output instead of the live progress display. | off |
+| `--debug` | Show the full Python traceback when an error occurs. | off |
 
 Examples:
 
 ```bash
 panelsolver fmf -i cases.csv --cases mode_a,mode_b -j 2
-panelsolver hypersonic -i cases.xlsx -o results.csv --cases baseline -j 1
+panelsolver hypersonic -i cases.xlsx -o results.csv --cases baseline
 ```
 
 ## Case selection
 
-`--cases` requires at least one value. Selected rows retain input-table order;
-unknown case IDs reject the request.
+`--cases` needs at least one case ID. The selected cases run in their order in
+the case table. An unknown case ID stops the command before anything runs.
 
 ## Progress and errors
 
-On an interactive TTY, the default Rich display shows a summary and live
-progress. `--verbose` adds case-level `[RUN]` and `[OK]` messages. Use `--plain`
-for plain-text output; redirected or piped stdout and CI use it automatically.
+In an interactive terminal, the CLI shows a summary and a live progress bar.
+`--verbose` adds a `[RUN]` and `[OK]` line for each case. When the output is
+redirected to a file or pipe, or runs in CI, plain text is used automatically;
+`--plain` forces it.
 
-Validation and calculation failures show a concise error and return a nonzero
-exit status; `--debug` adds the Python traceback. Output-file failures also
-return a nonzero status after the
-[continuation and recovery rules](batch-runs.md) are applied.
+If a case table is invalid or a calculation fails, the CLI prints a short error
+and exits with a nonzero status. Add `--debug` to see the full traceback. If a
+result file cannot be written, the CLI also exits with a nonzero status after
+saving what it can; see [Batch runs and recovery](batch-runs.md).
 
 ## Output destinations
 
-Output-path validation rejects collisions with the input table, any STL, and
-any planned VTP before execution, even when that case has VTP saving disabled.
-The check also rejects portable case/Unicode variants and aliases of an existing
-protected file. See [Case files](preparing-cases.md#paths-vtp-destinations-and-components)
-for per-case VTP destinations.
+Before running anything, the CLI checks that the Summary CSV will not overwrite
+the case table, an STL file, or a VTP file that the run will write. This check
+also applies to cases with VTP saving turned off, and it treats file names that
+differ only in upper and lower case as the same file. See
+[Preparing cases](preparing-cases.md#paths-vtp-destinations-and-components) for
+where VTP files go.
 
 ## Sectional batches
 

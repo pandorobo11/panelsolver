@@ -1,25 +1,27 @@
-# Sectional load result CSV
+# Sectional load CSV
 
-This dedicated long-format file contains one row per
-`case × section × scope × bin`. It is separate from Summary CSV and VTP.
-Use the [definition reference](sectional-definitions.md#sectional-load-definitions) and
-[CLI workflow](../guides/sectional.md#sectional-loads-from-the-cli) to create it.
+This file has one row for each combination of case, definition, scope, and
+strip (bin). It is separate from the Summary CSV and VTP files. See
+[Sectional loads and Cp](../guides/sectional.md#sectional-loads-from-the-cli) to
+create it, and the [definition reference](sectional-definitions.md#sectional-load-definitions)
+for its input.
 
-Rows follow input case order, selected definition-file order, total scope then
-ascending original component ID, and increasing zero-based bin index. Empty
-bins remain in the file. Even a single selected component has both total and
-component rows. All scopes use the same bins and the original case references.
+Rows are ordered by case (case-table order), then definition (file order),
+then scope (`total` first, then each part by component ID), then strip
+(increasing `bin_index`). Empty strips are included as zeros. Even with one
+selected part, there is a `total` row and a `component` row. All scopes use the
+same strips and the case's own reference quantities.
 
-`total` means the selected components within the range. It means the whole
-vehicle only when both `all_components_selected` and
-`covers_selected_geometry` are true. Coverage is geometric, including surfaces
-with zero loads. No-overlap is a successful zero result; a failed pair has no
-rows at all.
+`total` means the selected parts within the range. It is the whole vehicle
+only when both `all_components_selected` and `covers_selected_geometry` are
+true. Coverage is about geometry, so surfaces with zero load still count. A
+range that misses the geometry is a valid result with zeros; a pair that
+failed has no rows at all.
 
 ## Columns in order
 
-UTF-8 with BOM, quoted CSV cells and round-trippable finite numeric values use
-the shared serializer. Blank fields are described below. The exact order is:
+The file is UTF-8 with a byte-order mark, like the Summary CSV. Empty cells are
+described below. The columns are, in this order:
 
 <!-- sectional-result-columns -->
 ```text
@@ -79,27 +81,28 @@ Python API but are not CSV columns.
 | `delta_Cl`, `delta_Cm`, `delta_Cn` | Normalized body roll, pitch and yaw moments. |
 | `delta_CD`, `delta_CL` | Stability force views: minus X, minus Z. |
 
-`delta_` denotes an integral over this strip, not a derivative or coefficient
-per metre. Full model traction includes Sentman tangential loads. Frames, signs
-and references follow the existing
-[load conventions](../methods/load-and-coefficient-conventions.md). Fragment-local
-moment integration can differ from stored whole-face-centroid integration by its
-documented representation rounding; no conservation residual is redistributed.
+`delta_` means the total over this strip. It is not a derivative and not a
+value per metre. In FMF the strip loads include the Sentman shear (tangential)
+load. Axes, signs, and references follow the
+[load and coefficient conventions](../methods/load-and-coefficient-conventions.md).
+When all parts are selected and the range covers the geometry, the strips add
+up to the case total, apart from small rounding differences.
 
 ## Failures and repeated export
 
-The batch stops scheduling work after observing a calculation failure or a
-cooperative cancellation. Already-dispatched cases can finish before the stop
-is observed. Successfully retained pairs are exported in the same input order,
-with the terminal status above; uncompleted pairs are absent. Completion counts
-remain available in CLI diagnostics and GUI status, rather than CSV columns. The CLI
-returns nonzero for failed/cancelled runs even when their partial CSV is saved.
+- After a calculation failure or a cancellation, no new work starts. Cases that
+  are already running may finish.
+- The pairs that finished are saved in the usual order, with `batch_status` set
+  to `failed` or `cancelled`. Pairs that did not finish are absent. The number
+  of finished pairs is shown in the CLI output and GUI status, not in the CSV.
+- The CLI exits with a nonzero status for failed or cancelled runs, even when
+  the partial CSV was saved.
+- If no pair finished, no CSV is written and an existing file is left as it
+  was.
+- The file is written in one step, so a failed save leaves an existing file
+  unchanged. In the GUI, the results stay in memory and can be saved again with
+  **Retry Save...** without recalculating.
+- The output can never overwrite the case table, the definition CSV, or any
+  STL file of the loaded cases.
 
-When no pair succeeds, no CSV is written and an existing destination is left
-unchanged. A save failure is separate from computation status. Atomic temporary
-writing preserves an existing valid file on failure. Retained in-memory batch
-results can be exported again without rerunning physics. Every export checks
-the destination against the case table, definition CSV and all loaded STL
-inputs, including unselected cases and existing file aliases.
-
-There are no intermediate Summary/VTP files or sectional checkpoint/retry files.
+No Summary CSV, VTP, or checkpoint files are created by sectional runs.

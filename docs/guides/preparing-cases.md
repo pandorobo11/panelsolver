@@ -1,163 +1,167 @@
-# Case files
+# Preparing cases
 
-Both domains accept CSV, XLSX, and XLSM. Excel input uses the first worksheet.
-Convert Excel 97–2003 BIFF `.xls` files to `.xlsx` or CSV before opening them.
-Column names and defaults are defined in the
-[FMF input reference](../reference/fmf-case-table.md) and
-[Hypersonic input reference](../reference/hypersonic-case-table.md).
+A **case** is one calculation: one geometry, one flow condition, and one
+attitude. You list cases as rows of a **case table**, which can be a CSV, XLSX,
+or XLSM file. Excel files use their first worksheet. Save CSV files as UTF-8
+(with or without a byte-order mark). Old Excel `.xls` files are not supported;
+save them as `.xlsx` or CSV first.
 
-CSV case tables use UTF-8, with or without a byte-order mark (BOM).
+This page explains how to prepare a case table and geometry. The exact columns
+for each domain are in the [FMF case table](../reference/fmf-case-table.md) and
+[Hypersonic case table](../reference/hypersonic-case-table.md) references.
 
 ## Adapt an example to your own case
 
-Copy the basic table and geometry from [Quickstart](../getting-started/quickstart.md)
-to a working directory, keeping their relative paths intact. Edit the table in a
-spreadsheet or text editor, then open it again in the GUI or pass it to CLI
-`--input`.
+The easiest start is to copy the Basic example from the
+[Quickstart](../getting-started/quickstart.md) into a working folder, keeping the
+table and its `geometry/` folder together. Edit the table in a spreadsheet or
+text editor, then open it in the GUI or pass it to the CLI with `--input`.
 
-1. Give the case a distinct `case_id` and replace `stl_path` with your STL path
-   or component list.
-2. Check the STL orientation, normals, and scale as described below.
-3. Replace the example's flow conditions and attitude with your analysis
-   conditions. For FMF, supply either `S` and `Ti_K` or `Mach` and
-   `Altitude_km`, plus `Tw_K`. For Hypersonic, supply `Mach`, `gamma`, and the
-   pressure methods appropriate to your surfaces. Check the assumptions on the
-   [FMF](../methods/fmf.md) or [Hypersonic](../methods/hypersonic.md) method page.
-4. Set your reference area, moment reference point, and reference lengths;
-   use values appropriate to your geometry and comparison convention.
-5. Choose whether geometry can block upstream flow to other panels and set
-   `shielding_on` accordingly; see [Ray shielding](../methods/ray-shielding.md).
-   Choose `out_dir` if you want a separate VTP location. Keep `save_vtp_on=1`
-   for surface inspection.
-6. Run one case first. Inspect the geometry and surface scalars in the GUI,
-   then check the total coefficients in the Summary CSV before adding more rows
-   for an attitude or flow-condition sweep.
+1. Give the case a new `case_id`, and set `stl_path` to your STL file (or to a
+   list of STL parts, described below).
+2. Check the STL orientation, normals, and units as described in
+   [Orient and scale the STL](#orient-and-scale-the-stl).
+3. Enter your flow condition and attitude.
+   - FMF: either `S` and `Ti_K`, or `Mach` and `Altitude_km`; always `Tw_K`.
+   - Hypersonic: `Mach`, `gamma`, and the pressure methods for your surfaces.
+
+   Check that the model suits your flow; see the [FMF](../methods/fmf.md) or
+   [Hypersonic](../methods/hypersonic.md) method page.
+4. Set the reference area, moment reference point, and reference lengths (see
+   [Choose reference quantities](#choose-reference-quantities)).
+5. Decide whether parts of the vehicle can hide other parts from the flow. If
+   they can, set `shielding_on=1`; see [Ray shielding](../methods/ray-shielding.md).
+   Set `out_dir` if you want the VTP files in a different folder. Keep
+   `save_vtp_on=1` so you can view the surface result.
+6. Run this one case first. Check the geometry and surface colors in the GUI,
+   and the total coefficients in the Summary CSV. Then add more rows for your
+   attitude or flow-condition sweep.
 
 ## Orient and scale the STL
 
-Export the mesh in the coordinate frame you intend to use throughout the case.
-At zero attitude, freestream travels along **+X in STL axes**, so an upstream
-face has its outward normal pointing toward −X. Body axes are
-`(X_body, Y_body, Z_body) = (−X_stl, +Y_stl, −Z_stl)`.
-Near zero attitude in the default `beta_sin` mode, increasing alpha tilts flow
-toward +Z_STL and increasing sideslip tilts it toward −Y_STL. Panel Solver uses the exported
-coordinates and orientation as supplied.
-See [Coordinate and attitude conventions](../methods/coordinate-and-attitude-conventions.md)
+**Direction.** With zero attitude, the flow travels along **+X of the STL
+file**. A surface that faces the oncoming flow therefore has its outward normal
+pointing toward −X. Increasing `alpha_deg` tilts the flow toward +Z, and
+increasing sideslip tilts it toward −Y (in the default `beta_sin` mode, near
+zero attitude). Panel Solver uses the STL coordinates exactly as exported, so
+export the mesh in the frame you want to use.
+
+Body axes, used for `CA`, `CN`, and the moments, are related to STL axes by
+`(X_body, Y_body, Z_body) = (−X_stl, +Y_stl, −Z_stl)`. See
+[Coordinate and attitude conventions](../methods/coordinate-and-attitude-conventions.md)
 for the full definitions.
 
-STL coordinates carry no reliable unit declaration. Set
-`stl_scale_m_per_unit` to the number of metres per exported coordinate unit:
-`1` for metres, `0.001` for millimetres, or `0.0254` for inches. All STL
-coordinates are multiplied by that value before calculation. Reference inputs
-ending in `_m` or `_m2` are used directly as SI quantities. Check a known model
-dimension after conversion; a units mistake also changes panel areas and moment
-arms.
+**Units.** STL files do not record their length unit. Set
+`stl_scale_m_per_unit` to the number of metres in one STL unit: `1` for metres,
+`0.001` for millimetres, or `0.0254` for inches. Every coordinate is multiplied
+by this value. Columns ending in `_m` or `_m2` are always in metres and square
+metres. After a run, check one known dimension of your model; a wrong scale
+also changes panel areas and moment arms.
 
-Use consistently wound triangles with normals pointing out of the body. Normal
-repair is attempted during loading, but it cannot establish the intended loaded
-side of an open surface. Check that side explicitly for plates or other open
-meshes. Non-watertight geometry is allowed with a warning; degenerate faces,
-failed normal repair, or remaining inconsistent winding are rejected.
+**Normals.** Triangles should be wound consistently, with normals pointing out
+of the body. Panel Solver tries to repair inconsistent winding when it loads
+the mesh, but it cannot guess which side of an open surface (such as a plate)
+should carry the load. Check that side yourself. A mesh that is not watertight
+is allowed with a warning. Degenerate triangles, or winding that cannot be
+repaired, stop the case with an error.
 
-Export all components in the same assembly frame and units, with their relative
-positions already set. Multiple STL files are combined at those coordinates
-using the single case-wide scale.
+**Multiple parts.** Export every part in the same assembly frame and units,
+already in their correct positions. Panel Solver combines them as they are,
+using one scale for the whole case.
 
 ## Choose reference quantities
 
-Use the conventions of the experiment, design, or coefficient data you intend
-to compare with, and keep them consistent across the comparison.
+Use the same reference conventions as the data you want to compare with, and
+keep them the same across all cases in the comparison.
 
-| Input | Practical choice and effect |
+| Input | How to choose it |
 |---|---|
-| `Aref_m2` | The positive reference area for all force and moment coefficients, such as a specified planform or frontal area. Supply a fixed value for the case, independent of attitude. Doubling it halves every integrated coefficient for the same geometry and conditions. |
-| `ref_x_m`, `ref_y_m`, `ref_z_m` | The point about which moments are calculated, in metres in the scaled STL frame; often the center of mass or an experiment's moment reference. Changing it changes moments, while forces stay the same. |
-| `Lref_Cl_m`, `Lref_Cm_m`, `Lref_Cn_m` | Positive lengths dividing roll, pitch, and yaw moments respectively, in addition to area normalization. Use the lengths defined by your comparison convention, for example span for roll/yaw and chord for pitch where applicable. They need not be equal. |
+| `Aref_m2` | The reference area for all coefficients, for example a planform or frontal area. Use a fixed value that does not change with attitude. Doubling it halves every coefficient. |
+| `ref_x_m`, `ref_y_m`, `ref_z_m` | The point about which moments are calculated, in metres in the (scaled) STL frame. Often the center of mass or the moment reference of a test. Moving it changes the moments but not the forces. |
+| `Lref_Cl_m`, `Lref_Cm_m`, `Lref_Cn_m` | Reference lengths for the roll, pitch, and yaw moments. For example, span for roll and yaw, and chord for pitch. They do not need to be equal. |
 
-Component coefficients use these same global references, so they add to the
-total within numerical tolerance. The exact equations and signs are in
+Results for each STL part use the same references as the total, so the parts
+add up to the total. The exact equations and signs are in
 [Load and coefficient conventions](../methods/load-and-coefficient-conventions.md).
 
 ## Columns and defaults
 
-Input columns may appear in any order: headers identify the fields. Use the
-exact names in the [FMF](../reference/fmf-case-table.md) or
-[Hypersonic](../reference/hypersonic-case-table.md) input reference. The order shown
-there is the order of the standard input columns in the **Summary CSV**, not an
-input ordering requirement.
-
-Required columns must be present and required cells filled. A column with a
-listed default may be omitted; an empty cell in that column also uses the
-default. Leave cells truly empty rather than entering spaces or placeholder
-text. For example, omitting `save_vtp_on` still saves VTP; set it to `0` to
-turn saving off. In FMF, fill exactly one complete Mode A/B pair per row and
-leave the unused pair empty or omit those columns. A table may mix modes when
-it includes both pairs of columns.
+- Columns can be in any order; the header names identify them. Use the exact
+  names from the [FMF](../reference/fmf-case-table.md) or
+  [Hypersonic](../reference/hypersonic-case-table.md) reference.
+- Required columns must be present, and their cells filled.
+- A column with a default can be left out. An empty cell in that column also
+  uses the default. Leave unused cells truly empty, without spaces or
+  placeholder text. For example, leaving out `save_vtp_on` still saves the VTP;
+  set it to `0` to skip the VTP.
+- In FMF, fill exactly one complete pair per row: `S` and `Ti_K`, **or**
+  `Mach` and `Altitude_km`. A table can mix both kinds of rows if it has all
+  four columns.
+- You can add your own columns, such as notes. They are copied to the Summary
+  CSV after the standard input columns.
 
 ## Paths, VTP destinations, and components
 
-Relative `stl_path` and `out_dir` values are resolved from the case table's
-directory, not the process working directory. Absolute paths are used as
-specified, and `~` is expanded. When VTP saving is enabled, the per-case path is
-`<resolved_out_dir>/<case_id>.vtp`. The domain input references define the
-`out_dir` and `save_vtp_on` defaults and accepted values; the
-[VTP reference](../reference/vtp.md) defines the saved content, and
-[Batch execution and recovery](batch-runs.md) explains write
-failures.
+Relative paths in `stl_path` and `out_dir` are relative to the folder that
+contains the case table, not to the folder you run the command from. Absolute
+paths are used as written, and `~` means your home folder.
 
-Use semicolons to list multiple STL components in input order:
+When VTP saving is on, each case is saved as `<out_dir>/<case_id>.vtp`. The
+[VTP reference](../reference/vtp.md) describes its contents, and
+[Batch runs and recovery](batch-runs.md) explains what happens if a file
+cannot be written.
+
+To build a case from several STL parts (components), separate their paths
+with semicolons:
 
 ```text
 geometry/body.stl;geometry/fin.stl
 ```
 
-Every STL in a case is scaled by that row's `stl_scale_m_per_unit`. Component
-IDs are zero-based positions in that list.
+All parts use the same `stl_scale_m_per_unit`. Parts are numbered from zero in
+the order listed (component IDs `0`, `1`, ...). The Summary CSV reports each
+part separately as well as the total.
 
-For Hypersonic, a surface-equation cell may contain one selector applied to all
-components or exactly one semicolon-separated selector per STL. See
-[Hypersonic](../methods/hypersonic.md).
+In Hypersonic, each pressure-method cell can hold one method for all parts, or
+one method per part separated by semicolons. See
+[Hypersonic pressure methods](../methods/hypersonic.md).
 
 ## Attitude modes
 
-Angles in case files are degrees. `attitude_input` controls the meaning of
-`alpha_deg` and `beta_or_bank_deg`:
+Angles in case tables are in degrees. `attitude_input` sets how `alpha_deg` and
+`beta_or_bank_deg` are read:
 
-| Mode | `alpha_deg` | `beta_or_bank_deg` |
-|---|---|---|
-| `beta_sin` | angle of attack; any finite periodic angle | sine-definition sideslip; -90° to 90° inclusive |
-| `beta_tan` | angle of attack; any finite periodic angle | absolute-X tangent sideslip; -90° to 90° inclusive |
-| `bank` | included angle; any finite angle | bank angle; any finite angle |
+| Mode | `alpha_deg` | `beta_or_bank_deg` | Use it when |
+|---|---|---|---|
+| `beta_sin` (default) | angle of attack; any angle | sideslip, sine definition; −90° to 90° | your sideslip data uses the sine definition |
+| `beta_tan` | angle of attack; any angle | sideslip, tangent definition; −90° to 90° | your data gives two tangent angles |
+| `bank` | total angle between flow and +X; any angle | bank (roll) angle of that flow direction; any angle | your data gives a total angle plus a roll orientation |
 
-Omitted or blank `attitude_input` selects `beta_sin` in both domains, including
-existing case files. To reproduce the previous default, explicitly set
-`attitude_input=beta_tan`; otherwise the same angle pair can produce different
-flow directions, coefficients, and case signatures.
+If `attitude_input` is missing or blank, `beta_sin` is used, including for
+older case files. Earlier versions used `beta_tan` as the default; set
+`attitude_input=beta_tan` explicitly to reproduce their results.
 
-Use `beta_sin` when the sideslip source uses the sine definition, `beta_tan`
-for two tangent-angle inputs, and `bank` when attitude is expressed as an included
-angle plus a circumferential orientation. All modes use the same resolver for
-FMF and Hypersonic and become a unit STL-frame freestream vector plus a separately derived
-stability angle. The beta_tan pair with alpha an odd multiple of 90° and
-beta = ±90° is rejected because the flow direction is undetermined. The table above lists the accepted
-ranges; the coordinate axes, signs, reference directions, periodicity, and
-transformations are defined in
+In `beta_tan` mode, an angle of attack of ±90° (or 270°, and so on) together
+with a sideslip of ±90° does not define a direction, so that combination is
+rejected. The exact formulas for each mode are in
 [Coordinate and attitude conventions](../methods/coordinate-and-attitude-conventions.md).
 
 ## Common validation
 
-- `case_id` must be a portable Unicode filename: no empty values, path/control
-  characters, Windows reserved names, trailing dot/space, `.` or `..`.
-- Case IDs must be unique after Unicode case-folding.
-- Required numbers must be finite; numeric booleans are rejected.
-- STL scale, reference area, and all three reference lengths must be positive.
+Panel Solver checks the table when it opens it and reports the row, case ID,
+and column of each problem. Mesh problems are reported when that case runs.
+
+- `case_id` is also the VTP file name, so it must be a valid file name on
+  every common operating system: not empty; no path separators or control
+  characters; no Windows reserved names such as `CON`; no trailing dot or
+  space; and not `.` or `..`.
+- Case IDs must be unique, ignoring upper and lower case.
+- Numbers must be finite. `TRUE`/`FALSE` values are not accepted as numbers.
+- The STL scale, reference area, and the three reference lengths must be
+  greater than zero.
 - `shielding_on` and `save_vtp_on` are `0` or `1`.
 - `ray_backend` is `auto`, `rtree`, or `embree`.
-- Empty, non-finite, degenerate, or unrepaired inconsistently wound meshes are
-  rejected by mesh validation.
-
-Extra input columns, such as your own notes, are preserved after the
-standard input columns in the Summary CSV, in their original relative order.
-`save_npz_on` is a reserved
-field that the CSV, XLSX, and XLSM readers explicitly reject; remove it when
-updating an older case file.
+- The mesh must not be empty, must have finite coordinates, and must not
+  contain degenerate triangles or winding that cannot be repaired.
+- The `save_npz_on` column from older versions is no longer accepted. Remove it
+  from old tables.
