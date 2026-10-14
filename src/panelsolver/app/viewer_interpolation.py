@@ -58,7 +58,8 @@ def prepare_interpolation_geometry(
             point_normals=True,
             split_vertices=True,
             feature_angle=30.0,
-            consistent_normals=True,
+            # Preserve the source orientation: opposite normals must not blend.
+            consistent_normals=False,
             auto_orient_normals=False,
             non_manifold_traversal=False,
         )

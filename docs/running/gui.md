@@ -221,9 +221,13 @@ colorbar with the failure, and logs the reason in Diagnostics. Subsequent valid
 results resume interpolation. With Smooth colors off, imported VTPs retain
 PyVista’s existing preference for point data when a name exists in both
 associations. Display topology is cached per loaded result; scalar changes only
-repeat the cell-to-point averaging. Winding consistency is repaired only in the
-display copy before sharp-edge splitting; non-manifold junctions may remain
-separated. PyVista 0.47 or newer is required for the surface extraction API.
+repeat the cell-to-point averaging. The Viewer does not repair winding or
+reorient normals: the 30-degree split uses normals from the original face
+winding. Oppositely oriented coplanar faces therefore remain separate rather
+than being averaged. The exact threshold is subject to floating-point precision;
+non-manifold junctions may also remain separated. Mesh orientation problems
+should be resolved before calculation, not hidden by display interpolation.
+PyVista 0.47 or newer is required for the surface extraction API.
 
 ### Save images
 

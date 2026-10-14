@@ -86,13 +86,13 @@ def test_invalid_boundary_fails_instead_of_blending_components():
         interpolated_surfaces(mesh, "cp")
 
 
-def test_opposite_winding_coplanar_faces_average_and_preserve_source():
+def test_opposite_winding_coplanar_faces_stay_separate_and_preserve_source():
     mesh = two_triangles()
     mesh.faces = [3, 0, 1, 2, 3, 1, 2, 3]
     before = mesh.faces.copy()
     ((surface, _),) = interpolated_surfaces(mesh, "cp")
-    assert surface.n_points == 4
-    assert 0.5 in surface.point_data["cp"]
+    assert surface.n_points == 6
+    assert set(surface.point_data["cp"]) == {0.0, 1.0}
     np.testing.assert_array_equal(mesh.faces, before)
 
 
@@ -108,3 +108,28 @@ def test_geometry_reuse_keeps_scalar_arrays_independent():
     assert 15.0 in second.point_data["temperature"]
     assert not first.cell_data and not second.cell_data
     assert not geometry[0].surface.cell_data
+
+
+@pytest.mark.parametrize("angle_deg", [0, 15, 29.9, 30.1, 90, 150, 180])
+@pytest.mark.parametrize("reverse", [False, True])
+def test_split_uses_original_normal_angle(angle_deg, reverse):
+    angle = np.deg2rad(angle_deg)
+    points = np.array(
+        [[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, -np.cos(angle), np.sin(angle)]],
+        dtype=float,
+    )
+    faces = np.array([[0, 1, 2], [0, 1, 3] if reverse else [1, 0, 3]])
+    mesh = pv.PolyData(points, np.column_stack([np.full(2, 3), faces]))
+    mesh.cell_data["cp"] = [0.0, 1.0]
+    original_faces = mesh.faces.copy()
+    ((surface, _),) = interpolated_surfaces(mesh, "cp")
+    normal_angle = 180 - angle_deg if reverse else angle_deg
+    edge = np.isclose(surface.points[:, 1], 0, atol=1e-12) & np.isclose(
+        surface.points[:, 2], 0, atol=1e-12
+    )
+    if normal_angle < 30:
+        np.testing.assert_array_equal(surface.point_data["cp"][edge], 0.5)
+    else:
+        assert set(surface.point_data["cp"][edge]) == {0.0, 1.0}
+    np.testing.assert_array_equal(mesh.faces, original_faces)
+    np.testing.assert_array_equal(mesh.cell_data["cp"], [0.0, 1.0])
