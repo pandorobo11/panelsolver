@@ -52,17 +52,9 @@ The sectional examples can also be run from the CLI, as shown in
 
 - **Basic:** one `total` row; read `CA`, `CD`, and `CL`. In the Viewer, look at
   `Cp` (Hypersonic) or the normal and tangential traction (FMF).
-- **Sphere-cone:** a closed sphere-cone with 9,216 panels, at 0, 15, and 30
-  degrees angle of attack with no sideslip. FMF uses `S=5` and
-  `Ti_K=Tw_K=300`; Hypersonic uses Mach 6, gamma 1.4, Modified Newtonian on
-  windward panels, and `Cp = 0` on leeward panels. Select all three rows and
-  run them. At zero angle of attack, `CL` and `CY` are almost zero; as the
-  angle grows, the load on the windward side increases. Look at the normal and
-  tangential traction (FMF) or `Cp` (Hypersonic), and keep the same camera and
-  color range when you compare the cases. Unlike **Attitude Modes**, which
-  writes one flow direction in different ways, this example changes the actual
-  direction. The two domains model different flow regimes, and these are
-  idealized examples, not validation data.
+- **Sphere-cone:** at zero angle of attack, `CL` and `CY` are almost zero. As
+  the angle grows, the load on the windward side increases. Keep the same
+  camera and color range when you compare the three cases.
 - **Attitude Modes, Flow Modes:** the rows describe the same physical condition,
   so their coefficients agree within a very small numerical tolerance. These examples
   are a good way to check that you understand the input conventions.
@@ -71,5 +63,6 @@ The sectional examples can also be run from the CLI, as shown in
 - **Shielding:** compare `shielded_faces` and the coefficients between the two
   rows. In the Viewer, color by **Shielded** to see the hidden panels.
 
-`examples/README.md`, included in the checkout and in the examples archive,
-lists the exact inputs of every case.
+All examples are idealized cases for learning the workflow, not validation
+data. `examples/README.md`, included in the checkout and in the examples
+archive, lists the exact inputs of every case.
