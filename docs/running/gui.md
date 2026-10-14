@@ -194,6 +194,30 @@ Following the theme uses white in light mode and black in dark mode. An explicit
 color stays selected across theme changes for the current window. Text and axes
 use a contrasting color, and saved images include the selected background.
 
+### Smooth color distributions
+
+Enable **Smooth colors** in the Display row to interpolate continuous panel
+values across the surface. The default is off, preserving the original
+constant value on each panel. Turn off **Show edges** for an uninterrupted
+color distribution; edge visibility remains an independent choice.
+
+Smooth colors uses the arithmetic mean of adjacent panel values at each vertex,
+then interpolates those values across each face. The display copy joins exactly
+coincident vertices within each STL component and shielding group. It does not
+average across those groups or across sharp edges exceeding 30 degrees.
+The original mesh and result arrays, calculations, Summary/sectional CSVs and
+VTP files remain unchanged. Automatic color limits still use the original panel
+values, so switching display modes preserves the color scale.
+
+The colorbar title includes **(interpolated)** while active, including in saved
+images. This is a visualization aid: peaks may be reduced and jumps within a
+smooth surface may blur. Switch it off to inspect original panel values.
+**Shielded**, **STL index**, and boolean fields always use panel values; the
+control is disabled for these fields and resumes its previous choice when a
+continuous scalar is selected. The choice applies to subsequent loaded results
+and image exports in the current window. If interpolation fails, the Viewer
+switches it off, keeps panel values visible, and logs the reason in Diagnostics.
+
 ### Save images
 
 Use **Save Image...** to save the current view. For a VTP matched to a loaded
