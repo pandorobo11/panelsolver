@@ -21,11 +21,10 @@ text editor, then open it in the GUI or pass it to the CLI with `--input`.
    list of STL parts, described below).
 2. Check the STL orientation, normals, and units as described in
    [Orient and scale the STL](#orient-and-scale-the-stl).
-3. Enter your flow condition and attitude.
-   - FMF: either `S` and `Ti_K`, or `Mach` and `Altitude_km`; always `Tw_K`.
-   - Hypersonic: `Mach`, `gamma`, and the pressure methods for your surfaces.
-
-   Check that the model suits your flow; see the [FMF](../methods/fmf.md) or
+3. Enter your flow condition and attitude. For FMF, give either `S` and
+   `Ti_K`, or `Mach` and `Altitude_km`, and always `Tw_K`. For Hypersonic, give
+   `Mach`, `gamma`, and the pressure methods for your surfaces. Check that the
+   model suits your flow; see the [FMF](../methods/fmf.md) or
    [Hypersonic](../methods/hypersonic.md) method page.
 4. Set the reference area, moment reference point, and reference lengths (see
    [Choose reference quantities](#choose-reference-quantities)).
