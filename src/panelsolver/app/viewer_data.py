@@ -298,12 +298,13 @@ def read_viewer_boundaries(
     )
     # Preserve ordinary panel display's permissive conversion, including NaN
     # and nonzero values. Strict smoothing eligibility is recorded separately.
+    # Any unreadable array means "no shielding", as the panel view always did.
     shielded = None
     try:
         values = np.asarray(cell_data["shielded"])
         if values.shape == (n_cells,):
             shielded = values.astype(bool)
-    except (KeyError, TypeError, ValueError):
+    except Exception:
         pass
     return ViewerBoundaries(components, shielded, error)
 

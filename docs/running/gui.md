@@ -204,10 +204,13 @@ color distribution; edge visibility remains an independent choice.
 Smooth colors uses the arithmetic mean of adjacent panel values at each vertex,
 then interpolates those values across each face. The display copy joins exactly
 coincident vertices within each STL component and shielding group. It does not
-average across those groups or across sharp edges exceeding 30 degrees.
-The original mesh and result arrays, calculations, Summary/sectional CSVs and
-VTP files remain unchanged. Automatic color limits still use the original panel
-values, so switching display modes preserves the color scale.
+average across those groups or along sharp edges exceeding 30 degrees. Where a
+sharp edge ends inside a surface, the vertex at its tip is not split, so values
+there can still blend across that edge. The exact threshold is subject to
+floating-point precision. The original mesh and result arrays, calculations,
+Summary/sectional CSVs and VTP files remain unchanged. Automatic color limits
+still use the original panel values, so switching display modes preserves the
+color scale.
 
 The colorbar title includes **(interpolated)** while active, including in saved
 images. This is a visualization aid: peaks may be reduced and jumps within a
@@ -215,33 +218,26 @@ smooth surface may blur. Switch it off to inspect original panel values.
 **Shielded**, **STL index**, and boolean fields always use panel values; the
 control is disabled for these fields and resumes its previous choice when a
 continuous scalar is selected. The choice applies to subsequent loaded results
-and image exports in the current window. If interpolation fails, the Viewer
-keeps the requested setting, uses panel values for that display only, labels the
-colorbar with the failure, and logs the reason in Diagnostics. Subsequent valid
-results resume interpolation. Geometry failures are remembered for the loaded
-result; scalar failures are remembered only for that scalar. Redrawing or
-toggling Smooth colors does not repeat a known failure or its warning. Reload
-the VTP to retry. Any cell lost during display preparation causes the entire
-interpolated view to fall back instead of displaying a partial surface.
-With Smooth colors off, imported VTPs retain
-PyVista’s existing preference for point data when a name exists in both
-associations. Display topology is cached per loaded result; scalar changes only
-repeat the selected field's cell-to-point averaging and finite-value check,
-without rescanning the other cell arrays. Prepared components are appended
-without joining points, giving at most two surface actors (one per shielding
-state). Boundary validation is performed during scalar discovery and cached for
-the loaded result. Missing arrays imply a single component or no shielding.
-Malformed boundary arrays do not prevent ordinary VTP inspection; Smooth falls
-back to panel values with a cached warning. Both modes treat every nonzero
-`shielded` value as shielded. Imported point/cell shading normals are preserved
-separately from the topology used for averaging, including different normals
-at coincident corners. The Viewer does not repair winding or
-reorient normals: the 30-degree split uses normals from the original face
-winding. Oppositely oriented coplanar faces therefore remain separate rather
-than being averaged. The exact threshold is subject to floating-point precision;
-non-manifold junctions may also remain separated. Mesh orientation problems
-should be resolved before calculation, not hidden by display interpolation.
-The supported PyVista dependency remains 0.47 or newer.
+and image exports in the current window.
+
+If interpolation fails, the Viewer keeps the requested setting, uses panel
+values for that display only, labels the colorbar with the failure, and logs
+the reason in Diagnostics once. A failure is not retried for the same loaded
+result; reload the VTP to retry. Subsequent valid results resume interpolation.
+If any panel would be lost from the smoothed display, the whole view falls back
+to panel values rather than showing a partial surface. Malformed `stl_index` or
+`shielded` arrays do not prevent ordinary VTP inspection; only Smooth colors
+falls back. Both modes treat every nonzero `shielded` value as shielded, and
+imported shading normals are kept.
+
+With Smooth colors off, imported VTPs keep PyVista's existing preference for
+point data when a name exists in both associations.
+
+The Viewer does not repair winding or reorient normals: the 30-degree split
+uses normals from the original face winding. Oppositely oriented coplanar faces
+therefore remain separate rather than being averaged, and non-manifold
+junctions may also remain separated. Resolve mesh orientation problems before
+calculation instead of relying on display interpolation to hide them.
 
 ### Save images
 

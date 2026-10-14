@@ -748,6 +748,9 @@ class ViewerPanel(QtWidgets.QWidget):
                 n_cells=loaded.n_cells,
                 preferred=self.spec.preferred_scalars,
             )
+            boundaries = read_viewer_boundaries(
+                loaded.cell_data, n_cells=loaded.n_cells, fields=fields
+            )
         except Exception as exc:
             self._clear_rendered_artifact()
             self.set_artifact_view_state(
@@ -758,9 +761,7 @@ class ViewerPanel(QtWidgets.QWidget):
 
         self._loaded_vtp_path = Path(path).expanduser()
         self._poly = loaded
-        self._boundaries = read_viewer_boundaries(
-            loaded.cell_data, n_cells=loaded.n_cells, fields=fields
-        )
+        self._boundaries = boundaries
         self._reset_interpolation_state()
         if case_row is not None:
             self._display_case_row = dict(case_row)

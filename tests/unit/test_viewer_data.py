@@ -236,22 +236,29 @@ class ScalarDiscoveryTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             scalar_color_limits(numeric, [1.0, np.nan])
 
+    def test_discrete_metadata_keeps_ranges_and_integer_physical_fields(
+        self,
+    ) -> None:
+        data = {
+            "stl_index": np.array([2, 7]),
+            "shielded": np.array([0, 1]),
+            "flag": np.array([False, True]),
+            "count": np.array([2, 7]),
+        }
+        fields = {
+            field.name: field for field in discover_scalar_fields(data, n_cells=2)
+        }
+        self.assertFalse(fields["stl_index"].interpolable)
+        self.assertFalse(fields["shielded"].interpolable)
+        self.assertFalse(fields["flag"].interpolable)
+        self.assertTrue(fields["count"].interpolable)
+        self.assertEqual(
+            (2.0, 7.0), scalar_color_limits(fields["stl_index"], data["stl_index"])
+        )
+        self.assertEqual(
+            (0.0, 1.0), scalar_color_limits(fields["shielded"], data["shielded"])
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
-
-
-def test_discrete_scalar_metadata_preserves_ranges_and_integer_physical_fields():
-    data = {
-        "stl_index": np.array([2, 7]),
-        "shielded": np.array([0, 1]),
-        "flag": np.array([False, True]),
-        "count": np.array([2, 7]),
-    }
-    fields = {field.name: field for field in discover_scalar_fields(data, n_cells=2)}
-    assert not fields["stl_index"].interpolable
-    assert not fields["shielded"].interpolable
-    assert not fields["flag"].interpolable
-    assert fields["count"].interpolable
-    assert scalar_color_limits(fields["stl_index"], data["stl_index"]) == (2.0, 7.0)
-    assert scalar_color_limits(fields["shielded"], data["shielded"]) == (0.0, 1.0)

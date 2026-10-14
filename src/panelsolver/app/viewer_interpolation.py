@@ -73,7 +73,8 @@ def prepare_interpolation_geometry(
     boundaries: ViewerBoundaries | None = None,
 ) -> tuple[InterpolationGeometry, ...]:
     """Prepare display topology once per artifact, independent of its scalar."""
-    if not isinstance(poly, pv.PolyData) or poly.n_cells != poly.n_faces:
+    # GetNumberOfPolys() rather than n_faces: PyVista 0.47 raises on n_faces.
+    if not isinstance(poly, pv.PolyData) or poly.n_cells != poly.GetNumberOfPolys():
         raise ValueError("Smooth colors requires a polygon surface")
     if boundaries is None:
         fields = discover_scalar_fields(poly.cell_data, n_cells=poly.n_cells)

@@ -6,7 +6,10 @@ import numpy as np
 import pytest
 import pyvista as pv
 
-from panelsolver.app.viewer_data import discover_scalar_fields
+from panelsolver.app.viewer_data import (
+    discover_scalar_fields,
+    read_viewer_boundaries,
+)
 from panelsolver.app.viewer_interpolation import (
     interpolated_surfaces,
     prepare_interpolation_geometry,
@@ -292,3 +295,17 @@ def test_imported_normals_are_preserved_without_affecting_averages(
         np.testing.assert_array_equal(mesh.point_data[name], before.point_data[name])
     for name in mesh.cell_data:
         np.testing.assert_array_equal(mesh.cell_data[name], before.cell_data[name])
+
+
+def test_unreadable_shield_array_means_no_shielding_without_failing_load():
+    class CellData(dict):
+        def __getitem__(self, name):
+            if name == "shielded":
+                raise RuntimeError("unreadable VTK array")
+            return super().__getitem__(name)
+
+    cell_data = CellData(cp=np.array([0.0, 1.0]), shielded=None)
+    fields = discover_scalar_fields({"cp": cell_data["cp"]}, n_cells=2)
+    boundaries = read_viewer_boundaries(cell_data, n_cells=2, fields=fields)
+    assert boundaries.shielded is None
+    assert boundaries.error == "Invalid shielded boundary data"
