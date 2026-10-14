@@ -1059,7 +1059,7 @@ requires-dist = [
     { name = "pandas" },
     { name = "pyside6", marker = "sys_platform != 'darwin'", specifier = ">=6.9.3,<7" },
     { name = "pyside6", marker = "sys_platform == 'darwin'", specifier = "==6.9.0" },
-    { name = "pyvista" },
+    { name = "pyvista", specifier = ">=0.47" },
     { name = "pyvistaqt", specifier = ">=0.12" },
     { name = "rich", specifier = ">=15,<16" },
     { name = "rich-argparse", specifier = ">=1.8,<2" },

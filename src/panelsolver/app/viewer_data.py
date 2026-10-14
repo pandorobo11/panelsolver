@@ -102,6 +102,7 @@ class ScalarField:
     name: str
     dtype: np.dtype
     categorical: bool
+    interpolable: bool
 
     def __post_init__(self) -> None:
         if not isinstance(self.name, str) or not self.name.strip():
@@ -116,6 +117,8 @@ class ScalarField:
         object.__setattr__(self, "dtype", dtype)
         if not isinstance(self.categorical, bool):
             raise TypeError("ScalarField.categorical must be bool")
+        if not isinstance(self.interpolable, bool):
+            raise TypeError("ScalarField.interpolable must be bool")
 
 
 def _data_attribute(artifact: object, name: str) -> object | None:
@@ -247,7 +250,13 @@ def resolve_matching_case_row(
     return None
 
 
-def _eligible_scalar(name: str, value: object, *, n_cells: int) -> ScalarField | None:
+# Discrete fields and whether they use the fixed boolean color range. Register
+# additional ID fields here; integer-valued physical scalars remain continuous.
+_DISCRETE_SCALARS = {"stl_index": False, "shielded": True}
+
+
+def _scalar_array(value: object, *, n_cells: int) -> np.ndarray | None:
+    """The shared shape/type/finite boundary for viewer cell arrays."""
     try:
         array = np.asarray(value)
     except (TypeError, ValueError):
@@ -256,10 +265,60 @@ def _eligible_scalar(name: str, value: object, *, n_cells: int) -> ScalarField |
         return None
     if array.dtype.kind == "f" and not np.isfinite(array).all():
         return None
+    return array
+
+
+@dataclass(frozen=True)
+class ViewerBoundaries:
+    components: np.ndarray | None
+    shielded: np.ndarray | None
+    error: str | None
+
+
+def read_viewer_boundaries(
+    cell_data: object, *, n_cells: int, fields: Sequence[ScalarField]
+) -> ViewerBoundaries:
+    """Cache discovery's validation and the legacy panel shielding mask once.
+
+    Invalid boundary data prevents smoothing, not ordinary VTP inspection.
+    Scalar discovery already checked shape, numeric dtype and finiteness.
+    """
+    valid = {field.name for field in fields}
+    error = None
+    for name in ("stl_index", "shielded"):
+        if name in cell_data and name not in valid:
+            error = f"Invalid {name} boundary data"
+            break
+    components = (
+        np.asarray(cell_data["stl_index"])
+        if "stl_index" in valid
+        else np.zeros(n_cells, dtype=np.int64)
+        if "stl_index" not in cell_data
+        else None
+    )
+    # Preserve ordinary panel display's permissive conversion, including NaN
+    # and nonzero values. Strict smoothing eligibility is recorded separately.
+    # Any unreadable array means "no shielding", as the panel view always did.
+    shielded = None
+    try:
+        values = np.asarray(cell_data["shielded"])
+        if values.shape == (n_cells,):
+            shielded = values.astype(bool)
+    except Exception:
+        pass
+    return ViewerBoundaries(components, shielded, error)
+
+
+def _eligible_scalar(name: str, value: object, *, n_cells: int) -> ScalarField | None:
+    array = _scalar_array(value, n_cells=n_cells)
+    if array is None:
+        return None
+    categorical = array.dtype.kind == "b" or _DISCRETE_SCALARS.get(name, False)
     return ScalarField(
         name=name,
         dtype=array.dtype,
-        categorical=name == "shielded" or array.dtype.kind == "b",
+        categorical=categorical,
+        interpolable=not categorical and name not in _DISCRETE_SCALARS,
     )
 
 
