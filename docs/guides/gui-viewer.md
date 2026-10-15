@@ -20,14 +20,13 @@ To look at any VTP file, choose **File > Open VTP...** or the Viewer's
 **Open VTP...** button, or drag the `.vtp` file onto the window. The file does
 not need to match a case in the table.
 
-**Show info text** shows the case ID and flow conditions on top of the
-geometry. If a file cannot be read or written, the Viewer shows the error and a
+If a file cannot be read or written, the Viewer shows the error and a
 **Diagnostics** button.
 
 ## Choose surface data and coloring
 
-Below the Viewer, choose the value to color by (**Scalar**), the **Colormap**,
-and the camera direction. The color bar shows the value name and its range.
+Below the Viewer, choose the value to color by (**Scalar**) and the
+**Colormap** (`jet`, `viridis`, or `bwr`). The color bar shows the value name and its range.
 The scalar names match these [VTP fields](../reference/vtp.md):
 
 | VTP field | GUI label |
@@ -43,13 +42,32 @@ The scalar names match these [VTP fields](../reference/vtp.md):
 | `center_z_stl_m` | Center Z [m] |
 | `stl_index` | STL index |
 
-**Range:** enter **Min** and **Max** to fix the color limits. Leave a box empty
-to set that limit automatically. If the text is not a valid number, the box is
-marked, and its tooltip explains why the automatic limit is used.
+**Range:** enter a minimum and maximum to fix the color limits, for example to
+compare several cases on the same scale. Leave a box empty to set that limit
+automatically, or choose **Auto range** to clear both. If the text is not a
+valid number, the box is marked, and its tooltip explains why the automatic
+limit is used.
 
-**Camera:** view the model along an STL axis, from one of two diagonal
-(isometric) directions, or from **Upstream** or **Downstream** along the flow.
-**Fit** zooms to fit the model without rotating it.
+**Display:**
+
+| Option | Default | What it does |
+|---|---|---|
+| **Show edges** | on | Draws the triangle edges. |
+| **Smooth colors** | off | Blends colors across panels; see [below](#smooth-color-distributions). |
+| **Shielded transparent** | on | Draws panels hidden by [ray shielding](../methods/ray-shielding.md) at 30% opacity, so you can see what is behind them. Turn it off to draw them solid. |
+| **Show info text** | on | Shows the case ID and flow conditions on top of the geometry. |
+
+**Camera:**
+
+| Button | View |
+|---|---|
+| **+X**, **-X**, **+Y**, **-Y**, **+Z**, **-Z** | From that side of the model, along an STL axis. |
+| **-X -Y +Z**, **+X -Y -Z** | From one of two diagonal (isometric) directions in STL coordinates. |
+| **Upstream** | From upstream, looking along the flow direction of the case. |
+| **Downstream** | From downstream, looking back against the flow. |
+| **Fit** | Zooms to fit the model, without rotating it. |
+
+You can also rotate, pan, and zoom with the mouse.
 
 **Background:** **Follow theme** (the default) uses white in light mode and
 black in dark mode. **White** or **Black** keep that color in this window.

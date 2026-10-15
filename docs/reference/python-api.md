@@ -91,17 +91,22 @@ from panelsolver import (
 )
 ```
 
-Sectional postprocessing has a separate supported import:
+Sectional postprocessing has separate supported imports:
 
 ```python
-from panelsolver.postprocess import SectionalLoads, compute_sectional_loads
+from panelsolver.postprocess import (
+    SectionalCp,
+    SectionalLoads,
+    compute_sectional_cp,
+    compute_sectional_loads,
+)
 ```
 
 Compatibility covers these imports, the callable signatures, and returned fields
 documented below. Nested result objects are accessed through the returned result;
 their defining modules and direct constructors remain implementation details.
-`SectionalLoads` is exposed for type annotations and result checks, not direct
-construction. Package-root exports are unchanged.
+`SectionalLoads` and `SectionalCp` are exposed for type annotations and result
+checks, not direct construction. Package-root exports are unchanged.
 See [Compatibility policy](../about/compatibility.md) for the full support boundary.
 
 ## Attitude resolution
@@ -241,7 +246,7 @@ HypersonicCase(
 | `Lref_Cm_m` | real number | — | m, > 0 | Pitch-moment reference length. |
 | `Lref_Cn_m` | real number | — | m, > 0 | Yaw-moment reference length. |
 | `mach` | real number | — | dimensionless, > 0 | Freestream Mach number; corresponds to case-table `Mach`. |
-| `gamma` | real number | — | dimensionless, > 1 | Specific-heat ratio; corresponds to case-table `gamma`. |
+| `gamma` | real number | — | dimensionless, > 1 | Specific-heat ratio; corresponds to `gamma`. |
 | `windward_equation` | `str` | `"newtonian"` | `newtonian`, `modified_newtonian`, `tangent_wedge`, or `tangent_cone` | Windward equation selection; corresponds to `windward_eq`. |
 | `leeward_equation` | `str` | `"shield"` | `shield` or `prandtl_meyer` | Leeward equation selection; corresponds to `leeward_eq`. |
 | `shielding` | `bool` | `False` | `False` or `True` | Enables common geometric ray shielding. This is distinct from the leeward `shield` pressure rule. |

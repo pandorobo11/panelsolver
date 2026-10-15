@@ -3,8 +3,7 @@
 This page explains the settings for runs with many cases, and what you can
 still use after a run is cancelled or something fails. It applies to both the
 CLI and the GUI. Sectional batches follow their own rules, described in
-[Sectional loads and Cp](sectional.md) and the
-[sectional load CSV reference](../reference/sectional-loads-csv.md#failures-and-repeated-export).
+[Sectional loads and Cp](sectional.md).
 
 ## Workers and result order
 

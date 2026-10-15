@@ -18,6 +18,7 @@ nav:
   - Getting started:
       - Installation: getting-started/installation.md
       - Quickstart: getting-started/quickstart.md
+      - Examples: getting-started/examples.md
   - Guides:
       - Preparing cases: guides/preparing-cases.md
       - Using the GUI: guides/gui.md
@@ -36,6 +37,7 @@ nav:
       - Sectional Cp CSV: reference/sectional-cp-csv.md
       - Python API: reference/python-api.md
       - Environment variables: reference/environment-variables.md
+      - Glossary: reference/glossary.md
   - Methods:
       - Coordinate and attitude conventions: methods/coordinate-and-attitude-conventions.md
       - Load and coefficient conventions: methods/load-and-coefficient-conventions.md
