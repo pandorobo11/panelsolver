@@ -15,6 +15,11 @@ migration baselines and runtime artifact version semantics are recorded in ADR
   GUI image exports default to `<input_dir>/outputs/images`. Numerical results,
   VTP content, and case signatures are unchanged.
 
+- Fix image-save dialog defaults on macOS: create the suggested `images/`
+  directory before opening the dialog so **Save Image...** starts in the
+  documented location. Both image-save dialogs clean up newly created
+  directories that remain empty after cancellation or export.
+
 - Reorganize the user documentation into Getting started, Guides, Reference,
   Methods, and About sections. GUI viewing and sectional workflows have their
   own guide pages, and the two sectional definition pages are merged. Page
