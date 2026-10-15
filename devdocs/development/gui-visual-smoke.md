@@ -228,8 +228,8 @@ those versions; see the [uv caveat in setup and testing](setup-and-testing.md#se
 isolated normal-display process, including the pinned Case ID view and repeated
 model/selection changes. It requires WindowServer access, but does not require
 Computer Use or external accessibility permissions. The same probe crashes
-with Qt 6.11.2 and passes with Qt 6.9.0. Offscreen or Python-only accessibility
-checks do not exercise the failing native ownership path.
+with Qt 6.11.2 and 6.12.0 and passes with Qt 6.9.0. Offscreen or Python-only
+accessibility checks do not exercise the failing native ownership path.
 
 Qt 6.9.0 also has a separate cell-lifetime defect, QTBUG-134784: reading native
 cell values and then destroying the table can release an already-freed Cocoa
@@ -239,8 +239,8 @@ cover this destruction/autorelease path. Qt 6.9.1 passes the lifetime probe but
 fails the selected-cell probe, so neither result alone establishes a safe
 replacement.
 
-For v0.1.0, #284 is an explicitly accepted, non-blocking known limitation;
-see the [user-facing scope](../../docs/guides/troubleshooting.md#macos-gui-crashes-during-accessibility-inspection).
+For v0.1.0 and v0.2.0, #284 is an explicitly accepted, non-blocking known
+limitation; see the [user-facing scope](../../docs/guides/troubleshooting.md#macos-gui-crashes-during-accessibility-inspection).
 Continue recording native smoke results accurately, including crashes. This
 acceptance does not mean the defect is fixed, waive other GUI failures, or
 authorize disabling accessibility. Reassess it if ordinary manual use reproduces

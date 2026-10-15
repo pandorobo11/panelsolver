@@ -37,19 +37,54 @@ migration baselines and runtime artifact version semantics are recorded in ADR
   New from Example and the CLI, with 0/15/30-degree angle-of-attack cases,
   reproducible geometry and domain-appropriate surface load fields.
 
-- Simplify sectional result CSV: retain only `delta_CA`, `delta_CY`, `delta_CN`,
-  `delta_Cl`, `delta_Cm`, `delta_Cn`, `delta_CD`, and `delta_CL` as load columns.
-  Remove the 15 coordinate-vector and moment-area `delta_` columns. Existing
-  CSV consumers using those columns must use the Python API instead; numerical
-  results are unchanged. Also omit repeated `requested_pairs` and
-  `completed_pairs` CSV columns; retain `batch_status` for partial results and
-  completion counts in CLI/GUI status. Omit the three unnormalized
-  `direction_*_stl` columns, `requested_component_ids`, `requested_start_m`,
-  and `requested_stop_m`; retain normalized direction and resolved selection/range.
-  Match the ordinary Summary CSV coefficient order:
-  `CA, CY, CN, Cl, Cm, Cn, CD, CL` (with `delta_` prefixes).
-  Reference columns likewise follow moment reference XYZ, Aref, then Lref.
-  Definition CSV inputs and the Python API are unchanged.
+- Add sectional aerodynamic loads (ADR 0019) for FMF and Hypersonic. A
+  separate definition CSV gives an origin, axis, component selection, range,
+  and strip count; each strip reports `delta_CA`, `delta_CY`, `delta_CN`,
+  `delta_Cl`, `delta_Cm`, `delta_Cn`, `delta_CD`, and `delta_CL` using the
+  case's own reference quantities. Run it with
+  `panelsolver {fmf,hypersonic} sectional-loads`, **File > Sectional Loads...**
+  in the GUI, or `panelsolver.postprocess.compute_sectional_loads` on a solve
+  result. Each case is solved once for all selected definitions; the result is
+  a separate Sectional load CSV, and case tables, Summary CSV and VTP files are
+  unchanged. Cancelled or failed runs keep only finished case–section pairs and
+  record `batch_status`.
+- Add sectional Cp (ADR 0020). Parallel cutting planes record one row per
+  panel segment with both STL-frame end points and that panel's unchanged value
+  (Hypersonic `cp`, FMF `normal_traction_coeff`), without interpolation. Run it
+  with `panelsolver {fmf,hypersonic} sectional-cp`, **File > Sectional Cp...**,
+  or `panelsolver.postprocess.compute_sectional_cp`. **File > New from Example**
+  gains Sectional Loads and Sectional Cp workspaces in both domains.
+- Add GUI save recovery. When a finished run's Summary CSV, Sectional load CSV
+  or Sectional Cp CSV cannot be saved, **Retry Save...** writes the kept
+  results to the same or another file without calculating again. Closing a
+  sectional window with unsaved results asks whether to Save, Discard, or
+  Cancel. Unsaved results are kept only for the session.
+- Add **Reload** beside **Select Input File** to reread the current case table
+  after editing it elsewhere.
+- Add optional **Smooth colors** to the Viewer. It interpolates panel values
+  for display only, keeps components, shielding groups and sharp edges
+  separate, and defaults to off. Saved results, color limits and coefficients
+  are unchanged.
+- Rework the GUI layout. The empty case table offers **Select Input File** and
+  **New from Example**, and case tables or VTP files can be dropped onto the
+  window. The run scope is shown on one line, **Checkpoint** moves under
+  **Show advanced**, and a **Run** menu adds Run Cases (Ctrl+R / ⌘R) and Cancel
+  Run (Ctrl+. / ⌘.). Viewer file actions move to a toolbar above the display,
+  **Save Selected...** is renamed **Save Selected Images...**, the camera gains
+  **Fit**, and **Wind +/−** are renamed **Upstream/Downstream** with the same
+  view directions. Long paths are shortened from the left with the full path in
+  the tooltip and **Copy Path**.
+- Fix GUI display defects: the colorbar title no longer overlaps the middle
+  tick label, the scalar selector no longer clips FMF's default label, and
+  **Clear selection** and **Save Selected Images...** are enabled only when
+  they can act.
+- Fix parallel run cancellation. After Cancel or Ctrl+C, no further case is
+  started; worker processes ignore a terminal Ctrl+C and finish their current
+  case, and an interrupted wait for worker results (seen on Windows) no longer
+  fails the run.
+- The macOS GUI keeps PySide6/Qt 6.9.0. The known table-accessibility crash
+  (#284) remains a documented limitation: newer Qt releases, up to 6.12.0,
+  fix it but still crash in a different accessibility check.
 
 ## [0.1.0] - 2026-09-11
 

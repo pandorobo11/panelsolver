@@ -65,9 +65,10 @@ contents of a table. This is a known bug in the Qt version that Panel Solver
 uses on macOS (QTBUG-134784). It has not been seen with ordinary mouse and
 keyboard use, and it is not known whether VoiceOver triggers it.
 
-This is a known limitation of v0.1.0. Keep the Qt version that Panel Solver
-installs. Qt 6.9.1 fixes this crash but has a different accessibility
-problem, so it is not used yet. If the GUI crashes, restart it and check your saved
+This is a known limitation of v0.1.0 and v0.2.0. Keep the Qt version that
+Panel Solver installs. Qt 6.9.1 and later fix this crash, but releases up to at
+least Qt 6.12.0 have a different accessibility problem, so they are not used
+yet. If the GUI crashes, restart it and check your saved
 results as described in [Batch runs and recovery](batch-runs.md). When you
 report a crash, include the Qt version and any accessibility or automation
 tools that were running.
