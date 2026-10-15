@@ -23,10 +23,11 @@ file.
 ## Sectional loads in the GUI
 
 **Try the example.** Choose **File > New from Example > Sectional Loads** and
-pick a folder. The GUI copies a case table (FMF **Flow Modes** or Hypersonic
-**Basic**), its geometry, and `sectional_loads.csv`, then opens the table and
-the **Sectional Loads** window with the definitions loaded. Files you have
-already changed are not overwritten.
+pick a folder. The GUI copies the domain's **Sphere-cone: Angle Effects**
+table, the sphere-cone geometry, and `sectional_loads.csv`, then opens the
+table and the **Sectional Loads** window with the definitions loaded. Files you
+have already changed are not overwritten. `examples/README.md` describes the
+definitions and what to compare.
 
 **Use your own files:**
 
@@ -80,8 +81,8 @@ CSV.
 Add the `sectional-loads` subcommand after the domain:
 
 ```bash
-panelsolver fmf sectional-loads -i examples/fmf/flow_modes.csv -d examples/sectional_loads.csv -o outputs/fmf_sections.csv
-panelsolver hypersonic sectional-loads -i examples/hypersonic/basic.csv -d examples/sectional_loads.csv -o outputs/hypersonic_sections.csv
+panelsolver fmf sectional-loads -i examples/fmf/sphere_cone.csv -d examples/sectional_loads.csv -o outputs/fmf_sections.csv
+panelsolver hypersonic sectional-loads -i examples/hypersonic/sphere_cone.csv -d examples/sectional_loads.csv -o outputs/hypersonic_sections.csv
 ```
 
 These commands work from the repository root (or the extracted examples
@@ -121,8 +122,8 @@ Use the `sectional-cp` subcommand with a
 [Cp definition CSV](../reference/sectional-definitions.md#sectional-cp-definitions):
 
 ```bash
-panelsolver hypersonic sectional-cp -i examples/hypersonic/basic.csv -d examples/sectional_cp.csv -o outputs/hypersonic_sectional_cp.csv
-panelsolver fmf sectional-cp -i examples/fmf/basic.csv -d examples/sectional_cp.csv -o outputs/fmf_sectional_cp.csv
+panelsolver hypersonic sectional-cp -i examples/hypersonic/sphere_cone.csv -d examples/sectional_cp.csv -o outputs/hypersonic_sectional_cp.csv
+panelsolver fmf sectional-cp -i examples/fmf/sphere_cone.csv -d examples/sectional_cp.csv -o outputs/fmf_sectional_cp.csv
 ```
 
 The options are the same as for `sectional-loads`. The result contains

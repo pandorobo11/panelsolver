@@ -533,23 +533,29 @@ class SectionalDialogTests(unittest.TestCase):
                     destination.resolve() / "sectional_cp.csv", dialog.definition_path
                 )
                 self.assertEqual(
-                    ["span", "center"], [d.section_id for d in dialog.definitions]
+                    ["nose_stations", "cone_station", "pitch_profile"],
+                    [d.section_id for d in dialog.definitions],
                 )
                 self.assertIsNone(dialog.batch_result)
                 self.assertTrue(dialog.btn_run.isEnabled())
+                # The full three-angle example is covered by the slow
+                # sectional example regression; one case keeps this GUI fast.
+                self.assertEqual(3, len(panel.case_rows))
+                self.select(panel.case_table, 2)
                 target = destination / "cp.csv"
                 self.assertTrue(dialog.start_run(target))
-                self.wait_until(lambda dialog=dialog: not dialog.is_running())
-                self.assertEqual("completed", dialog.batch_result.status)
-                self.assertEqual(
-                    len(panel.case_rows) * 2, dialog.batch_result.completed_pairs
+                self.wait_until(
+                    lambda dialog=dialog: not dialog.is_running(), timeout=30.0
                 )
+                self.assertEqual("completed", dialog.batch_result.status)
+                self.assertEqual(3, dialog.batch_result.completed_pairs)
                 with target.open(encoding="utf-8-sig") as stream:
                     rows = list(csv.DictReader(stream))
                 self.assertEqual(
                     {"normal_traction_coeff" if domain is fmf else "cp"},
                     {row["scalar_name"] for row in rows},
                 )
+                self.assertEqual({"ok"}, {row["plane_status"] for row in rows})
 
     def test_sectional_example_copies_loads_and_runs_both_domains(self):
         for domain in (fmf, hypersonic):
@@ -573,16 +579,18 @@ class SectionalDialogTests(unittest.TestCase):
                     dialog.definition_path,
                 )
                 self.assertEqual(
-                    ["span", "oblique", "partial"],
+                    ["axial", "vertical", "forebody"],
                     [d.section_id for d in dialog.definitions],
                 )
                 self.assertTrue(dialog.btn_run.isEnabled())
+                self.assertEqual(3, len(panel.case_rows))
+                self.select(panel.case_table, 2)
                 self.assertTrue(dialog.start_run(destination / "result.csv"))
-                self.wait_until(lambda dialog=dialog: not dialog.is_running())
-                self.assertEqual("completed", dialog.batch_result.status)
-                self.assertEqual(
-                    len(panel.case_rows) * 3, dialog.batch_result.completed_pairs
+                self.wait_until(
+                    lambda dialog=dialog: not dialog.is_running(), timeout=30.0
                 )
+                self.assertEqual("completed", dialog.batch_result.status)
+                self.assertEqual(3, dialog.batch_result.completed_pairs)
                 self.assertTrue((destination / "result.csv").is_file())
                 original = dialog.definition_path.read_bytes()
                 with (

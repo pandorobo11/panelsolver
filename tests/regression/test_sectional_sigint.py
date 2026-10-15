@@ -16,6 +16,16 @@ pytestmark = pytest.mark.slow
 
 def _run_probe(tmp_path: Path, *, group_signal: bool) -> None:
     output = tmp_path / "result.csv"
+    definitions = tmp_path / "sections.csv"
+    definitions.write_text(
+        "section_id,origin_x_stl_m,origin_y_stl_m,origin_z_stl_m,"
+        "direction_x_stl,direction_y_stl,direction_z_stl,start_m,stop_m,"
+        "bin_count,component_ids\n"
+        "span,0,0,0,0,1,0,,,8,\n"
+        "oblique,0,0,0,0.2,0.9,0.4,,,8,\n"
+        "partial,0,0,0,0,1,0,-0.25,0.25,4,0\n",
+        encoding="utf-8",
+    )
     environment = {
         **os.environ,
         "SECTIONAL_SIGINT_PROBE_DIRECTORY": str(tmp_path),
@@ -30,7 +40,7 @@ def _run_probe(tmp_path: Path, *, group_signal: bool) -> None:
         "-i",
         str(ROOT / "examples/fmf/flow_modes.csv"),
         "-d",
-        str(ROOT / "examples/sectional_loads.csv"),
+        str(definitions),
         "-o",
         str(output),
         "-j",

@@ -43,8 +43,8 @@ domains; **Flow Modes** is FMF only and **Pressure Models** is Hypersonic only.
 | **Flow Modes** (FMF) | `fmf/flow_modes.csv` | Plate | The same flow given as `S` and `Ti_K` (Mode A) and as `Mach=25` at `Altitude_km=100` (Mode B). Both give the same coefficients. |
 | **Pressure Models** (Hypersonic) | `hypersonic/pressure_models.csv` | Plate and cube | The four windward pressure methods side by side, and the Prandtl–Meyer leeward method. |
 | **Shielding** | `fmf/shielding.csv`, `hypersonic/shielding.csv` | Two plates, one behind the other | Ray shielding off and on. With shielding on, the rear plate is hidden from the flow, carries no load, and the force is halved. |
-| **Sectional Loads** | FMF `flow_modes.csv` or Hypersonic `basic.csv`, with `sectional_loads.csv` | Plate | Strip loads along an axis. Opens the Sectional Loads window. See [Sectional loads and Cp](../guides/sectional.md). |
-| **Sectional Cp** | FMF `flow_modes.csv` or Hypersonic `basic.csv`, with `sectional_cp.csv` | Plate | Panel values along cutting planes. Opens the Sectional Cp window. |
+| **Sectional Loads** | `fmf/sphere_cone.csv` or `hypersonic/sphere_cone.csv`, with `sectional_loads.csv` | Sphere-cone | Strip loads along the body axis and across its height. Opens the Sectional Loads window. See [Sectional loads and Cp](../guides/sectional.md). |
+| **Sectional Cp** | `fmf/sphere_cone.csv` or `hypersonic/sphere_cone.csv`, with `sectional_cp.csv` | Sphere-cone | Panel values on rings around the nose and cone, and along the windward and leeward lines. Opens the Sectional Cp window. |
 
 The sectional examples can also be run from the CLI, as shown in
 [Sectional loads and Cp](../guides/sectional.md#sectional-loads-from-the-cli).
@@ -63,6 +63,10 @@ The sectional examples can also be run from the CLI, as shown in
   `component_stl_path` to see which row is which part.
 - **Shielding:** compare `shielded_faces` and the coefficients between the two
   rows. In the Viewer, color by **Shielded** to see the hidden panels.
+- **Sectional Loads, Sectional Cp:** compare the three angles. As the angle
+  grows, strip loads and panel values move to the windward (−Z) side, and the
+  values on the nose fall towards the cone. The lengthwise and heightwise
+  strips each add up to the case's Summary coefficients.
 
 All examples are idealized cases for learning the workflow, not validation
 data. `examples/README.md`, included in the checkout and in the examples
