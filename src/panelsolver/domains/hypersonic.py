@@ -579,14 +579,14 @@ _GUI_EXAMPLES = (
     ),
     ExampleDefinition(
         "Sectional Loads",
-        "hypersonic/basic.csv",
-        ("geometry/plate.stl",),
+        "hypersonic/sphere_cone.csv",
+        ("geometry/sphere_cone.stl",),
         sectional_definition_resource="sectional_loads.csv",
     ),
     ExampleDefinition(
         "Sectional Cp",
-        "hypersonic/basic.csv",
-        ("geometry/plate.stl",),
+        "hypersonic/sphere_cone.csv",
+        ("geometry/sphere_cone.stl",),
         sectional_definition_resource="sectional_cp.csv",
         sectional_kind="cp",
     ),
