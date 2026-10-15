@@ -15,7 +15,7 @@ is `Aref_m2=1`, except for the sphere-cone examples, which use the fixed maximum
 circular cross-section area, `pi * (0.5 m)^2`.
 Components use the same global references, so component rows add to the total
 for all eight coefficients. When adapting an example, choose your own
-[reference quantities](../docs/inputs/case-files.md#choose-reference-quantities).
+[reference quantities](../docs/guides/preparing-cases.md#choose-reference-quantities).
 The five meshes in `geometry/` and the case tables are project material
 distributed under Apache-2.0.
 
@@ -24,10 +24,10 @@ this `examples/fmf/`, `examples/hypersonic/`, and `examples/geometry/` layout
 and includes `LICENSE` and `THIRD_PARTY_NOTICES.md` at the archive root.
 
 For the complete schemas, see the
-[FMF input reference](../docs/inputs/fmf-input.md),
-[Hypersonic input reference](../docs/inputs/hypersonic-input.md),
-[Summary CSV reference](../docs/results/summary-csv.md), and
-[VTP reference](../docs/results/vtp.md).
+[FMF input reference](../docs/reference/fmf-case-table.md),
+[Hypersonic input reference](../docs/reference/hypersonic-case-table.md),
+[Summary CSV reference](../docs/reference/summary-csv.md), and
+[VTP reference](../docs/reference/vtp.md).
 
 ## Running and opening results
 
@@ -52,7 +52,7 @@ each domain's examples, so the tables do not replace each other's VTPs.
 | Flow Modes (FMF) | Plate | Mode A and atmosphere-resolved Mode B give matching coefficients |
 | Pressure Models (Hypersonic) | Plate and cube | Windward equations and leeward Prandtl–Meyer expansion |
 | Shielding | Double plate | Ray shielding off and on |
-| Sectional Loads, Sectional Cp | Plate | GUI-only: sectional definitions applied to the Basic (Hypersonic) or Flow Modes (FMF) table; see [GUI operation](../docs/running/gui.md) |
+| Sectional Loads, Sectional Cp | Plate | Sectional definitions applied to the Basic (Hypersonic) or Flow Modes (FMF) table, from the GUI or the CLI; see [Sectional loads and Cp](../docs/guides/sectional.md) |
 
 Both domains offer **File > New from Example > Sphere-cone: Angle Effects**.
 It copies the selected domain's three-case table and the shared STL to your

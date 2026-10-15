@@ -15,6 +15,17 @@ migration baselines and runtime artifact version semantics are recorded in ADR
   GUI image exports default to `<input_dir>/outputs/images`. Numerical results,
   VTP content, and case signatures are unchanged.
 
+- Reorganize the user documentation into Getting started, Guides, Reference,
+  Methods, and About sections. GUI viewing and sectional workflows have their
+  own guide pages, and the two sectional definition pages are merged. Page
+  paths change and old documentation URLs no longer resolve; content and
+  documented behavior are unchanged.
+- Add Examples and Glossary pages to the user documentation, and document the
+  Viewer display and camera controls, the Input Validation Errors window, and
+  ordinary CLI exit codes. List the `sectional-cp` subcommand, Sectional Cp CSV,
+  and `compute_sectional_cp`/`SectionalCp` (accepted in ADR 0020) in the
+  compatibility policy and the supported Python imports.
+
 - Add a shared sphere-cone example to FMF and Hypersonic, available from
   New from Example and the CLI, with 0/15/30-degree angle-of-attack cases,
   reproducible geometry and domain-appropriate surface load fields.

@@ -7,6 +7,8 @@ Use repository documentation in this order:
    and the stable Python API.
 2. [`devdocs/architecture/`](architecture/overview.md) describes the current
    implementation architecture and internal ownership boundaries.
+   [Detailed user-visible behavior](architecture/detailed-user-behavior.md)
+   keeps edge cases and mechanisms that the shorter user guides omit.
 3. [Accepted ADRs](adr/README.md) explain current architectural decisions. When
    an ADR explicitly supersedes part of an earlier decision, the superseding ADR
    takes priority for that part.

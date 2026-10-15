@@ -5,7 +5,7 @@ into forces and moments, and how aggregate coefficients are formed for both
 domains. See the
 [FMF solver page](fmf.md) for the Sentman equations and assumptions,
 and the [Hypersonic solver page](hypersonic.md) for pressure-model
-equations and assumptions. The [VTP reference](../results/vtp.md) lists each
+equations and assumptions. The [VTP reference](../reference/vtp.md) lists each
 result array's association, shape, and stored dtype.
 
 ## Reading coefficients
@@ -13,13 +13,13 @@ result array's association, shape, and stored dtype.
 `CA`, `CY`, and `CN` describe body-axis axial, side, and normal forces;
 `Cl`, `Cm`, and `Cn` describe roll, pitch, and yaw moments about your chosen
 reference point. `CD` and `CL` are the stability-axis drag and lift coefficients
-defined below. The [Summary CSV](../results/summary-csv.md) reports these for the
+defined below. The [Summary CSV](../reference/summary-csv.md) reports these for the
 whole case and, for multiple STLs, each component.
 
 All eight coefficients are dimensionless. Their magnitudes depend on your
 `Aref_m2`; moments also depend on the reference point and the three
 `Lref_*_m` lengths. Use the same reference conventions when comparing cases or
-external data. [Case files](../inputs/case-files.md#choose-reference-quantities)
+external data. [Preparing cases](../guides/preparing-cases.md#choose-reference-quantities)
 explains how to choose these inputs. The equations below give the exact area
 weighting, signs, frames, and normalization.
 
@@ -51,7 +51,7 @@ tangential contribution. Integration uses the full vector in both domains.
 The scalar outputs `cp`, `normal_traction_coeff`, and
 `tangential_traction_coeff` describe local loads for visualization; their
 meanings are defined on the solver pages and in the
-[VTP reference](../results/vtp.md#model-specific-cell-data).
+[VTP reference](../reference/vtp.md#model-specific-cell-data).
 
 Ray shielding may set a panel's local traction, and therefore its
 `C_face_stl`, to exact zero. See
@@ -158,5 +158,5 @@ STL-frame panel normal and the resolved freestream direction:
 ```
 
 reported in degrees from 0 through 180. Its VTP cell-data array is defined in the
-[VTP reference](../results/vtp.md#common-cell-data); model-specific use is
+[VTP reference](../reference/vtp.md#common-cell-data); model-specific use is
 explained on the solver pages.

@@ -4,7 +4,7 @@ FMF and Hypersonic use the coordinate and attitude calculations defined on this
 page. It explains what each attitude representation means geometrically and how
 all representations resolve to one freestream direction. Accepted input values
 and ranges are listed in the
-[Case files guide](../inputs/case-files.md#attitude-modes). Required fields
+[Preparing cases](../guides/preparing-cases.md#attitude-modes). Required fields
 and defaults are listed in the domain input references.
 
 ## Frames, direction, and angle units
@@ -140,8 +140,8 @@ Summary CSV and VTP keep both the original inputs and the calculated attitude:
 
 For example, an input `alpha_deg` of 460° gives the same direction as 100°,
 but the saved input remains 460°. The calculated direction and stability angle
-are saved separately. See the [Summary CSV](../results/summary-csv.md) and
-[VTP](../results/vtp.md) references for the field names.
+are saved separately. See the [Summary CSV](../reference/summary-csv.md) and
+[VTP](../reference/vtp.md) references for the field names.
 
 The flow vector does not always identify the original angle pair. For example,
 with `beta_sin` and sideslip 90°, every input alpha gives the same -Y direction.

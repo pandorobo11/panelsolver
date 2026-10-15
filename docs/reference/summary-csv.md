@@ -1,30 +1,36 @@
 # Summary CSV reference
 
-The Summary CSV is the tabular result to open when you want whole-case or
-component aerodynamic coefficients. Find your `case_id` and read the row with
-`scope=total` for the complete geometry. Multi-STL cases also have
-`scope=component` rows showing each STL's contribution with the same reference
-quantities.
+The Summary CSV holds the force and moment coefficients of each case. Open it in
+a spreadsheet, find your `case_id`, and read the row with `scope` = `total` for
+the whole vehicle. Cases with several STL parts also have one `scope` =
+`component` row per part. Part rows use the same reference quantities, so they
+add up to the total.
 
-Start with `CA`, `CY`, and `CN` for body-axis forces, `Cl`, `Cm`, and `Cn` for
-roll, pitch, and yaw moments, and `CD`/`CL` for stability-axis drag/lift. These
-are dimensionless coefficients. `CD` and `CL` use the resolved-alpha rotation
-defined in [Load and coefficient conventions](../methods/load-and-coefficient-conventions.md#stability-axis-force-coefficients).
+The coefficients to start with:
 
-The exhaustive columns below follow the case inputs from the
-[FMF](../inputs/fmf-input.md) or [Hypersonic](../inputs/hypersonic-input.md)
-input reference. For surface distributions, use the [VTP result](vtp.md).
+| Columns | Meaning |
+|---|---|
+| `CA`, `CY`, `CN` | Axial, side, and normal force, in body axes. |
+| `Cl`, `Cm`, `Cn` | Roll, pitch, and yaw moment about your moment reference point. |
+| `CD`, `CL` | Drag and lift, in stability axes. |
+
+All coefficients are dimensionless. Their axes and signs are defined in
+[Load and coefficient conventions](../methods/load-and-coefficient-conventions.md#stability-axis-force-coefficients).
+For the load on each panel, use the [VTP file](vtp.md) instead.
 
 ## File format and column order
 
-Summary CSV uses UTF-8 with a byte-order mark (`utf-8-sig`). Panel Solver
-guarantees the parsed columns and values described here.
+The file is UTF-8 with a byte-order mark, which spreadsheet programs use to
+detect the encoding. The columns and values described on this page are
+guaranteed; exact number formatting is not.
 
 Columns are written in this order:
 
-1. schema-defined input columns for the selected domain;
-2. extra input columns allowed by [Case files](../inputs/case-files.md#common-validation), in their source-table order;
-3. the domain result columns below.
+1. the standard input columns of the domain, in the order listed in the
+   [FMF](fmf-case-table.md) or [Hypersonic](hypersonic-case-table.md) case
+   table reference;
+2. your own extra input columns, in their order in the case table;
+3. the result columns below.
 
 ### FMF result columns
 
@@ -50,29 +56,26 @@ Each domain writes exactly its listed result columns.
 
 ## Row structure
 
-Every calculated case emits one `total` row. A case with multiple ordered STL
-components then emits one `component` row per component in ascending zero-based
-component-ID order. A single-STL case emits only its `total` row. In the final
-Summary CSV, cases remain in input-table order even when workers complete them
-in another order. During execution, checkpoints append whole cases in completion
-order. Each case's total and component rows stay together; the final save rewrites
-the file in input-table order.
+- Each case has one `total` row.
+- A case with several STL parts then has one `component` row per part, in
+  `stl_path` order (component ID `0`, `1`, ...). A single-part case has only
+  the `total` row.
+- The rows of one case always stay together.
+- In the final file, cases are in case-table order. While a run is still
+  writing checkpoints, cases appear in the order they finished.
+- Component rows repeat the case's input values and run times. Their
+  coefficients, panel counts, `component_id`, and `component_stl_path` describe
+  only that part. Part coefficients add up to the total, apart from rounding.
 
-Input cells and case-level run fields are repeated on component rows. Coefficients,
-face counts, shielding counts, `component_id`, and `component_stl_path` describe
-the row's selected scope. The shared reference quantities make component
-coefficients sum to the total within the model's numerical tolerance.
-
-In the tables below, **blank** means an empty CSV field. The semantic types describe
-values after CSV parsing rather than a required textual formatting of each
-number.
+In the tables below, **blank** means an empty cell. The type column describes
+the value, not its exact text formatting.
 
 ## Provenance and timing fields
 
 | Column | Domain | Type / format | Unit | Rows | Blank when | Meaning |
 |---|---|---|---|---|---|---|
 | `solver_version` | common | text | — | all | never | Installed `panelsolver` distribution version that generated the result. |
-| `case_signature` | common | 64-character lowercase hexadecimal SHA-256 | — | all | never | SHA-256 value that identifies the current case and associates its output files. It incorporates the numerical geometry, normalized common and model case, model algorithm version, and shielding configuration including the effective backend. The GUI uses it with `case_id` to match a VTP to a current case. |
+| `case_signature` | common | 64-character lowercase hexadecimal SHA-256 | — | all | never | A fingerprint of the case. It changes when the geometry, the case inputs, the model version, or the shielding settings change. The GUI compares it, together with `case_id`, to decide whether a VTP belongs to the current case. |
 | `run_started_at_utc` | common | ISO 8601 UTC timestamp ending in `Z` | — | all | never | Time at which this case began execution. |
 | `run_finished_at_utc` | common | ISO 8601 UTC timestamp ending in `Z` | — | all | never | Time after this case's calculation and optional VTP write attempt completed. |
 | `run_elapsed_s` | common | floating-point number | s | all | never | Monotonic elapsed time over the same per-case interval, including optional VTP handling and excluding the final batch Summary CSV write. |
@@ -115,7 +118,7 @@ The exact axes and angle transformations are defined in
 
 Use `vtp_path` to identify files written by the current run. For handling older
 retained files, checkpoints, and write failures, see
-[Batch execution and recovery](../running/batch-execution-and-recovery.md).
+[Batch execution and recovery](../guides/batch-runs.md).
 
 ## Force and moment coefficient fields
 
@@ -139,10 +142,7 @@ body-to-stability rotation, signs, and moment calculation are defined in
 Per-panel contributions from which these coefficients are integrated are stored
 as `C_face_stl` in the [VTP reference](vtp.md).
 
-The original numeric angle inputs are retained before periodic reduction.
-No stability-angle source flag or resolved sine-sideslip field is exported.
-See [attitude conventions](../methods/coordinate-and-attitude-conventions.md#stability-angle-and-numerical-boundaries)
-for the common fallback threshold. The former `alpha_t_deg_resolved` and
-`beta_t_deg_resolved` fields have been replaced; consumers must use the direction
-and stability-angle fields above. Signatures now use `panelsolver.case` v2;
-old artifacts are available for manual inspection but do not automatically match.
+The `alpha_deg` and `beta_or_bank_deg` input columns keep the values you
+entered, even if they include full turns (for example 460°). See
+[Coordinate and attitude conventions](../methods/coordinate-and-attitude-conventions.md#stability-angle-and-numerical-boundaries)
+for when `alpha_stability_deg` falls back to 0°.

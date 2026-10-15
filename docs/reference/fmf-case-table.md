@@ -1,12 +1,12 @@
-# FMF input reference
+# FMF case table
 
-This page defines the FMF case-table schema. Input columns may be in any
-order. The standard input columns are written to Summary CSV in the order shown
-below, followed by extra input columns in their original relative order.
-[Case files](case-files.md) defines accepted formats, path
-resolution, and [common validation](case-files.md#common-validation).
-See [Columns and defaults](case-files.md#columns-and-defaults) for
-omitted-column and empty-cell behavior.
+This page lists every column of an FMF case table. Columns can be in any order.
+In the Summary CSV, these input columns are written in the order shown here,
+followed by any extra columns of your own. For file formats, paths, and the
+checks that apply to every table, see [Preparing cases](../guides/preparing-cases.md)
+and its [common validation](../guides/preparing-cases.md#common-validation) list.
+Leaving out a column with a default, or leaving its cell empty, uses the default
+(see [Columns and defaults](../guides/preparing-cases.md#columns-and-defaults)).
 
 | Column | Required | Default | Unit / values | Meaning |
 |---|---:|---|---|---|
@@ -32,13 +32,18 @@ omitted-column and empty-cell behavior.
 | `ray_backend` | no | `auto` | `auto`, `rtree`, `embree` | [Ray-shielding backend](../methods/ray-shielding.md#backend-behavior) |
 | `save_vtp_on` | no | `1` | `0` or `1` | `1` writes the case VTP; `0` skips it |
 
-Mode A requires both `S` and `Ti_K`; Mode B requires both `Mach` and
-`Altitude_km`. Specify exactly one complete pair.
+**Flow input modes.** Fill exactly one complete pair on each row:
 
-The [FMF solver page](../methods/fmf.md#flow-inputs) explains the Mode B
-atmosphere conversion and the wall-temperature assumption.
+- **Mode A:** `S` and `Ti_K`, the molecular speed ratio and gas temperature.
+- **Mode B:** `Mach` and `Altitude_km`. Panel Solver looks up the gas
+  temperature and speed at that altitude in the bundled US Standard Atmosphere
+  1976 table and works out `S` and `Ti_K` from them.
 
-See [Case files](case-files.md#attitude-modes) for attitude mode
-selection and accepted ranges, and
-[Coordinate and attitude conventions](../methods/coordinate-and-attitude-conventions.md)
-for axes, signs, and geometric definitions.
+The Summary CSV records which mode was used and the `S` and `Ti_K` values
+actually used. The [FMF method page](../methods/fmf.md#flow-inputs) gives the
+conversion and explains how the wall temperature is used.
+
+For attitude modes and their ranges, see
+[Preparing cases](../guides/preparing-cases.md#attitude-modes). Axes and signs
+are defined in
+[Coordinate and attitude conventions](../methods/coordinate-and-attitude-conventions.md).

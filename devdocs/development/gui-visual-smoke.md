@@ -240,7 +240,7 @@ fails the selected-cell probe, so neither result alone establishes a safe
 replacement.
 
 For v0.1.0, #284 is an explicitly accepted, non-blocking known limitation;
-see the [user-facing scope](../../docs/running/troubleshooting.md#macos-gui-crashes-during-accessibility-inspection).
+see the [user-facing scope](../../docs/guides/troubleshooting.md#macos-gui-crashes-during-accessibility-inspection).
 Continue recording native smoke results accurately, including crashes. This
 acceptance does not mean the defect is fixed, waive other GUI failures, or
 authorize disabling accessibility. Reassess it if ordinary manual use reproduces
