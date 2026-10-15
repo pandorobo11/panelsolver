@@ -247,11 +247,13 @@ Swap the domain or the subcommand to run the other combinations.
 - `forebody`: +X_STL, explicit 0–0.3 m in 0.05 m bins, component 0 only. It
   covers the spherical nose (which ends at x ≈ 0.148 m) and the start of the
   cone, so `covers_selected_geometry` is false.
-- Observe: at zero alpha every `delta_CN` is zero to round-off and `vertical`
-  is symmetric about z = 0. With alpha, `delta_CN` grows along the cone towards
-  the base, where the circumference is larger, and `vertical` load moves to the −Z_STL
-  (windward) bins, because increasing alpha tilts the flow towards +Z_STL. The
-  `axial` and `vertical` bins each sum to the case's Summary coefficients.
+- Observe: at zero alpha each `axial` bin has `delta_CN` near zero.
+  The `vertical` bin `delta_CN` values are antisymmetric about z = 0 and
+  sum to nearly zero, while `delta_CA` is symmetric. With alpha, `delta_CN`
+  grows along the cone towards the base, where the circumference is larger,
+  and `vertical` load moves to the −Z_STL (windward) bins, because increasing
+  alpha tilts the flow towards +Z_STL. The `axial` and `vertical` bins each
+  sum to the case's Summary coefficients.
 
 ### `sectional_cp.csv`
 
