@@ -52,8 +52,9 @@ run.
 **Cancelling and errors.** **Cancel** stops the run after the cases in progress
 finish. Any case–section pairs that finished are still saved, and the CSV
 records whether the run was `completed`, `failed`, or `cancelled`. If nothing
-finished, no file is written. If the result cannot be saved, use **Retry** in
-the error message or **Retry Save...** later; nothing is calculated again. If
+finished, no file is written. If the result cannot be saved, an existing file
+is left unchanged; use **Retry** in the error message or **Retry Save...**
+later, and nothing is calculated again. If
 you close the window with unsaved results, you are asked whether to **Save**,
 **Discard**, or **Cancel**.
 

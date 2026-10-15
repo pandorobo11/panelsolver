@@ -15,8 +15,13 @@ same strips and the case's own reference quantities.
 `total` means the selected parts within the range. It is the whole vehicle
 only when both `all_components_selected` and `covers_selected_geometry` are
 true. Coverage is about geometry, so surfaces with zero load still count. A
-range that misses the geometry is a valid result with zeros; a pair that
-failed has no rows at all.
+range that misses the geometry is a valid result with zeros.
+
+If a run fails or is cancelled, the file contains only the case–section pairs
+that finished, and their `batch_status` is `failed` or `cancelled`. Pairs that
+did not finish have no rows; they are never written as zeros. See
+[Sectional loads and Cp](../guides/sectional.md#sectional-loads-in-the-gui) for
+cancelling, errors, and saving again.
 
 ## Columns in order
 
@@ -42,7 +47,7 @@ delta_CA,delta_CY,delta_CN,delta_Cl,delta_Cm,delta_Cn,delta_CD,delta_CL
 |---|---|
 | `case_id`, `case_signature` | Actual solved case ID and unchanged physical case signature. Definitions do not alter that signature. |
 | `section_id` | Normalized definition label from the run snapshot. |
-| `batch_status` | `completed`, `failed`, or `cancelled`. Computation state, independent of whether a subsequent export succeeds. |
+| `batch_status` | `completed`, `failed`, or `cancelled`: how the calculation ended. A failed save does not change it. |
 | `origin_*_stl_m` | Requested axis origin in STL metres. |
 | `direction_hat_*_stl` | Normalized dimensionless axis direction in STL coordinates. |
 | `selected_component_ids` | Resolved ascending original IDs, semicolon-separated. |
@@ -87,22 +92,3 @@ load. Axes, signs, and references follow the
 [load and coefficient conventions](../methods/load-and-coefficient-conventions.md).
 When all parts are selected and the range covers the geometry, the strips add
 up to the case total, apart from small rounding differences.
-
-## Failures and repeated export
-
-- After a calculation failure or a cancellation, no new work starts. Cases that
-  are already running may finish.
-- The pairs that finished are saved in the usual order, with `batch_status` set
-  to `failed` or `cancelled`. Pairs that did not finish are absent. The number
-  of finished pairs is shown in the CLI output and GUI status, not in the CSV.
-- The CLI exits with a nonzero status for failed or cancelled runs, even when
-  the partial CSV was saved.
-- If no pair finished, no CSV is written and an existing file is left as it
-  was.
-- The file is written in one step, so a failed save leaves an existing file
-  unchanged. In the GUI, the results stay in memory and can be saved again with
-  **Retry Save...** without recalculating.
-- The output can never overwrite the case table, the definition CSV, or any
-  STL file of the loaded cases.
-
-No Summary CSV, VTP, or checkpoint files are created by sectional runs.
