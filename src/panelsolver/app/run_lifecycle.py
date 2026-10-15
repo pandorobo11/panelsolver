@@ -30,6 +30,7 @@ class CaseRunWorker(QtCore.QObject):
         workers: int,
         checkpoint_every_cases: int,
         output_path: str | Path,
+        vtp_dir: str | Path,
     ) -> None:
         super().__init__()
         if not callable(run_cases):
@@ -39,6 +40,7 @@ class CaseRunWorker(QtCore.QObject):
         self._workers = workers
         self._checkpoint_every_cases = checkpoint_every_cases
         self._output_path = Path(output_path)
+        self._vtp_dir = Path(vtp_dir)
         self._cancel_event = threading.Event()
 
     @QtCore.Slot()
@@ -50,6 +52,7 @@ class CaseRunWorker(QtCore.QObject):
                 workers=self._workers,
                 checkpoint_every_cases=self._checkpoint_every_cases,
                 output_path=self._output_path,
+                vtp_dir=self._vtp_dir,
                 log=self.log.emit,
                 progress=self.progress.emit,
                 cancel_requested=self._cancel_event.is_set,

@@ -6,6 +6,15 @@ migration baselines and runtime artifact version semantics are recorded in ADR
 
 ## [Unreleased]
 
+- **Breaking:** remove the `out_dir` case-table column (ADR 0021). Every VTP is
+  now written to `<input_dir>/outputs/<case_id>.vtp`, the previous default.
+  Tables that still contain `out_dir` are rejected with a message to delete
+  it. Tables that set a non-default directory now write their VTPs to `outputs/`
+  beside the table. Keep tables with overlapping `case_id` values in separate
+  directories. The Summary CSV drops only the echoed `out_dir` input column.
+  GUI image exports default to `<input_dir>/outputs/images`. Numerical results,
+  VTP content, and case signatures are unchanged.
+
 - Reorganize the user documentation into Getting started, Guides, Reference,
   Methods, and About sections. GUI viewing and sectional workflows have their
   own guide pages, and the two sectional definition pages are merged. Page

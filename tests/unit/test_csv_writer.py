@@ -245,7 +245,6 @@ class CsvWriterTests(unittest.TestCase):
                 {
                     "case_id": "case_a",
                     "stl_path": f"{stl_path};{second_stl_path}",
-                    "out_dir": str(out_dir),
                     "save_vtp_on": 0,
                 },
             )
@@ -275,7 +274,6 @@ class CsvWriterTests(unittest.TestCase):
                 {
                     "case_id": "case_a",
                     "stl_path": "geometry/mesh.stl",
-                    "out_dir": "outputs",
                 },
             )
             for adapter in (fmf_csv, hypersonic_csv):
@@ -311,7 +309,6 @@ class CsvWriterTests(unittest.TestCase):
                         {
                             "case_id": "case_a",
                             "stl_path": str(root / "mesh.stl"),
-                            "out_dir": str(root / "outputs"),
                             "save_vtp_on": 0,
                         },
                     ),
@@ -325,7 +322,6 @@ class CsvWriterTests(unittest.TestCase):
                         {
                             "case_id": "case_a",
                             "stl_path": str(root / "mesh.stl"),
-                            "out_dir": str(root / "outputs"),
                         },
                     ),
                     "input",
@@ -338,7 +334,6 @@ class CsvWriterTests(unittest.TestCase):
                         {
                             "case_id": "case_a",
                             "stl_path": str(stl_nfc),
-                            "out_dir": str(root / "outputs"),
                         },
                     ),
                     "STL",
@@ -399,7 +394,7 @@ class CsvWriterTests(unittest.TestCase):
             root = Path(td)
             real_out = root / "real-output"
             real_out.mkdir()
-            linked_out = root / "linked-output"
+            linked_out = root / "outputs"
             try:
                 linked_out.symlink_to(real_out, target_is_directory=True)
             except (NotImplementedError, OSError) as exc:
@@ -408,7 +403,6 @@ class CsvWriterTests(unittest.TestCase):
                 {
                     "case_id": "case_a",
                     "stl_path": str(root / "mesh.stl"),
-                    "out_dir": str(linked_out),
                     "save_vtp_on": 0,
                 },
             )
@@ -431,29 +425,27 @@ class CsvWriterTests(unittest.TestCase):
             root = Path(td)
             nfc = "caf\N{LATIN SMALL LETTER E WITH ACUTE}"
             nfd = "cafe\N{COMBINING ACUTE ACCENT}"
-            colliding_out_dirs = (
-                (root / "Artifacts", root / "artifacts"),
-                (root / nfc, root / nfd),
+            colliding_case_ids = (
+                ("Shared_Case", "shared_case"),
+                (f"case-{nfc}", f"case-{nfd}"),
             )
-            for first_out, second_out in colliding_out_dirs:
+            for first_id, second_id in colliding_case_ids:
                 rows = (
                     {
-                        "case_id": "shared_case",
+                        "case_id": first_id,
                         "stl_path": str(root / "mesh-a.stl"),
-                        "out_dir": str(first_out),
                     },
                     {
-                        "case_id": "shared_case",
+                        "case_id": second_id,
                         "stl_path": str(root / "mesh-b.stl"),
-                        "out_dir": str(second_out),
                     },
                 )
                 for adapter in (fmf_csv, hypersonic_csv):
                     with (
                         self.subTest(
                             adapter=adapter.__name__,
-                            first_out=first_out,
-                            second_out=second_out,
+                            first_id=first_id,
+                            second_id=second_id,
                         ),
                         self.assertRaisesRegex(ValueError, "planned VTP"),
                     ):
@@ -467,12 +459,10 @@ class CsvWriterTests(unittest.TestCase):
                 {
                     "case_id": "case_a",
                     "stl_path": str(root / "mesh.stl"),
-                    "out_dir": str(root / "outputs"),
                 },
                 {
                     "case_id": "case_b",
                     "stl_path": str(root / "mesh.stl"),
-                    "out_dir": str(root / "outputs"),
                 },
             )
             expected = (root / "summary.csv").resolve()
@@ -496,7 +486,6 @@ class CsvWriterTests(unittest.TestCase):
                 {
                     "case_id": "case_a",
                     "stl_path": str(stl_path),
-                    "out_dir": str(root / "outputs"),
                     "save_vtp_on": 0,
                 },
             )

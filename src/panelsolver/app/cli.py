@@ -15,6 +15,7 @@ from rich_argparse import RawDescriptionRichHelpFormatter
 
 from .cli_presentation import CliPresentation, use_rich_ui
 from .output_status import OutputFailuresError
+from .path_resolution import resolve_output_dir
 from .runtime import (
     DEFAULT_CHECKPOINT_CASES,
     ProductRuntimePolicy,
@@ -208,6 +209,7 @@ def _run_parsed_cli(policy: ProductCliPolicy, args: argparse.Namespace) -> int:
             rows,
             policy.runtime_policy,
             output,
+            vtp_dir=resolve_output_dir(input_path),
             workers=args.workers,
             logfn=presentation.log,
             progress_cb=presentation.update,

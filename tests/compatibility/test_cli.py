@@ -185,7 +185,6 @@ class PanelSolverCliTests(unittest.TestCase):
                 tempfile.TemporaryDirectory() as temp_dir,
             ):
                 root = Path(temp_dir)
-                frame["out_dir"] = str(root / "artifacts")
                 frame["save_vtp_on"] = 0
                 input_path = root / "cases.csv"
                 output = root / "results.csv"
@@ -230,7 +229,6 @@ class PanelSolverCliTests(unittest.TestCase):
                 .iloc[[0]]
                 .copy()
             )
-            frame["out_dir"] = str(root / "artifacts")
             frame["save_vtp_on"] = 0
             frame.to_csv(input_path, index=False)
             for value in (0, 37):
@@ -256,6 +254,10 @@ class PanelSolverCliTests(unittest.TestCase):
                         run.call_args.kwargs["checkpoint_every_cases"],
                     )
                     self.assertEqual(value > 0, run.call_args.kwargs["log_snapshots"])
+                    self.assertEqual(
+                        (root / "outputs").resolve(),
+                        run.call_args.kwargs["vtp_dir"],
+                    )
 
 
 if __name__ == "__main__":

@@ -42,10 +42,10 @@ from tests.current_case_fixtures import read_current_cases
 INPUTS = Path(__file__).parents[1] / "fixtures" / "phase1" / "inputs"
 
 
-def _fail_selected_prepared_case(prepared, logfn):
+def _fail_selected_prepared_case(prepared, logfn, **kwargs):
     if str(prepared.row["case_id"]).endswith("_bad"):
         raise RuntimeError("synthetic computation failure")
-    return _real_run_prepared_product_case(prepared, logfn)
+    return _real_run_prepared_product_case(prepared, logfn, **kwargs)
 
 
 def _assert_artifact_semantics_equal(
@@ -106,7 +106,6 @@ class RuntimeTests(unittest.TestCase):
                         **base,
                         "case_id": f"case_{i}",
                         "save_vtp_on": 0,
-                        "out_dir": td,
                         "fixture_note": '日本語,\n"quoted"',
                     }
                     for i in range(5)
@@ -140,6 +139,7 @@ class RuntimeTests(unittest.TestCase):
                         rows,
                         policy,
                         output,
+                        vtp_dir=td,
                         workers=workers,
                         checkpoint_every_cases=interval,
                     )
@@ -188,12 +188,14 @@ class RuntimeTests(unittest.TestCase):
             constructed_rows += len(projection.rows)
 
         with tempfile.TemporaryDirectory() as td:
-            rows = tuple(
-                {**row, "save_vtp_on": 0} for row in self._fmf_rows(Path(td), 16)
-            )
+            rows = tuple({**row, "save_vtp_on": 0} for row in self._fmf_rows(16))
             with mock.patch.object(CsvProjection, "__post_init__", new=count_rows):
                 result = run_and_write_product_cases(
-                    rows, FMF_POLICY, Path(td) / "summary.csv", checkpoint_every_cases=1
+                    rows,
+                    FMF_POLICY,
+                    Path(td) / "summary.csv",
+                    vtp_dir=Path(td) / "vtp",
+                    checkpoint_every_cases=1,
                 )
         self.assertTrue(result.summary_csv_saved)
         self.assertEqual((), result.output_issues)
@@ -205,7 +207,7 @@ class RuntimeTests(unittest.TestCase):
     def test_failed_append_retries_all_unsaved_cases_without_duplicates(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             output = Path(td) / "summary.csv"
-            rows = self._fmf_rows(Path(td), 7)
+            rows = self._fmf_rows(7)
             attempts = []
 
             def fail_first_append(path, projection):
@@ -236,7 +238,11 @@ class RuntimeTests(unittest.TestCase):
                 "panelsolver.app.runtime.append_csv", side_effect=fail_first_append
             ):
                 result = run_and_write_product_cases(
-                    rows, FMF_POLICY, output, checkpoint_every_cases=2
+                    rows,
+                    FMF_POLICY,
+                    output,
+                    vtp_dir=Path(td) / "vtp",
+                    checkpoint_every_cases=2,
                 )
             self.assertEqual([2, 4, 1], attempts)
             self.assertTrue(result.summary_csv_saved)
@@ -257,7 +263,7 @@ class RuntimeTests(unittest.TestCase):
                 tempfile.TemporaryDirectory() as td,
             ):
                 output = Path(td) / "summary.csv"
-                rows = self._fmf_rows(Path(td), 5)
+                rows = self._fmf_rows(5)
                 saved = []
 
                 def atomic(path, projection, *, saved=saved, final_fails=final_fails):
@@ -276,7 +282,11 @@ class RuntimeTests(unittest.TestCase):
                     ) as write,
                 ):
                     result = run_and_write_product_cases(
-                        rows, FMF_POLICY, output, checkpoint_every_cases=1
+                        rows,
+                        FMF_POLICY,
+                        output,
+                        vtp_dir=Path(td) / "vtp",
+                        checkpoint_every_cases=1,
                     )
                 self.assertEqual(1, append.call_count)
                 self.assertEqual(2, write.call_count)
@@ -290,16 +300,16 @@ class RuntimeTests(unittest.TestCase):
         for cancel in (False, True):
             with self.subTest(cancel=cancel), tempfile.TemporaryDirectory() as td:
                 output = Path(td) / "summary.csv"
-                rows = self._fmf_rows(Path(td), 5)
+                rows = self._fmf_rows(5)
                 completed = [0]
 
                 def progress(done, _total, *, completed=completed):
                     completed[0] = done
 
-                def calculate(case, logger, *, completed=completed):
+                def calculate(case, logger, *, completed=completed, **kwargs):
                     if completed[0] == 3:
                         raise RuntimeError("calculation failed")
-                    return _real_run_prepared_product_case(case, logger)
+                    return _real_run_prepared_product_case(case, logger, **kwargs)
 
                 with (
                     mock.patch(
@@ -315,6 +325,7 @@ class RuntimeTests(unittest.TestCase):
                         rows,
                         FMF_POLICY,
                         output,
+                        vtp_dir=Path(td) / "vtp",
                         checkpoint_every_cases=2,
                         progress_cb=progress,
                         cancel_cb=lambda cancel=cancel, completed=completed: (
@@ -338,7 +349,6 @@ class RuntimeTests(unittest.TestCase):
                 .copy()
             )
             frame["save_vtp_on"] = 0
-            frame["out_dir"] = td
             output = Path(td) / "summary.csv"
             reported = []
             logs = []
@@ -363,6 +373,7 @@ class RuntimeTests(unittest.TestCase):
                 tuple(frame.to_dict(orient="records")),
                 FMF_POLICY,
                 output,
+                vtp_dir=td,
                 workers=2,
                 checkpoint_every_cases=1,
                 logfn=log,
@@ -384,7 +395,7 @@ class RuntimeTests(unittest.TestCase):
                     ],
                 )
 
-    def _fmf_rows(self, root: Path, count: int) -> tuple[dict[str, object], ...]:
+    def _fmf_rows(self, count: int) -> tuple[dict[str, object], ...]:
         base = (
             read_current_cases(read_fmf_cases, INPUTS / "fmfsolver_cases.csv")
             .iloc[0]
@@ -394,7 +405,6 @@ class RuntimeTests(unittest.TestCase):
             {
                 **base,
                 "case_id": f"case_{index}",
-                "out_dir": str(root / "vtp"),
                 "save_vtp_on": 1,
             }
             for index in range(count)
@@ -405,7 +415,7 @@ class RuntimeTests(unittest.TestCase):
     ) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            rows = self._fmf_rows(root, 3)
+            rows = self._fmf_rows(3)
             vtp_dir = root / "vtp"
             vtp_dir.mkdir()
             (vtp_dir / "case_1.vtp").mkdir()
@@ -415,6 +425,7 @@ class RuntimeTests(unittest.TestCase):
                 rows,
                 FMF_POLICY,
                 root / "summary.csv",
+                vtp_dir=vtp_dir,
                 workers=1,
                 logfn=logs.append,
             )
@@ -444,7 +455,7 @@ class RuntimeTests(unittest.TestCase):
     def test_parallel_vtp_failures_are_aggregated_without_stopping_cases(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            rows = self._fmf_rows(root, 4)
+            rows = self._fmf_rows(4)
             vtp_dir = root / "vtp"
             vtp_dir.mkdir()
             for case_id in ("case_1", "case_3"):
@@ -454,6 +465,7 @@ class RuntimeTests(unittest.TestCase):
                 rows,
                 FMF_POLICY,
                 root / "summary.csv",
+                vtp_dir=vtp_dir,
                 workers=2,
                 checkpoint_every_cases=1,
             )
@@ -476,16 +488,15 @@ class RuntimeTests(unittest.TestCase):
     def test_output_directory_failure_is_retained_without_stopping_cases(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            rows = list(self._fmf_rows(root, 2))
+            rows = self._fmf_rows(2)
             blocked_output = root / "blocked-output"
             blocked_output.write_text("not a directory\n", encoding="utf-8")
-            rows[0]["out_dir"] = str(blocked_output)
-            rows[1]["out_dir"] = str(root / "valid-output")
 
             result = run_and_write_product_cases(
                 rows,
                 FMF_POLICY,
                 root / "summary.csv",
+                vtp_dir=blocked_output,
                 workers=1,
             )
 
@@ -497,21 +508,22 @@ class RuntimeTests(unittest.TestCase):
                     if row["scope"] == "total"
                 ],
             )
-            self.assertEqual("", result.cases[0].vtp_path)
-            self.assertTrue(result.cases[1].vtp_path)
+            self.assertEqual(["", ""], [case.vtp_path for case in result.cases])
             self.assertTrue(result.summary_csv_saved)
-            self.assertEqual(1, len(result.output_issues))
-            issue = result.output_issues[0]
-            self.assertIs(OutputKind.OUTPUT_DIRECTORY, issue.kind)
-            self.assertIs(OutputPhase.PREPARE, issue.phase)
-            self.assertEqual("case_0", issue.case_id)
+            self.assertEqual(
+                ["case_0", "case_1"],
+                [issue.case_id for issue in result.output_issues],
+            )
+            for issue in result.output_issues:
+                self.assertIs(OutputKind.OUTPUT_DIRECTORY, issue.kind)
+                self.assertIs(OutputPhase.PREPARE, issue.phase)
 
     def test_final_summary_failure_is_output_issue_and_preserves_existing_csv(
         self,
     ) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            rows = self._fmf_rows(root, 1)
+            rows = self._fmf_rows(1)
             summary = root / "summary.csv"
             summary.write_bytes(b"existing-summary\n")
             with mock.patch(
@@ -522,6 +534,7 @@ class RuntimeTests(unittest.TestCase):
                     rows,
                     FMF_POLICY,
                     summary,
+                    vtp_dir=root / "vtp",
                     checkpoint_every_cases=0,
                 )
 
@@ -538,7 +551,7 @@ class RuntimeTests(unittest.TestCase):
     ) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            rows = self._fmf_rows(root, 3)
+            rows = self._fmf_rows(3)
             summary = root / "summary.csv"
             calls = 0
 
@@ -557,6 +570,7 @@ class RuntimeTests(unittest.TestCase):
                     rows,
                     FMF_POLICY,
                     summary,
+                    vtp_dir=root / "vtp",
                     checkpoint_every_cases=1,
                 )
 
@@ -574,7 +588,7 @@ class RuntimeTests(unittest.TestCase):
     def test_tail_checkpoint_does_not_mask_final_summary_failure(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            rows = self._fmf_rows(root, 3)
+            rows = self._fmf_rows(3)
             summary = root / "summary.csv"
             calls = 0
 
@@ -593,6 +607,7 @@ class RuntimeTests(unittest.TestCase):
                     rows,
                     FMF_POLICY,
                     summary,
+                    vtp_dir=root / "vtp",
                     checkpoint_every_cases=2,
                 )
 
@@ -616,7 +631,6 @@ class RuntimeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             common = {
                 **base,
-                "out_dir": temp_dir,
                 "save_vtp_on": 0,
                 "shielding_on": 1,
                 "ray_backend": "rtree",
@@ -645,6 +659,7 @@ class RuntimeTests(unittest.TestCase):
 
             result = run_fmf_cases(
                 rows,
+                vtp_dir=temp_dir,
                 workers=1,
                 logfn=logs.append,
                 progress_cb=lambda done, total: progress.append((done, total)),
@@ -689,9 +704,11 @@ class RuntimeTests(unittest.TestCase):
             for reader, filename, policy in products:
                 row = read_current_cases(reader, INPUTS / filename).iloc[0].to_dict()
                 out_dir = root / policy.product_id / "case_outputs"
-                row.update(out_dir=str(out_dir), save_vtp_on=0)
+                row.update(save_vtp_on=0)
                 summary = root / policy.product_id / "summary.csv"
-                result = run_and_write_product_cases((row,), policy, summary)
+                result = run_and_write_product_cases(
+                    (row,), policy, summary, vtp_dir=out_dir
+                )
                 with self.subTest(product=policy.product_id):
                     self.assertTrue(out_dir.is_dir())
                     self.assertFalse((out_dir / f"{row['case_id']}.vtp").exists())
@@ -711,10 +728,25 @@ class RuntimeTests(unittest.TestCase):
         )
         with tempfile.TemporaryDirectory() as temp_dir:
             out_dir = Path(temp_dir) / "not-created"
-            row["out_dir"] = str(out_dir)
             with self.assertRaises(SchedulerCancelled):
-                run_fmf_cases((row,), cancel_cb=lambda: True)
+                run_fmf_cases((row,), vtp_dir=out_dir, cancel_cb=lambda: True)
             self.assertFalse(out_dir.exists())
+
+    def test_removed_out_dir_row_field_is_rejected_before_any_case(self) -> None:
+        row = (
+            read_current_cases(read_fmf_cases, INPUTS / "fmfsolver_cases.csv")
+            .iloc[0]
+            .to_dict()
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            vtp_dir = Path(temp_dir) / "not-created"
+            for value in ("outputs", ""):
+                with (
+                    self.subTest(value=value),
+                    self.assertRaisesRegex(ValueError, "out_dir has been removed"),
+                ):
+                    run_fmf_cases(({**row, "out_dir": value},), vtp_dir=vtp_dir)
+            self.assertFalse(vtp_dir.exists())
 
     @pytest.mark.slow
     def test_failed_chunk_policy_controls_checkpoint_logs_and_partial_result(
@@ -749,14 +781,12 @@ class RuntimeTests(unittest.TestCase):
                     case_id=good_id,
                     shielding_on=1,
                     ray_backend="rtree",
-                    out_dir=str(case_output),
                     save_vtp_on=1,
                 )
             bad.update(
                 case_id=bad_id,
                 shielding_on=1,
                 ray_backend="rtree",
-                out_dir=str(case_output),
                 save_vtp_on=1,
             )
             logs: list[str] = []
@@ -777,6 +807,7 @@ class RuntimeTests(unittest.TestCase):
                         (good_a, good_b, bad),
                         policy,
                         summary,
+                        vtp_dir=case_output,
                         workers=2,
                         logfn=logs.append,
                         progress_cb=lambda done, total, sink=progress: sink.append(
@@ -797,11 +828,11 @@ class RuntimeTests(unittest.TestCase):
             self.assertFalse(any("[SAVE] final" in message for message in logs))
 
             reference_output = product_root / "reference-output"
-            reference_good = dict(good_a, out_dir=str(reference_output))
             run_and_write_product_cases(
-                (reference_good,),
+                (good_a,),
                 policy,
                 product_root / "reference-summary.csv",
+                vtp_dir=reference_output,
             )
             _assert_artifact_semantics_equal(
                 self,
@@ -829,7 +860,6 @@ class RuntimeTests(unittest.TestCase):
         )
         with tempfile.TemporaryDirectory() as temp_dir:
             row = dict(rows[0])
-            row["out_dir"] = temp_dir
             output = Path(temp_dir) / "summary.csv"
             logs: list[str] = []
             progress: list[tuple[int, int]] = []
@@ -842,6 +872,7 @@ class RuntimeTests(unittest.TestCase):
                         workers=1,
                         checkpoint_every_cases=0,
                         output_path=output,
+                        vtp_dir=Path(temp_dir),
                         log=logs.append,
                         progress=lambda done, total: progress.append((done, total)),
                         cancel_requested=lambda: False,

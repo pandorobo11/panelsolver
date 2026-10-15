@@ -39,8 +39,9 @@ resize them.
    **Diagnostics** for warnings and errors.
 
 Each run writes the Summary CSV and, unless `save_vtp_on=0`, one VTP per case at
-`<out_dir>/<case_id>.vtp`. A relative `out_dir` is relative to the case table's
-folder; see [Preparing cases](preparing-cases.md#paths-vtp-destinations-and-components).
+`<input folder>/outputs/<case_id>.vtp`, where `<input folder>` is the folder
+that contains the case table; see
+[Preparing cases](preparing-cases.md#paths-vtp-destinations-and-components).
 
 ### If the case table has errors
 

@@ -14,7 +14,6 @@ import pandas as pd
 from .attitude import ATTITUDE_INPUT_VALUES, DEFAULT_ATTITUDE_INPUT, resolve_attitude
 from .case_identity import validate_case_id
 from .csv_writer import CSV_ENCODING
-from .path_resolution import absolute_input_path, resolve_input_relative_path
 
 type AddIssue = Callable[[int | None, str | None, str], None]
 type DataFrameValidator = Callable[[pd.DataFrame, AddIssue], None]
@@ -23,6 +22,10 @@ FLAG_COLUMNS = ("shielding_on", "save_vtp_on")
 _REMOVED_NPZ_MESSAGE = (
     "save_npz_on has been removed. Delete this field; "
     "Panel Solver no longer writes NPZ files."
+)
+_REMOVED_OUT_DIR_MESSAGE = (
+    "out_dir has been removed. Delete this field; "
+    "VTP files are written to the outputs directory beside the case table."
 )
 _REMOVED_XLS_MESSAGE = (
     "Legacy .xls input is no longer supported. "
@@ -355,33 +358,10 @@ def _validate_attitude_domain(frame: pd.DataFrame, add_issue: AddIssue) -> None:
             add_issue(int(index), field, str(exc))
 
 
-def _validate_out_dir(frame: pd.DataFrame, add_issue: AddIssue) -> None:
-    frame["out_dir"] = frame["out_dir"].astype(str).str.strip()
-    for index in frame.index[frame["out_dir"] == ""]:
-        add_issue(int(index), "out_dir", "must not be blank.")
-
-
 def _filesystem_path_cache_key(path: Path) -> str:
     """Return an absolute lexical key without probing or resolving the path."""
     anchored = path if path.is_absolute() else Path.cwd() / path
     return str(anchored)
-
-
-def _resolve_out_dirs(frame: pd.DataFrame, input_path: Path) -> None:
-    # Keep resolution reuse local so every case-table read observes fresh state.
-    resolved_cache: dict[str, Path] = {}
-    base_dir = absolute_input_path(input_path).parent
-    for index, raw in frame["out_dir"].items():
-        raw_path = str(raw)
-        candidate = Path(raw_path).expanduser()
-        access_path = candidate if candidate.is_absolute() else base_dir / candidate
-        cache_key = _filesystem_path_cache_key(access_path)
-        if cache_key not in resolved_cache:
-            resolved_cache[cache_key] = resolve_input_relative_path(
-                raw_path,
-                input_path,
-            )
-        frame.at[index, "out_dir"] = str(resolved_cache[cache_key])
 
 
 def _validate_and_normalize(
@@ -409,10 +389,8 @@ def _validate_and_normalize(
     _validate_ray_backend(frame, add_issue)
     _validate_attitude(frame, add_issue)
     _validate_attitude_domain(frame, add_issue)
-    _validate_out_dir(frame, add_issue)
     if issues:
         raise InputValidationError(issues)
-    _resolve_out_dirs(frame, input_path)
     return frame
 
 
@@ -441,17 +419,16 @@ def read_case_table(path: str | Path, policy: CaseReaderPolicy) -> pd.DataFrame:
     else:
         raise ValueError(f"Unsupported input format: {input_path.suffix}")
 
-    if "save_npz_on" in frame.columns:
-        raise InputValidationError(
-            [
-                ValidationIssue(
-                    row_number=1,
-                    case_id=None,
-                    field="save_npz_on",
-                    message=_REMOVED_NPZ_MESSAGE,
-                )
-            ]
+    removed = [
+        ValidationIssue(row_number=1, case_id=None, field=field, message=message)
+        for field, message in (
+            ("save_npz_on", _REMOVED_NPZ_MESSAGE),
+            ("out_dir", _REMOVED_OUT_DIR_MESSAGE),
         )
+        if field in frame.columns
+    ]
+    if removed:
+        raise InputValidationError(removed)
 
     missing = [
         column for column in policy.required_columns if column not in frame.columns

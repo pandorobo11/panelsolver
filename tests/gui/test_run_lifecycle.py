@@ -34,6 +34,7 @@ from panelsolver.core import (
 )
 from panelsolver.domains.fmf import gui_spec as fmf_solver_spec
 from panelsolver.domains.hypersonic import gui_spec as newt_solver_spec
+from tests.path_assertions import assert_paths_equivalent
 
 
 def _signature(label: str) -> CaseSignature:
@@ -142,14 +143,7 @@ class RunLifecycleTests(unittest.TestCase):
     def make_panel(
         self, runner, *, rows=None, artifact_reader=None, spec_factory=fmf_solver_spec
     ):
-        rows = (
-            (
-                {"case_id": "one", "out_dir": "outputs"},
-                {"case_id": "two", "out_dir": "outputs"},
-            )
-            if rows is None
-            else tuple(rows)
-        )
+        rows = ({"case_id": "one"}, {"case_id": "two"}) if rows is None else tuple(rows)
         adapters, signatures = _adapters(rows, runner)
         panel = CasesPanel(
             spec_factory(adapters=adapters),
@@ -164,7 +158,7 @@ class RunLifecycleTests(unittest.TestCase):
     def test_typed_request_progress_logs_completion_view_and_cleanup(self) -> None:
         captured = {}
         with tempfile.TemporaryDirectory(prefix="phase6_run_") as directory:
-            vtp_path = Path(directory) / "one.vtp"
+            vtp_path = Path(directory) / "outputs" / "one.vtp"
 
             def runner(request):
                 captured["request"] = request
@@ -174,10 +168,7 @@ class RunLifecycleTests(unittest.TestCase):
                 request.progress(2, 2)
                 return GuiRunResult(vtp_path, request.rows[0])
 
-            rows = (
-                {"case_id": "one", "out_dir": directory},
-                {"case_id": "two", "out_dir": directory},
-            )
+            rows = ({"case_id": "one"}, {"case_id": "two"})
             adapters, signatures = _adapters(rows, runner)
             artifact = SimpleNamespace(
                 field_data={
@@ -191,6 +182,7 @@ class RunLifecycleTests(unittest.TestCase):
             )
             self.own_widget(panel)
             panel.case_rows = rows
+            panel.input_path = Path(directory) / "cases.csv"
             loaded = []
             finished = []
             panel.vtp_loaded.connect(lambda *args: loaded.append(args))
@@ -215,6 +207,9 @@ class RunLifecycleTests(unittest.TestCase):
             self.assertIsInstance(captured["request"], GuiRunRequest)
             self.assertEqual(2, captured["request"].workers)
             self.assertEqual(17, captured["request"].checkpoint_every_cases)
+            assert_paths_equivalent(
+                self, Path(directory) / "outputs", captured["request"].vtp_dir
+            )
             self.assertEqual("Completed", panel.progress.text())
             self.assertEqual("success", panel.progress.property("fluentStatus"))
             self.assertFalse(panel.progress.property("fluentBusy"))
@@ -242,9 +237,7 @@ class RunLifecycleTests(unittest.TestCase):
             )
             for index in range(7)
         )
-        rows = tuple(
-            {"case_id": f"case_{index}", "out_dir": "outputs"} for index in range(7)
-        )
+        rows = tuple({"case_id": f"case_{index}"} for index in range(7))
 
         def runner(request):
             request.progress(7, 7)
@@ -284,7 +277,7 @@ class RunLifecycleTests(unittest.TestCase):
             vtp_path = root / "outputs" / "one.vtp"
             vtp_path.parent.mkdir()
             vtp_path.write_text("previous run", encoding="utf-8")
-            rows = ({"case_id": "one", "out_dir": str(vtp_path.parent)},)
+            rows = ({"case_id": "one"},)
             calls = 0
 
             def runner(request):

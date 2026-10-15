@@ -10,7 +10,7 @@ import numpy as np
 import pyvista as pv
 import trimesh
 
-from panelsolver.app import run_and_write_product_cases
+from panelsolver.app import resolve_output_dir, run_and_write_product_cases
 from panelsolver.app.csv_writer import CSV_ENCODING
 from panelsolver.domains import fmf, hypersonic
 
@@ -56,6 +56,7 @@ class ExampleRegressionTests(unittest.TestCase):
                     tuple(frame.to_dict(orient="records")),
                     policy,
                     result_path,
+                    vtp_dir=resolve_output_dir(table),
                     workers=1,
                 )
                 cls.results[key] = result
@@ -82,6 +83,7 @@ class ExampleRegressionTests(unittest.TestCase):
                 self.assertFalse(case_id.startswith("fmfsolver"))
                 self.assertFalse(case_id.startswith("newtsolver"))
                 self.assertNotIn("save_npz_on", raw_row)
+                self.assertNotIn("out_dir", raw_row)
                 for raw_path in raw_row["stl_path"].split(";"):
                     self.assertFalse(Path(raw_path).is_absolute())
                     self.assertTrue(

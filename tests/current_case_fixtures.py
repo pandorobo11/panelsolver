@@ -15,18 +15,15 @@ def read_current_cases(
     reader: Callable[[str | Path], pd.DataFrame],
     historical_path: str | Path,
 ) -> pd.DataFrame:
-    """Read a Phase 1 CSV after removing only the retired input field."""
+    """Read a Phase 1 CSV after removing only the retired input fields."""
     source = Path(historical_path)
     frame = pd.read_csv(source, encoding=CSV_ENCODING)
-    frame = frame.drop(columns=["save_npz_on"])
+    frame = frame.drop(columns=["save_npz_on", "out_dir"])
     frame["stl_path"] = frame["stl_path"].map(
         lambda value: ";".join(
             str((source.parent / token.strip()).resolve())
             for token in str(value).split(";")
         )
-    )
-    frame["out_dir"] = frame["out_dir"].map(
-        lambda value: str((source.parent / str(value)).resolve())
     )
     with tempfile.TemporaryDirectory() as temp_dir:
         current_path = Path(temp_dir) / source.name

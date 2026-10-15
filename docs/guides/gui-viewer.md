@@ -7,7 +7,7 @@ described in [Using the GUI](gui.md#run-cases).
 ## Select a result
 
 After a run, the Viewer shows the result of the first selected case. Selecting
-another row shows that case's result, if its VTP exists in `out_dir` and was
+another row shows that case's result, if its VTP exists in `outputs/` and was
 made from the current case settings. Panel Solver checks this with the case ID
 and the `case_signature` stored in the file. If the file is missing or was made
 from different settings, the Viewer explains why nothing is shown.
@@ -103,7 +103,7 @@ Keep in mind:
 ## Save images
 
 **Save Image...** saves the current view as a PNG. For a case in the table, the
-suggested file is `<out_dir>/images/<case_id>__<scalar_name>.png`, where
+suggested file is `<input folder>/outputs/images/<case_id>__<scalar_name>.png`, where
 `scalar_name` is the VTP field name from the table above, for example
 `normal_traction_coeff`. For a VTP opened by hand, the suggestion is an
 `images/` folder next to that file. You can change the folder and name.
@@ -111,7 +111,6 @@ Characters that are not allowed in file names are replaced.
 
 **Save Selected Images...** saves one image for each selected case, colored by
 the current scalar. Cases whose VTP is missing or does not match the current
-case settings are skipped and listed in Diagnostics. The suggested folder is `images/` in
-the cases' output folder (or `<input folder>/outputs/images` if the cases use
-different output folders). Existing images are kept: a number is added to the
+case settings are skipped and listed in Diagnostics. The suggested folder is
+`<input folder>/outputs/images`. Existing images are kept: a number is added to the
 new file name instead.

@@ -58,7 +58,6 @@ def test_csv_and_vtp_preserve_inputs_and_evaluated_state(domain, tmp_path):
             "beta_or_bank_deg": beta,
             "attitude_input": mode,
             "save_vtp_on": 1,
-            "out_dir": str(tmp_path),
         }
         for i, (mode, alpha, beta) in enumerate(inputs)
     ]
@@ -70,7 +69,10 @@ def test_csv_and_vtp_preserve_inputs_and_evaluated_state(domain, tmp_path):
     assert len(gui_rows) == len(rows)
     output_file = tmp_path / "summary.csv"
     batch = run_and_write_product_cases(
-        loaded.to_dict(orient="records"), domain.RUNTIME_POLICY, output_file
+        loaded.to_dict(orient="records"),
+        domain.RUNTIME_POLICY,
+        output_file,
+        vtp_dir=tmp_path,
     )
     assert batch.summary_csv_saved
     assert not batch.output_issues

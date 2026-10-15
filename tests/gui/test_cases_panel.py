@@ -54,20 +54,18 @@ def _adapters(rows, signatures, *, validator=None, reader=None):
     )
 
 
-def _rows(out_dir="outputs"):
+def _rows():
     return (
         {
             "case_id": "case_b",
             "stl_path": "/mesh/first.stl;/mesh/second.stl",
             "S": 5.0,
-            "out_dir": str(out_dir),
             "custom": "first",
         },
         {
             "case_id": "case_a",
             "stl_path": "/mesh/third.stl",
             "S": 6.0,
-            "out_dir": str(out_dir),
             "custom": "second",
         },
     )
@@ -382,7 +380,6 @@ class CasesPanelTests(unittest.TestCase):
                 "Lref_Cn_m": "1.234567e+12",
                 "shielding_on": 1,
                 "ray_backend": "embree",
-                "out_dir": "outputs/engineering-results",
                 "save_vtp_on": 1,
                 "custom": "sample value",
             },
@@ -410,7 +407,6 @@ class CasesPanelTests(unittest.TestCase):
         self.assertEqual(width("ref_x_m"), width("ref_y_m"))
         self.assertEqual(width("ref_y_m"), width("ref_z_m"))
         self.assertEqual(width("ref_z_m"), width("Aref_m2"))
-        self.assertLess(width("stl_path"), width("out_dir"))
         self.assertLess(width("shielding_on"), width("stl_path"))
         self.assertLess(width("save_vtp_on"), width("windward_eq"))
         self.assertLess(width("ray_backend"), width("windward_eq"))
@@ -436,7 +432,6 @@ class CasesPanelTests(unittest.TestCase):
                 "case_id": f"case-{index}",
                 "stl_path": f"geometry/body-{index}.stl",
                 "windward_eq": "newtonian",
-                "out_dir": "outputs/results",
                 "custom": "ordinary",
             }
             for index in range(3)
@@ -448,7 +443,6 @@ class CasesPanelTests(unittest.TestCase):
                 "case_id": "case-" + "identifier-" * 30,
                 "stl_path": "/volume/" + "nested-component/" * 30 + "body.stl",
                 "windward_eq": "unexpected_model_selector_" * 20,
-                "out_dir": "results/" + "long-output-directory/" * 30,
                 "custom": "unexpected-extra-value-" * 30,
             },
         )
@@ -467,7 +461,6 @@ class CasesPanelTests(unittest.TestCase):
             "case_id",
             "stl_path",
             "windward_eq",
-            "out_dir",
             "custom",
         ):
             with self.subTest(name=name):
@@ -479,7 +472,7 @@ class CasesPanelTests(unittest.TestCase):
                 )
 
         long_row = outlier_rows[-1]
-        tooltip_columns = ("case_id", "windward_eq", "out_dir", "custom")
+        tooltip_columns = ("case_id", "windward_eq", "custom")
         for name in tooltip_columns:
             with self.subTest(tooltip=name):
                 column = outlier_panel._table_columns.index(name)
@@ -805,10 +798,12 @@ class CasesPanelTests(unittest.TestCase):
         self,
     ) -> None:
         with tempfile.TemporaryDirectory(prefix="phase6_cases_") as directory:
-            rows = _rows(directory)
+            rows = _rows()
             panel, signatures = self.make_panel(rows)
             panel.load_input_file(Path(directory) / "input.csv")
-            Path(directory, "case_b.vtp").write_text("fixture", encoding="utf-8")
+            artifact_path = Path(directory, "outputs", "case_b.vtp")
+            artifact_path.parent.mkdir()
+            artifact_path.write_text("fixture", encoding="utf-8")
             current = SimpleNamespace(
                 field_data={
                     "case_id": ["case_b"],
@@ -826,7 +821,7 @@ class CasesPanelTests(unittest.TestCase):
             self.assertEqual(1, len(loaded))
             self.assertEqual("case_b", loaded[0][2]["case_id"])
             self.assertEqual(ArtifactViewStatus.CURRENT, states[-1].status)
-            self.assertEqual(Path(directory, "case_b.vtp").resolve(), states[-1].path)
+            self.assertEqual(artifact_path.resolve(), states[-1].path)
 
             stale = _signature("stale")
             current.field_data["case_signature"] = [stale.digest]
@@ -842,12 +837,12 @@ class CasesPanelTests(unittest.TestCase):
             self.assertGreaterEqual(len(cleared), 2)
             self.assertEqual(ArtifactViewStatus.EMPTY, states[-1].status)
 
-    def test_automatic_artifact_resolves_relative_out_dir_from_input_parent(
+    def test_automatic_artifact_resolves_outputs_from_input_parent(
         self,
     ) -> None:
         with tempfile.TemporaryDirectory(prefix="gui_relative_vtp_") as directory:
             root = Path(directory)
-            rows = _rows("outputs")
+            rows = _rows()
             panel, signatures = self.make_panel(rows)
             panel.load_input_file(root / "input.csv")
             artifact_path = root / "outputs" / "case_b.vtp"
@@ -869,7 +864,7 @@ class CasesPanelTests(unittest.TestCase):
 
     def test_missing_and_broken_artifacts_clear_previous_view(self) -> None:
         with tempfile.TemporaryDirectory(prefix="phase6_cases_") as directory:
-            rows = _rows(directory)
+            rows = _rows()
             panel, _ = self.make_panel(rows)
             panel.load_input_file(Path(directory) / "input.csv")
             cleared: list[bool] = []
@@ -889,8 +884,10 @@ class CasesPanelTests(unittest.TestCase):
                 events[-2:],
             )
             self.assertEqual("case_b", states[-1].case_id)
-            self.assertEqual(Path(directory, "case_b.vtp").resolve(), states[-1].path)
-            Path(directory, "case_b.vtp").write_text("fixture", encoding="utf-8")
+            artifact_path = Path(directory, "outputs", "case_b.vtp")
+            self.assertEqual(artifact_path.resolve(), states[-1].path)
+            artifact_path.parent.mkdir()
+            artifact_path.write_text("fixture", encoding="utf-8")
             panel._artifact_reader = lambda _path: (_ for _ in ()).throw(
                 ValueError("broken")
             )
@@ -903,17 +900,12 @@ class CasesPanelTests(unittest.TestCase):
     ) -> None:
         with tempfile.TemporaryDirectory(prefix="gui_vtp_validity_") as directory:
             root = Path(directory)
-            first_dir = root / "first"
-            second_dir = root / "second"
-            first_dir.mkdir()
-            second_dir.mkdir()
-            first_path = first_dir / "same.vtp"
-            second_path = second_dir / "same.vtp"
-            first_path.write_text("old first", encoding="utf-8")
-            second_path.write_text("old second", encoding="utf-8")
-            first_row = {"case_id": "same", "out_dir": str(first_dir)}
-            second_row = {"case_id": "same", "out_dir": str(second_dir)}
-            panel, signatures = self.make_panel((first_row,))
+            planned_path = root / "outputs" / "same.vtp"
+            other_path = root / "elsewhere" / "same.vtp"
+            planned_path.parent.mkdir()
+            planned_path.write_text("old planned", encoding="utf-8")
+            row = {"case_id": "same"}
+            panel, signatures = self.make_panel((row,))
             panel.load_input_file(root / "input.csv")
             artifact = SimpleNamespace(
                 field_data={
@@ -925,36 +917,44 @@ class CasesPanelTests(unittest.TestCase):
             panel._artifact_reader = lambda path: reads.append(Path(path)) or artifact
             states = []
             panel.viewer_artifact_state_changed.connect(states.append)
-            issue = OutputIssue(
-                OutputKind.VTP,
-                OutputPhase.WRITE,
-                str(first_path),
-                "save failed",
-                "same",
-            )
-            panel._run_rows = (first_row,)
-            with patch.object(QtWidgets.QMessageBox, "warning"):
-                panel._on_run_completed(GuiRunResult(output_issues=(issue,)))
 
-            panel._auto_load_case_artifact(first_row)
-            self.assertEqual([], reads)
-            self.assertEqual(ArtifactViewStatus.WRITE_FAILED, states[-1].status)
-            self.assertEqual("same", states[-1].case_id)
-            self.assertEqual(first_path.resolve(), states[-1].path)
-            panel._auto_load_case_artifact(second_row)
-            self.assertEqual([second_path.resolve()], reads)
+            def write_issue(path: Path) -> OutputIssue:
+                return OutputIssue(
+                    OutputKind.VTP,
+                    OutputPhase.WRITE,
+                    str(path),
+                    "save failed",
+                    "same",
+                )
+
+            panel._run_rows = (row,)
+            with patch.object(QtWidgets.QMessageBox, "warning"):
+                panel._on_run_completed(
+                    GuiRunResult(output_issues=(write_issue(other_path),))
+                )
+            panel._auto_load_case_artifact(row)
+            self.assertEqual([planned_path.resolve()], reads)
             self.assertEqual(ArtifactViewStatus.CURRENT, states[-1].status)
 
-            panel._run_rows = ({**first_row, "save_vtp_on": 0},)
+            issue = write_issue(planned_path)
+            with patch.object(QtWidgets.QMessageBox, "warning"):
+                panel._on_run_completed(GuiRunResult(output_issues=(issue,)))
+            panel._auto_load_case_artifact(row)
+            self.assertEqual([planned_path.resolve()], reads)
+            self.assertEqual(ArtifactViewStatus.WRITE_FAILED, states[-1].status)
+            self.assertEqual("same", states[-1].case_id)
+            self.assertEqual(planned_path.resolve(), states[-1].path)
+
+            panel._run_rows = ({**row, "save_vtp_on": 0},)
             panel._on_run_completed(GuiRunResult())
-            panel._auto_load_case_artifact(first_row)
-            self.assertEqual([second_path.resolve()], reads)
+            panel._auto_load_case_artifact(row)
+            self.assertEqual([planned_path.resolve()], reads)
 
             panel.load_input_file(root / "changed.csv")
-            panel._auto_load_case_artifact(first_row)
-            self.assertEqual([second_path.resolve(), first_path.resolve()], reads)
+            panel._auto_load_case_artifact(row)
+            self.assertEqual([planned_path.resolve()] * 2, reads)
 
-            panel._run_rows = (first_row,)
+            panel._run_rows = (row,)
             with patch.object(QtWidgets.QMessageBox, "warning"):
                 panel._on_run_completed(GuiRunResult(output_issues=(issue,)))
             self.assertTrue(panel._invalid_current_vtp_artifacts)

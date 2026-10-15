@@ -17,7 +17,7 @@ Fields to start with:
 These describe single panels. For the force and moment on the whole vehicle,
 use the [Summary CSV](summary-csv.md).
 
-Each file is saved as `<out_dir>/<case_id>.vtp`; see
+Each file is saved as `<input folder>/outputs/<case_id>.vtp`; see
 [Preparing cases](../guides/preparing-cases.md#paths-vtp-destinations-and-components).
 For write failures, see [Batch runs and recovery](../guides/batch-runs.md).
 The tables below define every field, for use in your own scripts or other

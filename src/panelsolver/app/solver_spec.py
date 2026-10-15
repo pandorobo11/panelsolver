@@ -49,6 +49,7 @@ class GuiRunRequest:
     workers: int
     checkpoint_every_cases: int
     output_path: Path
+    vtp_dir: Path
     log: LogCallback
     progress: ProgressCallback
     cancel_requested: CancelRequestedCallback
@@ -75,6 +76,7 @@ class GuiRunRequest:
                 raise TypeError(f"GuiRunRequest.{field_name} must be callable")
         object.__setattr__(self, "rows", rows)
         object.__setattr__(self, "output_path", output_path)
+        object.__setattr__(self, "vtp_dir", Path(self.vtp_dir))
 
 
 @dataclass(frozen=True, slots=True)

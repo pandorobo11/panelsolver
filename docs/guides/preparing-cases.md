@@ -30,8 +30,7 @@ text editor, then open it in the GUI or pass it to the CLI with `--input`.
    [Choose reference quantities](#choose-reference-quantities)).
 5. Decide whether parts of the vehicle can hide other parts from the flow. If
    they can, set `shielding_on=1`; see [Ray shielding](../methods/ray-shielding.md).
-   Set `out_dir` if you want the VTP files in a different folder. Keep
-   `save_vtp_on=1` so you can view the surface result.
+   Keep `save_vtp_on=1` so you can view the surface result.
 6. Run this one case first. Check the geometry and surface colors in the GUI,
    and the total coefficients in the Summary CSV. Then add more rows for your
    attitude or flow-condition sweep.
@@ -101,11 +100,15 @@ add up to the total. The exact equations and signs are in
 
 ## Paths, VTP destinations, and components
 
-Relative paths in `stl_path` and `out_dir` are relative to the folder that
-contains the case table, not to the folder you run the command from. Absolute
-paths are used as written, and `~` means your home folder.
+Relative paths in `stl_path` are relative to the folder that contains the case
+table, not to the folder you run the command from. Absolute paths are used as
+written, and `~` means your home folder.
 
-When VTP saving is on, each case is saved as `<out_dir>/<case_id>.vtp`. The
+When VTP saving is on, each case is saved as
+`<input folder>/outputs/<case_id>.vtp`, where `<input folder>` is the folder
+that contains the case table. The VTP folder cannot be set per case. Keep case
+tables whose `case_id` values overlap in different folders, or their VTP files
+replace each other. The
 [VTP reference](../reference/vtp.md) describes its contents, and
 [Batch runs and recovery](batch-runs.md) explains what happens if a file
 cannot be written.
@@ -162,5 +165,5 @@ and column of each problem. Mesh problems are reported when that case runs.
 - `ray_backend` is `auto`, `rtree`, or `embree`.
 - The mesh must not be empty, must have finite coordinates, and must not
   contain degenerate triangles or winding that cannot be repaired.
-- The `save_npz_on` column from older versions is no longer accepted. Remove it
-  from old tables.
+- The `save_npz_on` and `out_dir` columns from older versions are no longer
+  accepted. Remove them from old tables.

@@ -20,8 +20,9 @@ panelsolver fmf --input examples/fmf/flow_modes.csv
 ```
 
 The Summary CSV is written to `examples/<domain>/outputs/<table>_result.csv`.
-VTP files of the Basic examples go directly into `outputs/`; the others go into
-a subfolder named after the example, for example `outputs/shielding/`.
+VTP files of every example go directly into `outputs/` as `<case_id>.vtp`.
+Case IDs differ across a domain's examples, so the tables do not replace each
+other's files.
 
 All example geometry is in metres (`stl_scale_m_per_unit=1`). The cases use the
 origin as the moment reference point, 1 m reference lengths, and

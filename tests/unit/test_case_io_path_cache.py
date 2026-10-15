@@ -11,10 +11,8 @@ import pandas as pd
 
 from panelsolver.app.case_io import (
     InputValidationError,
-    _resolve_out_dirs,
     _validate_and_resolve_stl_paths,
 )
-from panelsolver.app.path_resolution import resolve_input_relative_path
 from panelsolver.domains.fmf import read_cases as read_fmf_cases
 from tests.current_case_fixtures import read_current_cases
 
@@ -187,51 +185,7 @@ class CaseIoPathCacheTests(unittest.TestCase):
         ]
         self.assertEqual("\n".join(expected_lines), str(caught.exception))
 
-    def test_out_dir_resolution_scales_with_unique_candidate_paths(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            absolute = root / "absolute"
-            values = ("outputs",) * 10 + ("other",) * 5 + (str(absolute),) * 5
-            source = pd.DataFrame({"out_dir": values})
-
-            with patch(
-                "panelsolver.app.case_io.resolve_input_relative_path",
-                wraps=resolve_input_relative_path,
-            ) as resolver:
-                actual = source.copy()
-                _resolve_out_dirs(actual, root / "cases.csv")
-                self.assertEqual(3, resolver.call_count)
-                second = source.copy()
-                _resolve_out_dirs(second, root / "cases.csv")
-
-            self.assertEqual(6, resolver.call_count)
-            pd.testing.assert_frame_equal(actual, second)
-            expected = (
-                [str((root / "outputs").resolve())] * 10
-                + [str((root / "other").resolve())] * 5
-                + [str(absolute.resolve())] * 5
-            )
-            self.assertEqual(expected, actual["out_dir"].tolist())
-
-    def test_out_dir_cache_preserves_distinct_input_spelling(self) -> None:
-        source = pd.DataFrame({"out_dir": ("outputs", "OUTPUTS")})
-
-        def preserve_spelling(raw: str, _input_path: Path) -> Path:
-            return Path("resolved") / raw
-
-        with patch(
-            "panelsolver.app.case_io.resolve_input_relative_path",
-            side_effect=preserve_spelling,
-        ) as resolver:
-            _resolve_out_dirs(source, Path("input") / "cases.csv")
-
-        self.assertEqual(2, resolver.call_count)
-        self.assertEqual(
-            [str(Path("resolved/outputs")), str(Path("resolved/OUTPUTS"))],
-            source["out_dir"].tolist(),
-        )
-
-    def test_supported_stl_and_out_dir_forms_keep_normalized_values(self) -> None:
+    def test_supported_stl_forms_keep_normalized_values(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             geometry = root / "geometry"
@@ -253,16 +207,6 @@ class CaseIoPathCacheTests(unittest.TestCase):
                 f"geometry/relative.stl;{absolute_stl}",
                 "geometry/relative.stl;geometry/relative.stl",
             )
-            absolute_out = root / "absolute-output"
-            source["out_dir"] = (
-                "outputs",
-                "outputs",
-                "other",
-                str(absolute_out),
-                "",
-                "other",
-                "outputs",
-            )
             input_path = root / "cases.csv"
             source.to_csv(input_path, index=False)
 
@@ -278,23 +222,10 @@ class CaseIoPathCacheTests(unittest.TestCase):
                 f"{relative};{absolute}",
                 f"{relative};{relative}",
             ]
-            expected_out_dirs = [
-                str((root / "outputs").resolve()),
-                str((root / "outputs").resolve()),
-                str((root / "other").resolve()),
-                str(absolute_out.resolve()),
-                str((root / "outputs").resolve()),
-                str((root / "other").resolve()),
-                str((root / "outputs").resolve()),
-            ]
 
         self.assertEqual(
             expected_stl_paths,
             actual["stl_path"].tolist(),
-        )
-        self.assertEqual(
-            expected_out_dirs,
-            actual["out_dir"].tolist(),
         )
 
 

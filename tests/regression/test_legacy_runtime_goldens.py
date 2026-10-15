@@ -13,7 +13,7 @@ from pathlib import Path
 import numpy as np
 import pyvista as pv
 
-from panelsolver.app import run_and_write_product_cases
+from panelsolver.app import resolve_output_dir, run_and_write_product_cases
 from panelsolver.app.csv_writer import CSV_ENCODING
 from panelsolver.domains.fmf import RUNTIME_POLICY as FMF_POLICY
 from panelsolver.domains.fmf import build_case_signature as build_fmf_signature
@@ -99,6 +99,7 @@ class LegacyRuntimeGoldenTests(unittest.TestCase):
                         rows,
                         policy,
                         output,
+                        vtp_dir=resolve_output_dir(staged / filename),
                         workers=1,
                     )
                     self.assertEqual(count, len(result.cases))
@@ -136,13 +137,15 @@ class LegacyRuntimeGoldenTests(unittest.TestCase):
                                 "columns": [
                                     name
                                     for name in golden["csv"]["columns"]
-                                    if name not in {"save_npz_on", "npz_path"}
+                                    if name
+                                    not in {"save_npz_on", "npz_path", "out_dir"}
                                 ],
                                 "rows": [
                                     {
                                         name: value
                                         for name, value in expected_row.items()
-                                        if name not in {"save_npz_on", "npz_path"}
+                                        if name
+                                        not in {"save_npz_on", "npz_path", "out_dir"}
                                     }
                                     for expected_row in golden["csv"]["rows"]
                                 ],

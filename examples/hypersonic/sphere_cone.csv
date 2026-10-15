@@ -1,4 +1,4 @@
-case_id,stl_path,stl_scale_m_per_unit,Mach,gamma,windward_eq,leeward_eq,alpha_deg,beta_or_bank_deg,attitude_input,ref_x_m,ref_y_m,ref_z_m,Aref_m2,Lref_Cl_m,Lref_Cm_m,Lref_Cn_m,shielding_on,out_dir,save_vtp_on
-hypersonic_sphere_cone_a00,../geometry/sphere_cone.stl,1,6,1.4,modified_newtonian,shield,0,0,beta_sin,0,0,0,0.7853981633974483,1,1,1,0,outputs/sphere_cone,1
-hypersonic_sphere_cone_a15,../geometry/sphere_cone.stl,1,6,1.4,modified_newtonian,shield,15,0,beta_sin,0,0,0,0.7853981633974483,1,1,1,0,outputs/sphere_cone,1
-hypersonic_sphere_cone_a30,../geometry/sphere_cone.stl,1,6,1.4,modified_newtonian,shield,30,0,beta_sin,0,0,0,0.7853981633974483,1,1,1,0,outputs/sphere_cone,1
+case_id,stl_path,stl_scale_m_per_unit,Mach,gamma,windward_eq,leeward_eq,alpha_deg,beta_or_bank_deg,attitude_input,ref_x_m,ref_y_m,ref_z_m,Aref_m2,Lref_Cl_m,Lref_Cm_m,Lref_Cn_m,shielding_on,save_vtp_on
+hypersonic_sphere_cone_a00,../geometry/sphere_cone.stl,1,6,1.4,modified_newtonian,shield,0,0,beta_sin,0,0,0,0.7853981633974483,1,1,1,0,1
+hypersonic_sphere_cone_a15,../geometry/sphere_cone.stl,1,6,1.4,modified_newtonian,shield,15,0,beta_sin,0,0,0,0.7853981633974483,1,1,1,0,1
+hypersonic_sphere_cone_a30,../geometry/sphere_cone.stl,1,6,1.4,modified_newtonian,shield,30,0,beta_sin,0,0,0,0.7853981633974483,1,1,1,0,1

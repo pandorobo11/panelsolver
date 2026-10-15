@@ -21,8 +21,8 @@ fix the source and open it again. Reload does not reread sectional definition
 CSVs; use **Reload** in the corresponding Sectional dialog for those files.
 
 The run writes the selected Summary CSV and, when enabled, one VTP per case at
-`<out_dir>/<case_id>.vtp`. Relative `out_dir` values use the input table's
-directory. See Case files
+`<input_dir>/outputs/<case_id>.vtp`, where `<input_dir>` is the input table's
+directory (ADR 0021). See Case files
 for path rules.
 
 If the final Summary CSV cannot be saved, the **Output Errors** message offers

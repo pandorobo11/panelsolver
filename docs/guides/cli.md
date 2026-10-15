@@ -70,9 +70,10 @@ saving what it can; see [Batch runs and recovery](batch-runs.md).
 Before running anything, the CLI checks that the Summary CSV will not overwrite
 the case table, an STL file, or a VTP file that the run will write. This check
 also applies to cases with VTP saving turned off, and it treats file names that
-differ only in upper and lower case as the same file. See
-[Preparing cases](preparing-cases.md#paths-vtp-destinations-and-components) for
-where VTP files go.
+differ only in upper and lower case as the same file. VTP files always go to
+`<input folder>/outputs/<case_id>.vtp`; `--output` moves only the Summary CSV.
+See [Preparing cases](preparing-cases.md#paths-vtp-destinations-and-components)
+for details.
 
 ## Sectional batches
 

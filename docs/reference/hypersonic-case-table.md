@@ -29,7 +29,6 @@ Leaving out a column with a default, or leaving its cell empty, uses the default
 | `Lref_Cn_m` | yes | — | m, > 0 | Yaw-moment reference length |
 | `shielding_on` | no | `0` | `0` or `1` | Enable the [ray-occlusion shielding method](../methods/ray-shielding.md) |
 | `ray_backend` | no | `auto` | `auto`, `rtree`, `embree` | [Ray-shielding backend](../methods/ray-shielding.md#backend-behavior) |
-| `out_dir` | no | `outputs` | path | Per-case VTP directory; resolution and path rules are in [Preparing cases](../guides/preparing-cases.md#paths-vtp-destinations-and-components) |
 | `save_vtp_on` | no | `1` | `0` or `1` | `1` writes the case VTP; `0` skips it |
 
 **Pressure methods.** A *windward* panel faces the oncoming flow; a *leeward*

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Callable, Collection, Mapping, Sequence
+from collections.abc import Callable, Collection, Mapping
 from pathlib import Path
 
 DEFAULT_OUTPUT_DIRECTORY = "outputs"
@@ -29,13 +29,9 @@ def resolve_input_relative_path(
     return (base_dir / candidate).resolve(strict=False)
 
 
-def resolve_case_output_dir(
-    row: Mapping[str, object],
-    input_path: str | Path,
-) -> Path:
-    """Return one case output directory under the shared input-relative policy."""
-    raw = str(row.get("out_dir", "")).strip() or DEFAULT_OUTPUT_DIRECTORY
-    return resolve_input_relative_path(raw, input_path)
+def resolve_output_dir(input_path: str | Path) -> Path:
+    """Return ``<input_dir>/outputs`` for VTP files and default images."""
+    return resolve_input_relative_path(DEFAULT_OUTPUT_DIRECTORY, input_path)
 
 
 def resolve_case_vtp_path(
@@ -44,31 +40,12 @@ def resolve_case_vtp_path(
 ) -> Path:
     """Return the planned VTP path for one case row."""
     case_id = str(row.get("case_id", "")).strip()
-    return resolve_case_output_dir(row, input_path) / f"{case_id}.vtp"
+    return resolve_output_dir(input_path) / f"{case_id}.vtp"
 
 
-def resolve_case_image_dir(
-    row: Mapping[str, object],
-    input_path: str | Path,
-) -> Path:
-    """Return ``<resolved_out_dir>/images`` for one case row."""
-    return resolve_case_output_dir(row, input_path) / DEFAULT_IMAGE_DIRECTORY
-
-
-def resolve_batch_image_dir(
-    rows: Sequence[Mapping[str, object]],
-    input_path: str | Path,
-) -> Path:
-    """Return the row-order-independent default directory for a batch export."""
-    if not rows:
-        raise ValueError("rows must contain at least one case")
-    output_dirs = {resolve_case_output_dir(row, input_path) for row in rows}
-    if len(output_dirs) == 1:
-        return next(iter(output_dirs)) / DEFAULT_IMAGE_DIRECTORY
-    return (
-        resolve_input_relative_path(DEFAULT_OUTPUT_DIRECTORY, input_path)
-        / DEFAULT_IMAGE_DIRECTORY
-    )
+def resolve_image_dir(input_path: str | Path) -> Path:
+    """Return ``<input_dir>/outputs/images``."""
+    return resolve_output_dir(input_path) / DEFAULT_IMAGE_DIRECTORY
 
 
 def default_image_filename(identifier: str, scalar_name: str) -> str:
@@ -92,7 +69,7 @@ def resolve_case_image_path(
 ) -> Path:
     """Return the standard image path for a case-associated viewport."""
     case_id = str(row.get("case_id", "")).strip()
-    return resolve_case_image_dir(row, input_path) / default_image_filename(
+    return resolve_image_dir(input_path) / default_image_filename(
         case_id,
         scalar_name,
     )
@@ -146,11 +123,10 @@ __all__ = (
     "auto_rename_path",
     "default_image_filename",
     "default_summary_output_path",
-    "resolve_batch_image_dir",
-    "resolve_case_image_dir",
     "resolve_case_image_path",
-    "resolve_case_output_dir",
     "resolve_case_vtp_path",
+    "resolve_image_dir",
     "resolve_input_relative_path",
     "resolve_manual_vtp_image_path",
+    "resolve_output_dir",
 )

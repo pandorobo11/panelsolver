@@ -37,6 +37,8 @@ Known limitations include the
 - Convert `.xls` case tables to `.xlsx` or CSV.
 - Remove the `save_npz_on` column from older case tables. Results are written
   only as Summary CSV and VTP; NPZ output and the `Cp_n` array no longer exist.
+- Remove the `out_dir` column from older case tables. VTP files are written to
+  the `outputs/` folder next to the case table.
 - The former `alpha_t_deg_resolved` and `beta_t_deg_resolved` result fields
   have been replaced. Use the `velocity_hat_*_stl` flow-direction fields and
   `alpha_stability_deg` instead.

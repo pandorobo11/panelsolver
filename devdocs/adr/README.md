@@ -28,6 +28,7 @@ Accepted ADRs are retained as the rationale for architectural decisions:
 19. [Model-neutral sectional aerodynamic load distributions](0019-sectional-aerodynamic-load-distributions.md)
 
 20. [Panel-constant sectional Cp segments](0020-sectional-cp-segments.md)
+21. [Remove the per-case output directory](0021-remove-per-case-output-directory.md)
 
 ADRs describe why the current contracts exist. Migration execution records and
 phase evidence are indexed separately in [History](../history/README.md).

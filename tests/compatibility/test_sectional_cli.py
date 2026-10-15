@@ -31,7 +31,6 @@ def _inputs(tmp_path, domain):
     if len(frame) == 1:
         frame = frame.loc[frame.index.repeat(2)].reset_index(drop=True)
     frame["case_id"] = ["case_001", "case_002"]
-    frame["out_dir"] = str(tmp_path / "unused-vtp")
     cases = tmp_path / "cases.csv"
     frame.to_csv(cases, index=False)
     definitions = tmp_path / "sections.csv"
@@ -72,7 +71,7 @@ def test_cli_real_batch_independent_filters_and_no_intermediate_artifacts(
     assert len(all_rows) == 2 * (3 + 2) * 2
     assert {row["batch_status"] for row in all_rows} == {"completed"}
     assert len({(row["case_id"], row["section_id"]) for row in all_rows}) == 4
-    assert not (tmp_path / "unused-vtp").exists()
+    assert not (tmp_path / "outputs").exists()
     assert (
         main(_args(domain, paths) + ["--cases", "case_002", "--sections", "a,b"]) == 0
     )

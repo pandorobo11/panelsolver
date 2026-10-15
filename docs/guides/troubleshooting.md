@@ -45,7 +45,7 @@ Windows and macOS usually treat them that way.
 The GUI loads a case's VTP automatically only if:
 
 - `save_vtp_on=1` for that case;
-- the file is in the case's `out_dir`;
+- the file is in the `outputs/` folder next to the case table;
 - the file was made from the current case settings (its case ID and
   `case_signature` match).
 
