@@ -19,10 +19,7 @@ pytestmark = pytest.mark.slow
 
 def _rows(domain, tmp_path):
     frame = DOMAINS[domain].read_cases(EXAMPLES / domain / "sphere_cone.csv")
-    return tuple(
-        {**row, "save_vtp_on": 0}
-        for row in frame.to_dict(orient="records")
-    )
+    return tuple({**row, "save_vtp_on": 0} for row in frame.to_dict(orient="records"))
 
 
 def _sectional_rows(domain, rows, *, cp):
