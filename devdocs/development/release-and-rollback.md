@@ -117,9 +117,12 @@ such acceptances for each release and remove the label if the acceptance no
 longer applies. A passing gate does not mean these defects have been fixed.
 
 For v0.1.0, #284 is accepted under this policy as the documented macOS Qt
-table-accessibility limitation. Other failures and unaccepted issues remain
-release blockers; protected-main, CI, artifact and validation requirements are
-unchanged.
+table-accessibility limitation. The acceptance was reviewed and renewed for
+v0.2.0 on 2026-10-16: PySide6 6.12.0 passes the #284 cell-lifetime probe but
+still fails the QTBUG-149612 selected-cell probe, and the upstream fix is not
+yet merged, so the reassessment condition is not met. Other failures and
+unaccepted issues remain release blockers; protected-main, CI, artifact and
+validation requirements are unchanged.
 
 Only after those gates does the release job publish the downloaded verified set.
 The matching CHANGELOG section supplies release notes. A version containing an
