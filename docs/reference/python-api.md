@@ -1,12 +1,14 @@
 # Python API reference
 
-Panel Solver provides a small synchronous API for one-case, in-memory
-calculation. It reads the requested STL files and returns a `SolveResult` in
-memory.
+The Python API runs one case at a time from your own script. It reads the STL
+files you give it and returns the result as a `SolveResult` object, with the
+coefficients and the per-panel arrays as NumPy values. It does not write any
+files.
 
-Use this API to work directly with coefficients and per-panel arrays.
-The [CLI](../guides/cli.md) and [GUI](../guides/gui.md) provide case-table
-workflows for writing result files.
+Use it when you want to work with the numbers directly, for example in a
+custom sweep or optimization. To run a case table and write Summary CSV and
+VTP files, use the [CLI](../guides/cli.md) or [GUI](../guides/gui.md) instead.
+For the same inputs, all three give the same numerical results.
 
 ## Minimal examples
 
@@ -419,12 +421,11 @@ use `float64`, component IDs use `int64`, and the shielding mask uses boolean
 dtype. Nested result objects and scalar/metadata mappings are also read-only.
 Make an explicit copy when mutable working data is needed, for example `result.geometry.centers_stl_m.copy()`.
 
-Solver-produced results retain their immutable topology and common references
-privately for postprocessing, from the same physical execution. Existing
-`SolveResult` constructor arguments are unchanged. Manually constructed results,
-including results reconstructed by `dataclasses.replace`, have no retained solve
-context and cannot be used for sectional postprocessing. A deep copy of an
-original solver-produced result retains its immutable data and context.
+A result returned by `solve_fmf` or `solve_hypersonic` also keeps the
+information that sectional postprocessing needs. A result that you build or
+modify yourself, for example with `dataclasses.replace`, does not, so pass the
+original result to the sectional functions. A deep copy of an original result
+still works.
 
 ## Sectional aerodynamic load distributions
 
@@ -539,12 +540,11 @@ is first and follows increasing signed axis distance.
 | `CD`, `CL` | `(B,)`, dimensionless | `-Fx_stability`, `-Fz_stability`. |
 | `Cl`, `Cm`, `Cn` | `(B,)`, dimensionless | Normalized body moment components. |
 
-Coefficient views derive from primitive vectors. No cumulative or density
-quantities are provided. Topology-local moment integration avoids loss from
-rounding absolute face centroids, so full-range sums can differ from the original
-stored-centroid integrator within the source geometry's representation error.
-Signs and references follow the existing
-[load conventions](../methods/load-and-coefficient-conventions.md).
+The coefficient properties are views of the vectors above. Running totals and
+values per metre are not provided. When all components are selected and the
+range covers the geometry, the strips add up to the whole-case values, apart
+from small rounding differences. Signs and references follow the
+[load and coefficient conventions](../methods/load-and-coefficient-conventions.md).
 
 ## API ↔ Summary CSV / VTP correspondence
 

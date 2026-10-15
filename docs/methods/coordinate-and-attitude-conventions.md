@@ -4,7 +4,7 @@ FMF and Hypersonic use the coordinate and attitude calculations defined on this
 page. It explains what each attitude representation means geometrically and how
 all representations resolve to one freestream direction. Accepted input values
 and ranges are listed in the
-[Case files guide](../guides/preparing-cases.md#attitude-modes). Required fields
+[Preparing cases](../guides/preparing-cases.md#attitude-modes). Required fields
 and defaults are listed in the domain input references.
 
 ## Frames, direction, and angle units

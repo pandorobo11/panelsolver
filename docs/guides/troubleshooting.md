@@ -1,65 +1,80 @@
 # Troubleshooting
 
-## An STL cannot be found
+## An STL file cannot be found
 
-Relative STL paths are resolved from the input table's directory. Check the path
-from that directory and use semicolons only between complete component paths.
+Relative STL paths are relative to the folder that contains the case table,
+not to the folder you run the command from. Check the path from the table's
+folder. When a case has several parts, put semicolons only between complete
+paths.
 
-## The input table is rejected
+## The case table is rejected
 
-Use the reported spreadsheet row and field. Common causes are a missing required
-header, a non-finite value, a non-positive reference quantity, an incomplete FMF
-Mode A/B pair, an invalid equation selector, or an attitude outside the reader
-domain. See the solver-specific input reference.
+The error names the row and column. Common causes are:
 
-For an Excel 97–2003 `.xls` file, resave as `.xlsx` in a spreadsheet application
-or export as CSV before opening it.
+- a missing required column;
+- a value that is not a finite number;
+- a reference area or length that is zero or negative;
+- in FMF, an incomplete pair (`S` without `Ti_K`, or `Mach` without
+  `Altitude_km`), or both pairs filled;
+- a misspelled Hypersonic pressure method;
+- an attitude angle outside its allowed range.
+
+Check the [FMF](../reference/fmf-case-table.md) or
+[Hypersonic](../reference/hypersonic-case-table.md) case table reference.
+
+Old Excel `.xls` files are not supported. Save the file as `.xlsx` or CSV in
+your spreadsheet program.
 
 ## Embree is unavailable
 
-For a wheel installation, reinstall the Panel Solver wheel with the `rayaccel`
-extra as shown in the [Installation guide](../getting-started/installation.md).
-From a checkout, use `uv sync --extra rayaccel` or
-`python -m pip install ".[rayaccel]"`. Alternatively, set the case's
-`ray_backend` to `rtree`. See
-[Ray-shielding backend behavior](../methods/ray-shielding.md#backend-behavior).
+The Embree ray backend is optional. Reinstall Panel Solver with the `rayaccel`
+extra as shown in [Installation](../getting-started/installation.md). From a
+source checkout you can also use `uv sync --extra rayaccel`. Or set the case's
+`ray_backend` to `rtree`, which needs no extra install. See
+[Ray shielding](../methods/ray-shielding.md#backend-behavior).
 
 ## The result path is rejected
 
-The summary may not alias the input file, an STL, or any planned VTP path.
-Choose a distinct filename and directory. Collision checks are deliberately
-portable across case-insensitive Windows and common macOS filesystems.
+The Summary CSV must not have the same path as the case table, an STL file, or
+any VTP file the run will write. Choose a different file name or folder. File
+names that differ only in upper and lower case count as the same file, because
+Windows and macOS usually treat them that way.
 
 ## A VTP does not load automatically
 
-Confirm that `save_vtp_on=1`, that the file is under the resolved `out_dir`, and
-that it was generated for the selected case. Automatic loading requires the case
-ID and current case signature to match. Regenerate predecessor-product VTPs with
-Panel Solver when automatic loading is required; they are unsupported.
+The GUI loads a case's VTP automatically only if:
 
-## A canceled run does not stop immediately
+- `save_vtp_on=1` for that case;
+- the file is in the case's `out_dir`;
+- the file was made from the current case settings (its case ID and
+  `case_signature` match).
 
-See [Cancellation and calculation failures](batch-runs.md#cancellation-and-calculation-failures)
-for the cooperative boundary and how to recover completed artifacts.
+If you changed the case, or the file came from an older program version, run
+the case again. You can still look at any VTP with **Open VTP...**.
+
+## A cancelled run does not stop immediately
+
+Cases that are already running finish before the run stops. See
+[Cancellation and calculation failures](batch-runs.md#cancellation-and-calculation-failures)
+for which results are kept.
 
 ## macOS GUI crashes during accessibility inspection
 
-The pinned PySide6/Qt 6.9.0 has a known native table-accessibility bug
-(QTBUG-134784). The GUI can crash after an accessibility tool reads table-cell
-values. This was observed with Computer Use and reproduced in an isolated Qt
-test. It has not been reproduced with ordinary mouse and keyboard use alone;
-the frequency in everyday use is unknown. A VoiceOver-specific reproduction
-has not been established.
+On macOS, the GUI can crash when an accessibility or automation tool reads the
+contents of a table. This is a known bug in the Qt version that Panel Solver
+uses on macOS (QTBUG-134784). It has not been seen with ordinary mouse and
+keyboard use, and it is not known whether VoiceOver triggers it.
 
-This is a known limitation of v0.1.0. Keep the documented dependency version:
-Qt 6.9.1 fixes this defect but fails a separate selected-cell accessibility
-regression. A replacement will be evaluated when both defects are addressed.
-After a crash, restart the GUI and inspect saved outputs using the
-[recovery guidance](batch-runs.md). Include the Qt version
-and any active accessibility or automation tools when reporting a crash.
+This is a known limitation of v0.1.0. Keep the Qt version that Panel Solver
+installs. Qt 6.9.1 fixes this crash but has a different accessibility
+problem, so it is not used yet. If the GUI crashes, restart it and check your saved
+results as described in [Batch runs and recovery](batch-runs.md). When you
+report a crash, include the Qt version and any accessibility or automation
+tools that were running.
 
 ## A Python import fails
 
-The installed distribution and Python package are both `panelsolver`. Use the
-imports listed in the [Python API reference](../reference/python-api.md#supported-imports-and-scope).
-Code using predecessor-product package names must migrate to these imports.
+The package is called `panelsolver`. Use the imports listed in the
+[Python API reference](../reference/python-api.md#supported-imports-and-scope).
+Code that uses package names from older predecessor tools must be updated to
+these imports.

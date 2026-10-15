@@ -1,102 +1,82 @@
-# Batch execution and recovery
+# Batch runs and recovery
 
-This page covers how the CLI and GUI handle workers, checkpoints, cancellation,
-and recovery from calculation or output-file failures.
-These checkpoint rules describe ordinary solves. Sectional batches use the same
-case scheduler but retain compact results for a final or repeated atomic export;
-their distinct partial-result rules are in the
-[sectional result reference](../reference/sectional-loads-csv.md#failures-and-repeated-export).
-Use the [Summary CSV reference](../reference/summary-csv.md) and
-[VTP reference](../reference/vtp.md) to interpret saved result fields.
+This page explains the settings for runs with many cases, and what you can
+still use after a run is cancelled or something fails. It applies to both the
+CLI and the GUI. Sectional batches follow their own rules, described in
+[Sectional loads and Cp](sectional.md) and the
+[sectional load CSV reference](../reference/sectional-loads-csv.md#failures-and-repeated-export).
 
-## Workers and visible ordering
+## Workers and result order
 
-`workers=1` runs cases without parallel execution; larger values allow multiple
-cases to run concurrently. With any worker count, execution, progress, and
-diagnostics may follow a different order from the input table. Checkpoints append
-cases in the order their completed results are accepted by the application.
-The final Summary CSV presents all cases in input-table order.
-
-The CLI exposes this setting as `--workers`; the GUI exposes it as **Workers**.
+**Workers** (GUI) or `--workers` (CLI) sets how many cases run at the same time.
+With `1`, cases run one after another. With any worker count, execution and
+completion order can differ from case-table order, so progress messages and
+Diagnostics may also differ. The final Summary CSV is always in case-table
+order.
 
 ## Checkpoints
 
-The CLI `--checkpoint-every-cases N` option and GUI **Checkpoint** control
-(shown by **Show advanced**) set the same interval. The default is `2000`. Each time another `N` cases have
-completed, Panel Solver saves the cases not yet saved successfully. The first
-checkpoint atomically replaces any previous run's Summary CSV; later checkpoints
-append only new results to that same file, without repeating its header. A failed
-checkpoint is retried with all unsaved cases after another `N` cases complete.
+During a long run, Panel Solver can save finished results to the Summary CSV
+before the whole run is done. Set the interval with **Checkpoint** (GUI, under
+**Show advanced**) or `--checkpoint-every-cases` (CLI). The default is `2000`.
 
-After all calculations finish, any remaining unsaved cases are checkpointed,
-then the complete Summary CSV is atomically rewritten in input-table order.
-Set the interval to `0` to disable all intermediate saves, including the last
-partial checkpoint; the final Summary CSV is still attempted. Cancellation or
-a calculation failure does not trigger an additional save.
+- Every time another N cases finish, the results not yet saved are written to
+  the Summary CSV. The first checkpoint replaces any older file at that path;
+  later checkpoints add rows to the end.
+- While the run is in progress, rows appear in the order the cases finished.
+- When all cases are done, the file is rewritten once more in case-table order.
+- `0` turns checkpoints off. The final Summary CSV is still written.
+- Cancelling or a failed case does not trigger an extra save.
 
-After a checkpoint is written, it is available at the selected Summary CSV
-destination and has the fields and rows described in the
-[Summary CSV reference](../reference/summary-csv.md). It retains results from
-completed cases when a later calculation fails or a run is canceled. A
-checkpoint can be opened directly as a CSV and stores results rather than
-resumable calculation state. Use CLI
-`--cases` or a GUI row selection to rerun cases that still need results.
+A checkpoint file is an ordinary Summary CSV that you can open at any time. It
+contains results only; a run cannot be resumed from it. To fill in cases that
+are missing, rerun just those cases with `--cases` (CLI) or by selecting their
+rows (GUI).
 
 ## Cancellation and calculation failures
 
-Cancellation is cooperative. Panel Solver observes it between cases; an active
-[ray-shielding query](../methods/ray-shielding.md) or physical-model solve may
-finish before the request is observed.
+Cancellation is checked between cases. A case that is already running, for
+example one doing a large [ray-shielding](../methods/ray-shielding.md) query,
+finishes first.
 
-After cancellation, use the retained checkpoint CSV and VTP files from this
-run, subject to the write guarantees below. Cases accepted since the last
-successful checkpoint are not saved. A new final Summary CSV is not guaranteed
-when cancellation occurs before every case finishes.
+After you cancel:
 
-A calculation failure, such as a geometry-loading or model-execution error,
-stops the batch. Previously saved results remain available under the
-[write durability guarantee](#write-durability-guarantee).
+- the Summary CSV contains the cases saved by the last checkpoint;
+- cases finished after that checkpoint are not saved;
+- VTP files written so far remain;
+- a complete final Summary CSV is not written.
 
-## Output-file failures and partial success
+If a case fails to calculate, for example because its geometry cannot be
+loaded, the batch stops. Results already saved remain, as described above.
 
-Output-directory preparation, VTP write, and Summary CSV write failures are
-reported separately from calculation failures. The [CLI guide](cli.md) and
-[GUI guide](gui.md) define how their respective run statuses present these
-failures.
+## When a result file cannot be written
 
-| Failure | What Panel Solver does | What remains usable |
+File-writing problems are reported separately from calculation failures. The
+calculations themselves are not lost.
+
+| Problem | What Panel Solver does | What you can still use |
 |---|---|---|
-| Per-case output-directory or VTP write failure | Keeps that case's calculated result and continues with later cases. | A later checkpoint or final Summary CSV that is written successfully includes the calculated case. The [Summary CSV reference](../reference/summary-csv.md) defines when its `vtp_path` is blank. Other VTP files written successfully during this run remain available. |
-| Checkpoint Summary CSV write failure | Records the error and continues calculations. A failed append is rolled back to the previous file length and synchronized before retrying at a later checkpoint. If rollback fails, further appends are disabled; the final atomic write is still attempted. | After a successful rollback, the previous checkpoint remains usable. If rollback fails, the CSV tail may be incomplete. An initial atomic checkpoint failure leaves a pre-existing CSV unchanged. VTP files written successfully remain. |
-| Final Summary CSV write failure | Leaves the calculations completed but reports that the final Summary CSV could not be saved. | The latest checkpoint written successfully or pre-existing Summary CSV, if any, is left in place, as are VTP files written successfully during this run. Treat the retained Summary CSV according to the run diagnostics; it may not represent the completed batch. |
+| A VTP file or its folder cannot be written | Keeps that case's coefficients and continues with the next case. | The case still appears in the Summary CSV, with an empty `vtp_path`. Other VTP files from the run remain. |
+| A checkpoint cannot be written | Reports the error, keeps calculating, and tries again at the next checkpoint. | The previous checkpoint usually stays intact. If Diagnostics reports that the file end may be incomplete, check it before use. |
+| The final Summary CSV cannot be written | Reports that the final file could not be saved. | The last checkpoint (or an older file) stays in place, but it may not contain every case and may not be in table order. In the GUI, use **Retry Save...** to save the complete result without recalculating. |
 
-If a VTP write fails, an older file can remain at the planned path. Check the
-current run's diagnostics and Summary `vtp_path` to identify successful writes.
-The GUI suppresses automatic loading of the older file after that failure.
+If a VTP write fails, an older file with the same name may still exist. Use
+Diagnostics and the Summary CSV `vtp_path` column to see which files this run
+wrote. The GUI does not load the older file automatically.
 
-For a failed **final** Summary CSV save, the GUI retains the complete input-ordered
-CSV in memory and offers **Retry Save...**. It exports the same values without
-rerunning calculations or VTP output. This session-only recovery does not apply
-to CLI runs, interrupted calculations, or checkpoint-only failures when the
-final save succeeds. See the [GUI guide](gui.md#run-cases) for snapshot lifetime
-and protected destinations. Retrying does not erase earlier output diagnostics.
+**Retry Save...** in the GUI is available only after the final save fails, and
+only until you close the window. It is not available in the CLI. See
+[Using the GUI](gui.md#if-the-summary-csv-cannot-be-saved).
 
 ## Write durability guarantee
 
-Initial checkpoint, final Summary CSV, and VTP writes use a temporary file and
-atomic replacement, preserving the existing file if the new write fails.
-Checkpoint appends synchronize new rows to disk and attempt to restore the
-previous file length on a caught write failure. A rollback failure is reported
-explicitly and disables further appends.
-
-Direct append is not atomic: forced termination or power loss can leave an
-incomplete trailing CSV record or partially written case. Automatic repair and
-calculation resumption are not provided. Inspect the retained CSV before using
-it after such an interruption or a reported rollback failure.
-
-Files written before a later calculation failure or cooperative cancellation
-remain present. Use run diagnostics, Summary CSV paths, and VTP case IDs and
-signatures to distinguish current-run results from older retained files. Until
-the first checkpoint succeeds, a pre-existing Summary CSV still belongs to the
-previous run. A failed final write leaves the retained checkpoint in completion
-order, which may contain all calculated cases but is not a finalized Summary CSV.
+- The first checkpoint, the final Summary CSV, and each VTP are written to a
+  temporary file first and then moved into place. If writing fails, the old
+  file is left unchanged.
+- Later checkpoints add rows directly to the end of the file. If the computer
+  loses power or the process is killed during that write, the last row or case
+  may be incomplete. Check the file before using it after such an interruption.
+- Files written before a cancellation or failure remain. To tell them apart
+  from older files, use Diagnostics, the Summary CSV `vtp_path` column, and the
+  case ID and `case_signature` stored in each VTP. A Summary CSV from an earlier
+  run stays at the path until the first checkpoint of the new run replaces it.

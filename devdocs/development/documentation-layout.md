@@ -15,7 +15,8 @@ page. Keep navigation labels and page headings independent of file placement.
 | About | `about/` | Compatibility policy, data provenance, and licenses. |
 
 Implementation mechanisms that users do not need in order to operate the
-product belong in `devdocs/`, not in user pages. Documented file semantics,
+product belong in `devdocs/`, not in user pages; see
+[Detailed user-visible behavior](../architecture/detailed-user-behavior.md). Documented file semantics,
 numerical conventions, and supported commands stay in user Reference pages.
 
 ## Migration inventory

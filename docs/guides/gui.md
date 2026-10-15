@@ -1,141 +1,129 @@
-# GUI guide
+# Using the GUI
 
-Launch the GUI with a flow-domain selector:
+Start the GUI for a flow domain:
 
 ```bash
 panelsolver-gui fmf
 panelsolver-gui hypersonic
 ```
 
-These open `Panel Solver — FMF` and `Panel Solver — Hypersonic`.
+The window title shows the domain: `Panel Solver — FMF` or
+`Panel Solver — Hypersonic`.
 
 ![Panel Solver Hypersonic GUI with a loaded multi-case table and empty Viewer](../assets/screenshots/gui-overview.png)
 
 *A loaded Hypersonic case table, ready to run and inspect.*
 
+The window has three areas: the case table at the top, the Viewer below it,
+and the Diagnostics log. Drag the divider between the table and the Viewer to
+resize them.
+
 ## Run cases
 
-1. Choose **Select Input File** or **File > Open Input File...** and open a CSV,
-   XLSX, or XLSM case table. The platform's standard Open shortcut also works,
-   and you can drop a case table onto the window. Before a table is loaded, the
-   empty case area offers **Select Input File...** and **New from Example**.
-2. Select one or more rows to run those cases. Use **Clear selection** to return
-   to running all loaded cases; **Run scope** below the table shows the target,
-   for example `Run scope: all 5 cases` or `Run scope: 2 of 5 cases selected`.
-3. Leave **Workers** at its default for a first run. **Checkpoint** is an
-   advanced setting shown by **Show advanced**. For larger batches, see
-   [Batch execution and recovery](batch-runs.md).
-   Both settings support direct entry, keyboard stepping, and minus/plus buttons.
-4. Choose **Run All Cases** or **Run Selected Cases**, as shown for the selected
-   rows, and select the Summary CSV destination. The suggested location is
-   `<input_dir>/outputs/<input_stem>_result.csv`. **Run > Run Cases**
-   (Ctrl+R; ⌘R on macOS) does the same, and **Run > Cancel Run** (Ctrl+.; ⌘. on
-   macOS) cancels an active run.
-5. Follow the progress state. Open **Diagnostics** for warnings and errors.
+1. **Open a case table.** Choose **Select Input File** or **File > Open Input
+   File...** (or use your system's Open shortcut), or drag a CSV, XLSX, or XLSM
+   file onto the window. Before a table is open, the empty area also offers
+   **Select Input File...** and **New from Example**.
+2. **Choose the cases.** Select one or more rows to run only those cases. With
+   no rows selected, all cases run; **Clear selection** returns to that. The
+   **Run scope** line below the table shows what will run, for example
+   `Run scope: 2 of 5 cases selected`.
+3. **Check the run settings.** For a first run, keep the default **Workers**
+   value. **Show advanced** reveals the **Checkpoint** setting. See
+   [Batch runs and recovery](batch-runs.md) for when to change them.
+4. **Start the run.** Choose **Run All Cases** or **Run Selected Cases**, then
+   choose where to save the Summary CSV. The suggested file is
+   `<input folder>/outputs/<input name>_result.csv`. You can also use
+   **Run > Run Cases** (Ctrl+R; ⌘R on macOS).
+5. **Follow progress.** The progress bar shows the run state. Open
+   **Diagnostics** for warnings and errors.
 
-After editing the case table externally, choose **Reload** beside **Select Input
-File** to reread the current CSV, XLSX, or XLSM without choosing it again. These
-two buttons stay together and wrap below the input path when space is limited. Reload
-resets the case selection; select rows again to run a subset. The button is
-disabled until an input is loaded and during ordinary or sectional calculation
-and saving. If reading fails, the previous cases are cleared and cannot be run;
-fix the source and open it again. Reload does not reread sectional definition
-CSVs; use **Reload** in the corresponding Sectional dialog for those files.
+Each run writes the Summary CSV and, unless `save_vtp_on=0`, one VTP per case at
+`<out_dir>/<case_id>.vtp`. A relative `out_dir` is relative to the case table's
+folder; see [Preparing cases](preparing-cases.md#paths-vtp-destinations-and-components).
 
-The run writes the selected Summary CSV and, when enabled, one VTP per case at
-`<out_dir>/<case_id>.vtp`. Relative `out_dir` values use the input table's
-directory. See [Case files](preparing-cases.md#paths-vtp-destinations-and-components)
-for path rules.
+### Edit and reload
 
-If the final Summary CSV cannot be saved, the **Output Errors** message offers
-**Retry**, and **Retry Save...** appears beside **Cancel** for later use. Either
-saves the retained result to the same or another CSV destination without
-recalculating cases or writing VTP files again. Fix the cause first, such as
-freeing disk space or closing a program that holds the file open. The message
-below the progress bar identifies the retained run's input filename and case
-count. Reloading inputs or changing selections does not change that result.
-Original and currently loaded case tables, STL files, planned VTP outputs, and
-sectional definition files are protected against overwriting, including file
-aliases and unselected cases.
+After you edit the case table in another program, choose **Reload** (next to
+**Select Input File**) to read it again. Reload clears the row selection. If
+the edited file has errors, the old cases are cleared too; fix the file and
+open it again. **Reload** is not available while a run is in progress.
 
-The button disappears after a successful retry or a later completed calculation
-replaces the retained result. Failed or cancelled calculations leave a previous
-unsaved result available; they do not add their partial results to it. Results
-are retained only for the current application session. Saving runs in the
-background and temporarily disables ordinary and sectional calculations. If a
-pending window close meets a Summary CSV save failure, the window remains open
-for retry. Closing the window while a result is retained asks whether to save
-it first: **Save** closes after a successful save, **Discard** closes without
-it, and **Cancel** keeps the window open. Other output errors, such as a VTP
-failure, remain in Diagnostics.
+### Cancel a run
 
-During cancellation, progress shows **Cancelling** until workers finish cleanup.
-Closing the window during a run also requests cancellation and waits for cleanup.
-[Batch execution and recovery](batch-runs.md#cancellation-and-calculation-failures)
-explains cancellation boundaries and which outputs remain available.
+Choose **Cancel** or **Run > Cancel Run** (Ctrl+.; ⌘. on macOS). The progress
+bar shows **Cancelling** until the cases already in progress finish. Closing
+the window during a run also cancels it. See
+[Batch runs and recovery](batch-runs.md#cancellation-and-calculation-failures)
+for which results are kept.
+
+### If the Summary CSV cannot be saved
+
+If the final Summary CSV cannot be written, for example because the disk is
+full or another program has the file open, an error message offers **Retry**.
+Fix the cause first, then retry; you can also pick another file. The
+calculated results are kept, so nothing is calculated again and no VTP files
+are rewritten.
+
+If you close the message, a **Retry Save...** button stays next to **Cancel**
+until the results are saved or a new run finishes. The results are kept only
+while the window is open. If you close the window before saving, you are asked
+whether to **Save**, **Discard**, or **Cancel**.
+
+Panel Solver never lets a result overwrite your input files: the case table,
+STL files, sectional definition files, and planned VTP files are all
+protected.
 
 ## Start from an example
 
-Choose **File > New from Example** and an example for the active domain. Select
-a workspace directory; the GUI copies the case table and required geometry there,
-keeping their relative layout, then opens the copied table. Edit and rerun this
-workspace copy. The [Quickstart](../getting-started/quickstart.md) explains the
-Basic example and its first results.
+Choose **File > New from Example** and pick an example. Select a folder; the GUI
+copies the case table and its geometry there and opens the copied table.
+Existing files that you have changed are not overwritten. Edit and run this
+copy freely. The [Quickstart](../getting-started/quickstart.md) walks through
+the **Basic** example.
 
-## Organize the workspace
+## Work with the case table
 
-The case table shows all input fields, including extra fields, in their declared
-order. Headers show units, and Case ID stays pinned while scrolling horizontally.
-Hover over a geometry cell to read its full path. When the input path is longer
-than its field, leading folders are shortened so the file name stays visible;
-hover over the field for the full path, or use **Copy Path** from its context
-menu. Drag the grip between the case table and the Viewer to resize them.
-
-Window placement, split position, column widths, Diagnostics visibility, and
-the **Show advanced** state are remembered separately for each domain. Saved
-widths expand as needed to fit headers. **View > Reset Layout** restores the
-initial workspace layout.
-Input files, row selection, execution settings, and color-range values are not
-restored by this layout feature.
-
-Viewer file actions (**Open VTP...**, **Save Image...**, **Save Selected
-Images...**) sit above the display; scalar, range, display, and camera controls
-remain available below it. Related controls wrap together in a narrow window,
-as do each run setting and its label; run and cancel actions stay together.
+- The table shows every input column, including your own extra columns.
+  Headers show units, and the **Case ID** column stays visible while you
+  scroll sideways.
+- Hover over a geometry cell to see its full path. If the input path is too
+  long for its field, the start is shortened; hover over it, or right-click and
+  choose **Copy Path**.
+- The window position, divider position, column widths, Diagnostics
+  visibility, and **Show advanced** state are remembered for each domain.
+  **View > Reset Layout** restores the original layout. Open files, selections,
+  run settings, and color ranges are not remembered.
 
 ## View results and run sectional batches
 
-To inspect surface results and save images, see
-[Viewing results in the GUI](gui-viewer.md). For sectional
-load and Cp batches, see [Sectional loads and Cp](sectional.md).
+To look at surface results and save images, see
+[Viewing results in the GUI](gui-viewer.md). For sectional loads and Cp, see
+[Sectional loads and Cp](sectional.md).
 
 ## Diagnostics and run status
 
-**Show diagnostics** opens the log and changes to **Hide diagnostics**. Messages
-continue to arrive while the log is collapsed. **Clear log** clears messages and
-resets warning/error counts, including during an active run. Counts represent
-messages received since the last clear or application launch.
+**Show diagnostics** opens the log; **Hide diagnostics** closes it again.
+Messages keep arriving while it is closed. **Clear log** clears the messages
+and the warning and error counts.
 
-| Status or issue | Meaning and action |
-|---|---|
-| Input validation issue | The message identifies the spreadsheet row, case ID, field, and problem. Edit the source table and reopen it before rerunning. |
-| **Failed** | A case calculation failed, such as during geometry loading or model execution. Read Diagnostics for the cause. |
-| **Completed with output errors** | Calculations finished, but output-directory preparation, VTP writing, or Summary CSV writing failed. Read the final error summary and Diagnostics. |
+| Status | What it means | What to do |
+|---|---|---|
+| Input validation error | The case table has a problem. The message names the row, case ID, and column. | Fix the table, then reload or reopen it. |
+| **Failed** | A case could not be calculated, for example because its geometry could not be loaded. | Read Diagnostics for the cause. |
+| **Completed with output errors** | All cases were calculated, but a VTP or the Summary CSV could not be written. | Read the error summary and Diagnostics. |
 
-Read and write error states provide a direct route to Diagnostics. After a VTP
-write failure, an older file at the planned path remains available through
-**Open VTP...**, with automatic loading suppressed for that failed write.
-See [Batch execution and recovery](batch-runs.md) for retained
-results and rerun options.
+Error messages in the Viewer include a **Diagnostics** button that opens the
+log. If a VTP could not be written, an older file with the same name may still
+exist. The GUI does not load it automatically, but you can open it with
+**Open VTP...**. See [Batch runs and recovery](batch-runs.md) for how to rerun
+cases.
 
-## Offline help
+## Help menu
 
-The **Help** menu provides:
-
-- **Documentation:** opens the bundled offline site in your desktop browser,
-  including with a wheel installation.
-- **About:** shows Panel Solver, its installed distribution version, the active
-  domain, and the Apache-2.0 license. Include the version and domain in problem
-  reports.
+- **Help > Documentation** opens this documentation in your web browser. It is
+  installed with Panel Solver and works offline.
+- **Help > About** shows the installed version, the active domain, and the
+  license. Include the version and domain when you report a problem.
 
 See [Troubleshooting](troubleshooting.md) for common problems.

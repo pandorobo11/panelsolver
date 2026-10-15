@@ -1,44 +1,54 @@
 # Compatibility policy
 
-Panel Solver supports:
+This page lists what Panel Solver keeps compatible between releases. If you
+rely only on these, your inputs, scripts, and result readers keep working.
 
-- batch commands `panelsolver fmf` and `panelsolver hypersonic`, including
-  their `sectional-loads` workflows;
-- GUI commands `panelsolver-gui fmf` and `panelsolver-gui hypersonic`;
-- normal launcher-driven GUI operation;
-- the seven package-root solve imports and the dedicated
-  `panelsolver.postprocess` sectional-load surface described in the
-  [Python API reference](../reference/python-api.md);
-- documented CSV, XLSX, and XLSM case files and their domain schemas/defaults;
-- documented [Summary CSV](../reference/summary-csv.md) and
-  [VTP](../reference/vtp.md) semantics;
-- separate [sectional definition CSV](../reference/sectional-definitions.md#sectional-load-definitions) and
-  [sectional result CSV](../reference/sectional-loads-csv.md) semantics;
-- documented numerical values, signs, frames, normalizations, and
-  model-specific behavior.
+## What is supported
 
-The compatibility guarantee covers the documented public behavior above.
-Private implementation details—including invalid-input quirks, exact exception
-text and tracebacks, object identity, pickle globals, and cache internals—are
-outside this guarantee.
+- The commands `panelsolver fmf` and `panelsolver hypersonic`, including their
+  `sectional-loads` subcommands.
+- The GUI commands `panelsolver-gui fmf` and `panelsolver-gui hypersonic`, used
+  in the normal way through their windows and menus.
+- The seven package-root imports and the `panelsolver.postprocess` sectional
+  load functions described in the [Python API reference](../reference/python-api.md).
+- CSV, XLSX, and XLSM case tables with the documented columns and defaults.
+- The documented meaning of the [Summary CSV](../reference/summary-csv.md) and
+  [VTP](../reference/vtp.md) fields.
+- The [sectional definition CSV](../reference/sectional-definitions.md#sectional-load-definitions)
+  and [sectional load CSV](../reference/sectional-loads-csv.md).
+- The documented numerical values, signs, axes, normalizations, and model
+  behavior.
+
+## What is not covered
+
+Behavior that is not documented can change without notice. This includes how
+invalid input happens to be handled, the exact text of error messages and
+tracebacks, and Python internals such as object identity, pickling, and caches.
 
 Known limitations include the
 [macOS table-accessibility crash](../guides/troubleshooting.md#macos-gui-crashes-during-accessibility-inspection).
 
-## Updating predecessor workflows
+## Updating from earlier versions
 
-Use the canonical `panelsolver` package and commands in place of predecessor
-names. Convert `.xls` case tables to `.xlsx` or CSV, and remove the rejected
-`save_npz_on` column from older tables. Calculation-result files are Summary CSV
-and VTP. Current schemas exclude NPZ output and the `Cp_n` array.
+- Use the `panelsolver` package and commands instead of the names of the older
+  predecessor tools.
+- Convert `.xls` case tables to `.xlsx` or CSV.
+- Remove the `save_npz_on` column from older case tables. Results are written
+  only as Summary CSV and VTP; NPZ output and the `Cp_n` array no longer exist.
+- The former `alpha_t_deg_resolved` and `beta_t_deg_resolved` result fields
+  have been replaced. Use the `velocity_hat_*_stl` flow-direction fields and
+  `alpha_stability_deg` instead.
+- Case signatures now use version 2 of the signature format. Files made by
+  earlier versions can still be opened with **Open VTP...**, but the GUI does
+  not match them to cases automatically. Run those cases again to get matching
+  files.
 
-## Distribution and artifact version
+## Version recorded in results
 
-Panel Solver is distributed as `panelsolver`. Summary CSV and VTP
-`solver_version` fields, defined in their result references, record the
-installed `panelsolver` distribution version that generated them.
+The `solver_version` field in the Summary CSV and in each VTP records the
+version of the installed `panelsolver` package that wrote the file.
 
-Automatic VTP loading requires both the current case ID and current case
-signature. Regenerate predecessor-product VTPs with Panel Solver; those formats
-are outside the compatibility guarantee. **Open VTP...** can inspect a file
-manually when it contains the data required by the viewer.
+The GUI shows a VTP automatically only when its case ID and `case_signature`
+match the current case. VTP files from predecessor tools are not supported;
+regenerate them with Panel Solver. **Open VTP...** can still display a file
+if it contains the data the Viewer needs.

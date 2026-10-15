@@ -1,157 +1,130 @@
 # Sectional loads and Cp
 
-Sectional workflows slice each solved case along an axis that you define in a
-separate [definition CSV](../reference/sectional-definitions.md). Your case
+Sectional workflows show how the load is distributed along an axis of the
+vehicle, for example along the span or the length. You define the axis in a
+separate [definition CSV](../reference/sectional-definitions.md), so your case
 tables do not change.
 
-- **Sectional loads** split the surface into equal-width strips and integrate
-  the aerodynamic coefficients of each strip. See the
-  [sectional load CSV](../reference/sectional-loads-csv.md).
-- **Sectional Cp** cuts the surface with parallel planes and saves the panel
-  value along each cut. See the [sectional Cp CSV](../reference/sectional-cp-csv.md).
+| | Sectional loads | Sectional Cp |
+|---|---|---|
+| What it does | Splits the surface into equal-width strips along the axis and adds up the force and moment coefficients of each strip. | Cuts the surface with parallel planes and records the panel value along each cut line. |
+| Typical use | Spanwise or lengthwise load distribution. | Pressure distribution around a cross-section. |
+| Value | `delta_CA` … `delta_CL` for each strip | Hypersonic `cp`, or FMF `normal_traction_coeff` |
+| Result file | [Sectional load CSV](../reference/sectional-loads-csv.md) | [Sectional Cp CSV](../reference/sectional-cp-csv.md) |
+
+FMF Sectional Cp uses the normal traction coefficient, which is the
+free-molecular pressure-like load on each panel. It is not the same quantity as
+a continuum pressure coefficient, and it leaves out the tangential (shear) load.
+
+Both workflows solve each selected case once, then apply every selected
+definition to that result. They do not need or create a Summary CSV or VTP
+file.
 
 ## Sectional loads in the GUI
 
-To start with a complete example, choose **File > New from Example > Sectional
-Loads** and select a workspace directory. This copies the current domain's case
-table (FMF Flow Modes or Hypersonic Basic), its STL geometry, and
-`sectional_loads.csv`. The case table and the Sectional Loads dialog open with
-those copied inputs, ready to run. Existing modified files are not overwritten.
-Edit the copied definition CSV externally and use **Reload** to try changes.
+**Try the example.** Choose **File > New from Example > Sectional Loads** and
+pick a folder. The GUI copies a case table (FMF **Flow Modes** or Hypersonic
+**Basic**), its geometry, and `sectional_loads.csv`, then opens the table and
+the **Sectional Loads** window with the definitions loaded. Files you have
+already changed are not overwritten.
 
-For your own files:
+**Use your own files:**
 
-1. Open a case table. Select case rows to run a subset, or leave the case selection
-   empty to run all loaded cases, as with ordinary calculation.
-2. Choose **File > Sectional Loads...** and open a separate
-   [sectional definition CSV](../reference/sectional-definitions.md#sectional-load-definitions).
-3. Select definitions in the read-only table to run a subset, or leave the
-   selection empty to run all loaded definitions. Case and definition selections
-   are independent; the run scope shows both effective counts and lists the
-   target case IDs.
-4. Choose **Run All Cases × Sections** or **Run Selected Cases × Sections**, then
-   select the [sectional result CSV](../reference/sectional-loads-csv.md) destination.
-   The suggested path is `<input_dir>/outputs/<input_stem>_sectional_loads.csv`.
-   Cancelling the file dialog does not start a calculation or change retained results.
-5. Each target case is solved once and all selected definitions use that same
-   in-memory execution. Results are saved automatically to the chosen path.
-   The dialog shows completion/save status, pair counts and the saved path;
-   inspect numerical results in the CSV. There is no result table or separate
-   Export action. The Viewer VTP is not an input.
+1. Open a case table in the main window. Select the cases to run, or select
+   none to run all of them.
+2. Choose **File > Sectional Loads...** and open your
+   [definition CSV](../reference/sectional-definitions.md#sectional-load-definitions).
+3. In the Sectional Loads window, select the definitions to run, or select none
+   to run all of them. The run scope shows how many cases and definitions will
+   run.
+4. Choose **Run All Cases × Sections** (or **Run Selected Cases × Sections**),
+   then choose where to save the result. The suggested file is
+   `<input folder>/outputs/<input name>_sectional_loads.csv`.
+5. When the run finishes, the result is saved automatically. The window shows
+   the status, the number of completed case–section pairs, and the saved path.
+   Open the CSV to see the numbers; the window does not show a result table.
 
-The definition table supports opening and reloading files, not definition
-editing. Edit the CSV externally and reload it before starting a new batch.
-A failed reload clears the runnable definitions and reports the error.
-The open definition CSV is protected from ordinary Summary CSV output as well
-as sectional output, including while the Sectional Loads window is hidden.
-Opening or reloading definitions is disabled during ordinary calculation.
+The window only opens definition files; it does not edit them. Edit the CSV in
+another program, then choose **Reload**. The selections and definitions are
+fixed when a run starts, so changing them during a run does not affect that
+run.
 
-Starting a run freezes both selections and definitions. Later selection/file
-changes do not relabel completed results. Run and export status are separate:
-cancelled or failed batches save any successful pairs to the chosen destination,
-with their actual terminal status. If no pair succeeds, the output is unchanged.
-A save failure retains the calculation and offers **Retry** in the error
-dialog. It opens the save chooser after the export worker has finished cleanup.
-**Close** dismisses that message; **Retry Save...** remains available to select a
-destination and save without rerunning physics. These actions also save retained
-partial results with their original failed or cancelled batch status. The button is hidden after
-successful saving and never substitutes current selections for the failed-save
-snapshot.
-Result rows include their actual case signatures, section IDs and terminal
-batch status, including partial results.
+**Cancelling and errors.** **Cancel** stops the run after the cases in progress
+finish. Any case–section pairs that finished are still saved, and the CSV
+records whether the run was `completed`, `failed`, or `cancelled`. If nothing
+finished, no file is written. If the result cannot be saved, use **Retry** in
+the error message or **Retry Save...** later; nothing is calculated again. If
+you close the window with unsaved results, you are asked whether to **Save**,
+**Discard**, or **Cancel**.
 
-Normal case solving and sectional solving cannot run simultaneously. Cancel
-requests stop at safe boundaries; already-running parallel cases can finish.
-Closing during a run requests cancellation and waits for calculation, automatic
-export of successful pairs, and worker cleanup. Ordinary runs remain disabled
-until both calculation and saving finish.
-If saving fails while a close request is waiting, the window remains open so
-you can use **Retry Save...**. Closing the Sectional dialog (including Esc) or
-the main window while a failed-save result is retained offers **Save**,
-**Discard**, and **Cancel**. Save closes only after a successful export; cancelling
-the file chooser or another save failure keeps the window and results available.
-Discard releases that dialog's unsaved result, and Cancel keeps it open.
-Main-window close also checks hidden Sectional dialogs and checks Loads and Cp
-independently when both hold unsaved results. Results are held only in the current
-application session.
-No intermediate Summary CSV or VTP is required or created by sectional runs.
-
-For an FMF example, open `examples/fmf/flow_modes.csv`; for Hypersonic, open
-`examples/hypersonic/basic.csv`. Both work with `examples/sectional_loads.csv`.
-
+Ordinary runs, Sectional Loads, and Sectional Cp cannot run at the same time.
 
 ## Sectional Cp in the GUI
 
-Choose **File > New from Example > Sectional Cp** for a complete sample.
-After selecting a workspace folder, the application copies the case CSV, STL,
-and Cp definitions, replaces the displayed case table with the sample cases,
-and opens the Sectional Cp dialog with its definitions loaded. This follows the
-same flow and logging as other examples, with no extra confirmation dialog.
-Calculation starts only when you choose Run and an output CSV destination.
+Sectional Cp works like Sectional Loads, using **File > Sectional Cp...** and a
+[Cp definition CSV](../reference/sectional-definitions.md#sectional-cp-definitions).
+The suggested output file is `<input name>_sectional_cp.csv`.
 
-Choose **File > Sectional Cp...**, open a [Cp definition CSV](../reference/sectional-definitions.md#sectional-cp-definitions),
-select cases and definitions (empty selection means all), and run. Try
-`examples/sectional_cp.csv` with either domain's basic example. The read-only
-workflow, frozen selections, cancellation, automatic CSV saving, and **Retry
-Save...** follow Sectional Loads. The suggested output is
-`<input_stem>_sectional_cp.csv`.
+To try it, choose **File > New from Example > Sectional Cp**. The GUI copies
+the example files, opens the case table, and opens the **Sectional Cp** window
+with `sectional_cp.csv` loaded. The calculation starts only when you choose
+Run and an output file.
 
-Each row saves both endpoints and the source panel's constant scalar. Hypersonic
-extracts Cp; FMF extracts its normal traction coefficient. The dialog explains
-this distinction; it does not plot or interpolate the result. Ordinary solving,
-Sectional Loads and Sectional Cp cannot run concurrently. Both definition files
-remain protected against overwriting while their dialogs are hidden.
+Each result row is one straight line segment across one panel, with both end
+points and that panel's value. The window does not plot the result; use the
+CSV.
 
 ## Sectional loads from the CLI
 
-Both domains can calculate finite-width sectional loads from a separate
-[definition CSV](../reference/sectional-definitions.md#sectional-load-definitions):
+Add the `sectional-loads` subcommand after the domain:
 
 ```bash
 panelsolver fmf sectional-loads -i examples/fmf/flow_modes.csv -d examples/sectional_loads.csv -o outputs/fmf_sections.csv
 panelsolver hypersonic sectional-loads -i examples/hypersonic/basic.csv -d examples/sectional_loads.csv -o outputs/hypersonic_sections.csv
 ```
 
-These commands work from the repository root with the supplied examples.
-Use `--cases ID [ID ...]` and `--sections ID [ID ...]` independently; omitted
-filters select all. Cases keep input-table order; sections keep definition-file
-order. Unknown IDs are errors. Case selectors accept comma-separated IDs as in
-ordinary solve. Section selectors use exact labels (quote labels with spaces
-or commas); `--sections=--label` selects a label beginning with hyphens.
+These commands work from the repository root (or the extracted examples
+archive).
 
-`-i/--input`, `-d/--definitions` and `-o/--output` are required.
-`-j/--workers` defaults to one and parallelizes cases through the existing
-scheduler. `--plain`, `--verbose` and `--debug` have the usual meanings.
-The help describes STL coordinates, metre units, auto range and component IDs.
-Axes and ranges are specified only in the definition file.
+| Option | What it does |
+|---|---|
+| `-i`, `--input` | Case table (required). |
+| `-d`, `--definitions` | Sectional load definition CSV (required). |
+| `-o`, `--output` | Result CSV (required). |
+| `--cases ID [ID ...]` | Run only these cases (spaces or commas). Default: all. |
+| `--sections ID [ID ...]` | Run only these definitions, by exact `section_id`. Quote IDs that contain spaces. Use `--sections=--label` for an ID that starts with `-`. Default: all. |
+| `-j`, `--workers` | Number of cases to run in parallel. Default: 1. |
+| `--plain`, `--verbose`, `--debug` | Same as for ordinary runs. |
 
-Each case executes physics once, then applies all selected definitions to that
-same in-memory execution. Mode B and other domain case inputs remain supported.
-No Summary CSV or VTP is required or generated, regardless of `save_vtp_on`.
-The [dedicated result CSV](../reference/sectional-loads-csv.md) includes all bins,
-total and component scopes, coverage, references and the physical signature.
+CSV results follow case-table order and then definition-file order. Case
+execution and progress messages can follow a different order, even with one
+worker. An unknown case or section ID is an error. The whole definition file
+is checked before any case runs.
 
-The complete definition file is validated before solving. Mesh-dependent
-definition failures stop the batch, retaining earlier successful pairs. Ctrl-C
-requests cooperative cancellation: serial runs check case/definition boundaries;
-parallel workers finish at case boundaries. Already-dispatched work may finish.
-Partial results are saved with `batch_status` and completion counts; failed pairs
-are never emitted as zero results. Exit codes are 0 for complete success, 1 for
-validation/calculation/save failure, 2 for command argument errors, and 130 for
-cancellation when any requested partial save succeeds. If no pair succeeds,
-the output remains untouched. Save failure is reported independently and returns 1.
+If a definition cannot be applied to a case's geometry, the batch stops and the
+pairs that already finished are saved. Press Ctrl-C to cancel; work already in
+progress may finish first. Failed pairs are never written as zero results.
+
+| Exit code | Meaning |
+|---|---|
+| `0` | Every pair finished and the result was saved. |
+| `1` | A validation, calculation, or save error occurred. Pairs that finished are still saved when possible. |
+| `2` | The command-line arguments are invalid. |
+| `130` | The run was cancelled and the finished pairs were saved. |
+
+If no pair finished, the output file is not created or changed.
 
 ## Sectional Cp from the CLI
 
-Use [Cp definitions](../reference/sectional-definitions.md#sectional-cp-definitions) to extract surface sections:
+Use the `sectional-cp` subcommand with a
+[Cp definition CSV](../reference/sectional-definitions.md#sectional-cp-definitions):
 
 ```bash
-panelsolver hypersonic sectional-cp -i examples/hypersonic/basic.csv -d examples/sectional_cp.csv -o /tmp/hypersonic_sectional_cp.csv
-panelsolver fmf sectional-cp -i examples/fmf/basic.csv -d examples/sectional_cp.csv -o /tmp/fmf_sectional_cp.csv
+panelsolver hypersonic sectional-cp -i examples/hypersonic/basic.csv -d examples/sectional_cp.csv -o outputs/hypersonic_sectional_cp.csv
+panelsolver fmf sectional-cp -i examples/fmf/basic.csv -d examples/sectional_cp.csv -o outputs/fmf_sectional_cp.csv
 ```
 
-The `--cases`, `--sections`, `--workers`, `--plain`, `--verbose` and `--debug`
-options follow `sectional-loads`. Each selected case is solved once. Outputs
-contain [panel segments and scalar values](../reference/sectional-cp-csv.md), with
-no intermediate VTP or Summary CSV. A failed plane yields exit code 1 while other
-planes/definitions continue; cancellation returns 130.
+The options are the same as for `sectional-loads`. The result contains
+[line segments and panel values](../reference/sectional-cp-csv.md). If one cut
+plane fails, the other planes and definitions still run and the command exits
+with `1`. Cancelling exits with `130`.
