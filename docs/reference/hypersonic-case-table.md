@@ -1,12 +1,12 @@
-# Hypersonic input reference
+# Hypersonic case table
 
-This page defines the Hypersonic case-table schema. Input columns may be in any
-order. The standard input columns are written to Summary CSV in the order shown
-below, followed by extra input columns in their original relative order.
-[Case files](case-files.md) defines accepted formats, path
-resolution, and [common validation](case-files.md#common-validation).
-See [Columns and defaults](case-files.md#columns-and-defaults) for
-omitted-column and empty-cell behavior.
+This page lists every column of a Hypersonic case table. Columns can be in any order.
+In the Summary CSV, these input columns are written in the order shown here,
+followed by any extra columns of your own. For file formats, paths, and the
+checks that apply to every table, see [Preparing cases](../guides/preparing-cases.md)
+and its [common validation](../guides/preparing-cases.md#common-validation) list.
+Leaving out a column with a default, or leaving its cell empty, uses the default
+(see [Columns and defaults](../guides/preparing-cases.md#columns-and-defaults)).
 
 | Column | Required | Default | Unit / values | Meaning |
 |---|---:|---|---|---|
@@ -29,18 +29,24 @@ omitted-column and empty-cell behavior.
 | `Lref_Cn_m` | yes | — | m, > 0 | Yaw-moment reference length |
 | `shielding_on` | no | `0` | `0` or `1` | Enable the [ray-occlusion shielding method](../methods/ray-shielding.md) |
 | `ray_backend` | no | `auto` | `auto`, `rtree`, `embree` | [Ray-shielding backend](../methods/ray-shielding.md#backend-behavior) |
-| `out_dir` | no | `outputs` | path | Per-case VTP directory; resolution and path rules are in [Case files](case-files.md#paths-vtp-destinations-and-components) |
+| `out_dir` | no | `outputs` | path | Per-case VTP directory; resolution and path rules are in [Preparing cases](../guides/preparing-cases.md#paths-vtp-destinations-and-components) |
 | `save_vtp_on` | no | `1` | `0` or `1` | `1` writes the case VTP; `0` skips it |
 
-Windward values are `newtonian`, `modified_newtonian`, `tangent_wedge`, and
-`tangent_cone`. Leeward values are `shield` and `prandtl_meyer`. One value
-applies to all STL components; otherwise the number of semicolon-separated
-entries must equal the STL count. Modified Newtonian, tangent wedge, tangent
-cone, and Prandtl–Meyer require `Mach > 1`.
+**Pressure methods.** A *windward* panel faces the oncoming flow; a *leeward*
+panel faces away from it.
 
-See [Case files](case-files.md#attitude-modes) for mode selection and
-accepted ranges, and
-[Coordinate and attitude conventions](../methods/coordinate-and-attitude-conventions.md)
-for axes, signs, and geometric definitions. The Hypersonic
-[pressure-model equations](../methods/hypersonic.md#pressure-model-equations)
-explain the method choices and physical applicability.
+| Column | Accepted values |
+|---|---|
+| `windward_eq` | `newtonian`, `modified_newtonian`, `tangent_wedge`, `tangent_cone` |
+| `leeward_eq` | `shield` (`Cp = 0`), `prandtl_meyer` |
+
+Write one value to use it for every STL part, or one value per part separated
+by semicolons, in the same order as `stl_path`. All methods except
+`newtonian` and `shield` need `Mach > 1`. The
+[Hypersonic method page](../methods/hypersonic.md#pressure-model-equations)
+explains each method and when it applies.
+
+For attitude modes and their ranges, see
+[Preparing cases](../guides/preparing-cases.md#attitude-modes). Axes and signs
+are defined in
+[Coordinate and attitude conventions](../methods/coordinate-and-attitude-conventions.md).

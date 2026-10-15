@@ -2,8 +2,8 @@
 
 FMF and Hypersonic use the same ray-shielding method to detect geometry
 occlusion. Setting `shielding_on=1` enables this method for a case. The
-[FMF input reference](../inputs/fmf-input.md) and
-[Hypersonic input reference](../inputs/hypersonic-input.md) list the accepted
+[FMF input reference](../reference/fmf-case-table.md) and
+[Hypersonic input reference](../reference/hypersonic-case-table.md) list the accepted
 `shielding_on` and `ray_backend` values and defaults.
 
 ## Geometry-occlusion method
@@ -39,10 +39,10 @@ explicitly but unavailable, the case fails with an error. When shielding is
 disabled, the effective backend is `not_used`.
 
 Results record the effective backend as `ray_backend_used` in
-[Summary CSV](../results/summary-csv.md#execution-and-output-fields) and
-[VTP field data](../results/vtp.md#common-field-data). The per-panel mask is VTP
-[`shielded`](../results/vtp.md#common-cell-data), and Summary CSV reports its
+[Summary CSV](../reference/summary-csv.md#execution-and-output-fields) and
+[VTP field data](../reference/vtp.md#common-field-data). The per-panel mask is VTP
+[`shielded`](../reference/vtp.md#common-cell-data), and Summary CSV reports its
 count as `shielded_faces`.
 
 Ray-query batching can be tuned as described in the
-[Environment-variable reference](../product-reference/environment-variables.md).
+[Environment-variable reference](../reference/environment-variables.md).

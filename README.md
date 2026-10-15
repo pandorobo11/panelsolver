@@ -24,7 +24,7 @@ without this macOS-specific Python upper limit. The macOS pin will be
 reassessed when the upstream Qt fix is available and validated; see the
 [installation requirements](docs/getting-started/installation.md#requirements).
 The pinned Qt version still has a known
-[macOS accessibility limitation](docs/running/troubleshooting.md#macos-gui-crashes-during-accessibility-inspection).
+[macOS accessibility limitation](docs/guides/troubleshooting.md#macos-gui-crashes-during-accessibility-inspection).
 
 To install the Panel Solver v0.1.0 wheel:
 
@@ -78,7 +78,7 @@ input for compatibility.
 
 Results are written below each example's `outputs/` directory. The
 [quickstart](docs/getting-started/quickstart.md) explains what to inspect and how
-to change and rerun the example. See the [CLI guide](docs/running/cli.md) for
+to change and rerun the example. See the [CLI guide](docs/guides/cli.md) for
 command options.
 
 ## Documentation
@@ -88,15 +88,13 @@ Every wheel includes a self-contained offline HTML site. In the GUI, use
 `panelsolver-docs-v<version>.zip`; open its root `index.html` directly with no
 server or network access.
 
-- [Documentation home](docs/index.md) routes you by task and flow domain.
+- [Documentation home](docs/index.md) explains how the documentation is organized.
 - Begin with [Installation](docs/getting-started/installation.md) and the
   [Quickstart](docs/getting-started/quickstart.md).
-- Choose a task: [understand a method](docs/index.md#understand-the-method),
-  [prepare inputs](docs/index.md#prepare-inputs),
-  [run calculations](docs/index.md#run-calculations),
-  [interpret results](docs/index.md#interpret-results), or
-  [diagnose a problem](docs/index.md#diagnose-a-problem-or-check-support).
-- Review the [compatibility and versioning policy](docs/product-reference/compatibility.md)
+- Then use the [Guides](docs/index.md#guides) for everyday tasks, the
+  [Reference](docs/index.md#reference) for exact columns and fields, and
+  [Methods](docs/index.md#methods) for the equations behind the results.
+- Review the [compatibility and versioning policy](docs/about/compatibility.md)
   for the supported commands, file formats, and Python API.
 - [Developer documentation](devdocs/README.md)
 
@@ -105,7 +103,7 @@ server or network access.
 One `panelsolver` distribution provides command entry points for both flow
 domains. Summary CSV and VTP files record the installed distribution
 version. The package-root Python API is stable. See the
-[compatibility policy](docs/product-reference/compatibility.md) and
+[compatibility policy](docs/about/compatibility.md) and
 [CHANGELOG.md](CHANGELOG.md) for compatibility guarantees and release changes.
 
 ## License

@@ -345,10 +345,10 @@ tangent wedge, tangent cone, and Prandtl–Meyer require `Mach > 1`.
 Newtonian with leeward `shield` accepts any positive Mach, including subsonic
 inputs. Physical applicability follows the assumptions below.
 
-See the [Hypersonic input reference](../inputs/hypersonic-input.md) for the
+See the [Hypersonic input reference](../reference/hypersonic-case-table.md) for the
 complete case schema. Local `cp` is documented in the
-[VTP reference](../results/vtp.md#hypersonic); integrated coefficients are in the
-[Summary CSV reference](../results/summary-csv.md).
+[VTP reference](../reference/vtp.md#hypersonic); integrated coefficients are in the
+[Summary CSV reference](../reference/summary-csv.md).
 
 ## Assumptions and limits
 
