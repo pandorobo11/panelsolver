@@ -50,6 +50,7 @@ class FakePlotter:
         self.parallel_enabled = False
         self.screenshot_calls: list[str] = []
         self.screenshot_error: Exception | None = None
+        self.write_screenshots = False
 
     def enable_parallel_projection(self) -> None:
         self.parallel_enabled = True
@@ -90,6 +91,8 @@ class FakePlotter:
         if self.screenshot_error is not None:
             raise self.screenshot_error
         self.screenshot_calls.append(path)
+        if self.write_screenshots:
+            Path(path).write_bytes(b"png")
 
 
 class FakePoly:
@@ -1037,12 +1040,13 @@ class ViewerPanelTests(unittest.TestCase):
             viewer.save_view_image()
         self.assertIn("Failed to save image: capture failed", messages[-1])
 
-    def test_case_image_default_and_lazy_directory_creation(self) -> None:
+    def test_case_image_default_directory_exists_while_dialog_is_open(self) -> None:
         with tempfile.TemporaryDirectory(prefix="single_image_") as directory:
             root = Path(directory)
             input_path = root / "project" / "cases.csv"
             row = {"case_id": "case_001"}
             viewer, plotter = self.make_viewer()
+            plotter.write_screenshots = True
             viewer.set_input_path(input_path)
             viewer.set_case_rows((row,))
             self.assertTrue(
@@ -1059,15 +1063,96 @@ class ViewerPanelTests(unittest.TestCase):
                 / "case_001__normal_traction_coeff.png"
             )
             self.assertFalse(expected.parent.exists())
+
+            def choose(_parent, _title, default, _filters):
+                # Native macOS panels fall back to the nearest existing parent,
+                # so the suggested folder must exist when the dialog opens.
+                self.assertTrue(expected.parent.is_dir())
+                assert_paths_equivalent(self, expected, default)
+                return (default, "PNG")
+
             with patch.object(
                 QtWidgets.QFileDialog,
                 "getSaveFileName",
-                return_value=(str(expected), "PNG"),
+                side_effect=choose,
             ) as dialog:
                 viewer.save_view_image()
-            assert_paths_equivalent(self, expected, dialog.call_args.args[2])
-            self.assertTrue(expected.parent.is_dir())
-            self.assertEqual([str(expected)], plotter.screenshot_calls)
+            dialog.assert_called_once()
+            self.assertEqual(1, len(plotter.screenshot_calls))
+            assert_paths_equivalent(self, expected, plotter.screenshot_calls[0])
+            self.assertTrue(expected.is_file())
+
+    def test_unused_single_image_directory_is_removed_after_dialog(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="single_image_cleanup_") as directory:
+            root = Path(directory)
+            input_path = root / "project" / "cases.csv"
+            input_path.parent.mkdir()
+            row = {"case_id": "case_001"}
+            viewer, plotter = self.make_viewer()
+            plotter.write_screenshots = True
+            viewer.set_input_path(input_path)
+            viewer.set_case_rows((row,))
+            viewer.load_vtp(
+                str(input_path.parent / "outputs" / "case_001.vtp"),
+                FakePoly({"normal_traction_coeff": [1.0]}),
+                row,
+            )
+            outputs_dir = input_path.parent / "outputs"
+            images_dir = outputs_dir / "images"
+
+            def cancel(_parent, _title, _default, _filters):
+                self.assertTrue(images_dir.is_dir())
+                return ("", "")
+
+            with patch.object(
+                QtWidgets.QFileDialog, "getSaveFileName", side_effect=cancel
+            ):
+                viewer.save_view_image()
+            self.assertFalse(outputs_dir.exists())
+            self.assertTrue(input_path.parent.is_dir())
+
+            elsewhere = root / "elsewhere.png"
+            with patch.object(
+                QtWidgets.QFileDialog,
+                "getSaveFileName",
+                return_value=(str(elsewhere), "PNG"),
+            ):
+                viewer.save_view_image()
+            self.assertTrue(elsewhere.is_file())
+            self.assertFalse(outputs_dir.exists())
+
+            # A pre-existing outputs folder with content is never removed.
+            outputs_dir.mkdir()
+            (outputs_dir / "case_001.vtp").write_text("fixture", encoding="utf-8")
+            viewer._last_image_directory = None
+            with patch.object(
+                QtWidgets.QFileDialog, "getSaveFileName", side_effect=cancel
+            ):
+                viewer.save_view_image()
+            self.assertFalse(images_dir.exists())
+            self.assertTrue((outputs_dir / "case_001.vtp").is_file())
+
+    def test_single_image_directory_failure_still_opens_dialog(self) -> None:
+        viewer, plotter = self.make_viewer(
+            make_directory=lambda _path: (_ for _ in ()).throw(OSError("read only")),
+        )
+        messages = []
+        viewer.log_message.connect(messages.append)
+        viewer.load_vtp(
+            "/manual/sample.vtp",
+            FakePoly({"normal_traction_coeff": [1.0]}),
+        )
+        with patch.object(
+            QtWidgets.QFileDialog,
+            "getSaveFileName",
+            return_value=("", ""),
+        ) as dialog:
+            viewer.save_view_image()
+        dialog.assert_called_once()
+        self.assertEqual([], plotter.screenshot_calls)
+        self.assertEqual(
+            "[WARN] Failed to create image directory: read only", messages[-1]
+        )
 
     def test_single_directory_failure_does_not_capture(self) -> None:
         viewer, plotter = self.make_viewer(
@@ -1201,8 +1286,33 @@ class ViewerPanelTests(unittest.TestCase):
             ) as dialog:
                 viewer.save_images_for_case_rows((row,))
             dialog.assert_called_once()
-            self.assertTrue(standard_dir.is_dir())
+            self.assertFalse((input_path.parent / "outputs").exists())
             self.assertEqual([], plotter.screenshot_calls)
+
+    def test_batch_keeps_standard_directory_that_receives_images(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="batch_keep_dir_") as directory:
+            root = Path(directory)
+            row = {"case_id": "one"}
+            standard_dir = root / "outputs" / "images"
+            current = _signature("current")
+            viewer, plotter = self.make_viewer(
+                spec=fmf_solver_spec(adapters=_adapters(current)),
+                reader=lambda _path: FakePoly(
+                    {"normal_traction_coeff": [1.0]},
+                    {"case_id": ["one"], "case_signature": [current.digest]},
+                ),
+                path_exists=lambda path: Path(path).suffix == ".vtp" or path.exists(),
+            )
+            plotter.write_screenshots = True
+            viewer.set_input_path(root / "cases.csv")
+            with patch.object(
+                QtWidgets.QFileDialog,
+                "getExistingDirectory",
+                side_effect=lambda _parent, _title, initial: initial,
+            ):
+                viewer.save_images_for_case_rows((row,))
+            self.assertEqual(1, len(plotter.screenshot_calls))
+            self.assertTrue((standard_dir / "one__normal_traction_coeff.png").is_file())
 
     def test_batch_standard_directory_failure_skips_dialog_and_capture(self) -> None:
         row = {"case_id": "one"}
@@ -1385,7 +1495,7 @@ class ViewerPanelTests(unittest.TestCase):
                 return_value="",
             ) as missing_batch_dialog:
                 viewer.save_images_for_case_rows((row,))
-            self.assertTrue(second_standard_dir.is_dir())
+            self.assertFalse(second_standard_dir.exists())
             assert_paths_equivalent(
                 self,
                 second_standard_dir,
