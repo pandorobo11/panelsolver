@@ -380,7 +380,7 @@ class DocumentationSiteTests(unittest.TestCase):
         self.assertTrue(index.is_file())
         self.assertEqual(root, site.resolve().parent)
         self.assertTrue(site.resolve("methods/hypersonic.html").is_file())
-        self.assertTrue(site.resolve("inputs/fmf-input.html").is_file())
+        self.assertTrue(site.resolve("reference/fmf-case-table.html").is_file())
         site.close()
         self.assertFalse(root.exists())
 

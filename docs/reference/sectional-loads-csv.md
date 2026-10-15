@@ -2,8 +2,8 @@
 
 This dedicated long-format file contains one row per
 `case × section × scope × bin`. It is separate from Summary CSV and VTP.
-Use the [definition reference](../inputs/sectional-loads.md) and
-[CLI workflow](../running/cli.md#sectional-load-batches) to create it.
+Use the [definition reference](sectional-definitions.md#sectional-load-definitions) and
+[CLI workflow](../guides/sectional.md#sectional-loads-from-the-cli) to create it.
 
 Rows follow input case order, selected definition-file order, total scope then
 ascending original component ID, and increasing zero-based bin index. Empty

@@ -6,6 +6,12 @@ migration baselines and runtime artifact version semantics are recorded in ADR
 
 ## [Unreleased]
 
+- Reorganize the user documentation into Getting started, Guides, Reference,
+  Methods, and About sections. GUI viewing and sectional workflows have their
+  own guide pages, and the two sectional definition pages are merged. Page
+  paths change and old documentation URLs no longer resolve; content and
+  documented behavior are unchanged.
+
 - Add a shared sphere-cone example to FMF and Hypersonic, available from
   New from Example and the CLI, with 0/15/30-degree angle-of-attack cases,
   reproducible geometry and domain-appropriate surface load fields.

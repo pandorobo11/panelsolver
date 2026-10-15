@@ -15,7 +15,7 @@ The macOS pin will be reassessed when the upstream Qt fix is available and
 validated.
 
 The pinned version still has a known
-[macOS accessibility limitation](../running/troubleshooting.md#macos-gui-crashes-during-accessibility-inspection).
+[macOS accessibility limitation](../guides/troubleshooting.md#macos-gui-crashes-during-accessibility-inspection).
 
 Panel Solver's package requirement remains Python 3.12+. Windows/Linux use the
 current Qt 6 dependency range without the macOS-specific Python upper limit;

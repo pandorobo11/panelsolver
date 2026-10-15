@@ -1,10 +1,16 @@
-# Sectional load definitions
+# Sectional definition CSV
+
+Sectional loads and Sectional Cp each read their own definition CSV. Both
+files use the same origin, direction and component columns. See
+[Sectional loads and Cp](../guides/sectional.md) to run them.
+
+## Sectional load definitions
 
 Use a separate UTF-8 CSV to define sectional aerodynamic load distributions for
-the [sectional CLI workflow](../running/cli.md#sectional-load-batches) or the
-[read-only GUI workflow](../running/gui.md#sectional-load-batches). Solver
+the [sectional CLI workflow](../guides/sectional.md#sectional-loads-from-the-cli) or the
+[read-only GUI workflow](../guides/sectional.md#sectional-loads-in-the-gui). Solver
 case tables remain unchanged. Python callers use
-[`compute_sectional_loads`](../running/python-api.md#sectional-aerodynamic-load-distributions)
+[`compute_sectional_loads`](python-api.md#sectional-aerodynamic-load-distributions)
 arguments directly.
 
 ```csv
@@ -50,7 +56,40 @@ fail when the definition is resolved against that case's mesh. Selected IDs
 are sorted for output. The selected total covers only the selected components
 within the requested range.
 
-See the [result CSV reference](../results/sectional-loads-csv.md) for coverage,
+See the [result CSV reference](sectional-loads-csv.md) for coverage,
 per-bin quantities and output ordering. These are integrated aerodynamic strip
 coefficients; cumulative values, coefficient density, pressure sections and
 structural cut loads are outside this workflow.
+
+## Sectional Cp definitions
+
+Sectional Cp extracts constant panel values on parallel cutting planes. It does
+not integrate strip loads. Hypersonic uses `cp`; FMF uses
+`normal_traction_coeff`, the local Sentman normal traction coefficient, not a
+renamed pressure coefficient. Tangential traction is not included.
+
+Use a separate UTF-8 CSV, with the same origin, direction, identity and component
+selection conventions as [sectional loads](#sectional-load-definitions), replacing
+`bin_count` with `section_count`:
+
+```csv
+section_id,origin_x_stl_m,origin_y_stl_m,origin_z_stl_m,direction_x_stl,direction_y_stl,direction_z_stl,start_m,stop_m,section_count,component_ids
+span,0,0,0,0,1,0,-0.2,0.2,5,
+center,0,0,0,0,1,0,0,0,1,
+```
+
+`section_count` is a positive decimal integer. For multiple planes, `start_m`
+must be less than `stop_m`; both endpoints are included. For one plane, supply
+equal start and stop. Omit both bounds to use the selected geometry's projected
+extrema; one automatic plane uses their midpoint. Multiple automatic planes
+require a nonzero projected extent. The normalized direction defines the plane
+normal and increasing signed position. All coordinates and distances are STL
+metres. Component IDs are original zero-based STL positions, separated by
+semicolons; blank selects all.
+
+The entire file is validated before selection or solving. Duplicate IDs,
+unknown columns, nonfinite values, zero direction, malformed integer fields and
+partial bounds are errors. Mesh-dependent failures are reported per case and
+definition. Keep these definitions separate from physical case tables.
+
+See [sectional Cp CSV](sectional-cp-csv.md) for contact rules and output.
