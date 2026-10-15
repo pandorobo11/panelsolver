@@ -72,6 +72,9 @@ only until you close the window. It is not available in the CLI. See
 - The first checkpoint, the final Summary CSV, and each VTP are written to a
   temporary file first and then moved into place. If writing fails, the old
   file is left unchanged.
+- On macOS and Linux, these files get the permissions your umask gives any
+  new file (for example `-rw-r--r--` with umask `022`). Replacing an existing
+  file does not keep its old permissions.
 - Later checkpoints add rows directly to the end of the file. If the computer
   loses power or the process is killed during that write, the last row or case
   may be incomplete. Check the file before using it after such an interruption.

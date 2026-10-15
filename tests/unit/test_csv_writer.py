@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import os
+import stat
 import tempfile
 import unittest
 from pathlib import Path
@@ -15,6 +16,7 @@ from panelsolver.app.csv_writer import (
     portable_path_key,
     write_csv_atomic,
 )
+from panelsolver.app.temp_files import create_replacement_temp
 from panelsolver.core import CsvProjection
 from panelsolver.domains import fmf as fmf_csv
 from panelsolver.domains import hypersonic as hypersonic_csv
@@ -154,10 +156,10 @@ class CsvWriterTests(unittest.TestCase):
     def test_atomic_writer_syncs_complete_csv_then_closes_before_replacement(
         self,
     ) -> None:
-        real_temporary_file = tempfile.NamedTemporaryFile
+        real_create_temp = create_replacement_temp
         real_fsync = os.fsync
         real_replace = os.replace
-        handles = []
+        temps = []
         events = []
         contents = CsvProjection(
             ("case_id", "scope", "blank"),
@@ -176,26 +178,27 @@ class CsvWriterTests(unittest.TestCase):
             with path.open(encoding="utf-8-sig", newline="") as handle:
                 self.assertEqual(expected, list(csv.DictReader(handle)))
 
-        def temporary_file(**kwargs):
-            handle = real_temporary_file(**kwargs)
-            handles.append(handle)
-            return handle
+        def create_temp(*args, **kwargs):
+            created = real_create_temp(*args, **kwargs)
+            temps.append(created)
+            return created
 
         with tempfile.TemporaryDirectory() as td:
             output = Path(td) / "日本語-results.csv"
             output.write_bytes(b"previous run\n")
 
             def sync(descriptor):
-                handle = handles[0]
-                self.assertFalse(handle.closed)
-                self.assertEqual(handle.fileno(), descriptor)
-                assert_complete_csv(Path(handle.name))
+                temp_descriptor, temp_path = temps[0]
+                self.assertEqual(temp_descriptor, descriptor)
+                os.fstat(descriptor)
+                assert_complete_csv(temp_path)
                 self.assertEqual(b"previous run\n", output.read_bytes())
                 events.append("sync")
                 real_fsync(descriptor)
 
             def replace(source, destination):
-                self.assertTrue(handles[0].closed)
+                with self.assertRaises(OSError):
+                    os.fstat(temps[0][0])
                 self.assertEqual(["sync"], events)
                 self.assertEqual(b"previous run\n", output.read_bytes())
                 events.append("replace")
@@ -203,8 +206,8 @@ class CsvWriterTests(unittest.TestCase):
 
             with (
                 patch(
-                    "panelsolver.app.csv_writer.tempfile.NamedTemporaryFile",
-                    side_effect=temporary_file,
+                    "panelsolver.app.csv_writer.create_replacement_temp",
+                    side_effect=create_temp,
                 ),
                 patch("panelsolver.app.csv_writer.os.fsync", side_effect=sync),
                 patch("panelsolver.app.csv_writer.os.replace", side_effect=replace),
@@ -213,6 +216,24 @@ class CsvWriterTests(unittest.TestCase):
             self.assertEqual(["sync", "replace"], events)
             assert_complete_csv(output)
             self.assertEqual([output], list(Path(td).iterdir()))
+
+    @unittest.skipIf(os.name != "posix", "POSIX permission bits")
+    def test_atomic_writer_creates_and_replaces_with_umask_mode(self) -> None:
+        for mask in (0o022, 0o027, 0o077):
+            with self.subTest(umask=oct(mask)), tempfile.TemporaryDirectory() as td:
+                created = Path(td) / "created.csv"
+                replaced = Path(td) / "replaced.csv"
+                replaced.write_text("previous\n", encoding="utf-8")
+                replaced.chmod(0o600)
+                previous_mask = os.umask(mask)
+                try:
+                    write_csv_atomic(created, projection())
+                    write_csv_atomic(replaced, projection())
+                finally:
+                    os.umask(previous_mask)
+                for output in (created, replaced):
+                    self.assertEqual(0o666 & ~mask, stat.S_IMODE(output.stat().st_mode))
+                self.assertEqual(created.read_bytes(), replaced.read_bytes())
 
     def test_atomic_writer_preserves_output_and_cleans_temp_on_failure(self) -> None:
         for target, message in (

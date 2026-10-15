@@ -6,6 +6,13 @@ migration baselines and runtime artifact version semantics are recorded in ADR
 
 ## [Unreleased]
 
+- Fix permissions of atomically written outputs on macOS and Linux. The Summary
+  CSV, VTP files, Sectional load CSV, and Sectional Cp CSV were always created
+  as owner-only (`0600`) files. They now follow the process umask like other
+  newly created files (for example `-rw-r--r--` with umask `022`), including
+  when an existing file is replaced. Windows behavior, file contents, and
+  numerical results are unchanged.
+
 - **Breaking:** remove the `out_dir` case-table column (ADR 0021). Every VTP is
   now written to `<input_dir>/outputs/<case_id>.vtp`, the previous default.
   Tables that still contain `out_dir` are rejected with a message to delete
