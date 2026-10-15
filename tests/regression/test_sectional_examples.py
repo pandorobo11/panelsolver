@@ -68,6 +68,27 @@ def test_sectional_loads_example_spans_sum_to_summary_totals(domain, tmp_path):
                     err_msg=f"{case_id}/{section_id}/{name}",
                 )
 
+        if case_id.endswith("_a00"):
+            axial = [
+                row
+                for row in sectional
+                if row["case_id"] == case_id and row["section_id"] == "axial"
+            ]
+            vertical = [
+                row
+                for row in sectional
+                if row["case_id"] == case_id and row["section_id"] == "vertical"
+            ]
+            assert max(abs(row["delta_CN"]) for row in axial) < 1e-12
+            assert max(abs(row["delta_CN"]) for row in vertical) > 1e-6
+            for lower, upper in zip(vertical, reversed(vertical), strict=True):
+                np.testing.assert_allclose(
+                    lower["delta_CN"], -upper["delta_CN"], rtol=0, atol=1e-12
+                )
+                np.testing.assert_allclose(
+                    lower["delta_CA"], upper["delta_CA"], rtol=0, atol=1e-12
+                )
+
 
 @pytest.mark.parametrize("domain", DOMAINS)
 def test_sectional_cp_example_planes_are_clean_and_windward_is_higher(domain, tmp_path):
