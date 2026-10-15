@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import os
-import tempfile
 from pathlib import Path
 
 import numpy as np
 import pyvista as pv
 
 from panelsolver.core import VtpProjection
+
+from .temp_files import create_replacement_temp
 
 
 def write_vtp_projection(path: str | Path, projection: VtpProjection) -> Path:
@@ -31,12 +32,11 @@ def write_vtp_projection(path: str | Path, projection: VtpProjection) -> Path:
         )
     temp_path: Path | None = None
     try:
-        descriptor, temp_name = tempfile.mkstemp(
-            dir=output.parent,
+        descriptor, temp_path = create_replacement_temp(
+            output.parent,
             prefix=f".{output.stem}.",
             suffix=".tmp.vtp",
         )
-        temp_path = Path(temp_name)
         os.close(descriptor)
         poly.save(str(temp_path), binary=True)
         # PyVista/VTK has returned and closed its writer by this point. Reopen

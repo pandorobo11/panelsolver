@@ -6,7 +6,6 @@ import csv
 import errno
 import io
 import os
-import tempfile
 import unicodedata
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
@@ -17,6 +16,7 @@ from panelsolver.core.csv_projection import CsvProjection
 from panelsolver.core.errors import ContractValueError
 
 from .path_resolution import resolve_case_vtp_path, resolve_input_relative_path
+from .temp_files import create_replacement_temp
 
 CSV_ENCODING = "utf-8-sig"
 
@@ -147,16 +147,12 @@ def write_csv_atomic(
     out.parent.mkdir(parents=True, exist_ok=True)
     temp_path: Path | None = None
     try:
-        with tempfile.NamedTemporaryFile(
-            mode="w",
-            encoding=CSV_ENCODING,
-            newline="",
-            dir=out.parent,
+        descriptor, temp_path = create_replacement_temp(
+            out.parent,
             prefix=f".{out.name}.",
             suffix=".tmp",
-            delete=False,
-        ) as handle:
-            temp_path = Path(handle.name)
+        )
+        with open(descriptor, "w", encoding=CSV_ENCODING, newline="") as handle:
             _write_projection(handle, projection)
             handle.flush()
             os.fsync(handle.fileno())
