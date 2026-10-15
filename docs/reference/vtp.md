@@ -1,24 +1,27 @@
 # VTP reference
 
-A VTP is the mesh and surface-distribution result for one case. Open it in the
-[Panel Solver GUI](../running/gui.md#view-and-export), ParaView, or another
-VTK-capable tool to see where the surface load acts. The GUI normally loads a
-selected case's matching result automatically; **Open VTP...** also allows
-manual inspection.
+A VTP file holds the surface result of one case: the mesh, and one value per
+triangle for each result field. Open it in the
+[Panel Solver GUI](../guides/gui-viewer.md), ParaView, or another VTK viewer to
+see where the load acts on the surface. The GUI loads the matching file
+automatically when you select a case; **Open VTP...** opens any file.
 
 <a id="relating-vtp-to-summary-csv"></a>
 
-For Hypersonic, start with `cp`, the local pressure coefficient. For FMF, inspect
-`normal_traction_coeff` and `tangential_traction_coeff`, the local Sentman
-traction components. These surface scalars describe individual panels; use the
-[Summary CSV](summary-csv.md) for integrated force and moment coefficients.
+Fields to start with:
 
-Each `.vtp` is VTK XML PolyData containing the SI-scaled mesh, one result value
-per triangle for each cell array, and case-level provenance. The tables below
-define every supported field. Per-case paths are in
-[Case files](../inputs/case-files.md#paths-vtp-destinations-and-components),
-and write failures are covered by
-[Batch execution and recovery](../running/batch-execution-and-recovery.md).
+- Hypersonic: `cp`, the local pressure coefficient.
+- FMF: `normal_traction_coeff` and `tangential_traction_coeff`, the pressure
+  and shear parts of the local load.
+
+These describe single panels. For the force and moment on the whole vehicle,
+use the [Summary CSV](summary-csv.md).
+
+Each file is saved as `<out_dir>/<case_id>.vtp`; see
+[Preparing cases](../guides/preparing-cases.md#paths-vtp-destinations-and-components).
+For write failures, see [Batch runs and recovery](../guides/batch-runs.md).
+The tables below define every field, for use in your own scripts or other
+tools.
 
 ## Guaranteed VTP contents
 
@@ -42,9 +45,7 @@ calculation.
 | Points | point coordinates | `(n_vertices, 3)` | `float64` | m | Vertex coordinates in the STL frame after applying `stl_scale_m_per_unit`. |
 | Triangle connectivity | polygon cells | `n_faces` triangles of 3 vertex indices | `int64` VTK IDs | — | Face topology and face order used by geometry, shielding, model evaluation, and every cell-data array. |
 
-Before writing, each triangle is stored in the flattened VTK connectivity array
-as `[3, i0, i1, i2]`. Ordinary VTK/PyVista readers expose the same values as
-triangle cells.
+VTK and PyVista readers expose the faces as ordinary triangle cells.
 
 ## Common cell data
 
@@ -120,10 +121,7 @@ Each Hypersonic-only field has shape `(1,)` and string storage.
 FMF records its resolved `mode`, `out_S`, and `out_Ti_K` in the
 [Summary CSV reference](summary-csv.md#fmf-resolved-state-fields).
 
-The original numeric angle inputs are retained before periodic reduction.
-No stability-angle source flag or resolved sine-sideslip field is exported.
-See [attitude conventions](../methods/coordinate-and-attitude-conventions.md#stability-angle-and-numerical-boundaries)
-for the common fallback threshold. The former `alpha_t_deg_resolved` and
-`beta_t_deg_resolved` fields have been replaced; consumers must use the direction
-and stability-angle fields above. Signatures now use `panelsolver.case` v2;
-old artifacts are available for manual inspection but do not automatically match.
+The `alpha_deg` and `beta_or_bank_deg` fields keep the values you entered,
+even if they include full turns. See
+[Coordinate and attitude conventions](../methods/coordinate-and-attitude-conventions.md#stability-angle-and-numerical-boundaries)
+for when `alpha_stability_deg` falls back to 0°.

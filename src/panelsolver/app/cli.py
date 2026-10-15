@@ -11,7 +11,7 @@ from pathlib import Path
 import pandas as pd
 from rich.console import Console
 from rich.markup import escape
-from rich_argparse import RichHelpFormatter
+from rich_argparse import RawDescriptionRichHelpFormatter
 
 from .cli_presentation import CliPresentation, use_rich_ui
 from .output_status import OutputFailuresError
@@ -62,6 +62,20 @@ def parse_case_ids(values: list[str] | None) -> set[str] | None:
     return case_ids or None
 
 
+def _sectional_epilog(program: str) -> str:
+    """List the sectional subcommands that the domain dispatcher accepts."""
+    return (
+        "sectional subcommands:\n"
+        "  sectional-loads  Integrate sectional loads on cutting-plane bins.\n"
+        "  sectional-cp     Extract sectional Cp / FMF normal traction on\n"
+        "                   cutting planes.\n"
+        "\n"
+        "Show subcommand options with:\n"
+        f"  {program} sectional-loads --help\n"
+        f"  {program} sectional-cp --help"
+    )
+
+
 def build_parser(policy: ProductCliPolicy) -> argparse.ArgumentParser:
     """Create one parser with product text and the shared selection contract."""
     if not isinstance(policy, ProductCliPolicy):
@@ -69,7 +83,8 @@ def build_parser(policy: ProductCliPolicy) -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog=policy.program,
         description=policy.description,
-        formatter_class=RichHelpFormatter,
+        epilog=_sectional_epilog(policy.program),
+        formatter_class=RawDescriptionRichHelpFormatter,
     )
     parser.add_argument(
         "-i",

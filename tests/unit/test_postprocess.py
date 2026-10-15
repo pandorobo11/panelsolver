@@ -274,7 +274,7 @@ def test_keyword_only_contract_and_empty_range():
 
 
 def test_documented_sectional_example_runs_for_both_domains():
-    documentation = Path(__file__).parents[2] / "docs/running/python-api.md"
+    documentation = Path(__file__).parents[2] / "docs/reference/python-api.md"
     example = re.search(
         r"<!-- python-api-sectional-example -->\s*```python\n(.*?)```",
         documentation.read_text(encoding="utf-8"),

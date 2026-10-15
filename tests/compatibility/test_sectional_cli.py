@@ -204,7 +204,7 @@ def test_cli_protects_unselected_stl_and_definition_inputs(tmp_path, capsys):
 def test_result_schema_matches_documented_column_order():
     from panelsolver.app.sectional_batch import SECTIONAL_CSV_COLUMNS
 
-    source = (ROOT / "docs/results/sectional-loads-csv.md").read_text()
+    source = (ROOT / "docs/reference/sectional-loads-csv.md").read_text()
     block = source.split("<!-- sectional-result-columns -->\n```text\n", 1)[1].split(
         "```", 1
     )[0]
