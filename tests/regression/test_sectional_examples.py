@@ -20,7 +20,7 @@ pytestmark = pytest.mark.slow
 def _rows(domain, tmp_path):
     frame = DOMAINS[domain].read_cases(EXAMPLES / domain / "sphere_cone.csv")
     return tuple(
-        {**row, "save_vtp_on": 0, "out_dir": str(tmp_path / "unused-vtp")}
+        {**row, "save_vtp_on": 0}
         for row in frame.to_dict(orient="records")
     )
 
@@ -40,7 +40,9 @@ def test_sectional_loads_example_spans_sum_to_summary_totals(domain, tmp_path):
     rows = _rows(domain, tmp_path)
     totals = {
         row["case_id"]: row
-        for row in run_product_cases(rows, DOMAINS[domain].RUNTIME_POLICY).csv.rows
+        for row in run_product_cases(
+            rows, DOMAINS[domain].RUNTIME_POLICY, vtp_dir=tmp_path / "unused-vtp"
+        ).csv.rows
         if row["scope"] == "total"
     }
     sectional = [
