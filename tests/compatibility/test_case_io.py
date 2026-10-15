@@ -54,6 +54,26 @@ class CaseReaderCompatibilityTests(unittest.TestCase):
                 self.assertIn("Delete this field", str(error))
                 self.assertIn("no longer writes NPZ files", str(error))
 
+    def test_readers_reject_removed_out_dir_field_regardless_of_value(self) -> None:
+        cases = (
+            (read_fmf_cases, "fmfsolver_cases.csv", ".csv", "outputs"),
+            (read_newt_cases, "newtsolver_cases.csv", ".xlsx", ""),
+        )
+        for reader, filename, suffix, value in cases:
+            with self.subTest(filename=filename), tempfile.TemporaryDirectory() as td:
+                frame = read_current_cases(reader, _INPUTS / filename).iloc[[0]].copy()
+                frame["out_dir"] = value
+                path = Path(td) / f"case{suffix}"
+                _write_case_table(frame, path)
+                with self.assertRaises(Exception) as caught:
+                    reader(path)
+                error = caught.exception
+                self.assertEqual("InputValidationError", type(error).__name__)
+                self.assertEqual(["out_dir"], [issue.field for issue in error.issues])
+                self.assertIn("has been removed", str(error))
+                self.assertIn("Delete this field", str(error))
+                self.assertIn("outputs directory beside the case table", str(error))
+
     def test_csv_reader_accepts_bomless_bom_and_japanese_utf8(self) -> None:
         products = (
             (read_fmf_cases, "fmfsolver_cases.csv"),
@@ -128,7 +148,6 @@ class CaseReaderCompatibilityTests(unittest.TestCase):
                 source = read_current_cases(reader, _INPUTS / filename).iloc[[0]].copy()
                 source.loc[source.index[0], "case_id"] = case_id
                 source.loc[source.index[0], "stl_path"] = "geometry/plate.stl"
-                source.loc[source.index[0], "out_dir"] = "outputs"
                 paths = tuple(
                     temp / f"cases{suffix}" for suffix in (".csv", ".xlsx", ".xlsm")
                 )
@@ -147,10 +166,7 @@ class CaseReaderCompatibilityTests(unittest.TestCase):
                             (geometry / "plate.stl").resolve(),
                             Path(actual.iloc[0]["stl_path"]),
                         )
-                        self.assertEqual(
-                            (temp / "outputs").resolve(),
-                            Path(actual.iloc[0]["out_dir"]),
-                        )
+                        self.assertNotIn("out_dir", actual.columns)
 
     def test_legacy_xls_is_rejected_before_excel_read_with_migration_help(self) -> None:
         for reader, stem in (

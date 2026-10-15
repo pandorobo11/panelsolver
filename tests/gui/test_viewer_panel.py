@@ -711,7 +711,7 @@ class ViewerPanelTests(unittest.TestCase):
         self,
     ) -> None:
         current = _signature("current")
-        row = {"case_id": "case", "out_dir": "outputs"}
+        row = {"case_id": "case"}
         viewer, _plotter = self.make_viewer(
             spec=fmf_solver_spec(adapters=_adapters(current))
         )
@@ -737,7 +737,6 @@ class ViewerPanelTests(unittest.TestCase):
         current = _signature("current")
         matching_row = {
             "case_id": "case",
-            "out_dir": "results",
             "S": 5.0,
             "Ti_K": 300.0,
         }
@@ -778,7 +777,7 @@ class ViewerPanelTests(unittest.TestCase):
         self.assertIn("Mode  A", plotter.text_calls[-1])
         assert_paths_equivalent(
             self,
-            "/tmp/current/results/images/case__normal_traction_coeff.png",
+            "/tmp/current/outputs/images/case__normal_traction_coeff.png",
             viewer._standard_view_image_path(),
         )
         viewer.set_view_wind()
@@ -790,7 +789,6 @@ class ViewerPanelTests(unittest.TestCase):
         current = _signature("current")
         matching_row = {
             "case_id": "case",
-            "out_dir": "results",
             "S": 5.0,
             "Ti_K": 300.0,
         }
@@ -816,7 +814,7 @@ class ViewerPanelTests(unittest.TestCase):
         viewer.log_message.connect(messages.append)
 
         viewer.set_input_path("/tmp/different/cases.csv")
-        viewer.set_case_rows(({"case_id": "different", "out_dir": "other"},))
+        viewer.set_case_rows(({"case_id": "different"},))
 
         self.assertEqual(
             ArtifactViewStatus.MANUAL_UNMATCHED,
@@ -842,7 +840,7 @@ class ViewerPanelTests(unittest.TestCase):
 
     def test_manual_matched_refreshes_to_unmatched_for_empty_rows(self) -> None:
         current = _signature("current")
-        matching_row = {"case_id": "case", "out_dir": "results"}
+        matching_row = {"case_id": "case"}
         viewer, plotter = self.make_viewer(
             spec=fmf_solver_spec(adapters=_adapters(current))
         )
@@ -1043,20 +1041,20 @@ class ViewerPanelTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="single_image_") as directory:
             root = Path(directory)
             input_path = root / "project" / "cases.csv"
-            row = {"case_id": "case_001", "out_dir": "results"}
+            row = {"case_id": "case_001"}
             viewer, plotter = self.make_viewer()
             viewer.set_input_path(input_path)
             viewer.set_case_rows((row,))
             self.assertTrue(
                 viewer.load_vtp(
-                    str(root / "project" / "results" / "case_001.vtp"),
+                    str(root / "project" / "outputs" / "case_001.vtp"),
                     FakePoly({"normal_traction_coeff": [1.0]}),
                     row,
                 )
             )
             expected = (
                 input_path.parent
-                / "results"
+                / "outputs"
                 / "images"
                 / "case_001__normal_traction_coeff.png"
             )
@@ -1092,14 +1090,14 @@ class ViewerPanelTests(unittest.TestCase):
 
     def test_batch_export_orders_current_rows_and_skips_invalid_artifacts(self) -> None:
         with tempfile.TemporaryDirectory(prefix="phase6_images_") as directory:
-            source_dir = Path(directory) / "artifacts"
+            source_dir = Path(directory) / "outputs"
             output_dir = Path(directory) / "captures"
             rows = (
-                {"case_id": "current_a", "out_dir": str(source_dir)},
-                {"case_id": "missing", "out_dir": str(source_dir)},
-                {"case_id": "stale", "out_dir": str(source_dir)},
-                {"case_id": "broken", "out_dir": str(source_dir)},
-                {"case_id": "current_b", "out_dir": str(source_dir)},
+                {"case_id": "current_a"},
+                {"case_id": "missing"},
+                {"case_id": "stale"},
+                {"case_id": "broken"},
+                {"case_id": "current_b"},
             )
             current = _signature("current")
             stale = _signature("stale")
@@ -1131,6 +1129,7 @@ class ViewerPanelTests(unittest.TestCase):
                 make_directory=lambda path: made.append(path),
                 process_events=lambda: events.append("event"),
             )
+            viewer.set_input_path(Path(directory) / "cases.csv")
             messages = []
             viewer.log_message.connect(messages.append)
             contexts = []
@@ -1184,8 +1183,8 @@ class ViewerPanelTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="batch_standard_dir_") as directory:
             root = Path(directory)
             input_path = root / "project" / "cases.csv"
-            row = {"case_id": "one", "out_dir": "results"}
-            standard_dir = input_path.parent / "results" / "images"
+            row = {"case_id": "one"}
+            standard_dir = input_path.parent / "outputs" / "images"
             viewer, plotter = self.make_viewer()
             viewer.set_input_path(input_path)
             self.assertFalse(standard_dir.exists())
@@ -1206,7 +1205,7 @@ class ViewerPanelTests(unittest.TestCase):
             self.assertEqual([], plotter.screenshot_calls)
 
     def test_batch_standard_directory_failure_skips_dialog_and_capture(self) -> None:
-        row = {"case_id": "one", "out_dir": "/artifacts"}
+        row = {"case_id": "one"}
         viewer, plotter = self.make_viewer(
             make_directory=lambda _path: (_ for _ in ()).throw(OSError("read only"))
         )
@@ -1224,7 +1223,7 @@ class ViewerPanelTests(unittest.TestCase):
     def test_relative_vtp_and_image_paths_use_input_parent(self) -> None:
         with tempfile.TemporaryDirectory(prefix="viewer_input_base_") as directory:
             root = Path(directory)
-            row = {"case_id": "one", "out_dir": "outputs"}
+            row = {"case_id": "one"}
             seen = []
             viewer, _plotter = self.make_viewer(
                 path_exists=lambda path: seen.append(path) or False,
@@ -1251,36 +1250,15 @@ class ViewerPanelTests(unittest.TestCase):
             self.assertEqual(1, len(seen))
             assert_paths_equivalent(self, root / "outputs" / "one.vtp", seen[0])
 
-    def test_batch_mixed_output_default_is_input_based_and_order_independent(
-        self,
-    ) -> None:
-        with tempfile.TemporaryDirectory(prefix="mixed_images_") as directory:
-            root = Path(directory)
-            input_path = root / "project" / "cases.csv"
-            rows = (
-                {"case_id": "one", "out_dir": "first"},
-                {"case_id": "two", "out_dir": str(root / "second")},
-            )
-            expected = input_path.parent / "outputs" / "images"
-            for ordered in (rows, tuple(reversed(rows))):
-                viewer, _plotter = self.make_viewer()
-                viewer.set_input_path(input_path)
-                with patch.object(
-                    QtWidgets.QFileDialog,
-                    "getExistingDirectory",
-                    return_value="",
-                ) as dialog:
-                    viewer.save_images_for_case_rows(ordered)
-                assert_paths_equivalent(self, expected, dialog.call_args.args[2])
-
     def test_batch_auto_rename_avoids_existing_and_same_batch_collisions(self) -> None:
         with tempfile.TemporaryDirectory(prefix="rename_images_") as directory:
             root = Path(directory)
             output_dir = root / "images"
-            row = {"case_id": "one", "out_dir": str(root)}
-            vtp_path = root / "one.vtp"
+            row = {"case_id": "one"}
+            vtp_path = root / "outputs" / "one.vtp"
             base_image = output_dir / "one__cp_raw.png"
             output_dir.mkdir()
+            vtp_path.parent.mkdir()
             vtp_path.write_text("fixture", encoding="utf-8")
             base_image.write_text("existing image", encoding="utf-8")
             current = _signature("current")
@@ -1293,6 +1271,7 @@ class ViewerPanelTests(unittest.TestCase):
                 reader=lambda _path: artifact,
                 make_directory=lambda _path: None,
             )
+            viewer.set_input_path(root / "cases.csv")
             with patch.object(
                 QtWidgets.QFileDialog,
                 "getExistingDirectory",
@@ -1321,12 +1300,12 @@ class ViewerPanelTests(unittest.TestCase):
             second_input = root / "second" / "cases.csv"
             custom_dir = root / "custom"
             custom_dir.mkdir()
-            row = {"case_id": "one", "out_dir": "results"}
+            row = {"case_id": "one"}
             viewer, _plotter = self.make_viewer()
             viewer.set_input_path(first_input)
             viewer.set_case_rows((row,))
             viewer.load_vtp(
-                str(first_input.parent / "results" / "one.vtp"),
+                str(first_input.parent / "outputs" / "one.vtp"),
                 FakePoly({"normal_traction_coeff": [1.0]}),
                 row,
             )
@@ -1375,7 +1354,7 @@ class ViewerPanelTests(unittest.TestCase):
                 Path(manual_dialog.call_args.args[2]),
             )
             viewer.load_vtp(
-                str(first_input.parent / "results" / "one.vtp"),
+                str(first_input.parent / "outputs" / "one.vtp"),
                 FakePoly({"normal_traction_coeff": [1.0]}),
                 row,
             )
@@ -1390,7 +1369,7 @@ class ViewerPanelTests(unittest.TestCase):
             assert_paths_equivalent(
                 self,
                 second_input.parent
-                / "results"
+                / "outputs"
                 / "images"
                 / "one__normal_traction_coeff.png",
                 reset_dialog.call_args.args[2],
@@ -1398,7 +1377,7 @@ class ViewerPanelTests(unittest.TestCase):
 
             custom_dir.rmdir()
             viewer._last_image_directory = custom_dir
-            second_standard_dir = second_input.parent / "results" / "images"
+            second_standard_dir = second_input.parent / "outputs" / "images"
             self.assertFalse(second_standard_dir.exists())
             with patch.object(
                 QtWidgets.QFileDialog,
@@ -1421,7 +1400,7 @@ class ViewerPanelTests(unittest.TestCase):
             assert_paths_equivalent(
                 self,
                 second_input.parent
-                / "results"
+                / "outputs"
                 / "images"
                 / "one__normal_traction_coeff.png",
                 missing_dialog.call_args.args[2],

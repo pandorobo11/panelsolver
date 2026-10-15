@@ -1,3 +1,3 @@
-case_id,stl_path,stl_scale_m_per_unit,Mach,gamma,windward_eq,leeward_eq,alpha_deg,beta_or_bank_deg,attitude_input,ref_x_m,ref_y_m,ref_z_m,Aref_m2,Lref_Cl_m,Lref_Cm_m,Lref_Cn_m,shielding_on,ray_backend,out_dir,save_vtp_on
-hypersonic_shield_off,../geometry/double_plate.stl,1,6,1.4,newtonian,shield,0,0,beta_tan,0,0,0,1,1,1,1,0,rtree,outputs/shielding,1
-hypersonic_shield_on,../geometry/double_plate.stl,1,6,1.4,newtonian,shield,0,0,beta_tan,0,0,0,1,1,1,1,1,rtree,outputs/shielding,1
+case_id,stl_path,stl_scale_m_per_unit,Mach,gamma,windward_eq,leeward_eq,alpha_deg,beta_or_bank_deg,attitude_input,ref_x_m,ref_y_m,ref_z_m,Aref_m2,Lref_Cl_m,Lref_Cm_m,Lref_Cn_m,shielding_on,ray_backend,save_vtp_on
+hypersonic_shield_off,../geometry/double_plate.stl,1,6,1.4,newtonian,shield,0,0,beta_tan,0,0,0,1,1,1,1,0,rtree,1
+hypersonic_shield_on,../geometry/double_plate.stl,1,6,1.4,newtonian,shield,0,0,beta_tan,0,0,0,1,1,1,1,1,rtree,1

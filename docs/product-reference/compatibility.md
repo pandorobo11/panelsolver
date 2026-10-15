@@ -29,7 +29,8 @@ Known limitations include the
 
 Use the canonical `panelsolver` package and commands in place of predecessor
 names. Convert `.xls` case tables to `.xlsx` or CSV, and remove the rejected
-`save_npz_on` column from older tables. Calculation-result files are Summary CSV
+`save_npz_on` and `out_dir` columns from older tables. VTP files are written to
+`outputs/` beside the case table. Calculation-result files are Summary CSV
 and VTP. Current schemas exclude NPZ output and the `Cp_n` array.
 
 ## Distribution and artifact version

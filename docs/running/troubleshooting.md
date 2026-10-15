@@ -32,7 +32,8 @@ portable across case-insensitive Windows and common macOS filesystems.
 
 ## A VTP does not load automatically
 
-Confirm that `save_vtp_on=1`, that the file is under the resolved `out_dir`, and
+Confirm that `save_vtp_on=1`, that the file is under `outputs/` beside the input
+table, and
 that it was generated for the selected case. Automatic loading requires the case
 ID and current case signature to match. Regenerate predecessor-product VTPs with
 Panel Solver when automatic loading is required; they are unsupported.

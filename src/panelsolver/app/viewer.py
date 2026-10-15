@@ -18,11 +18,11 @@ from .path_resolution import (
     absolute_input_path,
     auto_rename_path,
     default_image_filename,
-    resolve_batch_image_dir,
     resolve_case_image_path,
-    resolve_case_output_dir,
     resolve_case_vtp_path,
+    resolve_image_dir,
     resolve_manual_vtp_image_path,
+    resolve_output_dir,
 )
 from .solver_spec import CaseRow, SolverSpec
 from .viewer_data import (
@@ -806,10 +806,7 @@ class ViewerPanel(QtWidgets.QWidget):
         if self._loaded_vtp_path is not None:
             return self._loaded_vtp_path.parent
         if self._display_case_row is not None:
-            return resolve_case_output_dir(
-                self._display_case_row,
-                self._input_path_context(),
-            )
+            return resolve_output_dir(self._input_path_context())
         return Path.cwd()
 
     def _update_render_controls(self) -> None:
@@ -955,8 +952,8 @@ class ViewerPanel(QtWidgets.QWidget):
             return remembered / standard_path.name
         return standard_path
 
-    def _batch_image_dialog_dir(self, rows: Sequence[CaseRow]) -> Path:
-        standard_dir = resolve_batch_image_dir(rows, self._input_path_context())
+    def _batch_image_dialog_dir(self) -> Path:
+        standard_dir = resolve_image_dir(self._input_path_context())
         remembered = self._remembered_image_directory()
         return remembered if remembered is not None else standard_dir
 
@@ -999,7 +996,7 @@ class ViewerPanel(QtWidgets.QWidget):
         if not selected:
             self.logln("[WARN] No selected cases.")
             return
-        default_dir = self._batch_image_dialog_dir(selected)
+        default_dir = self._batch_image_dialog_dir()
         try:
             self._make_directory(default_dir)
         except Exception as exc:

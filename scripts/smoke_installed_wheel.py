@@ -156,8 +156,7 @@ def _smoke_sectional_cli(
         if "--sections" not in help_result.stdout or "STL" not in help_result.stdout:
             raise RuntimeError(f"installed {domain} sectional help is incomplete")
         frame = module.read_cases(inputs / f"{product}_cases.csv").iloc[:2].copy()
-        unused_output = root / f"{domain}-unused-vtp"
-        frame["out_dir"] = str(unused_output)
+        unused_output = root / "outputs"
         case_path = root / f"{domain}-cases.csv"
         frame.to_csv(case_path, index=False)
         output = root / f"{domain}-sections.csv"
@@ -369,7 +368,7 @@ def _command_path(name: str) -> Path:
 
 
 def _prepare_current_inputs(inputs: Path) -> None:
-    """Remove the retired column from staged historical sample evidence."""
+    """Remove the retired columns from staged historical sample evidence."""
     for historical_npz in inputs.rglob("*.npz"):
         historical_npz.unlink()
     for path in (inputs / "fmfsolver_cases.csv", inputs / "newtsolver_cases.csv"):
@@ -377,7 +376,9 @@ def _prepare_current_inputs(inputs: Path) -> None:
             reader = csv.DictReader(stream)
             rows = list(reader)
             columns = [
-                name for name in (reader.fieldnames or ()) if name != "save_npz_on"
+                name
+                for name in (reader.fieldnames or ())
+                if name not in {"save_npz_on", "out_dir"}
             ]
         with path.open("w", encoding=CSV_ENCODING, newline="") as stream:
             writer = csv.DictWriter(stream, fieldnames=columns, lineterminator="\n")
@@ -423,10 +424,10 @@ def _float_array_record(value: np.ndarray) -> dict[str, object]:
 
 
 def _current_expected_columns(historical: list[str]) -> list[str]:
-    """Migrate frozen historical schema names under ADR 0017."""
+    """Migrate frozen historical schema names under ADRs 0017 and 0021."""
     columns: list[str] = []
     for name in historical:
-        if name in {"save_npz_on", "npz_path"}:
+        if name in {"save_npz_on", "npz_path", "out_dir"}:
             continue
         if name == "alpha_t_deg_resolved":
             columns.append("alpha_stability_deg")
@@ -451,7 +452,7 @@ def _current_expected_csv_rows(golden: dict[str, object]) -> list[dict[str, obje
         row = {
             name: value
             for name, value in original.items()
-            if name not in {"save_npz_on", "npz_path", "beta_t_deg_resolved"}
+            if name not in {"save_npz_on", "npz_path", "out_dir", "beta_t_deg_resolved"}
         }
         row["alpha_stability_deg"] = row.pop("alpha_t_deg_resolved")
         row.update(_expected_direction_fields(golden))
@@ -951,6 +952,8 @@ def main(argv: list[str] | None = None) -> int:
                 raise RuntimeError(f"{product} result columns changed")
             if "save_npz_on" in columns or "npz_path" in columns:
                 raise RuntimeError(f"{product} summary retains removed NPZ columns")
+            if "out_dir" in columns:
+                raise RuntimeError(f"{product} summary retains removed out_dir column")
             current_versions = {row["solver_version"] for row in rows}
             if current_versions != {installed_version}:
                 raise RuntimeError(

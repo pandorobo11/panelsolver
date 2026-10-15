@@ -20,9 +20,11 @@ from .gui_components import (
 from .gui_theme import set_semantic_property
 from .output_status import OutputKind, OutputPhase
 from .path_resolution import (
+    DEFAULT_OUTPUT_DIRECTORY,
     absolute_input_path,
     default_summary_output_path,
     resolve_case_vtp_path,
+    resolve_output_dir,
 )
 from .run_lifecycle import CaseRunWorker, SummaryExportWorker
 from .runtime import DEFAULT_CHECKPOINT_CASES
@@ -927,6 +929,11 @@ class CasesPanel(QtWidgets.QWidget):
             return False
         self._run_rows = selected
         self._run_output_path = Path(output_path)
+        vtp_dir = (
+            resolve_output_dir(self.input_path)
+            if self.input_path is not None
+            else Path.cwd() / DEFAULT_OUTPUT_DIRECTORY
+        )
         self._run_input_name = (
             self.input_path.name if self.input_path is not None else "input"
         )
@@ -947,6 +954,7 @@ class CasesPanel(QtWidgets.QWidget):
             workers,
             checkpoint_every_cases,
             self._run_output_path,
+            vtp_dir,
         )
         self._run_thread = thread
         self._run_worker = worker

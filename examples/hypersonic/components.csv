@@ -1,2 +1,2 @@
-case_id,stl_path,stl_scale_m_per_unit,Mach,gamma,windward_eq,leeward_eq,alpha_deg,beta_or_bank_deg,attitude_input,ref_x_m,ref_y_m,ref_z_m,Aref_m2,Lref_Cl_m,Lref_Cm_m,Lref_Cn_m,shielding_on,ray_backend,out_dir,save_vtp_on
-hypersonic_components,../geometry/cube.stl;../geometry/plate_offset_x2.stl,1,6,1.4,modified_newtonian;newtonian,prandtl_meyer;shield,15,10,beta_tan,0,0,0,1,1,1,1,0,rtree,outputs/components,1
+case_id,stl_path,stl_scale_m_per_unit,Mach,gamma,windward_eq,leeward_eq,alpha_deg,beta_or_bank_deg,attitude_input,ref_x_m,ref_y_m,ref_z_m,Aref_m2,Lref_Cl_m,Lref_Cm_m,Lref_Cn_m,shielding_on,ray_backend,save_vtp_on
+hypersonic_components,../geometry/cube.stl;../geometry/plate_offset_x2.stl,1,6,1.4,modified_newtonian;newtonian,prandtl_meyer;shield,15,10,beta_tan,0,0,0,1,1,1,1,0,rtree,1

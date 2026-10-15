@@ -30,7 +30,6 @@ omitted-column and empty-cell behavior.
 | `Lref_Cn_m` | yes | — | m, > 0 | Yaw-moment reference length |
 | `shielding_on` | no | `0` | `0` or `1` | Enable the [ray-occlusion shielding method](../methods/ray-shielding.md) |
 | `ray_backend` | no | `auto` | `auto`, `rtree`, `embree` | [Ray-shielding backend](../methods/ray-shielding.md#backend-behavior) |
-| `out_dir` | no | `outputs` | path | Per-case VTP directory; resolution and path rules are in [Case files](case-files.md#paths-vtp-destinations-and-components) |
 | `save_vtp_on` | no | `1` | `0` or `1` | `1` writes the case VTP; `0` skips it |
 
 Mode A requires both `S` and `Ti_K`; Mode B requires both `Mach` and

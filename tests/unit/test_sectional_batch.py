@@ -198,16 +198,17 @@ def test_matches_public_api_coefficients_references_and_identity(domain):
 
 
 @pytest.mark.parametrize("domain", DOMAINS)
-def test_one_solve_per_case_no_artifacts_or_retained_arrays(domain, tmp_path):
-    rows = tuple(
-        {**row, "out_dir": str(tmp_path / "unused")} for row in _rows(domain, 2)
-    )
+def test_one_solve_per_case_no_artifacts_or_retained_arrays(
+    domain, tmp_path, monkeypatch
+):
+    monkeypatch.chdir(tmp_path)
+    rows = _rows(domain, 2)
     definitions = tuple(_definition(name) for name in ("001", "second", "third"))
     with patch.object(batch, "execute_case", wraps=batch.execute_case) as execute:
         result = _run(rows, definitions, domain)
     assert execute.call_count == 2
     assert result.completed_pairs == 6
-    assert not (tmp_path / "unused").exists()
+    assert not any(tmp_path.iterdir())
 
     def inspect(value):
         assert not isinstance(value, np.ndarray)

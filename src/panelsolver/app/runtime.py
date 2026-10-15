@@ -7,6 +7,7 @@ import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from functools import partial
 from pathlib import Path
 
 import numpy as np
@@ -180,6 +181,11 @@ def prepare_product_cases(
             "save_npz_on has been removed. Delete this field; "
             "Panel Solver no longer writes NPZ files."
         )
+    if any("out_dir" in row for row in records):
+        raise ValueError(
+            "out_dir has been removed. Delete this field; "
+            "VTP files are written to the outputs directory beside the case table."
+        )
     if registry is None:
         from .execution import default_model_registry
 
@@ -234,14 +240,15 @@ def _csv_input_row(row: CaseRow) -> dict[str, CsvCell]:
 def _run_prepared_product_case(
     prepared: PreparedProductCase,
     logfn: LogCallback,
+    *,
+    vtp_dir: Path,
 ) -> ProductCaseRunResult:
     """Compute one case and retain output failures without failing the worker."""
     started_at = _utc_now()
     started_clock = time.perf_counter()
     row = prepared.row
     case_id = str(row["case_id"])
-    out_dir = Path(str(row.get("out_dir", "outputs"))).expanduser()
-    vtp_file = out_dir / f"{case_id}.vtp"
+    vtp_file = vtp_dir / f"{case_id}.vtp"
     save_vtp = bool(int(row.get("save_vtp_on", 1)))
 
     execution = execute_case(
@@ -257,20 +264,20 @@ def _run_prepared_product_case(
     output_issues: list[OutputIssue] = []
     directory_ready = True
     try:
-        out_dir.mkdir(parents=True, exist_ok=True)
+        vtp_dir.mkdir(parents=True, exist_ok=True)
     except Exception as exc:
         directory_ready = False
         issue = OutputIssue(
             OutputKind.OUTPUT_DIRECTORY,
             OutputPhase.PREPARE,
-            str(out_dir),
+            str(vtp_dir),
             str(exc) or type(exc).__name__,
             case_id,
         )
         output_issues.append(issue)
         logfn(
             "[ERROR] Output directory preparation failed: "
-            f"case_id={case_id} path={out_dir} reason={issue.message}"
+            f"case_id={case_id} path={vtp_dir} reason={issue.message}"
         )
 
     saved_vtp_path = ""
@@ -367,6 +374,7 @@ def run_product_cases(
     rows: Sequence[CaseRow],
     policy: ProductRuntimePolicy,
     *,
+    vtp_dir: str | Path,
     workers: int = 1,
     logfn: LogCallback | None = None,
     progress_cb: ProgressCallback | None = None,
@@ -390,6 +398,10 @@ def run_product_cases(
         raise TypeError("case_completed_cb must be callable")
     if isinstance(workers, bool) or not isinstance(workers, int):
         raise TypeError("workers must be an integer")
+    run_case = partial(
+        _run_prepared_product_case,
+        vtp_dir=Path(vtp_dir).expanduser(),
+    )
     checkpoint_every = int(checkpoint_every_cases or 0)
     if checkpoint_every < 0:
         raise ValueError("checkpoint_every_cases must be >= 0.")
@@ -441,16 +453,14 @@ def run_product_cases(
             if cancel_cb is not None and cancel_cb():
                 raise SchedulerCancelled("Canceled by user at a case boundary.")
             logger(f"[RUN] ({run_index}/{total}) case_id={cases[index].row['case_id']}")
-            accept(
-                index, _run_prepared_product_case(cases[index], logger), parallel=False
-            )
+            accept(index, run_case(cases[index], logger), parallel=False)
     else:
         logger(f"[RUN] Parallel execution with {workers} worker(s)")
         requests = tuple(case.adapted.request for case in cases)
         parallel_results = iter_case_results_parallel(
             cases,
             workers,
-            _run_prepared_product_case,
+            run_case,
             log_policy=policy.worker_log_policy,
             partial_result_policy=policy.partial_result_policy,
             execution_order=order,
@@ -484,6 +494,7 @@ def run_and_write_product_cases(
     policy: ProductRuntimePolicy,
     output_path: str | Path,
     *,
+    vtp_dir: str | Path,
     workers: int = 1,
     logfn: LogCallback | None = None,
     progress_cb: ProgressCallback | None = None,
@@ -553,6 +564,7 @@ def run_and_write_product_cases(
     result = run_product_cases(
         rows,
         policy,
+        vtp_dir=vtp_dir,
         workers=workers,
         logfn=logger,
         progress_cb=progress_cb,

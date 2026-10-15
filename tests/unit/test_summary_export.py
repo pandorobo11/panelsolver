@@ -21,7 +21,7 @@ def test_real_gui_adapter_retains_exact_failed_csv_without_another_solve(
 ):
     source = ROOT / "examples" / domain.RUNTIME_POLICY.product_id / "basic.csv"
     rows = tuple(
-        dict(row, save_vtp_on=0, out_dir=str(tmp_path))
+        dict(row, save_vtp_on=0)
         for row in domain.gui_spec().adapters.read_cases(source)
     )
     attempted = []
@@ -35,6 +35,7 @@ def test_real_gui_adapter_retains_exact_failed_csv_without_another_solve(
         1,
         0,
         tmp_path / "failed.csv",
+        tmp_path,
         lambda _: None,
         lambda *_: None,
         lambda: False,

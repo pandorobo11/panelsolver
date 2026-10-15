@@ -37,9 +37,9 @@ results, launch `panelsolver-gui fmf`; for Hypersonic results, launch
 **Run Selected Cases**. The GUI loads the saved VTP for the selected case.
 
 The CLI summary for a table is
-`examples/<domain>/outputs/<table>_result.csv`. Additional examples keep their
-VTP files in `examples/<domain>/outputs/<category>/<case_id>.vtp`; basic VTPs
-remain directly under `outputs/`.
+`examples/<domain>/outputs/<table>_result.csv`. Every example writes its VTP
+files to `examples/<domain>/outputs/<case_id>.vtp`; case IDs are unique across
+each domain's examples, so the tables do not replace each other's VTPs.
 
 ## Choosing an example
 
@@ -80,7 +80,7 @@ workspace; select all three rows and run them normally.
 - Observe: nearly zero CL/CY at zero alpha; changing alpha produces asymmetric
   normal and tangential traction and changes CL/CD. Inspect both
   `normal_traction_coeff` and `tangential_traction_coeff`; FMF does not output Cp.
-- Output: `examples/fmf/outputs/sphere_cone/` for VTP and
+- Output: `examples/fmf/outputs/` for VTP and
   `examples/fmf/outputs/sphere_cone_result.csv` for the summary.
 
 ### `fmf/flow_modes.csv`
@@ -96,7 +96,7 @@ workspace; select all three rows and run them normally.
   and all eight coefficients agree within an absolute
   tolerance (`1e-10`). This is an equivalence-within-tolerance example, not an
   exact decimal identity requirement.
-- Output: `examples/fmf/outputs/flow_modes/`.
+- Output: `examples/fmf/outputs/`.
 
 ### `fmf/shielding.csv`
 
@@ -108,7 +108,7 @@ workspace; select all three rows and run them normally.
 - Observe: shielding off has 0 shielded faces. Shielding on marks the rear two
   of four faces as shielded, sets their complete Sentman traction to zero, and
   halves the resultant force (`CA` and `CD` are halved here).
-- Output: `examples/fmf/outputs/shielding/`.
+- Output: `examples/fmf/outputs/`.
 
 ### `fmf/components.csv`
 
@@ -121,7 +121,7 @@ workspace; select all three rows and run them normally.
   `component_stl_path` follows the input STL order, and each of the eight total
   coefficients equals the sum of the two component values within the Sentman
   tolerance.
-- Output: `examples/fmf/outputs/components/`.
+- Output: `examples/fmf/outputs/`.
 
 ### `fmf/attitude_modes.csv`
 
@@ -133,7 +133,7 @@ workspace; select all three rows and run them normally.
   `(0,10,beta_tan)`, and `(10,90,bank)` with otherwise identical FMF inputs.
 - Observe: the resolved freestream direction and all eight coefficients agree
   within the Sentman tolerance.
-- Output: `examples/fmf/outputs/attitude_modes/`.
+- Output: `examples/fmf/outputs/`.
 
 ## Hypersonic
 
@@ -158,7 +158,7 @@ workspace; select all three rows and run them normally.
   and beta = 0; ray shielding is off.
 - Observe: nearly zero CL/CY at zero alpha, high nose Cp, and stronger windward
   cone pressure with increasing alpha. Compare Cp and CL/CD between cases.
-- Output: `examples/hypersonic/outputs/sphere_cone/` for VTP and
+- Output: `examples/hypersonic/outputs/` for VTP and
   `examples/hypersonic/outputs/sphere_cone_result.csv` for the summary.
 
 ### `hypersonic/pressure_models.csv`
@@ -178,7 +178,7 @@ workspace; select all three rows and run them normally.
 - Observe: Newtonian, Modified Newtonian, Tangent Wedge, and Tangent Cone all
   return finite but distinct `cp` values. The `newt_pm.vtp` cube has negative
   `cp` on at least one leeward panel.
-- Output: `examples/hypersonic/outputs/pressure_models/`.
+- Output: `examples/hypersonic/outputs/`.
 
 ### `hypersonic/shielding.csv`
 
@@ -189,7 +189,7 @@ workspace; select all three rows and run them normally.
   leeward `shield`, zero attitude, and `ray_backend=rtree`.
 - Observe: ray shielding on marks the rear two of four faces, removes their
   load, and halves the resultant force (`CA` and `CD` are halved here).
-- Output: `examples/hypersonic/outputs/shielding/`.
+- Output: `examples/hypersonic/outputs/`.
 
 `leeward_eq=shield` and `shielding_on=1` are different features. The former is
 a pressure-model choice that assigns zero `cp` to active leeward panels. The
@@ -209,7 +209,7 @@ method and its exact-zero load consequence.
 - Observe: both selector lists apply in STL order. The summary contains two
   component rows in the same order, and each total coefficient equals the
   component sum within the applicable hypersonic tolerance.
-- Output: `examples/hypersonic/outputs/components/`.
+- Output: `examples/hypersonic/outputs/`.
 
 ### `hypersonic/attitude_modes.csv`
 
@@ -221,7 +221,7 @@ method and its exact-zero load consequence.
   `shield`; the three attitude tuples are the same as in the FMF example.
 - Observe: the resolved freestream direction and all eight coefficients agree
   within the algebraic hypersonic tolerance (`1e-10`).
-- Output: `examples/hypersonic/outputs/attitude_modes/`.
+- Output: `examples/hypersonic/outputs/`.
 
 ## Sphere-cone geometry and comparison
 

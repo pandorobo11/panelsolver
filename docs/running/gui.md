@@ -43,7 +43,7 @@ fix the source and open it again. Reload does not reread sectional definition
 CSVs; use **Reload** in the corresponding Sectional dialog for those files.
 
 The run writes the selected Summary CSV and, when enabled, one VTP per case at
-`<out_dir>/<case_id>.vtp`. Relative `out_dir` values use the input table's
+`<input_dir>/outputs/<case_id>.vtp`, where `<input_dir>` is the input table's
 directory. See [Case files](../inputs/case-files.md#paths-vtp-destinations-and-components)
 for path rules.
 
@@ -177,7 +177,7 @@ Basic example and its first results.
 ### Select a result
 
 When a case saves VTP, the first selected case's result loads automatically.
-Selecting a row also loads an existing `<out_dir>/<case_id>.vtp` when its
+Selecting a row also loads an existing `<input_dir>/outputs/<case_id>.vtp` when its
 `case_id` and `case_signature` match the selected case. For missing or mismatched
 files, the center of the Viewer explains why a matching result is unavailable.
 
@@ -275,7 +275,7 @@ calculation instead of relying on display interpolation to hide them.
 
 Use **Save Image...** to save the current view. For a VTP matched to a loaded
 case, the suggested file is
-`<out_dir>/images/<case_id>__<scalar_name>.png`, where `scalar_name` is the
+`<input_dir>/outputs/images/<case_id>__<scalar_name>.png`, where `scalar_name` is the
 VTP field name above, for example `normal_traction_coeff`. For an unmatched
 manual VTP, the suggestion is under `images/` beside that VTP. Choose another
 directory or name in the dialog as needed. Unsafe filename characters are
@@ -283,8 +283,7 @@ adjusted automatically.
 
 **Save Selected Images...** exports images for the selected cases. It is
 available when at least one selected case has a saved VTP. The suggested
-directory is `images/` under their common output directory, or
-`<input_dir>/outputs/images` if they use different output directories. Batch
+directory is `<input_dir>/outputs/images`. Batch
 export preserves existing images by adding a numeric suffix to duplicate names.
 Manual export is also available for stale or unmatched VTPs, with the displayed
 result preserved.

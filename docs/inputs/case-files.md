@@ -27,8 +27,7 @@ spreadsheet or text editor, then open it again in the GUI or pass it to CLI
    use values appropriate to your geometry and comparison convention.
 5. Choose whether geometry can block upstream flow to other panels and set
    `shielding_on` accordingly; see [Ray shielding](../methods/ray-shielding.md).
-   Choose `out_dir` if you want a separate VTP location. Keep `save_vtp_on=1`
-   for surface inspection.
+   Keep `save_vtp_on=1` for surface inspection.
 6. Run one case first. Inspect the geometry and surface scalars in the GUI,
    then check the total coefficients in the Summary CSV before adding more rows
    for an attitude or flow-condition sweep.
@@ -96,11 +95,14 @@ it includes both pairs of columns.
 
 ## Paths, VTP destinations, and components
 
-Relative `stl_path` and `out_dir` values are resolved from the case table's
-directory, not the process working directory. Absolute paths are used as
-specified, and `~` is expanded. When VTP saving is enabled, the per-case path is
-`<resolved_out_dir>/<case_id>.vtp`. The domain input references define the
-`out_dir` and `save_vtp_on` defaults and accepted values; the
+Relative `stl_path` values are resolved from the case table's directory, not
+the process working directory. Absolute paths are used as specified, and `~` is
+expanded. When VTP saving is enabled, each case writes
+`<input_dir>/outputs/<case_id>.vtp`, where `<input_dir>` is the case table's
+directory. The VTP location cannot be set per case; keep tables whose
+`case_id` values overlap in separate directories so their VTPs do not replace
+each other. The domain input references define the `save_vtp_on` default and
+accepted values; the
 [VTP reference](../results/vtp.md) defines the saved content, and
 [Batch execution and recovery](../running/batch-execution-and-recovery.md) explains write
 failures.
@@ -158,6 +160,6 @@ transformations are defined in
 
 Extra input columns, such as your own notes, are preserved after the
 standard input columns in the Summary CSV, in their original relative order.
-`save_npz_on` is a reserved
-field that the CSV, XLSX, and XLSM readers explicitly reject; remove it when
+`save_npz_on` and `out_dir` are reserved
+fields that the CSV, XLSX, and XLSM readers explicitly reject; remove them when
 updating an older case file.

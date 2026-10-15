@@ -136,10 +136,7 @@ class SectionalDialogTests(unittest.TestCase):
             .iloc[0]
             .to_dict()
         )
-        rows = tuple(
-            {**source, "case_id": f"case_{i}", "out_dir": str(self.root / "unused")}
-            for i in range(2)
-        )
+        rows = tuple({**source, "case_id": f"case_{i}"} for i in range(2))
         panel.case_rows = rows
         panel.input_path = self.root / "cases.csv"
         panel.input_path.write_text("original case input")
@@ -813,7 +810,7 @@ class SectionalDialogTests(unittest.TestCase):
                 self.assertIn("automatic.csv", dialog.result_status.text())
                 self.assertEqual("Saved (completed)", dialog.progress.text())
                 self.assertTrue(dialog.btn_retry_save.isHidden())
-                self.assertFalse((self.root / "unused").exists())
+                self.assertFalse((self.root / "outputs").exists())
                 output = self.root / f"{domain.RUNTIME_POLICY.product_id}.csv"
                 self.assertTrue(dialog._save_results(output))
                 self.wait_until(lambda dialog=dialog: not dialog.is_running())

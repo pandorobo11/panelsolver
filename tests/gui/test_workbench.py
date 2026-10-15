@@ -562,7 +562,7 @@ class WorkbenchTests(unittest.TestCase):
                 layout_settings=settings,
             )
             panel.load_input_file("/tmp/input.csv")
-            column = panel._table_columns.index("out_dir")
+            column = panel._table_columns.index("ray_backend")
             panel.case_table.setColumnWidth(column, 211)
             panel.btn_diagnostics.setChecked(True)
             settings.setValue(window._layout_key("display"), False)
@@ -571,7 +571,7 @@ class WorkbenchTests(unittest.TestCase):
             settings.setValue(window._layout_key("column_mode"), 2)
             settings.setValue(
                 window._layout_key("columns"),
-                '{"out_dir": {"width": 211, "hidden": true}}',
+                '{"ray_backend": {"width": 211, "hidden": true}}',
             )
             next_panel = self.panel()
             next_viewer = self.viewer(next_panel.spec)
@@ -583,7 +583,9 @@ class WorkbenchTests(unittest.TestCase):
             )
             next_panel.load_input_file("/tmp/input.csv")
             self.assertFalse(next_panel.case_table.isColumnHidden(column))
-            self.assertEqual(211, next_panel.column_preferences()["out_dir"]["width"])
+            self.assertEqual(
+                211, next_panel.column_preferences()["ray_backend"]["width"]
+            )
             self.assertTrue(next_panel.btn_diagnostics.isChecked())
             self.assertFalse(next_viewer.chk_edges.isHidden())
             self.assertFalse(next_viewer.camera_row.isHidden())

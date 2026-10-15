@@ -100,7 +100,6 @@ INPUT_COLUMN_ORDER = (
     "Lref_Cn_m",
     "shielding_on",
     "ray_backend",
-    "out_dir",
     "save_vtp_on",
 )
 _CASE_COLUMN_PRESENTATIONS = (
@@ -210,9 +209,6 @@ _CASE_COLUMN_PRESENTATIONS = (
         CaseColumnWidthRole.ENUM_TEXT,
     ),
     CaseColumnPresentation(
-        "out_dir", "Output dir", CaseColumnKind.TEXT, CaseColumnWidthRole.PATH
-    ),
-    CaseColumnPresentation(
         "save_vtp_on", "Save VTP", CaseColumnKind.FLAG, CaseColumnWidthRole.FLAG
     ),
 )
@@ -248,7 +244,6 @@ DEFAULTS = {
     "attitude_input": DEFAULT_ATTITUDE_INPUT,
     "windward_eq": "newtonian",
     "leeward_eq": "shield",
-    "out_dir": "outputs",
 }
 
 
@@ -459,6 +454,7 @@ RUNTIME_POLICY = ProductRuntimePolicy(
 def run_cases(
     rows: Sequence[Mapping[str, object]],
     *,
+    vtp_dir: str | Path,
     workers: int = 1,
     logfn=None,
     progress_cb=None,
@@ -469,6 +465,7 @@ def run_cases(
     return run_product_cases(
         rows,
         RUNTIME_POLICY,
+        vtp_dir=vtp_dir,
         workers=workers,
         logfn=logfn,
         progress_cb=progress_cb,
@@ -499,6 +496,7 @@ def _run_gui_cases(request: GuiRunRequest) -> GuiRunResult:
         request.rows,
         RUNTIME_POLICY,
         request.output_path,
+        vtp_dir=request.vtp_dir,
         workers=request.workers,
         logfn=request.log,
         progress_cb=request.progress,

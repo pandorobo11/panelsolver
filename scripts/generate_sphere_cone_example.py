@@ -74,7 +74,6 @@ def generate(destination: Path, refinement: int = 1) -> None:
                 "Lref_Cm_m": 1,
                 "Lref_Cn_m": 1,
                 "shielding_on": 0,
-                "out_dir": "outputs/sphere_cone",
                 "save_vtp_on": 1,
             }
             for alpha in (0, 15, 30)
