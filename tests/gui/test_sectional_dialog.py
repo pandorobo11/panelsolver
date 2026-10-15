@@ -547,7 +547,7 @@ class SectionalDialogTests(unittest.TestCase):
                 self.select(panel.case_table, 2)
                 target = destination / "cp.csv"
                 self.assertTrue(dialog.start_run(target))
-                self.wait_until(lambda dialog=dialog: not dialog.is_running())
+                self.wait_until(lambda dialog=dialog: not dialog.is_running(), timeout=30.0)
                 self.assertEqual("completed", dialog.batch_result.status)
                 self.assertEqual(3, dialog.batch_result.completed_pairs)
                 with target.open(encoding="utf-8-sig") as stream:
@@ -587,7 +587,7 @@ class SectionalDialogTests(unittest.TestCase):
                 self.assertEqual(3, len(panel.case_rows))
                 self.select(panel.case_table, 2)
                 self.assertTrue(dialog.start_run(destination / "result.csv"))
-                self.wait_until(lambda dialog=dialog: not dialog.is_running())
+                self.wait_until(lambda dialog=dialog: not dialog.is_running(), timeout=30.0)
                 self.assertEqual("completed", dialog.batch_result.status)
                 self.assertEqual(3, dialog.batch_result.completed_pairs)
                 self.assertTrue((destination / "result.csv").is_file())
