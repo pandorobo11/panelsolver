@@ -961,12 +961,46 @@ class ViewerPanel(QtWidgets.QWidget):
         if self._input_path is not None:
             self._last_image_directory = directory
 
+    def _prepare_dialog_directory(self, directory: Path) -> tuple[Path, ...]:
+        """Create a suggested directory so native dialogs can open inside it.
+
+        Return the directories this call created, deepest first, so an unused
+        suggestion can be removed again after the dialog closes.
+        """
+        missing: list[Path] = []
+        candidate = directory
+        while not candidate.exists() and candidate.parent != candidate:
+            missing.append(candidate)
+            candidate = candidate.parent
+        self._make_directory(directory)
+        return tuple(missing)
+
+    @staticmethod
+    def _remove_unused_directories(created: Sequence[Path]) -> None:
+        """Remove directories created for a dialog that are still empty."""
+        for directory in created:
+            try:
+                directory.rmdir()
+            except OSError:
+                return
+
     def save_view_image(self) -> None:
         """Capture the displayed viewport without enforcing artifact freshness."""
         default_path = self._view_image_dialog_path()
         if default_path is None:
             self.logln("[WARN] No viewport is available to save.")
             return
+        try:
+            created = self._prepare_dialog_directory(default_path.parent)
+        except Exception as exc:
+            self.logln(f"[WARN] Failed to create image directory: {exc}")
+            created = ()
+        try:
+            self._save_view_image_from_dialog(default_path)
+        finally:
+            self._remove_unused_directories(created)
+
+    def _save_view_image_from_dialog(self, default_path: Path) -> None:
         path, _ = QtWidgets.QFileDialog.getSaveFileName(
             self,
             "Save View Image",
@@ -998,10 +1032,20 @@ class ViewerPanel(QtWidgets.QWidget):
             return
         default_dir = self._batch_image_dialog_dir()
         try:
-            self._make_directory(default_dir)
+            created = self._prepare_dialog_directory(default_dir)
         except Exception as exc:
             self.logln(f"[ERROR] Failed to create image directory: {exc}")
             return
+        try:
+            self._save_case_images_from_dialog(selected, default_dir)
+        finally:
+            self._remove_unused_directories(created)
+
+    def _save_case_images_from_dialog(
+        self,
+        selected: Sequence[CaseRow],
+        default_dir: Path,
+    ) -> None:
         selected_dir = QtWidgets.QFileDialog.getExistingDirectory(
             self,
             "Select Folder to Save Selected Images",

@@ -114,3 +114,7 @@ the current scalar. Cases whose VTP is missing or does not match the current
 case settings are skipped and listed in Diagnostics. The suggested folder is
 `<input folder>/outputs/images`. Existing images are kept: a number is added to the
 new file name instead.
+
+If the suggested `images` folder does not exist yet, it is created when the save
+dialog opens, so the dialog can start inside it. If you cancel or save
+elsewhere, the folder is removed again as long as it is still empty.
