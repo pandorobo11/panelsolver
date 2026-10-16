@@ -26,7 +26,11 @@ from .path_resolution import (
     resolve_case_vtp_path,
     resolve_output_dir,
 )
-from .run_lifecycle import CaseRunWorker, SummaryExportWorker
+from .run_lifecycle import (
+    CaseRunWorker,
+    SummaryExportWorker,
+    prepare_worker_thread,
+)
 from .runtime import DEFAULT_CHECKPOINT_CASES
 from .solver_spec import (
     CaseColumnKind,
@@ -947,7 +951,6 @@ class CasesPanel(QtWidgets.QWidget):
         self._cancel_requested = False
         self.logln(f"[RUN] Running {total} case(s)...")
 
-        thread = QtCore.QThread(self)
         worker = CaseRunWorker(
             self.spec.adapters.run_cases,
             selected,
@@ -956,25 +959,21 @@ class CasesPanel(QtWidgets.QWidget):
             self._run_output_path,
             vtp_dir,
         )
+        thread = prepare_worker_thread(
+            self,
+            worker,
+            (worker.completed, worker.failed, worker.canceled),
+            self._cleanup_run_worker,
+        )
         self._run_thread = thread
         self._run_worker = worker
         self._refresh_summary_retry()
-        worker.moveToThread(thread)
 
-        thread.started.connect(worker.run)
         worker.log.connect(self.logln)
         worker.progress.connect(self._on_run_progress)
         worker.completed.connect(self._on_run_completed)
         worker.failed.connect(self._on_run_failed)
         worker.canceled.connect(self._on_run_canceled)
-        worker.completed.connect(thread.quit)
-        worker.failed.connect(thread.quit)
-        worker.canceled.connect(thread.quit)
-        worker.completed.connect(worker.deleteLater)
-        worker.failed.connect(worker.deleteLater)
-        worker.canceled.connect(worker.deleteLater)
-        thread.finished.connect(self._cleanup_run_worker)
-        thread.finished.connect(thread.deleteLater)
         thread.start()
         return True
 
@@ -1126,19 +1125,13 @@ class CasesPanel(QtWidgets.QWidget):
         except Exception as exc:
             self._on_summary_export_failed(str(exc))
             return False
-        thread = QtCore.QThread(self)
         worker = SummaryExportWorker(path, snapshot, protected)
+        thread = prepare_worker_thread(
+            self, worker, (worker.completed, worker.failed), self._cleanup_run_worker
+        )
         self._run_thread, self._run_worker = thread, worker
-        worker.moveToThread(thread)
-        thread.started.connect(worker.run)
         worker.completed.connect(self._on_summary_exported)
         worker.failed.connect(self._on_summary_export_failed)
-        worker.completed.connect(thread.quit)
-        worker.failed.connect(thread.quit)
-        worker.completed.connect(worker.deleteLater)
-        worker.failed.connect(worker.deleteLater)
-        thread.finished.connect(self._cleanup_run_worker)
-        thread.finished.connect(thread.deleteLater)
         self.progress.setFormat("Saving Summary CSV…")
         set_semantic_property(self.progress, "fluentStatus", "info")
         set_semantic_property(self.progress, "fluentBusy", True)

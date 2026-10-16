@@ -783,6 +783,32 @@ class SectionalDialogTests(unittest.TestCase):
         start.assert_called_once()
         error.assert_not_called()
 
+    def test_run_and_export_workers_are_destroyed_on_gui_thread(self):
+        # Destroying a worker on its own QThread can deadlock against the GIL.
+        _window, panel, dialog = self.make_window()
+        self.select(panel.case_table, 0)
+        self.select(dialog.definition_table, 0)
+        destroyed = []
+        start = dialog._start_worker
+
+        def watch(worker, operation, destroyed=destroyed, start=start):
+            # Record only the operation and thread; never retain the worker.
+            worker.destroyed.connect(
+                lambda: destroyed.append((operation, threading.get_ident())),
+                QtCore.Qt.ConnectionType.DirectConnection,
+            )
+            return start(worker, operation)
+
+        with patch.object(dialog, "_start_worker", side_effect=watch):
+            self.assertTrue(dialog.start_run(self.root / "automatic.csv"))
+            self.wait_until(
+                lambda: not dialog.is_running() and len(destroyed) == 2,
+                timeout=30.0,
+            )
+        gui_thread = threading.get_ident()
+        self.assertEqual([("run", gui_thread), ("export", gui_thread)], destroyed)
+        self.assertTrue((self.root / "automatic.csv").exists())
+
     def test_real_both_domain_runs_match_service_and_solve_once_per_case(self):
         for domain in (fmf, hypersonic):
             with self.subTest(domain=domain.RUNTIME_POLICY.product_id):

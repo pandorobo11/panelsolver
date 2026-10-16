@@ -17,6 +17,7 @@ from .csv_writer import validate_csv_output_path
 from .gui_components import ElidedPathField, FlowLayout
 from .gui_theme import set_semantic_property
 from .path_resolution import default_summary_output_path
+from .run_lifecycle import ThreadWorker, prepare_worker_thread
 from .sectional_batch import (
     SectionalBatchResult,
     sectional_protected_paths,
@@ -107,7 +108,7 @@ class _ReadOnlyModel(QtCore.QAbstractTableModel):
         return None
 
 
-class _SectionalWorker(QtCore.QObject):
+class _SectionalWorker(ThreadWorker):
     log = QtCore.Signal(str)
     progress = QtCore.Signal(int, int)
     completed = QtCore.Signal(object)
@@ -121,8 +122,7 @@ class _SectionalWorker(QtCore.QObject):
         self._rows, self._definitions, self._workers = rows, definitions, workers
         self._cancel_event = threading.Event()
 
-    @QtCore.Slot()
-    def run(self) -> None:
+    def _execute(self) -> None:
         try:
             result = self._runner(
                 GuiSectionalRunRequest(
@@ -147,7 +147,7 @@ class _SectionalWorker(QtCore.QObject):
         self._cancel_event.set()
 
 
-class _ExportWorker(QtCore.QObject):
+class _ExportWorker(ThreadWorker):
     completed = QtCore.Signal(object)
     failed = QtCore.Signal(str)
 
@@ -155,8 +155,7 @@ class _ExportWorker(QtCore.QObject):
         super().__init__()
         self._path, self._result, self._protected_paths = path, result, protected_paths
 
-    @QtCore.Slot()
-    def run(self) -> None:
+    def _execute(self) -> None:
         try:
             path = write_sectional_csv(self._path, self._result, self._protected_paths)
         except Exception as exc:
@@ -564,16 +563,10 @@ class SectionalLoadsDialog(QtWidgets.QDialog):
         return True
 
     def _start_worker(self, worker, operation: str) -> None:
-        thread = QtCore.QThread(self)
+        thread = prepare_worker_thread(
+            self, worker, (worker.completed, worker.failed), self._cleanup_worker
+        )
         self._thread, self._worker, self._operation = thread, worker, operation
-        worker.moveToThread(thread)
-        thread.started.connect(worker.run)
-        worker.completed.connect(thread.quit)
-        worker.failed.connect(thread.quit)
-        worker.completed.connect(worker.deleteLater)
-        worker.failed.connect(worker.deleteLater)
-        thread.finished.connect(self._cleanup_worker)
-        thread.finished.connect(thread.deleteLater)
         self.cases_panel.set_external_run_active(True)
         set_semantic_property(self.progress, "fluentBusy", True)
         set_semantic_property(self.progress, "fluentStatus", "info")

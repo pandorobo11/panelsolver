@@ -6,6 +6,12 @@ migration baselines and runtime artifact version semantics are recorded in ADR
 
 ## [Unreleased]
 
+- Fix a rare GUI freeze when a calculation or CSV save finishes. Calculation
+  and save workers were destroyed on their own thread, which could deadlock
+  against the GUI thread; they are now destroyed on the GUI thread. Applies to
+  ordinary runs, Summary CSV retry saves, and Sectional Loads and Sectional Cp
+  runs and saves. Numerical results and output files are unchanged.
+
 - Fix permissions of atomically written outputs on macOS and Linux. The Summary
   CSV, VTP files, Sectional load CSV, and Sectional Cp CSV were always created
   as owner-only (`0600`) files. They now follow the process umask like other

@@ -596,6 +596,73 @@ class RunLifecycleTests(unittest.TestCase):
         self.assertTrue(panel.btn_retry_save.isEnabled())
         self.discard_and_close(window)
 
+    def watch_worker_destruction(self, worker) -> list[int]:
+        # Record only the destroying thread; never retain the worker itself.
+        destroyed: list[int] = []
+        worker.destroyed.connect(
+            lambda: destroyed.append(threading.get_ident()),
+            QtCore.Qt.ConnectionType.DirectConnection,
+        )
+        return destroyed
+
+    def test_run_and_summary_export_workers_are_destroyed_on_gui_thread(self):
+        # A worker destroyed on its own QThread can deadlock: ~QObject holds
+        # Qt's connection lock while a PySide override waits for the GIL that
+        # the GUI thread holds while it waits for that lock.
+        from panelsolver.app import run_lifecycle
+
+        def cancel(_request):
+            raise SchedulerCancelled("stop")
+
+        def fail(_request):
+            raise RuntimeError("solver failed")
+
+        gui_thread = threading.get_ident()
+        for name, runner in (
+            ("completed", lambda _request: self.unsaved_result()),
+            ("failed", fail),
+            ("canceled", cancel),
+        ):
+            with self.subTest(outcome=name):
+                panel, rows, _ = self.make_panel(runner)
+                with patch.object(QtWidgets.QMessageBox, "warning"):
+                    self.assertTrue(panel.start_run(rows, 1, 0, "result.csv"))
+                    destroyed = self.watch_worker_destruction(panel._run_worker)
+                    self.wait_until(
+                        lambda panel=panel, destroyed=destroyed: (
+                            not panel.is_running() and destroyed
+                        )
+                    )
+                self.assertEqual([gui_thread], destroyed)
+
+        panel, rows, _ = self.make_panel(lambda _request: self.unsaved_result())
+        with patch.object(QtWidgets.QMessageBox, "warning"):
+            panel.start_run(rows, 1, 0, "result.csv")
+            self.wait_until(lambda: not panel.is_running())
+        for name, effect in (("failed", OSError("disk full")), ("saved", None)):
+            with self.subTest(export=name):
+                with (
+                    patch.object(
+                        run_lifecycle,
+                        "write_summary_snapshot",
+                        side_effect=effect,
+                        return_value=Path("retry.csv"),
+                    ),
+                    patch.object(
+                        QtWidgets.QFileDialog,
+                        "getSaveFileName",
+                        return_value=("retry.csv", ""),
+                    ),
+                ):
+                    self.assertTrue(panel.retry_summary_save())
+                    destroyed = self.watch_worker_destruction(panel._run_worker)
+                    self.wait_until(
+                        lambda panel=panel, destroyed=destroyed: (
+                            not panel.is_running() and destroyed
+                        )
+                    )
+                self.assertEqual([gui_thread], destroyed)
+
     def discard_and_close(self, window) -> None:
         with patch.object(
             QtWidgets.QMessageBox,
