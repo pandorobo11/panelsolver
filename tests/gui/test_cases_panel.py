@@ -13,6 +13,7 @@ from unittest.mock import patch
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6 import QtCore, QtTest, QtWidgets
+from shiboken6 import delete, isValid
 
 from panelsolver.app import (
     DEFAULT_CHECKPOINT_CASES,
@@ -101,7 +102,23 @@ class CasesPanelTests(unittest.TestCase):
             str(row["case_id"]): _signature(str(row["case_id"])) for row in rows
         }
         spec = spec_factory(adapters=_adapters(rows, signatures, **kwargs))
-        return CasesPanel(spec), signatures
+        return self.own_widget(CasesPanel(spec)), signatures
+
+    def own_widget(self, widget):
+        # Keep every panel alive until unittest cleanup. Worker-triggered cyclic
+        # GC must never own Qt teardown (see tests/gui/README.md).
+        self.addCleanup(self.dispose_widget, widget)
+        return widget
+
+    def dispose_widget(self, widget) -> None:
+        if not isValid(widget):
+            return
+        self.assertEqual(QtCore.QThread.currentThread(), self.app.thread())
+        if widget.is_running():
+            widget.cancel_run()
+            self.wait_until(lambda: not widget.is_running())
+        widget.close()
+        delete(widget)
 
     def wait_until(self, predicate, timeout: float = 3.0) -> None:
         deadline = time.monotonic() + timeout
@@ -200,8 +217,7 @@ class CasesPanelTests(unittest.TestCase):
                 source = source_dir / "input.csv"
                 original = (examples / domain / "basic.csv").read_text()
                 source.write_text(original)
-                panel = CasesPanel(spec_factory())
-                self.addCleanup(panel.close)
+                panel = self.own_widget(CasesPanel(spec_factory()))
                 self.assertFalse(panel.btn_reload_input.isEnabled())
                 self.assertTrue(panel.load_input_file(source))
                 self.assertTrue(panel.btn_reload_input.isEnabled())
