@@ -21,14 +21,14 @@ version limit.
 In the folder that contains the wheel file, run:
 
 ```bash
-python -m pip install ./panelsolver-0.1.0-py3-none-any.whl
+python -m pip install ./panelsolver-0.2.0rc1-py3-none-any.whl
 ```
 
 To also install the faster Embree backend for
 [ray shielding](../methods/ray-shielding.md), add the `rayaccel` extra:
 
 ```bash
-python -m pip install "./panelsolver-0.1.0-py3-none-any.whl[rayaccel]"
+python -m pip install "./panelsolver-0.2.0rc1-py3-none-any.whl[rayaccel]"
 ```
 
 ## Install from a source checkout

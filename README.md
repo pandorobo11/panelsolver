@@ -26,16 +26,16 @@ reassessed when the upstream Qt fix is available and validated; see the
 The pinned Qt version still has a known
 [macOS accessibility limitation](docs/guides/troubleshooting.md#macos-gui-crashes-during-accessibility-inspection).
 
-To install the Panel Solver v0.1.0 wheel:
+To install the Panel Solver v0.2.0rc1 release-candidate wheel:
 
 ```bash
-python -m pip install ./panelsolver-0.1.0-py3-none-any.whl
+python -m pip install ./panelsolver-0.2.0rc1-py3-none-any.whl
 ```
 
 To include the optional accelerated Embree ray backend:
 
 ```bash
-python -m pip install "./panelsolver-0.1.0-py3-none-any.whl[rayaccel]"
+python -m pip install "./panelsolver-0.2.0rc1-py3-none-any.whl[rayaccel]"
 ```
 
 From a checkout:
