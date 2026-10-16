@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import threading
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
 from PySide6 import QtCore
@@ -14,7 +14,55 @@ from .solver_spec import CaseRow, GuiRunRequest, GuiRunResult, RunCasesCallback
 from .summary_export import SummaryCsvSnapshot, write_summary_snapshot
 
 
-class CaseRunWorker(QtCore.QObject):
+class ThreadWorker(QtCore.QObject):
+    """Run once on a worker QThread, then return to the GUI thread.
+
+    PySide releases a wrapped QObject's Python state in the thread that destroys
+    it. Destroying a worker on its own QThread can deadlock (``~QObject`` holds
+    Qt's connection lock while a Python override waits for the GIL that the GUI
+    thread holds) and releases Python references off the GUI thread. Moving the
+    worker back before its thread finishes lets ``prepare_worker_thread`` delete
+    it on the GUI thread instead.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._gui_thread = self.thread()
+
+    @QtCore.Slot()
+    def run(self) -> None:
+        try:
+            self._execute()
+        finally:
+            self.moveToThread(self._gui_thread)
+
+    def _execute(self) -> None:
+        raise NotImplementedError
+
+
+def prepare_worker_thread(
+    parent: QtCore.QObject,
+    worker: ThreadWorker,
+    terminal_signals: Sequence[QtCore.SignalInstance],
+    on_finished: Callable[[], None],
+) -> QtCore.QThread:
+    """Wire ``worker`` to a new QThread; the caller connects results and starts it.
+
+    Each terminal signal quits the thread. When it finishes, ``on_finished`` runs
+    on the GUI thread, followed by deletion of the worker and the thread there.
+    """
+    thread = QtCore.QThread(parent)
+    worker.moveToThread(thread)
+    thread.started.connect(worker.run)
+    for signal in terminal_signals:
+        signal.connect(thread.quit)
+    thread.finished.connect(on_finished)
+    thread.finished.connect(worker.deleteLater)
+    thread.finished.connect(thread.deleteLater)
+    return thread
+
+
+class CaseRunWorker(ThreadWorker):
     """Run one adapter callback and expose only queued Qt signals to widgets."""
 
     log = QtCore.Signal(str)
@@ -43,8 +91,7 @@ class CaseRunWorker(QtCore.QObject):
         self._vtp_dir = Path(vtp_dir)
         self._cancel_event = threading.Event()
 
-    @QtCore.Slot()
-    def run(self) -> None:
+    def _execute(self) -> None:
         """Execute until completion, primary failure, or boundary cancellation."""
         try:
             request = GuiRunRequest(
@@ -77,7 +124,7 @@ class CaseRunWorker(QtCore.QObject):
         self._cancel_event.set()
 
 
-class SummaryExportWorker(QtCore.QObject):
+class SummaryExportWorker(ThreadWorker):
     """Save a retained CSV without solving or blocking the GUI thread."""
 
     completed = QtCore.Signal(object)
@@ -89,8 +136,7 @@ class SummaryExportWorker(QtCore.QObject):
         self._snapshot = snapshot
         self._protected_paths = protected_paths
 
-    @QtCore.Slot()
-    def run(self) -> None:
+    def _execute(self) -> None:
         try:
             path = write_summary_snapshot(
                 self._path, self._snapshot, self._protected_paths
@@ -101,4 +147,9 @@ class SummaryExportWorker(QtCore.QObject):
         self.completed.emit(path)
 
 
-__all__ = ("CaseRunWorker", "SummaryExportWorker")
+__all__ = (
+    "CaseRunWorker",
+    "SummaryExportWorker",
+    "ThreadWorker",
+    "prepare_worker_thread",
+)
