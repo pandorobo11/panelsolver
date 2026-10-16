@@ -6,6 +6,8 @@ migration baselines and runtime artifact version semantics are recorded in ADR
 
 ## [Unreleased]
 
+## [0.2.0rc1] - 2026-10-16
+
 - Fix a rare GUI freeze when a calculation or CSV save finishes. Calculation
   and save workers were destroyed on their own thread, which could deadlock
   against the GUI thread; they are now destroyed on the GUI thread. Applies to
