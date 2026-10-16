@@ -78,7 +78,7 @@ input for compatibility.
 
 Results are written below each example's `outputs/` directory. The
 [quickstart](docs/getting-started/quickstart.md) explains what to inspect and how
-to change and rerun the example. See the [CLI guide](docs/getting-started/quickstart.md) for
+to change and rerun the example. See the [CLI guide](docs/guides/cli.md) for
 command options.
 
 ## Documentation
