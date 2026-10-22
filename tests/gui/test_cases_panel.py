@@ -85,7 +85,16 @@ class StructuredError(ValueError):
         )
 
 
-class CasesPanelTests(unittest.TestCase):
+class CasesPanelFixture:
+    """Own CasesPanel and window fixtures on the running unittest test.
+
+    Mix into a ``unittest.TestCase``. Cleanup closes and deletes each owned
+    widget on the GUI thread instead of leaving it to cyclic GC (see
+    tests/gui/README.md and issue #297).
+    """
+
+    app: QtWidgets.QApplication
+
     @classmethod
     def setUpClass(cls) -> None:
         cls.app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -105,18 +114,22 @@ class CasesPanelTests(unittest.TestCase):
         return self.own_widget(CasesPanel(spec)), signatures
 
     def own_widget(self, widget):
-        # Keep every panel alive until unittest cleanup. Worker-triggered cyclic
+        # Keep every widget alive until unittest cleanup. Worker-triggered cyclic
         # GC must never own Qt teardown (see tests/gui/README.md).
         self.addCleanup(self.dispose_widget, widget)
         return widget
 
     def dispose_widget(self, widget) -> None:
         if not isValid(widget):
-            return
+            return  # A registered parent has already deleted this child.
         self.assertEqual(QtCore.QThread.currentThread(), self.app.thread())
-        if widget.is_running():
-            widget.cancel_run()
-            self.wait_until(lambda: not widget.is_running())
+        panels = widget.findChildren(CasesPanel)
+        if isinstance(widget, CasesPanel):
+            panels.append(widget)
+        for panel in panels:
+            if panel.is_running():
+                panel.cancel_run()
+                self.wait_until(lambda active=panel: not active.is_running())
         widget.close()
         delete(widget)
 
@@ -129,6 +142,8 @@ class CasesPanelTests(unittest.TestCase):
             time.sleep(0.002)
         self.app.processEvents()
 
+
+class CasesPanelTests(CasesPanelFixture, unittest.TestCase):
     def test_load_renders_product_schema_extras_and_stl_names(self) -> None:
         panel, _signatures = self.make_panel()
         self.assertTrue(panel.load_input_file("/tmp/input.csv"))
@@ -1148,6 +1163,37 @@ class CasesPanelTests(unittest.TestCase):
         self.assertEqual("2147483647", checkpoint.text())
         self.assertEqual("2147483647", checkpoint.lineEdit().text())
         panel.close()
+
+    def test_run_output_cannot_overwrite_stl_of_unselected_case(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="run_unselected_stl_") as directory:
+            unselected_stl = Path(directory) / "unselected.stl"
+            unselected_stl.write_bytes(b"solid unselected\nendsolid unselected\n")
+            original = unselected_stl.read_bytes()
+            rows = (
+                {**_rows()[0], "stl_path": str(Path(directory) / "selected.stl")},
+                {**_rows()[1], "stl_path": str(unselected_stl)},
+            )
+            panel, _ = self.make_panel(rows)
+            panel.load_input_file(Path(directory) / "cases.csv")
+            panel.case_table.selectRow(0)
+            self.assertEqual(
+                ["case_b"], [r["case_id"] for r in panel.selected_case_rows()]
+            )
+            emitted: list[tuple] = []
+            panel.run_requested.connect(lambda *args: emitted.append(args))
+            with (
+                patch.object(
+                    QtWidgets.QFileDialog,
+                    "getSaveFileName",
+                    return_value=(str(unselected_stl), "CSV"),
+                ),
+                patch.object(QtWidgets.QMessageBox, "critical") as critical,
+            ):
+                panel.request_run()
+            self.assertEqual([], emitted)
+            critical.assert_called_once()
+            self.assertIn("collision", panel.log.toPlainText())
+            self.assertEqual(original, unselected_stl.read_bytes())
 
     def test_run_cancel_and_output_rejection_do_not_emit(self) -> None:
         def reject(_out, _input, _rows):

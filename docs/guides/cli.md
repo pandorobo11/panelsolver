@@ -68,9 +68,11 @@ saving what it can; see [Batch runs and recovery](batch-runs.md).
 ## Output destinations
 
 Before running anything, the CLI checks that the Summary CSV will not overwrite
-the case table, an STL file, or a VTP file that the run will write. This check
-also applies to cases with VTP saving turned off, and it treats file names that
-differ only in upper and lower case as the same file. VTP files always go to
+the case table, any STL file named in the case table, or a VTP file that the
+run will write. Every STL file in the case table is protected, including those
+of cases left out by `--cases`; the VTP check covers the selected cases, even
+those with VTP saving turned off. The check treats file names that differ only
+in upper and lower case as the same file. VTP files always go to
 `<input folder>/outputs/<case_id>.vtp`; `--output` moves only the Summary CSV.
 See [Preparing cases](preparing-cases.md#paths-vtp-destinations-and-components)
 for details.

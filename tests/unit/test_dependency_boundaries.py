@@ -212,13 +212,23 @@ class DependencyBoundaryTests(unittest.TestCase):
         )
 
     def test_gui_implementation_does_not_import_physical_models(self) -> None:
+        # Every module importing a Qt binding is GUI implementation; the GUI
+        # spec and viewer data modules are Qt-free GUI support kept in scope.
+        toolkit_modules = tuple(
+            sorted(
+                name
+                for name, targets in self.imports.items()
+                if any(
+                    _matches(target, ("PySide6", "pyvistaqt", "shiboken6"))
+                    for target in targets
+                )
+            )
+        )
+        self.assertIn("panelsolver.app.main_window", toolkit_modules)
+        self.assertIn("panelsolver.app.sectional_dialog", toolkit_modules)
         gui_modules = (
-            "panelsolver.app.cases_panel",
-            "panelsolver.app.gui_bootstrap",
-            "panelsolver.app.main_window",
-            "panelsolver.app.run_lifecycle",
+            *toolkit_modules,
             "panelsolver.app.solver_spec",
-            "panelsolver.app.viewer",
             "panelsolver.app.viewer_data",
         )
         self.assert_edges_avoid(

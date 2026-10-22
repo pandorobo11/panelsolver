@@ -222,6 +222,19 @@ def validate_csv_output_path(
     return _resolved_path(out)
 
 
+def case_stl_paths(
+    input_path: str | Path,
+    case_rows: Iterable[Mapping[str, object]],
+) -> tuple[Path, ...]:
+    """Return every STL input named by the given case rows, in table order."""
+    return tuple(
+        resolve_input_relative_path(raw_stl.strip(), input_path)
+        for row in case_rows
+        for raw_stl in str(row.get("stl_path", "")).split(";")
+        if raw_stl.strip()
+    )
+
+
 def validate_summary_output_path(
     out_path: str | Path,
     input_path: str | Path,
@@ -271,6 +284,7 @@ __all__ = (
     "CSV_ENCODING",
     "CsvAppendRollbackError",
     "append_csv",
+    "case_stl_paths",
     "paths_collide",
     "portable_path_key",
     "validate_csv_output_path",
