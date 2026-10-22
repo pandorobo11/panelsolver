@@ -213,6 +213,52 @@ class PanelSolverCliTests(unittest.TestCase):
                     summary.loc[summary["scope"] == "total", "case_id"].tolist(),
                 )
 
+    def test_output_cannot_overwrite_stl_of_unselected_case(self) -> None:
+        products = (
+            (fmf_main, read_fmf_cases, "fmfsolver_cases.csv"),
+            (hypersonic_main, read_hypersonic_cases, "newtsolver_cases.csv"),
+        )
+        for main, reader, filename in products:
+            frame = read_current_cases(reader, INPUTS / filename).iloc[[0, 1]].copy()
+            with (
+                self.subTest(filename=filename),
+                tempfile.TemporaryDirectory() as temp_dir,
+            ):
+                root = Path(temp_dir)
+                unselected_stl = root / "unselected.stl"
+                first_stl = str(frame.iloc[1]["stl_path"]).split(";")[0].strip()
+                unselected_stl.write_bytes(
+                    (INPUTS / first_stl).read_bytes()
+                    if not Path(first_stl).is_absolute()
+                    else Path(first_stl).read_bytes()
+                )
+                original = unselected_stl.read_bytes()
+                frame.iloc[1, frame.columns.get_loc("stl_path")] = str(unselected_stl)
+                frame["save_vtp_on"] = 0
+                input_path = root / "cases.csv"
+                frame.to_csv(input_path, index=False)
+                stderr = io.StringIO()
+                with (
+                    patch("panelsolver.app.cli.run_and_write_product_cases") as run,
+                    contextlib.redirect_stderr(stderr),
+                    contextlib.redirect_stdout(io.StringIO()),
+                ):
+                    exit_code = main(
+                        [
+                            "--input",
+                            str(input_path),
+                            "--cases",
+                            str(frame.iloc[0]["case_id"]),
+                            "--output",
+                            str(unselected_stl),
+                            "--plain",
+                        ]
+                    )
+                self.assertEqual(1, exit_code)
+                run.assert_not_called()
+                self.assertEqual(original, unselected_stl.read_bytes())
+                self.assertIn("collision", stderr.getvalue())
+
     def test_checkpoint_option_reaches_runtime_and_old_name_is_rejected(self) -> None:
         parser = build_fmf_parser()
         with contextlib.redirect_stderr(io.StringIO()):

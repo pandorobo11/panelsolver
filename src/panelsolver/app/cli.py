@@ -14,6 +14,7 @@ from rich.markup import escape
 from rich_argparse import RawDescriptionRichHelpFormatter
 
 from .cli_presentation import CliPresentation, use_rich_ui
+from .csv_writer import case_stl_paths, validate_csv_output_path
 from .output_status import OutputFailuresError
 from .path_resolution import resolve_output_dir
 from .runtime import (
@@ -192,6 +193,10 @@ def _run_parsed_cli(policy: ProductCliPolicy, args: argparse.Namespace) -> int:
         else input_path.parent / "outputs" / f"{input_path.stem}_result.csv"
     )
     output = policy.validate_output_path(raw_output, input_path, rows)
+    # Planned VTPs follow the selection, but every loaded STL stays protected.
+    validate_csv_output_path(
+        output, case_stl_paths(input_path, frame.to_dict(orient="records"))
+    )
     output.parent.mkdir(parents=True, exist_ok=True)
 
     presentation = CliPresentation(

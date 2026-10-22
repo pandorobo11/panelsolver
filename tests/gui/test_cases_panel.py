@@ -1149,6 +1149,37 @@ class CasesPanelTests(unittest.TestCase):
         self.assertEqual("2147483647", checkpoint.lineEdit().text())
         panel.close()
 
+    def test_run_output_cannot_overwrite_stl_of_unselected_case(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="run_unselected_stl_") as directory:
+            unselected_stl = Path(directory) / "unselected.stl"
+            unselected_stl.write_bytes(b"solid unselected\nendsolid unselected\n")
+            original = unselected_stl.read_bytes()
+            rows = (
+                {**_rows()[0], "stl_path": str(Path(directory) / "selected.stl")},
+                {**_rows()[1], "stl_path": str(unselected_stl)},
+            )
+            panel, _ = self.make_panel(rows)
+            panel.load_input_file(Path(directory) / "cases.csv")
+            panel.case_table.selectRow(0)
+            self.assertEqual(
+                ["case_b"], [r["case_id"] for r in panel.selected_case_rows()]
+            )
+            emitted: list[tuple] = []
+            panel.run_requested.connect(lambda *args: emitted.append(args))
+            with (
+                patch.object(
+                    QtWidgets.QFileDialog,
+                    "getSaveFileName",
+                    return_value=(str(unselected_stl), "CSV"),
+                ),
+                patch.object(QtWidgets.QMessageBox, "critical") as critical,
+            ):
+                panel.request_run()
+            self.assertEqual([], emitted)
+            critical.assert_called_once()
+            self.assertIn("collision", panel.log.toPlainText())
+            self.assertEqual(original, unselected_stl.read_bytes())
+
     def test_run_cancel_and_output_rejection_do_not_emit(self) -> None:
         def reject(_out, _input, _rows):
             raise ValueError("collision")
