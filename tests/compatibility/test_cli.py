@@ -77,6 +77,25 @@ class PanelSolverCliTests(unittest.TestCase):
                             f"panelsolver {domain} {subcommand} --help", delegated
                         )
 
+    def test_no_arguments_print_help_and_missing_domain_is_a_usage_error(
+        self,
+    ) -> None:
+        stdout = io.StringIO()
+        with patch.dict(os.environ, {"COLUMNS": "80"}):
+            with contextlib.redirect_stdout(stdout):
+                self.assertEqual(0, panel_solver_main([]))
+        self.assertIn("usage: panelsolver", stdout.getvalue().casefold())
+        self.assertIn("{fmf,hypersonic}", stdout.getvalue())
+
+        for arguments in (["--plain"], ["--plain", "--verbose"]):
+            with self.subTest(arguments=arguments):
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr):
+                    with self.assertRaises(SystemExit) as caught:
+                        panel_solver_main(arguments)
+                self.assertEqual(2, caught.exception.code)
+                self.assertIn("flow domain is required", stderr.getvalue())
+
     def test_default_checkpoint_and_explicit_empty_case_selection(self) -> None:
         for builder in (build_fmf_parser, build_hypersonic_parser):
             with self.subTest(builder=builder.__name__):

@@ -140,6 +140,13 @@ def _smoke_sectional_cli(
         "001,0,0,0,0,1,0,3\noblique,0,0,0,1,1,1,4\n",
         encoding="utf-8",
     )
+    cp_definitions = root / "cp-sections.csv"
+    cp_definitions.write_text(
+        "section_id,origin_x_stl_m,origin_y_stl_m,origin_z_stl_m,"
+        "direction_x_stl,direction_y_stl,direction_z_stl,section_count\n"
+        "001,0,0,0,0,1,0,3\noblique,0,0,0,1,1,1,2\n",
+        encoding="utf-8",
+    )
     command = _command_path("panelsolver")
     for domain, product, module in (
         ("fmf", "fmfsolver", fmf),
@@ -198,6 +205,63 @@ def _smoke_sectional_cli(
             or unused_output.exists()
         ):
             raise RuntimeError(f"installed {domain} sectional result contract failed")
+        cp_help = subprocess.run(
+            [command, domain, "sectional-cp", "--help"],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            env=environment,
+            check=True,
+        )
+        if "sectional-cp" not in cp_help.stdout or "--sections" not in cp_help.stdout:
+            raise RuntimeError(f"installed {domain} sectional Cp help is incomplete")
+        cp_output = root / f"{domain}-sectional-cp.csv"
+        completed = subprocess.run(
+            [
+                command,
+                domain,
+                "sectional-cp",
+                "-i",
+                str(case_path),
+                "-d",
+                str(cp_definitions),
+                "-o",
+                str(cp_output),
+                "--plain",
+            ],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            env=environment,
+            check=False,
+        )
+        if completed.returncode or not cp_output.is_file():
+            raise RuntimeError(
+                f"installed {domain} sectional Cp run failed: {completed.stderr}"
+            )
+        with cp_output.open(encoding=CSV_ENCODING, newline="") as stream:
+            reader = csv.DictReader(stream)
+            cp_rows = list(reader)
+            cp_columns = tuple(reader.fieldnames or ())
+        expected_planes = {
+            (str(case_id), section_id, str(index))
+            for case_id in frame["case_id"]
+            for section_id, count in (("001", 3), ("oblique", 2))
+            for index in range(count)
+        }
+        if (
+            not {"x0_stl_m", "z1_stl_m", "scalar_name", "scalar_value"}
+            <= set(cp_columns)
+            or {row["batch_status"] for row in cp_rows} != {"completed"}
+            or {
+                (row["case_id"], row["section_id"], row["plane_index"])
+                for row in cp_rows
+            }
+            != expected_planes
+            or not any(row["plane_status"] == "ok" for row in cp_rows)
+            or unused_output.exists()
+        ):
+            raise RuntimeError(f"installed {domain} sectional Cp contract failed")
 
 
 def _smoke_gui_entrypoint(staging: Path) -> None:
