@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import math
 import signal
 from pathlib import Path
 from unittest.mock import patch
@@ -87,6 +88,60 @@ def test_cli_real_batch_independent_filters_and_no_intermediate_artifacts(
 
 
 @pytest.mark.parametrize(
+    ("domain", "scalar_name"),
+    (("fmf", "normal_traction_coeff"), ("hypersonic", "cp")),
+)
+def test_cp_cli_real_batch_columns_filters_and_no_intermediate_artifacts(
+    tmp_path, domain, scalar_name
+):
+    from panelsolver.app.sectional_cp_csv import CP_CSV_COLUMNS
+
+    paths = _inputs(tmp_path, domain)
+    paths[1].write_text(
+        HEADER.replace("bin_count", "section_count")
+        + '001,0,0,0,0,1,0,3,\n"a,b",0,0,0,1,1,1,2,0\n',
+        encoding="utf-8",
+    )
+    args = _args(domain, paths)
+    args[1] = "sectional-cp"
+    assert main(args) == 0
+    with paths[2].open(encoding="utf-8-sig", newline="") as stream:
+        assert tuple(next(csv.reader(stream))) == CP_CSV_COLUMNS
+    all_rows = _rows(paths[2])
+    assert {row["batch_status"] for row in all_rows} == {"completed"}
+    assert {row["section_count"] for row in all_rows} == {"3", "2"}
+    planes = {(r["case_id"], r["section_id"], r["plane_index"]) for r in all_rows}
+    assert planes == {
+        (case_id, section_id, str(index))
+        for case_id in ("case_001", "case_002")
+        for section_id, count in (("001", 3), ("a,b", 2))
+        for index in range(count)
+    }
+    segments = [row for row in all_rows if row["plane_status"] == "ok"]
+    assert segments
+    assert {row["scalar_name"] for row in segments} == {scalar_name}
+    for row in segments:
+        for column in (
+            "x0_stl_m",
+            "y0_stl_m",
+            "z0_stl_m",
+            "x1_stl_m",
+            "y1_stl_m",
+            "z1_stl_m",
+            "scalar_value",
+        ):
+            assert math.isfinite(float(row[column]))
+    assert not (tmp_path / "outputs").exists()
+    assert main(args + ["--cases", "case_002", "--sections", "a,b"]) == 0
+    selected = _rows(paths[2])
+    expected = [
+        r for r in all_rows if r["case_id"] == "case_002" and r["section_id"] == "a,b"
+    ]
+    assert expected
+    assert selected == expected
+
+
+@pytest.mark.parametrize(
     "selector",
     (
         ["--cases", "unknown"],
@@ -159,11 +214,13 @@ def test_cli_cooperative_sigint_retains_partial_and_restores_handler(tmp_path, c
 
 
 @pytest.mark.parametrize("domain", ("fmf", "hypersonic"))
-def test_sectional_help_and_workers_validation(domain, capsys):
+@pytest.mark.parametrize("command", ("sectional-loads", "sectional-cp"))
+def test_sectional_help_and_workers_validation(domain, command, capsys):
     with pytest.raises(SystemExit) as caught:
-        main([domain, "sectional-loads", "--help"])
+        main([domain, command, "--help"])
     assert caught.value.code == 0
     help_text = capsys.readouterr().out
+    assert f"{domain} {command}" in help_text
     for text in (
         "STL",
         "metres",
@@ -175,7 +232,7 @@ def test_sectional_help_and_workers_validation(domain, capsys):
     ):
         assert text in help_text
     with pytest.raises(SystemExit) as caught:
-        main([domain, "sectional-loads", "-i", "x", "-d", "y", "-o", "z", "-j", "0"])
+        main([domain, command, "-i", "x", "-d", "y", "-o", "z", "-j", "0"])
     assert caught.value.code == 2
 
 

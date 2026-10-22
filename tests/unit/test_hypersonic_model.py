@@ -27,6 +27,7 @@ from panelsolver.models.hypersonic import (
     prandtl_meyer_pressure_coefficient,
     tangent_wedge_pressure_coefficient,
 )
+from panelsolver.models.hypersonic.tangent_wedge import _weak_oblique_shock_beta
 
 
 def _geometry(
@@ -43,6 +44,39 @@ def _geometry(
             if component_ids is None
             else component_ids
         ),
+    )
+
+
+def _cot_beta_cubic(mach: float, gamma: float, theta_rad: float) -> np.ndarray:
+    """Coefficients of the theta-beta-Mach relation as a cubic in cot(beta)."""
+    tan_theta = math.tan(theta_rad)
+    m2 = mach * mach
+    return np.array(
+        [
+            2.0,
+            tan_theta * (m2 * (gamma + 1.0) + 2.0),
+            -2.0 * (m2 - 1.0),
+            tan_theta * (m2 * (gamma - 1.0) + 2.0),
+        ]
+    )
+
+
+def _depressed_cubic_discriminant(coefficients: np.ndarray) -> float:
+    """Cardano discriminant ``(q/2)^2 + (p/3)^3`` of a monic-normalized cubic."""
+    ba, ca, da = coefficients[1:] / coefficients[0]
+    p = ca - ba * ba / 3.0
+    q = 2.0 * ba**3 / 27.0 - ba * ca / 3.0 + da
+    return float((0.5 * q) ** 2 + (p / 3.0) ** 3)
+
+
+def _theta_from_beta(mach: float, gamma: float, beta_rad: float) -> float:
+    """Oblique-shock theta-beta-Mach relation (Anderson, Modern Compressible Flow)."""
+    m2 = mach * mach
+    return math.atan(
+        2.0
+        / math.tan(beta_rad)
+        * (m2 * math.sin(beta_rad) ** 2 - 1.0)
+        / (m2 * (gamma + math.cos(2.0 * beta_rad)) + 2.0)
     )
 
 
@@ -181,6 +215,82 @@ class HypersonicModelTests(unittest.TestCase):
             )[0]
         )
         self.assertGreater(attached, 0.0)
+
+    def test_weak_shock_cubic_single_and_three_real_root_branches(self) -> None:
+        mach = 2.0
+        gamma = 1.4
+        theta_max, _cp_crit = _tangent_wedge_detach_limit(mach, gamma)
+        theta_attached = 0.2
+        theta_detached = theta_max + 0.05
+        coefficients = {
+            theta: _cot_beta_cubic(mach, gamma, theta)
+            for theta in (theta_attached, theta_detached)
+        }
+        # Guard that the chosen inputs reach the intended Cardano branches.
+        self.assertLess(
+            _depressed_cubic_discriminant(coefficients[theta_attached]), -1.0e-3
+        )
+        self.assertGreater(
+            _depressed_cubic_discriminant(coefficients[theta_detached]), 1.0e-3
+        )
+
+        beta = _weak_oblique_shock_beta(
+            mach, gamma, np.array([theta_attached, theta_detached])
+        )
+
+        # Attached: three real roots; the weak shock is the largest admissible
+        # cot(beta), i.e. the smallest shock angle above the Mach angle.
+        roots = np.roots(coefficients[theta_attached])
+        self.assertTrue(np.all(np.abs(roots.imag) < 1.0e-12))
+        admissible = roots.real[
+            (roots.real > 0.0) & (roots.real < math.sqrt(mach * mach - 1.0))
+        ]
+        self.assertEqual(2, admissible.size)
+        expected_beta = math.atan2(1.0, float(np.max(admissible)))
+        self.assertAlmostEqual(expected_beta, beta[0], places=12)
+        self.assertGreater(beta[0], math.asin(1.0 / mach))
+        self.assertAlmostEqual(
+            theta_attached, _theta_from_beta(mach, gamma, beta[0]), places=12
+        )
+
+        # Detached: one real root and it is negative, so no attached solution.
+        roots = np.roots(coefficients[theta_detached])
+        real_roots = roots.real[np.abs(roots.imag) < 1.0e-9]
+        self.assertEqual(1, real_roots.size)
+        self.assertLess(real_roots[0], 0.0)
+        self.assertTrue(np.isnan(beta[1]))
+
+    def test_weak_shock_cubic_double_root_at_detachment(self) -> None:
+        mach = 1.01
+        gamma = 1.4
+        theta_max, cp_crit = _tangent_wedge_detach_limit(mach, gamma)
+        coefficients = _cot_beta_cubic(mach, gamma, theta_max)
+        # At the detachment angle weak and strong roots coincide; the
+        # discriminant is within the solver's near-zero tolerance.
+        self.assertLessEqual(abs(_depressed_cubic_discriminant(coefficients)), 1e-16)
+
+        m2 = mach * mach
+        term_a = (gamma + 1.0) * m2 / 4.0 - 1.0
+        term_b = (gamma + 1.0) * (
+            (gamma + 1.0) * m2 * m2 / 16.0 + (gamma - 1.0) * m2 / 2.0 + 1.0
+        )
+        beta_max = math.asin(math.sqrt((term_a + math.sqrt(term_b)) / (gamma * m2)))
+        positive = np.sort(np.roots(coefficients).real)[1:]
+        self.assertAlmostEqual(positive[0], positive[1], places=6)
+        self.assertAlmostEqual(math.atan2(1.0, float(positive.mean())), beta_max, 9)
+
+        beta = float(_weak_oblique_shock_beta(mach, gamma, np.array([theta_max]))[0])
+        self.assertAlmostEqual(beta_max, beta, places=12)
+        self.assertAlmostEqual(theta_max, _theta_from_beta(mach, gamma, beta), 12)
+
+        cap = modified_newtonian_cp_max(mach, gamma)
+        cp = tangent_wedge_pressure_coefficient(
+            mach, gamma, np.array([theta_max]), cp_cap=cap
+        )[0]
+        mn1_sq = m2 * math.sin(beta_max) ** 2
+        expected_cp = 4.0 * (mn1_sq - 1.0) / ((gamma + 1.0) * m2)
+        self.assertAlmostEqual(expected_cp, cp, places=10)
+        self.assertAlmostEqual(cp_crit, cp, places=10)
 
     def test_prandtl_meyer_iteration_and_vacuum_bound_are_retained(self) -> None:
         gamma = 1.67
