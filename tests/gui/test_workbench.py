@@ -21,17 +21,15 @@ from tests.gui import test_cases_panel
 from tests.gui.test_viewer_panel import FakePlotter, FakePoly
 
 
-class WorkbenchTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
+class WorkbenchTests(test_cases_panel.CasesPanelFixture, unittest.TestCase):
     def panel(self):
-        return test_cases_panel.CasesPanelTests().make_panel()[0]
+        return self.make_panel()[0]
 
     def viewer(self, spec=None):
         spec = spec or self.panel().spec
-        return ViewerPanel(spec, plotter_factory=lambda _parent: FakePlotter())
+        return self.own_widget(
+            ViewerPanel(spec, plotter_factory=lambda _parent: FakePlotter())
+        )
 
     def test_flow_centers_different_heights_on_each_wrapped_line(self):
         host = QtWidgets.QWidget()
@@ -194,7 +192,7 @@ class WorkbenchTests(unittest.TestCase):
             {"case_id": f"case_{n}", "stl_path": "model.stl", "S": 5.0}
             for n in range(80)
         )
-        panel = test_cases_panel.CasesPanelTests().make_panel(rows)[0]
+        panel = self.make_panel(rows)[0]
         panel.load_input_file("/tmp/scroll-input.csv")
         panel.resize(620, 500)
         panel.show()
@@ -215,7 +213,7 @@ class WorkbenchTests(unittest.TestCase):
         rows = tuple(
             {"case_id": f"case_{n}", "stl_path": "model.stl"} for n in range(80)
         )
-        panel = test_cases_panel.CasesPanelTests().make_panel(rows)[0]
+        panel = self.make_panel(rows)[0]
         try:
             panel.load_input_file("/tmp/align.csv")
             panel.show()
@@ -275,9 +273,7 @@ class WorkbenchTests(unittest.TestCase):
             self.app.setFont(previous_font)
 
     def assert_small_window_controls_fit(self, spec_factory):
-        panel = test_cases_panel.CasesPanelTests().make_panel(
-            spec_factory=spec_factory
-        )[0]
+        panel = self.make_panel(spec_factory=spec_factory)[0]
         viewer = self.viewer(panel.spec)
         window = MainWindow(
             panel.spec,
@@ -285,6 +281,7 @@ class WorkbenchTests(unittest.TestCase):
             viewer_panel=viewer,
             persist_layout=False,
         )
+        self.own_widget(window)
         try:
             # Measure the widest settings state: advanced checkpoint controls shown.
             panel.btn_advanced_settings.setChecked(True)
@@ -411,6 +408,7 @@ class WorkbenchTests(unittest.TestCase):
                         viewer_panel=viewer,
                         persist_layout=False,
                     )
+                    self.own_widget(window)
                     panel.load_input_file("/tmp/input.csv")
                     panel.btn_advanced_settings.setChecked(True)
                     window.show()
@@ -544,6 +542,7 @@ class WorkbenchTests(unittest.TestCase):
         window = MainWindow(
             panel.spec, cases_panel=panel, viewer_panel=viewer, persist_layout=False
         )
+        self.own_widget(window)
         window.close()
         window.close()
         self.assertEqual(["closed"], calls)
@@ -561,6 +560,7 @@ class WorkbenchTests(unittest.TestCase):
                 viewer_panel=viewer,
                 layout_settings=settings,
             )
+            self.own_widget(window)
             panel.load_input_file("/tmp/input.csv")
             column = panel._table_columns.index("ray_backend")
             panel.case_table.setColumnWidth(column, 211)
@@ -581,6 +581,7 @@ class WorkbenchTests(unittest.TestCase):
                 viewer_panel=next_viewer,
                 layout_settings=settings,
             )
+            self.own_widget(next_window)
             next_panel.load_input_file("/tmp/input.csv")
             self.assertFalse(next_panel.case_table.isColumnHidden(column))
             self.assertEqual(
@@ -594,3 +595,6 @@ class WorkbenchTests(unittest.TestCase):
             self.assertFalse(next_panel.btn_diagnostics.isChecked())
             self.assertFalse(settings.contains("layout/v1/Hypersonic/columns"))
             next_window.close()
+            # Destroy both windows while their settings directory still exists.
+            self.dispose_widget(next_window)
+            self.dispose_widget(window)

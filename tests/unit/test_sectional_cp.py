@@ -2,6 +2,7 @@
 
 import csv
 import pickle
+from pathlib import Path
 from unittest.mock import patch
 
 import numpy as np
@@ -18,6 +19,8 @@ from panelsolver.domains import fmf, hypersonic
 from panelsolver.postprocess import compute_sectional_cp
 from tests.unit.test_postprocess import _solve
 from tests.unit.test_sectional_geometry import TRIANGLE, make_mesh
+
+EXAMPLES = Path(__file__).parents[2] / "examples"
 
 
 def definition(**changes):
@@ -250,7 +253,7 @@ def test_batch_parser_and_csv(tmp_path, domain):
     )
     defs = read_sectional_definitions(path, cp=True)
     row = (
-        domain.read_cases(f"examples/{domain.RUNTIME_POLICY.product_id}/basic.csv")
+        domain.read_cases(EXAMPLES / domain.RUNTIME_POLICY.product_id / "basic.csv")
         .iloc[0]
         .to_dict()
     )
@@ -273,7 +276,7 @@ def test_batch_parser_and_csv(tmp_path, domain):
 
 
 def test_failed_planes_continue_in_batch():
-    row = hypersonic.read_cases("examples/hypersonic/basic.csv").iloc[0].to_dict()
+    row = hypersonic.read_cases(EXAMPLES / "hypersonic" / "basic.csv").iloc[0].to_dict()
     defs = (
         SectionalDefinition(
             "cut", definition(section_count=3, start_m=-0.5, stop_m=0.5)
@@ -286,7 +289,7 @@ def test_failed_planes_continue_in_batch():
 
 
 def test_resolution_failure_retains_row_and_continues():
-    row = hypersonic.read_cases("examples/hypersonic/basic.csv").iloc[0].to_dict()
+    row = hypersonic.read_cases(EXAMPLES / "hypersonic" / "basic.csv").iloc[0].to_dict()
     defs = (
         SectionalDefinition("invalid_component", definition(component_ids=(999,))),
         SectionalDefinition("empty", definition(start_m=10, stop_m=10)),
@@ -299,7 +302,7 @@ def test_resolution_failure_retains_row_and_continues():
 
 
 def test_failed_coplanar_plane_batch_and_following_case():
-    row = hypersonic.read_cases("examples/hypersonic/basic.csv").iloc[0].to_dict()
+    row = hypersonic.read_cases(EXAMPLES / "hypersonic" / "basic.csv").iloc[0].to_dict()
     # The basic example is a flat x=0 plate; cut x=-1,0,1.
     defs = (
         SectionalDefinition(
@@ -325,7 +328,7 @@ def test_failed_coplanar_plane_batch_and_following_case():
 @pytest.mark.parametrize("domain", [fmf, hypersonic])
 def test_cp_spawn_matches_serial(domain):
     row = (
-        domain.read_cases(f"examples/{domain.RUNTIME_POLICY.product_id}/basic.csv")
+        domain.read_cases(EXAMPLES / domain.RUNTIME_POLICY.product_id / "basic.csv")
         .iloc[0]
         .to_dict()
     )
@@ -423,7 +426,7 @@ def test_coplanar_failure_still_overrides_omissions():
 
 
 def test_warning_batch_completes_and_saves(tmp_path):
-    row = hypersonic.read_cases("examples/hypersonic/basic.csv").iloc[0].to_dict()
+    row = hypersonic.read_cases(EXAMPLES / "hypersonic" / "basic.csv").iloc[0].to_dict()
     result = collapsed_loop()
     logs = []
     with patch(
@@ -493,7 +496,7 @@ def test_compact_csv_counts_and_diagnostic_serialization():
 
 
 def test_cp_failure_details_are_logged_not_exported():
-    row = hypersonic.read_cases("examples/hypersonic/basic.csv").iloc[0].to_dict()
+    row = hypersonic.read_cases(EXAMPLES / "hypersonic" / "basic.csv").iloc[0].to_dict()
     definitions = (
         SectionalDefinition("invalid", definition(component_ids=(999,))),
         SectionalDefinition("coplanar", definition(start_m=0, stop_m=0)),
