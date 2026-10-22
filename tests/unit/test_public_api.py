@@ -248,6 +248,56 @@ class PublicApiTests(unittest.TestCase):
                     ):
                         factory(invalid)
 
+    def test_cases_reject_numeric_booleans_inside_moment_reference(self) -> None:
+        fmf_row = (
+            read_current_cases(read_fmf_cases, INPUTS / "fmfsolver_cases.csv")
+            .iloc[0]
+            .to_dict()
+        )
+        hypersonic_row = (
+            read_current_cases(read_hypersonic_cases, INPUTS / "newtsolver_cases.csv")
+            .iloc[0]
+            .to_dict()
+        )
+
+        def fmf(reference: object) -> FMFCase:
+            common = _common(fmf_row)
+            common["moment_reference_stl_m"] = reference
+            return FMFCase(
+                **common,
+                speed_ratio=fmf_row["S"],
+                translational_temperature_k=fmf_row["Ti_K"],
+                wall_temperature_k=fmf_row["Tw_K"],
+            )
+
+        def hypersonic(reference: object) -> HypersonicCase:
+            common = _common(hypersonic_row)
+            common["moment_reference_stl_m"] = reference
+            return HypersonicCase(
+                **common,
+                mach=hypersonic_row["Mach"],
+                gamma=hypersonic_row["gamma"],
+                windward_equation=hypersonic_row["windward_eq"],
+                leeward_equation=hypersonic_row["leeward_eq"],
+            )
+
+        for factory in (fmf, hypersonic):
+            self.assertEqual(
+                (1, 0.5, -2.0),
+                factory([1, np.float32(0.5), -2.0]).moment_reference_stl_m,
+            )
+            for reference in (
+                (True, 0.0, 0.0),
+                [0.0, np.bool_(False), 0.0],
+                np.array([0.0, 0.0, True], dtype=object),
+                np.array([True, False, True]),
+            ):
+                with (
+                    self.subTest(factory=factory.__name__, reference=repr(reference)),
+                    self.assertRaisesRegex(ValueError, "moment_reference_stl_m"),
+                ):
+                    factory(reference)
+
     def test_in_memory_solves_match_case_tables_with_normalized_case_ids(self) -> None:
         nfd = "e\N{COMBINING ACUTE ACCENT}-signature"
         nfc = unicodedata.normalize("NFC", nfd)

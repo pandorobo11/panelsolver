@@ -21,6 +21,7 @@ from panelsolver.core import (
     PanelSolverError,
     ShapeError,
 )
+from panelsolver.core._validation import float_array
 
 
 def panel_geometry() -> PanelGeometry:
@@ -243,6 +244,71 @@ class GeometryAndFlowValidationTests(unittest.TestCase):
                 self.assertRaises(expected_error),
             ):
                 PanelFlowState(velocity_hat_stl=velocity, shielded=shielded)
+
+    def test_real_arrays_reject_numeric_booleans_inside_containers(self) -> None:
+        mixed_vectors = (
+            [True, 0.0, 0.0],
+            (1.0, np.bool_(False), 0.0),
+            [np.bool_(True), 0, 0],
+        )
+        for value in (
+            *mixed_vectors,
+            [[1.0, 0.0, 0.0], [0.0, True, 0.0]],
+            [np.array([1.0, 0.0, 0.0]), np.array([True, False, False])],
+            ([1.0, 0.0, 0.0], (0.0, 0.0, np.bool_(True))),
+        ):
+            with (
+                self.subTest(value=repr(value)),
+                self.assertRaisesRegex(ContractValueError, "real-valued"),
+            ):
+                float_array(value, field="synthetic", shape=("n", 3)[-np.ndim(value) :])
+        np.testing.assert_array_equal(
+            [[1.0, 0.0, 0.0], [0.0, 2.0, 3.0]],
+            float_array(
+                [[1, 0, 0.0], (np.int32(0), 2.0, np.float32(3.0))],
+                field="synthetic",
+                shape=("n", 3),
+            ),
+        )
+
+        valid_geometry = {
+            "centers_stl_m": [[0.0, 0.0, 0.0]],
+            "normals_out_stl": [[1.0, 0.0, 0.0]],
+            "areas_m2": [1.0],
+            "component_ids": [0],
+        }
+        PanelGeometry(**valid_geometry)
+        for field, value in (
+            ("centers_stl_m", [[True, 0, 0]]),
+            ("normals_out_stl", ([np.bool_(True), 0.0, 0.0],)),
+            ("areas_m2", [True]),
+            ("areas_m2", (np.bool_(True),)),
+        ):
+            with (
+                self.subTest(field=field, value=repr(value)),
+                self.assertRaisesRegex(ContractValueError, field),
+            ):
+                PanelGeometry(**{**valid_geometry, field: value})
+
+        for velocity in mixed_vectors:
+            with (
+                self.subTest(velocity=repr(velocity)),
+                self.assertRaisesRegex(ContractValueError, "velocity_hat_stl"),
+            ):
+                PanelFlowState(velocity_hat_stl=velocity, shielded=[False])
+            with (
+                self.subTest(reference=repr(velocity)),
+                self.assertRaisesRegex(ContractValueError, "moment_reference_stl_m"),
+            ):
+                CommonCasePayload(
+                    case_id="synthetic",
+                    Aref_m2=1.0,
+                    moment_reference_stl_m=velocity,
+                    Lref_Cl_m=1.0,
+                    Lref_Cm_m=1.0,
+                    Lref_Cn_m=1.0,
+                    alpha_stability_deg=0.0,
+                )
 
     def test_array_coercion_errors_are_field_aware_contract_errors(self) -> None:
         valid_geometry = {

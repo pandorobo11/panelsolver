@@ -24,6 +24,7 @@ from panelsolver.core import (
     ShieldingConfig,
     execute_case,
 )
+from panelsolver.core._validation import contains_numeric_boolean
 from panelsolver.core.mesh import PanelMesh
 from panelsolver.models import HypersonicModel, ModelRegistry, SentmanModel
 
@@ -41,6 +42,10 @@ def _reference_point(value: Sequence[float]) -> tuple[float, float, float]:
     point = tuple(value)
     if len(point) != 3:
         raise ValueError("moment_reference_stl_m must contain exactly three values")
+    if contains_numeric_boolean(point):
+        raise ValueError(
+            "moment_reference_stl_m must contain real numbers, not booleans"
+        )
     return point
 
 
