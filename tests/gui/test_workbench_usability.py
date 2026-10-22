@@ -50,23 +50,20 @@ class _ScalarBarPlotter(FakePlotter):
         self.scalar_bars.clear()
 
 
-class WorkbenchUsabilityTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls) -> None:
-        cls.app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
+class WorkbenchUsabilityTests(test_cases_panel.CasesPanelFixture, unittest.TestCase):
     def make_window(self, spec_factory=test_cases_panel.fmf_solver_spec):
-        panel = test_cases_panel.CasesPanelTests().make_panel(
-            spec_factory=spec_factory
-        )[0]
-        viewer = ViewerPanel(panel.spec, plotter_factory=lambda _parent: FakePlotter())
-        window = MainWindow(
-            panel.spec,
-            cases_panel=panel,
-            viewer_panel=viewer,
-            persist_layout=False,
+        panel = self.make_panel(spec_factory=spec_factory)[0]
+        viewer = self.own_widget(
+            ViewerPanel(panel.spec, plotter_factory=lambda _parent: FakePlotter())
         )
-        self.addCleanup(window.close)
+        window = self.own_widget(
+            MainWindow(
+                panel.spec,
+                cases_panel=panel,
+                viewer_panel=viewer,
+                persist_layout=False,
+            )
+        )
         return window, panel, viewer
 
     def test_empty_case_table_offers_input_actions_until_cases_load(self) -> None:
@@ -102,8 +99,7 @@ class WorkbenchUsabilityTests(unittest.TestCase):
         self.assertFalse(panel.btn_clear_selection.isEnabled())
 
     def test_input_path_keeps_file_name_and_full_path(self) -> None:
-        field = ElidedPathField()
-        self.addCleanup(field.close)
+        field = self.own_widget(ElidedPathField())
         field.show()
         path = "/Users/example/work/very/long/checkout/workspace/hypersonic/pressure_models.csv"
         tail = "/hypersonic/pressure_models.csv"
@@ -247,11 +243,12 @@ class WorkbenchUsabilityTests(unittest.TestCase):
 
     def test_colorbar_title_is_drawn_apart_from_tick_labels(self) -> None:
         plotter = _ScalarBarPlotter()
-        viewer = ViewerPanel(
-            test_cases_panel.newt_solver_spec(),
-            plotter_factory=lambda _parent: plotter,
+        viewer = self.own_widget(
+            ViewerPanel(
+                test_cases_panel.newt_solver_spec(),
+                plotter_factory=lambda _parent: plotter,
+            )
         )
-        self.addCleanup(viewer.close)
         viewer.load_vtp("/tmp/case.vtp", FakePoly({"cp": [0.2, 0.5]}))
         options = plotter.mesh_calls[0][1]["scalar_bar_args"]
         self.assertEqual("Cp", options["title"])

@@ -110,32 +110,47 @@ import threading
 import unittest
 from unittest.mock import patch
 
+from panelsolver.app.main_window import MainWindow
 from tests.gui import test_cases_panel as cases
+from tests.gui import test_workbench as workbench
+from tests.gui import test_workbench_usability as usability
 
 gui_thread = threading.get_ident()
 created = []
 destroyed = []
-original = cases.CasesPanel.__init__
 
-def initialize(self, *args, **kwargs):
-    original(self, *args, **kwargs)
-    token = len(created)
-    created.append(token)
-    # Capture only a token, never the panel whose lifetime we measure.
-    self.destroyed.connect(lambda: destroyed.append((token, threading.get_ident())))
-
-with patch.object(cases.CasesPanel, '__init__', initialize):
-    cases.CasesPanelTests.setUpClass()
-    names = unittest.defaultTestLoader.getTestCaseNames(cases.CasesPanelTests)
-    for name in names:
-        result = unittest.TestResult()
-        cases.CasesPanelTests(name).run(result)
-        assert result.wasSuccessful(), (name, result.errors, result.failures)
-        # A panel left to cyclic GC could be collected later by a Qt worker.
-        assert sorted(token for token, _ in destroyed) == created, (
-            name, 'test left a native CasesPanel alive', created, destroyed
+def watch(original):
+    def initialize(self, *args, **kwargs):
+        original(self, *args, **kwargs)
+        token = len(created)
+        created.append(token)
+        # Capture only a token, never the widget whose lifetime we measure.
+        self.destroyed.connect(
+            lambda: destroyed.append((token, threading.get_ident()))
         )
-        assert all(thread == gui_thread for _, thread in destroyed)
+    return initialize
+
+with (
+    patch.object(cases.CasesPanel, '__init__', watch(cases.CasesPanel.__init__)),
+    patch.object(MainWindow, '__init__', watch(MainWindow.__init__)),
+):
+    for case in (
+        cases.CasesPanelTests,
+        workbench.WorkbenchTests,
+        usability.WorkbenchUsabilityTests,
+    ):
+        case.setUpClass()
+        names = unittest.defaultTestLoader.getTestCaseNames(case)
+        for name in names:
+            result = unittest.TestResult()
+            case(name).run(result)
+            assert result.wasSuccessful(), (name, result.errors, result.failures)
+            # A panel left to cyclic GC could be collected later by a Qt worker.
+            assert sorted(token for token, _ in destroyed) == created, (
+                name, 'test left a native CasesPanel or MainWindow alive',
+                created, destroyed,
+            )
+            assert all(thread == gui_thread for _, thread in destroyed)
 
 assert created
 print('CasesPanel fixtures destroyed on the GUI thread after each test')
@@ -146,7 +161,7 @@ print('CasesPanel fixtures destroyed on the GUI thread after each test')
         capture_output=True,
         text=True,
         check=False,
-        timeout=90,
+        timeout=180,
     )
     assert result.returncode == 0, result.stdout + result.stderr
     assert "destroyed on the GUI thread after each test" in result.stdout

@@ -10,7 +10,7 @@ from pathlib import Path
 import pyvista as pv
 from PySide6 import QtCore, QtWidgets
 
-from .csv_writer import validate_csv_output_path
+from .csv_writer import case_stl_paths, validate_csv_output_path
 from .gui_components import (
     ElidedPathField,
     FlowLayout,
@@ -894,7 +894,14 @@ class CasesPanel(QtWidgets.QWidget):
                 self.input_path,
                 rows,
             )
-            validate_csv_output_path(output_path, self.sectional_definition_paths)
+            # Planned VTPs follow the selection, but every loaded STL is protected.
+            validate_csv_output_path(
+                output_path,
+                (
+                    *self.sectional_definition_paths,
+                    *case_stl_paths(self.input_path, self.case_rows),
+                ),
+            )
         except Exception as exc:
             self.logln(f"[ERROR] {exc}")
             QtWidgets.QMessageBox.critical(
