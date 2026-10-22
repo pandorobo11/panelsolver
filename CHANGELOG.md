@@ -6,6 +6,14 @@ migration baselines and runtime artifact version semantics are recorded in ADR
 
 ## [Unreleased]
 
+- Fix `--output` (CLI) and the Save Results path (GUI) overwriting the STL file
+  of a case that was not selected for the run. Only the selected cases' STL
+  files were checked, so `--cases one --output b.stl` replaced case `two`'s
+  `b.stl` with the Summary CSV. Every STL in the loaded case table is now
+  protected and the run is rejected before it starts (CLI exit code 1).
+  Planned VTP collision checks still cover only the selected cases. Numerical
+  results and output files are unchanged.
+
 ## [0.2.0rc1] - 2026-10-16
 
 - Fix a rare GUI freeze when a calculation or CSV save finishes. Calculation
