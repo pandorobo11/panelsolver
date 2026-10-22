@@ -7,6 +7,8 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import numpy as np
+
 from panelsolver.app.attitude import ResolvedAttitude
 from panelsolver.app.case_identity import validate_case_id
 from panelsolver.app.execution import request_from_registry
@@ -22,6 +24,7 @@ from panelsolver.core import (
     ShieldingConfig,
     execute_case,
 )
+from panelsolver.core._validation import contains_numeric_boolean
 from panelsolver.core.mesh import PanelMesh
 from panelsolver.models import HypersonicModel, ModelRegistry, SentmanModel
 
@@ -39,6 +42,10 @@ def _reference_point(value: Sequence[float]) -> tuple[float, float, float]:
     point = tuple(value)
     if len(point) != 3:
         raise ValueError("moment_reference_stl_m must contain exactly three values")
+    if contains_numeric_boolean(point):
+        raise ValueError(
+            "moment_reference_stl_m must contain real numbers, not booleans"
+        )
     return point
 
 
@@ -162,7 +169,10 @@ def _solve(
     common = CommonCasePayload(
         case_id=case.case_id,
         Aref_m2=case.Aref_m2,
-        moment_reference_stl_m=case.moment_reference_stl_m,
+        moment_reference_stl_m=np.asarray(
+            case.moment_reference_stl_m,
+            dtype=np.float64,
+        ),
         Lref_Cl_m=case.Lref_Cl_m,
         Lref_Cm_m=case.Lref_Cm_m,
         Lref_Cn_m=case.Lref_Cn_m,
