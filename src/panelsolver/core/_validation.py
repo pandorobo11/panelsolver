@@ -22,6 +22,24 @@ def _array_input(value: object, *, field: str) -> np.ndarray:
         raise ContractValueError(field, "must be a rectangular array") from exc
 
 
+def contains_numeric_boolean(value: object) -> bool:
+    """Return whether an array input holds a boolean element at any depth.
+
+    NumPy coercion of a mixed container such as ``[True, 0, 0]`` yields an
+    integer array, so the boolean must be detected before coercion.
+    """
+    if isinstance(value, (bool, np.bool_)):
+        return True
+    if isinstance(value, np.ndarray):
+        return value.dtype.kind == "b" or (
+            value.dtype.kind == "O"
+            and any(contains_numeric_boolean(item) for item in value.flat)
+        )
+    if isinstance(value, (list, tuple)):
+        return any(contains_numeric_boolean(item) for item in value)
+    return False
+
+
 class FrozenMapping[T](Mapping[str, T]):
     """Small insertion-ordered, immutable, and pickle-friendly mapping."""
 
@@ -101,6 +119,8 @@ def float_array(
     shape: tuple[int | str, ...],
 ) -> np.ndarray:
     """Copy, validate, and freeze a real-valued array as float64."""
+    if contains_numeric_boolean(value):
+        raise ContractValueError(field, "must be a real-valued array")
     raw = _array_input(value, field=field)
     if raw.dtype.kind not in "iuf":
         raise ContractValueError(field, "must be a real-valued array")

@@ -7,8 +7,6 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
 
-import numpy as np
-
 from panelsolver.app.attitude import ResolvedAttitude
 from panelsolver.app.case_identity import validate_case_id
 from panelsolver.app.execution import request_from_registry
@@ -164,10 +162,7 @@ def _solve(
     common = CommonCasePayload(
         case_id=case.case_id,
         Aref_m2=case.Aref_m2,
-        moment_reference_stl_m=np.asarray(
-            case.moment_reference_stl_m,
-            dtype=np.float64,
-        ),
+        moment_reference_stl_m=case.moment_reference_stl_m,
         Lref_Cl_m=case.Lref_Cl_m,
         Lref_Cm_m=case.Lref_Cm_m,
         Lref_Cn_m=case.Lref_Cn_m,

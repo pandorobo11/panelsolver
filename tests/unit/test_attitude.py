@@ -74,6 +74,9 @@ class ResolvedAttitudeInvariantTests(unittest.TestCase):
     def test_direct_construction_rejects_invalid_vectors(self) -> None:
         invalid = (
             [True, False, False],
+            [True, 0, 0],
+            (1.0, np.bool_(False), 0.0),
+            [np.bool_(True), 0.0, 0.0],
             np.array([True, False, False], dtype=np.bool_),
             np.array([1.0, 0.0, 0.0], dtype=np.complex128),
             np.array([1.0, 0.0, 0.0], dtype=object),

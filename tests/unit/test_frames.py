@@ -43,7 +43,13 @@ class ResolvedAttitudeTests(unittest.TestCase):
             np.testing.assert_array_equal(vector, original)
 
     def test_invalid_directions_are_rejected(self) -> None:
-        for vector in ([0, 0, 0], [2, 0, 0], [True, False, False]):
+        for vector in (
+            [0, 0, 0],
+            [2, 0, 0],
+            [True, False, False],
+            [True, 0, 0],
+            (1.0, np.bool_(False), 0.0),
+        ):
             with self.assertRaises(ContractValueError):
                 stability_alpha_deg(vector)
         with self.assertRaises(NonFiniteError):
@@ -85,6 +91,17 @@ class FrameTransformTests(unittest.TestCase):
                     stl_to_body(value)
         with self.assertRaises(ContractValueError):
             stl_to_body([True, False, True])
+        for mixed in (
+            [True, 0.0, 0.0],
+            (0.0, np.bool_(True), 0.0),
+            [[1.0, 2.0, 3.0], [4.0, False, 6.0]],
+            [np.array([1.0, 2.0, 3.0]), np.array([True, False, True])],
+        ):
+            with self.subTest(mixed=repr(mixed)):
+                with self.assertRaises(ContractValueError):
+                    stl_to_body(mixed)
+                with self.assertRaises(ContractValueError):
+                    body_to_stability(mixed, alpha_stability_deg=0.0)
         with self.assertRaises(ContractValueError):
             body_to_stability(["1", "2", "3"], alpha_stability_deg=0.0)
         with self.assertRaises(ContractValueError):

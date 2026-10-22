@@ -6,7 +6,12 @@ import math
 
 import numpy as np
 
-from ._validation import float_array, real_scalar, validate_unit_vectors
+from ._validation import (
+    contains_numeric_boolean,
+    float_array,
+    real_scalar,
+    validate_unit_vectors,
+)
 from .errors import ContractValueError, NonFiniteError, ShapeError
 
 
@@ -80,6 +85,8 @@ def rotation_matrix_y_rad(alpha_rad: float) -> np.ndarray:
 
 
 def _vector_array(value: object, *, field: str) -> np.ndarray:
+    if contains_numeric_boolean(value):
+        raise ContractValueError(field, "must be a real-valued vector array")
     try:
         raw = np.asarray(value)
     except (TypeError, ValueError) as exc:

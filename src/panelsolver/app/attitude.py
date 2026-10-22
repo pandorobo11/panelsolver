@@ -8,6 +8,7 @@ from dataclasses import field as dataclass_field
 
 import numpy as np
 
+from panelsolver.core._validation import contains_numeric_boolean
 from panelsolver.core.frames import stability_alpha_deg
 
 DEFAULT_ATTITUDE_INPUT = "beta_sin"
@@ -25,6 +26,10 @@ class ResolvedAttitude:
     alpha_stability_deg: float = dataclass_field(init=False)
 
     def __post_init__(self) -> None:
+        if contains_numeric_boolean(self.velocity_hat_stl):
+            raise ValueError(
+                "velocity_hat_stl must be a real numeric vector with shape (3,)"
+            )
         try:
             raw_velocity = np.asarray(self.velocity_hat_stl)
         except (TypeError, ValueError) as exc:

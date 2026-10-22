@@ -21,7 +21,7 @@ from panelsolver import (
     solve_fmf,
     solve_hypersonic,
 )
-from panelsolver.core import execute_case
+from panelsolver.core import ContractValueError, execute_case
 from panelsolver.domains.fmf import adapt_row as adapt_fmf_row
 from panelsolver.domains.fmf import read_cases as read_fmf_cases
 from panelsolver.domains.hypersonic import adapt_row as adapt_hypersonic_row
@@ -247,6 +247,56 @@ class PublicApiTests(unittest.TestCase):
                         self.assertRaises(ValueError),
                     ):
                         factory(invalid)
+
+    def test_solves_reject_numeric_booleans_inside_moment_reference(self) -> None:
+        fmf_row = (
+            read_current_cases(read_fmf_cases, INPUTS / "fmfsolver_cases.csv")
+            .iloc[0]
+            .to_dict()
+        )
+        hypersonic_row = (
+            read_current_cases(read_hypersonic_cases, INPUTS / "newtsolver_cases.csv")
+            .iloc[0]
+            .to_dict()
+        )
+        for reference in (
+            (True, 0.0, 0.0),
+            [0.0, np.bool_(False), 0.0],
+            np.array([0.0, 0.0, True], dtype=object),
+        ):
+            fmf_common = _common(fmf_row)
+            fmf_common["moment_reference_stl_m"] = reference
+            hypersonic_common = _common(hypersonic_row)
+            hypersonic_common["moment_reference_stl_m"] = reference
+            cases = (
+                (
+                    solve_fmf,
+                    FMFCase(
+                        **fmf_common,
+                        speed_ratio=fmf_row["S"],
+                        translational_temperature_k=fmf_row["Ti_K"],
+                        wall_temperature_k=fmf_row["Tw_K"],
+                    ),
+                ),
+                (
+                    solve_hypersonic,
+                    HypersonicCase(
+                        **hypersonic_common,
+                        mach=hypersonic_row["Mach"],
+                        gamma=hypersonic_row["gamma"],
+                        windward_equation=hypersonic_row["windward_eq"],
+                        leeward_equation=hypersonic_row["leeward_eq"],
+                    ),
+                ),
+            )
+            for solver, case in cases:
+                with (
+                    self.subTest(solver=solver.__name__, reference=repr(reference)),
+                    self.assertRaisesRegex(
+                        ContractValueError, "moment_reference_stl_m"
+                    ),
+                ):
+                    solver(case)
 
     def test_in_memory_solves_match_case_tables_with_normalized_case_ids(self) -> None:
         nfd = "e\N{COMBINING ACUTE ACCENT}-signature"
