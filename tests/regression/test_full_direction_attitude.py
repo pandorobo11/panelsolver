@@ -171,11 +171,10 @@ def test_equivalent_modes_have_the_same_loads_and_stability_axes(domain, shieldi
 
 
 @pytest.mark.parametrize("domain", [fmf, hypersonic], ids=["fmf", "hypersonic"])
-@pytest.mark.parametrize("angles", [(60, 30), (90, 90)])
-@pytest.mark.parametrize("mode", [None, "", "   "])
-def test_default_mode_matches_explicit_sine_across_entrypoints(
-    domain, angles, mode, tmp_path
-):
+def test_default_mode_matches_explicit_sine_across_entrypoints(domain, tmp_path):
+    # Blank and missing cell values are covered by the full-direction table
+    # above and the reader tests; this owns an absent attitude_input column.
+    angles = (60, 30)
     name = domain.__name__.rsplit(".", 1)[1]
     row = (
         domain.read_cases(ROOT / "examples" / name / "attitude_modes.csv")
@@ -184,16 +183,11 @@ def test_default_mode_matches_explicit_sine_across_entrypoints(
     )
     row.update(alpha_deg=angles[0], beta_or_bank_deg=angles[1])
     row.pop("attitude_input")
-    if mode is not None:
-        row["attitude_input"] = mode
     input_file = tmp_path / "default.csv"
     pd.DataFrame([row]).to_csv(input_file, index=False)
     expected = resolve_attitude(*angles, "beta_sin")
     np.testing.assert_array_equal(
         resolve_attitude(*angles).velocity_hat_stl, expected.velocity_hat_stl
-    )
-    np.testing.assert_array_equal(
-        resolve_attitude(*angles, mode).velocity_hat_stl, expected.velocity_hat_stl
     )
     explicit = {**row, "attitude_input": "beta_sin"}
     assert domain.format_case(row) == domain.format_case(explicit)
@@ -207,8 +201,7 @@ def test_default_mode_matches_explicit_sine_across_entrypoints(
             actual.velocity_hat_stl, expected.velocity_hat_stl
         )
         assert actual.alpha_stability_deg == expected.alpha_stability_deg
-    if angles == (60, 30):
-        assert not np.allclose(
-            expected.velocity_hat_stl,
-            resolve_attitude(*angles, "beta_tan").velocity_hat_stl,
-        )
+    assert not np.allclose(
+        expected.velocity_hat_stl,
+        resolve_attitude(*angles, "beta_tan").velocity_hat_stl,
+    )

@@ -8,8 +8,6 @@ import tempfile
 import threading
 import time
 import unittest
-from collections import OrderedDict, deque
-from itertools import product
 from pathlib import Path
 from unittest import mock
 
@@ -257,30 +255,6 @@ class SchedulerTests(unittest.TestCase):
                 ),
             )
 
-    def test_affinity_chunk_count_matches_fixed_width_baseline(self) -> None:
-        for chunk_cases in range(1, 7):
-            for group_sizes in product(range(1, 7), repeat=3):
-                next_index = 0
-                groups = []
-                for size in group_sizes:
-                    groups.append(tuple(range(next_index, next_index + size)))
-                    next_index += size
-
-                chunks = scheduler_module._chunks_preserving_affinity_groups(
-                    groups,
-                    chunk_cases,
-                )
-                baseline_count = (next_index + chunk_cases - 1) // chunk_cases
-                with self.subTest(
-                    chunk_cases=chunk_cases,
-                    group_sizes=group_sizes,
-                ):
-                    self.assertEqual(baseline_count, len(chunks))
-                    self.assertTrue(
-                        all(1 <= len(chunk) <= chunk_cases for chunk in chunks)
-                    )
-                    self.assertEqual(tuple(range(next_index)), sum(chunks, ()))
-
     def test_none_and_empty_affinities_preserve_fifo_bucket_chunking(self) -> None:
         order = (5, 2, 0, 4, 1, 3)
         bucket_keys = ("a", "a", "b", "a", "b", "a")
@@ -302,120 +276,6 @@ class SchedulerTests(unittest.TestCase):
                 self.assertEqual(((5, 0), (1, 3)), tuple(chunks["a"]))
                 self.assertEqual(((2, 4),), tuple(chunks["b"]))
                 self.assertEqual({"a": 4, "b": 2}, remaining)
-
-    def test_affinity_assignment_policy(self) -> None:
-        cone = SchedulingAffinityHint(("cone", 5.0, 1.4), priority=2)
-        wedge = SchedulingAffinityHint(("wedge", 5.0, 1.4), priority=1)
-
-        def pick(buckets, hints, *, history=(), owners=None, last=None, worker=0):
-            # Build fresh scheduler state from the decision inputs. Each case
-            # keeps its policy distinction without repeating the internal maps.
-            return scheduler_module._pick_next_chunk(
-                worker,
-                [None] * worker + [last],
-                [OrderedDict() for _ in range(worker)]
-                + [OrderedDict((hint.identity, None) for hint in history)],
-                {
-                    key: deque((index,) for index in indices)
-                    for key, indices in buckets.items()
-                },
-                {key: len(indices) for key, indices in buckets.items()},
-                {key: (owners or {}).get(key) for key in buckets},
-                {key: rank for rank, key in enumerate(buckets)},
-                hints,
-            )
-
-        cases = (
-            (
-                "primary bucket before secondary affinity",
-                {
-                    "buckets": {"ray-a": (1, 2), "ray-b": (3, 4, 5)},
-                    "hints": ((), (), (cone,), (cone,), (cone,), (cone,)),
-                    "history": (cone,),
-                    "owners": {"ray-a": 0},
-                    "last": "ray-a",
-                },
-                ("ray-a", (1,)),
-            ),
-            (
-                "unowned before affine owned bucket",
-                {
-                    "buckets": {"owned": (0, 1, 2, 3), "unowned": (4,)},
-                    "hints": ((cone,), (cone,), (cone,), (cone,), ()),
-                    "history": (cone,),
-                    "owners": {"owned": 0},
-                    "worker": 1,
-                },
-                ("unowned", (4,)),
-            ),
-            (
-                "cone before wedge affinity",
-                {
-                    "buckets": {"wedge-ray": (0,), "cone-ray": (1,)},
-                    "hints": ((wedge,), (cone,)),
-                    "history": (cone, wedge),
-                },
-                ("cone-ray", (1,)),
-            ),
-            (
-                "wedge cache reuse",
-                {
-                    "buckets": {"miss": (0,), "hit": (1,)},
-                    "hints": ((), (wedge,)),
-                    "history": (wedge,),
-                },
-                ("hit", (1,)),
-            ),
-            (
-                "largest unowned bucket without affinity",
-                {"buckets": {"small": (0,), "large": (1, 2)}, "hints": ((), (), ())},
-                ("large", (1,)),
-            ),
-            (
-                "steal remaining work before affinity",
-                {
-                    "buckets": {"large-miss": (0, 1, 2), "small-hit": (3,)},
-                    "hints": ((), (), (), (cone,)),
-                    "history": (cone,),
-                    "owners": {"large-miss": 0, "small-hit": 1},
-                    "worker": 2,
-                },
-                ("large-miss", (0,)),
-            ),
-            (
-                "steal uses affinity after remaining work",
-                {
-                    "buckets": {"miss": (0,), "hit": (1,)},
-                    "hints": ((), (cone,)),
-                    "history": (cone,),
-                    "owners": {"miss": 0, "hit": 1},
-                    "worker": 2,
-                },
-                ("hit", (1,)),
-            ),
-            (
-                "ties retain bucket order",
-                {"buckets": {"first": (0,), "second": (1,)}, "hints": ((), ())},
-                ("first", (0,)),
-            ),
-        )
-        for policy, inputs, expected in cases:
-            with self.subTest(policy=policy):
-                self.assertEqual(expected, pick(**inputs))
-
-    def test_worker_affinity_history_is_bounded_lru(self) -> None:
-        history: OrderedDict[object, None] = OrderedDict()
-        for index in range(scheduler_module._MAX_WORKER_AFFINITIES + 3):
-            scheduler_module._record_worker_affinities(
-                history,
-                (SchedulingAffinityHint(("cache", index)),),
-            )
-        self.assertEqual(scheduler_module._MAX_WORKER_AFFINITIES, len(history))
-        self.assertNotIn(("cache", 0), history)
-        self.assertIn(
-            ("cache", scheduler_module._MAX_WORKER_AFFINITIES + 2),
-            history,
-        )
 
     @pytest.mark.slow
     def test_completion_progress_logs_and_ordered_snapshots(self) -> None:

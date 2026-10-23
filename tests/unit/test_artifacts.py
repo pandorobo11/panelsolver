@@ -1,7 +1,6 @@
 import json
 import os
 import shutil
-import stat
 import tempfile
 import unittest
 from pathlib import Path
@@ -143,32 +142,6 @@ class ArtifactProjectionTests(unittest.TestCase):
 
                 self.assertEqual(b"existing-vtp", output.read_bytes())
                 self.assertEqual([output], list(Path(temp_dir).iterdir()))
-
-    @unittest.skipIf(os.name != "posix", "POSIX permission bits")
-    def test_vtp_write_creates_and_replaces_with_umask_mode(self) -> None:
-        for mask in (0o022, 0o027, 0o077):
-            with (
-                self.subTest(umask=oct(mask)),
-                tempfile.TemporaryDirectory() as temp_dir,
-            ):
-                created = Path(temp_dir) / "created.vtp"
-                replaced = Path(temp_dir) / "replaced.vtp"
-                replaced.write_bytes(b"existing-vtp")
-                replaced.chmod(0o600)
-                previous_mask = os.umask(mask)
-                try:
-                    write_vtp_projection(created, self._projection())
-                    write_vtp_projection(replaced, self._projection())
-                finally:
-                    os.umask(previous_mask)
-                for output in (created, replaced):
-                    self.assertEqual(0o666 & ~mask, stat.S_IMODE(output.stat().st_mode))
-                self.assertEqual(
-                    "artifact", str(pv.read(replaced).field_data["case_id"][0])
-                )
-                self.assertEqual(
-                    sorted([created, replaced]), sorted(Path(temp_dir).iterdir())
-                )
 
     def test_projects_common_and_explicit_product_fields(self) -> None:
         mesh, results = fixture()

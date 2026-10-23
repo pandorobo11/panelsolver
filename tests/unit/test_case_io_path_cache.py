@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import shutil
 import tempfile
 import unittest
@@ -31,68 +32,6 @@ def _current_fmf_row() -> pd.DataFrame:
 
 
 class CaseIoPathCacheTests(unittest.TestCase):
-    def test_stl_filesystem_calls_scale_with_unique_candidate_paths(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            base_dir = Path(directory)
-            same_absolute = str(base_dir / "same.stl")
-            values = (
-                ("same.stl",) * 8
-                + (same_absolute,) * 2
-                + ("other.stl",) * 5
-                + (str(base_dir / "third.stl"),) * 3
-                + ("same.stl;other.stl",) * 2
-            )
-            source = pd.DataFrame({"stl_path": values})
-
-            def fake_resolve(path: Path) -> Path:
-                return Path(f"{path}.resolved")
-
-            def run() -> tuple[pd.DataFrame, list[tuple]]:
-                frame = source.copy()
-                issues: list[tuple] = []
-                _validate_and_resolve_stl_paths(
-                    frame,
-                    base_dir / "cases.csv",
-                    lambda *issue: issues.append(issue),
-                )
-                return frame, issues
-
-            with (
-                patch.object(
-                    Path,
-                    "exists",
-                    autospec=True,
-                    return_value=True,
-                ) as exists,
-                patch.object(
-                    Path,
-                    "resolve",
-                    autospec=True,
-                    side_effect=fake_resolve,
-                ) as resolve,
-            ):
-                actual, issues = run()
-                self.assertEqual(3, exists.call_count)
-                self.assertEqual(3, resolve.call_count)
-                second, second_issues = run()
-
-            self.assertEqual(6, exists.call_count)
-            self.assertEqual(6, resolve.call_count)
-            self.assertEqual([], issues)
-            self.assertEqual([], second_issues)
-            pd.testing.assert_frame_equal(actual, second)
-            expected_same = str(fake_resolve(base_dir / "same.stl"))
-            expected_other = str(fake_resolve(base_dir / "other.stl"))
-            expected_third = str(fake_resolve(base_dir / "third.stl"))
-            self.assertEqual(expected_same, actual.iloc[0]["stl_path"])
-            self.assertEqual(expected_same, actual.iloc[9]["stl_path"])
-            self.assertEqual(expected_other, actual.iloc[10]["stl_path"])
-            self.assertEqual(expected_third, actual.iloc[15]["stl_path"])
-            self.assertEqual(
-                f"{expected_same};{expected_other}",
-                actual.iloc[18]["stl_path"],
-            )
-
     def test_stl_cache_does_not_lexically_collapse_parent_components(self) -> None:
         frame = pd.DataFrame({"stl_path": ("same.stl", "linked/../same.stl")})
         issues: list[tuple] = []
@@ -110,32 +49,22 @@ class CaseIoPathCacheTests(unittest.TestCase):
         self.assertEqual(2, exists.call_count)
         self.assertEqual(2, len(issues))
 
-    def test_repeated_tilde_stl_keeps_expansion_and_component_order(self) -> None:
-        frame = pd.DataFrame({"stl_path": ("~/same.stl;~/same.stl",)})
-        issues: list[tuple] = []
-        with (
-            patch.object(
-                Path,
-                "exists",
-                autospec=True,
-                return_value=True,
-            ) as exists,
-            patch.object(
-                Path,
-                "resolve",
-                autospec=True,
-                side_effect=lambda path: path,
-            ) as resolve,
-        ):
-            _validate_and_resolve_stl_paths(
-                frame,
-                Path("input") / "cases.csv",
-                lambda *issue: issues.append(issue),
-            )
-        expanded = str(Path("~/same.stl").expanduser())
+    def test_repeated_tilde_stl_expands_to_home_and_keeps_component_order(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            shutil.copyfile(_INPUTS / "stl" / "plate.stl", home / "same.stl")
+            frame = pd.DataFrame({"stl_path": ("~/same.stl;~/same.stl",)})
+            issues: list[tuple] = []
+            with patch.dict(os.environ, {"HOME": str(home), "USERPROFILE": str(home)}):
+                _validate_and_resolve_stl_paths(
+                    frame,
+                    Path("input") / "cases.csv",
+                    lambda *issue: issues.append(issue),
+                )
+            expanded = str((home / "same.stl").resolve())
         self.assertEqual([], issues)
-        self.assertEqual(1, exists.call_count)
-        self.assertEqual(1, resolve.call_count)
         self.assertEqual(f"{expanded};{expanded}", frame.iloc[0]["stl_path"])
 
     def test_repeated_missing_stl_keeps_issue_attribution_and_message(self) -> None:

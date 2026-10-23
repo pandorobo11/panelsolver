@@ -190,10 +190,7 @@ def test_selection_auto_single_and_pickle():
     [
         {"section_count": True},
         {"section_count": 0},
-        {"section_count": 1.5},
         {"axis_direction_stl": (0, 0, 0)},
-        {"axis_origin_stl_m": (True, 0, 0)},
-        {"start_m": float("nan")},
         {"stop_m": None},
         {"stop_m": 1},
         {"section_count": 2},

@@ -146,21 +146,15 @@ def test_component_tokens_require_semicolon_separated_integers(tmp_path, token):
 @pytest.mark.parametrize(
     "values,field",
     (
+        # One case per core-to-CSV field mapping; core owns the full rule matrix.
         ({"bin_count": "0"}, "bin_count"),
-        ({"bin_count": "-1"}, "bin_count"),
         ({"component_ids": "-1"}, "component_ids"),
         ({"component_ids": "1;01"}, "component_ids"),
-        ({"component_ids": str(2**70)}, "component_ids"),
         ({"origin_x_stl_m": "nan"}, "axis_origin_stl_m"),
-        ({"direction_z_stl": "inf"}, "axis_direction_stl"),
-        ({"origin_z_stl_m": "1e1000"}, "axis_origin_stl_m"),
         (
             {"direction_x_stl": "0", "direction_y_stl": "0", "direction_z_stl": "0"},
             "axis_direction_stl",
         ),
-        ({"start_m": "-1"}, "start_m/stop_m"),
-        ({"stop_m": "1"}, "start_m/stop_m"),
-        ({"start_m": "1", "stop_m": "1"}, "start_m/stop_m"),
         ({"start_m": "2", "stop_m": "1"}, "start_m/stop_m"),
         ({"start_m": "-1", "stop_m": "nan"}, "stop_m"),
     ),

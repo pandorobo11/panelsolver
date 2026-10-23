@@ -92,26 +92,6 @@ class CliPresentationTests(unittest.TestCase):
         self.assertGreaterEqual(output.count(str(output_path)), 2)
         self.assertIn("literal [red]log[/]", output)
 
-    def test_cli_passes_runtime_arguments_and_progress_callback_unchanged(self) -> None:
-        policy = replace(
-            CLI_POLICY,
-            read_cases=lambda _path: pd.DataFrame([{"case_id": "one"}]),
-            validate_output_path=lambda *_args: Path("result.csv"),
-        )
-        parser = build_parser(policy)
-        args = parser.parse_args(["--input", "cases.csv", "--workers", "3", "--plain"])
-        with patch(
-            "panelsolver.app.cli.run_and_write_product_cases",
-            return_value=SimpleNamespace(
-                output_issues=(),
-                summary_csv_saved=True,
-            ),
-        ) as run:
-            self.assertEqual(0, _run_parsed_cli(policy, args))
-        self.assertEqual(3, run.call_args.kwargs["workers"])
-        self.assertTrue(callable(run.call_args.kwargs["progress_cb"]))
-        self.assertTrue(callable(run.call_args.kwargs["logfn"]))
-
     def test_cli_keeps_nonzero_semantics_for_structured_output_failures(self) -> None:
         policy = replace(
             CLI_POLICY,

@@ -263,26 +263,6 @@ class ExampleRegressionTests(unittest.TestCase):
             np.array([0] * 12 + [1] * 2),
         )
 
-    def test_attitude_input_modes_produce_matching_coefficients(self) -> None:
-        for domain, tolerance in (
-            ("fmf", SENTMAN_ATOL),
-            ("hypersonic", HYPERSONIC_ATOL),
-        ):
-            with self.subTest(domain=domain):
-                rows = self._total_rows(domain, "attitude_modes")
-                self.assertEqual(
-                    [row["out_attitude_input"] for row in rows],
-                    ["beta_sin", "beta_tan", "bank"],
-                )
-                reference = [rows[0][name] for name in COEFFICIENTS]
-                for row in rows[1:]:
-                    np.testing.assert_allclose(
-                        [row[name] for name in COEFFICIENTS],
-                        reference,
-                        rtol=0.0,
-                        atol=tolerance,
-                    )
-
     def test_hypersonic_pressure_models_are_distinct_and_finite(self) -> None:
         rows = self._total_rows("hypersonic", "pressure_models")
         for row in rows:

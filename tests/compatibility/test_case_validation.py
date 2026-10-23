@@ -125,16 +125,30 @@ class CaseValidationMatrixTests(unittest.TestCase):
                 )
 
     def test_common_numeric_fields_share_accept_reject_and_attribution(self) -> None:
+        # Both readers share one validator: the full matrix runs once, and the
+        # second domain only checks that its policy wires each field class.
         products = (
-            ("fmfsolver", read_fmf_cases, "fmfsolver_cases.csv"),
-            ("newtsolver", read_newt_cases, "newtsolver_cases.csv"),
+            (
+                "fmfsolver",
+                read_fmf_cases,
+                "fmfsolver_cases.csv",
+                _COMMON_POSITIVE_FIELDS,
+                _COMMON_SIGNED_FIELDS,
+            ),
+            (
+                "newtsolver",
+                read_newt_cases,
+                "newtsolver_cases.csv",
+                ("Aref_m2",),
+                ("alpha_deg",),
+            ),
         )
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            for product, reader, filename in products:
+            for product, reader, filename, positive, signed in products:
                 base = read_current_cases(reader, _INPUTS / filename).iloc[[0]].copy()
                 path = root / filename
-                for field in _COMMON_POSITIVE_FIELDS:
+                for field in positive:
                     for value_name, value in _BOUNDARY_VALUES:
                         with self.subTest(
                             product=product,
@@ -151,7 +165,7 @@ class CaseValidationMatrixTests(unittest.TestCase):
                                 accepted=False,
                                 attributed_fields=(field,),
                             )
-                for field in _COMMON_SIGNED_FIELDS:
+                for field in signed:
                     for value_name, value in _BOUNDARY_VALUES:
                         accepted = value_name in _FINITE_SIGNED_VALUE_NAMES
                         with self.subTest(
@@ -244,7 +258,7 @@ class CaseValidationMatrixTests(unittest.TestCase):
                 "newtsolver",
                 read_newt_cases,
                 "newtsolver_cases.csv",
-                ("Aref_m2", "ref_x_m", "Mach", "gamma"),
+                ("Mach", "gamma"),
             ),
         )
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -265,6 +279,8 @@ class CaseValidationMatrixTests(unittest.TestCase):
                                 {issue.field for issue in caught.exception.issues},
                             )
 
+                if product != "fmfsolver":
+                    continue  # Shared flag and text coercion is checked once.
                 base = source.iloc[[0]].copy()
                 flags = {
                     "shielding_on": True,
@@ -299,7 +315,7 @@ class CaseValidationMatrixTests(unittest.TestCase):
                 "newtsolver",
                 read_newt_cases,
                 "newtsolver_cases.csv",
-                ("attitude_input", "windward_eq", "leeward_eq"),
+                ("windward_eq", "leeward_eq"),
             ),
         )
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -335,7 +351,6 @@ class CaseValidationMatrixTests(unittest.TestCase):
                 read_newt_cases,
                 "newtsolver_cases.csv",
                 {
-                    "attitude_input": "beta_sin",
                     "windward_eq": "newtonian",
                     "leeward_eq": "shield",
                 },
@@ -359,6 +374,8 @@ class CaseValidationMatrixTests(unittest.TestCase):
                             self.assertEqual(default, actual.iloc[0][field])
                             self.assertEqual(list(source.columns), list(actual.columns))
 
+                if product != "fmfsolver":
+                    continue  # The shared attitude selector is checked once.
                 for mode in ("beta_tan", "beta_sin", "bank"):
                     with self.subTest(product=product, attitude_input=mode):
                         path = root / f"{product}-attitude-{mode}.xlsx"

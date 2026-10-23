@@ -132,19 +132,16 @@ class ArtifactMatchingTests(unittest.TestCase):
 
 
 class ArtifactViewStateTests(unittest.TestCase):
-    def test_automatic_classification_accepts_current_signature(self) -> None:
-        current = _signature("current")
-        state = automatic_artifact_view_state(
-            _artifact("case", current.digest),
+    def test_current_stale_and_mismatched_classification(self) -> None:
+        primary = _signature("primary")
+        current = automatic_artifact_view_state(
+            _artifact("case", primary.digest),
             {"case_id": "case"},
-            current,
+            primary,
             "/tmp/case.vtp",
         )
-        self.assertEqual(ArtifactViewStatus.CURRENT, state.status)
-        self.assertEqual("case", state.case_id)
-
-    def test_stale_requires_matching_id_and_valid_nonmatching_digest(self) -> None:
-        primary = _signature("primary")
+        self.assertEqual(ArtifactViewStatus.CURRENT, current.status)
+        self.assertEqual("case", current.case_id)
         stale = automatic_artifact_view_state(
             _artifact("case", _signature("stale").digest),
             {"case_id": "case"},
