@@ -167,8 +167,12 @@ def test_a1_owns_numerical_validation(tmp_path, values, field):
     assert f"row 2, section_id='right', field {field}" in str(error.value)
 
 
-@pytest.mark.parametrize("field", COLUMNS[1:7])
-@pytest.mark.parametrize("token", ("", "   ", "True", "nonsense"))
+@pytest.mark.parametrize(
+    "field,token",
+    # Every axis column is attributed; token kinds share one parser.
+    [(field, "") for field in COLUMNS[1:7]]
+    + [(COLUMNS[1], token) for token in ("   ", "True", "nonsense")],
+)
 def test_required_axis_cell_diagnostics_identify_csv_field(tmp_path, field, token):
     with pytest.raises(ValueError, match=f"field {field}"):
         read_sectional_definitions(_write(tmp_path, [ROW | {field: token}]))

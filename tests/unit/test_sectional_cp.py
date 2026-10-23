@@ -322,7 +322,7 @@ def test_failed_coplanar_plane_batch_and_following_case():
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("domain", [fmf, hypersonic])
+@pytest.mark.parametrize("domain", [hypersonic])  # Model-neutral spawn transport.
 def test_cp_spawn_matches_serial(domain):
     row = (
         domain.read_cases(EXAMPLES / domain.RUNTIME_POLICY.product_id / "basic.csv")

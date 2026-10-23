@@ -224,32 +224,34 @@ class MeshLoadingTests(unittest.TestCase):
         )
         self.assertEqual(mesh_cache_stats().misses, 2)
 
-    def test_all_policy_names_reject_repair_failure(self) -> None:
+    # Every policy name normalizes to STRICT (see the cache test), so the
+    # legacy alias alone shows that it never weakens these rejections.
+    def test_legacy_policy_alias_rejects_repair_failure(self) -> None:
         path = FIXTURE_STL / "cube.stl"
-        for policy in MeshValidationPolicy:
-            clear_mesh_cache()
-            with (
-                self.subTest(policy=policy),
-                patch("trimesh.repair.fix_normals", side_effect=RuntimeError("repair")),
-                self.assertRaisesRegex(MeshLoadError, "Failed to repair"),
-            ):
-                load_panel_mesh([path], 1.0, validation_policy=policy)
+        with (
+            patch("trimesh.repair.fix_normals", side_effect=RuntimeError("repair")),
+            self.assertRaisesRegex(MeshLoadError, "Failed to repair"),
+        ):
+            load_panel_mesh(
+                [path], 1.0, validation_policy=MeshValidationPolicy.LEGACY_WARN_REPAIR
+            )
 
-    def test_all_policy_names_reject_inconsistent_winding_after_repair(self) -> None:
+    def test_legacy_policy_alias_rejects_inconsistent_winding_after_repair(
+        self,
+    ) -> None:
         path = FIXTURE_STL / "cube.stl"
-        for policy in MeshValidationPolicy:
-            clear_mesh_cache()
-            with (
-                self.subTest(policy=policy),
-                patch.object(
-                    trimesh.Trimesh,
-                    "is_winding_consistent",
-                    new_callable=PropertyMock,
-                    return_value=False,
-                ),
-                self.assertRaisesRegex(MeshLoadError, "winding remains inconsistent"),
-            ):
-                load_panel_mesh([path], 1.0, validation_policy=policy)
+        with (
+            patch.object(
+                trimesh.Trimesh,
+                "is_winding_consistent",
+                new_callable=PropertyMock,
+                return_value=False,
+            ),
+            self.assertRaisesRegex(MeshLoadError, "winding remains inconsistent"),
+        ):
+            load_panel_mesh(
+                [path], 1.0, validation_policy=MeshValidationPolicy.LEGACY_WARN_REPAIR
+            )
 
     def test_rejects_nonfinite_vertices_before_repair(self) -> None:
         mesh = trimesh.Trimesh(
@@ -275,11 +277,12 @@ class MeshLoadingTests(unittest.TestCase):
                 faces=[[0, 1, 2]],
                 process=False,
             ).export(path)
-            for policy in MeshValidationPolicy:
-                clear_mesh_cache()
-                with self.subTest(policy=policy):
-                    with self.assertRaisesRegex(MeshLoadError, "shared contract"):
-                        load_panel_mesh([path], 1.0, validation_policy=policy)
+            with self.assertRaisesRegex(MeshLoadError, "shared contract"):
+                load_panel_mesh(
+                    [path],
+                    1.0,
+                    validation_policy=MeshValidationPolicy.LEGACY_WARN_REPAIR,
+                )
 
         invalid_scales = (0.0, -1.0, float("nan"), float("inf"), True, "bad")
         for scale in invalid_scales:

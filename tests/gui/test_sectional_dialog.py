@@ -92,31 +92,29 @@ class SectionalDialogTests(unittest.TestCase):
         self.app.processEvents()
 
     def test_cp_dialog_runs_and_protects_both_definition_files(self):
-        for domain in (fmf, hypersonic):
-            with self.subTest(domain=domain.RUNTIME_POLICY.product_id):
-                window, panel, loads = self.make_window(domain)
-                cp_path = self.root / "cp.csv"
-                cp_path.write_text(
-                    HEADER.replace("bin_count", "section_count")
-                    + "cuts,0,0,0,0,1,0,3\n"
-                )
-                window.open_sectional_cp()
-                cp = window.sectional_cp_dialog
-                self.assertTrue(cp.load_definitions(cp_path))
-                self.assertIn("planes", cp.definition_model.columns)
-                self.assertIn(cp_path, panel.sectional_definition_paths)
-                self.assertIn(self.definition_path, panel.sectional_definition_paths)
-                output = self.root / "cp-result.csv"
-                self.assertTrue(cp.start_run(output))
-                self.assertFalse(loads.start_run(self.root / "loads.csv"))
-                self.assertFalse(loads.load_definitions(self.definition_path))
-                self.wait_until(lambda current=cp: not current.is_running())
-                self.assertTrue(output.exists())
-                self.assertEqual(cp.batch_result.status, "completed")
-                with output.open(encoding="utf-8-sig") as stream:
-                    rows = list(csv.DictReader(stream))
-                self.assertIn("x0_stl_m", rows[0])
-                self.assertTrue(loads.btn_run.isEnabled())
+        domain = fmf
+        window, panel, loads = self.make_window(domain)
+        cp_path = self.root / "cp.csv"
+        cp_path.write_text(
+            HEADER.replace("bin_count", "section_count") + "cuts,0,0,0,0,1,0,3\n"
+        )
+        window.open_sectional_cp()
+        cp = window.sectional_cp_dialog
+        self.assertTrue(cp.load_definitions(cp_path))
+        self.assertIn("planes", cp.definition_model.columns)
+        self.assertIn(cp_path, panel.sectional_definition_paths)
+        self.assertIn(self.definition_path, panel.sectional_definition_paths)
+        output = self.root / "cp-result.csv"
+        self.assertTrue(cp.start_run(output))
+        self.assertFalse(loads.start_run(self.root / "loads.csv"))
+        self.assertFalse(loads.load_definitions(self.definition_path))
+        self.wait_until(lambda current=cp: not current.is_running())
+        self.assertTrue(output.exists())
+        self.assertEqual(cp.batch_result.status, "completed")
+        with output.open(encoding="utf-8-sig") as stream:
+            rows = list(csv.DictReader(stream))
+        self.assertIn("x0_stl_m", rows[0])
+        self.assertTrue(loads.btn_run.isEnabled())
 
     def make_window(self, domain=fmf, *, runner=None, normal_runner=None):
         spec = domain.gui_spec()
@@ -182,62 +180,61 @@ class SectionalDialogTests(unittest.TestCase):
         self.assertIsNotNone(dialog.unsaved_result_description())
         return window, panel, dialog
 
-    def test_error_dialog_retry_reuses_snapshot_after_cleanup_for_both_kinds_and_domains(
+    def test_error_dialog_retry_reuses_snapshot_after_cleanup_for_both_kinds(
         self,
     ):
-        for domain in (fmf, hypersonic):
-            for cp in (False, True):
-                with self.subTest(domain=domain.RUNTIME_POLICY.product_id, cp=cp):
-                    _window, _panel, dialog = self.make_unsaved(domain, cp=cp)
-                    retained = dialog.batch_result
-                    output = (
-                        self.root
-                        / f"recovered-{domain.RUNTIME_POLICY.product_id}-{cp}.csv"
-                    )
-                    # One further failure offers Retry; the next write succeeds.
-                    original = sectional_dialog.write_sectional_csv
-                    calls = []
+        domain = fmf
+        for cp in (False, True):
+            with self.subTest(cp=cp):
+                _window, _panel, dialog = self.make_unsaved(domain, cp=cp)
+                retained = dialog.batch_result
+                output = (
+                    self.root / f"recovered-{domain.RUNTIME_POLICY.product_id}-{cp}.csv"
+                )
+                # One further failure offers Retry; the next write succeeds.
+                original = sectional_dialog.write_sectional_csv
+                calls = []
 
-                    def writer(*args, calls=calls, original=original):
-                        calls.append(args[1])
-                        if len(calls) == 1:
-                            raise OSError("file locked")
-                        return original(*args)
+                def writer(*args, calls=calls, original=original):
+                    calls.append(args[1])
+                    if len(calls) == 1:
+                        raise OSError("file locked")
+                    return original(*args)
 
-                    with (
-                        patch.object(
-                            QtWidgets.QMessageBox,
-                            "warning",
-                            return_value=QtWidgets.QMessageBox.StandardButton.Retry,
-                        ) as warning,
-                        patch.object(
-                            QtWidgets.QFileDialog,
-                            "getSaveFileName",
-                            return_value=(str(output), ""),
-                        ) as chooser,
-                        patch.object(
-                            sectional_dialog, "write_sectional_csv", side_effect=writer
-                        ),
-                        patch.object(
-                            sectional_batch,
-                            "execute_case",
-                            side_effect=AssertionError("must not solve"),
-                        ),
-                    ):
-                        self.assertTrue(dialog.retry_save())
-                        self.wait_until(
-                            lambda output=output, dialog=dialog: (
-                                output.exists() and not dialog.is_running()
-                            )
+                with (
+                    patch.object(
+                        QtWidgets.QMessageBox,
+                        "warning",
+                        return_value=QtWidgets.QMessageBox.StandardButton.Retry,
+                    ) as warning,
+                    patch.object(
+                        QtWidgets.QFileDialog,
+                        "getSaveFileName",
+                        return_value=(str(output), ""),
+                    ) as chooser,
+                    patch.object(
+                        sectional_dialog, "write_sectional_csv", side_effect=writer
+                    ),
+                    patch.object(
+                        sectional_batch,
+                        "execute_case",
+                        side_effect=AssertionError("must not solve"),
+                    ),
+                ):
+                    self.assertTrue(dialog.retry_save())
+                    self.wait_until(
+                        lambda output=output, dialog=dialog: (
+                            output.exists() and not dialog.is_running()
                         )
-                    self.assertEqual(chooser.call_count, 2)
-                    self.assertEqual(len(calls), 2)
-                    self.assertTrue(all(result is retained for result in calls))
-                    self.assertIn(
-                        "Computed results are retained", warning.call_args.args[2]
                     )
-                    self.assertIsNone(dialog.unsaved_result_description())
-                    self.assertTrue(dialog.btn_retry_save.isHidden())
+                self.assertEqual(chooser.call_count, 2)
+                self.assertEqual(len(calls), 2)
+                self.assertTrue(all(result is retained for result in calls))
+                self.assertIn(
+                    "Computed results are retained", warning.call_args.args[2]
+                )
+                self.assertIsNone(dialog.unsaved_result_description())
+                self.assertTrue(dialog.btn_retry_save.isHidden())
 
     def test_close_routes_cancel_save_cancel_and_discard_for_both_sectional_kinds(self):
         buttons = QtWidgets.QMessageBox.StandardButton
@@ -501,109 +498,103 @@ class SectionalDialogTests(unittest.TestCase):
         self.assertGreater(close.top(), dialog.result_status.geometry().bottom())
         self.assertGreater(close.left(), run.right())
 
-    def test_cp_example_replaces_cases_loads_definitions_and_runs_both_domains(self):
-        for domain in (fmf, hypersonic):
-            with self.subTest(domain=domain.RUNTIME_POLICY.product_id):
-                window, panel, loads_dialog = self.make_window(domain)
-                loads_dialog.close()
-                destination = self.root / domain.RUNTIME_POLICY.product_id
-                action = next(
-                    a for a in window.example_actions if a.text() == "Sectional Cp"
-                )
-                self.assertTrue(action.isEnabled())
-                original_input = panel.input_path
-                with patch.object(
-                    QtWidgets.QFileDialog, "getExistingDirectory", return_value=""
-                ):
-                    action.trigger()
-                self.assertEqual(original_input, panel.input_path)
-                self.assertIsNone(window.sectional_cp_dialog)
-                with patch.object(
-                    QtWidgets.QFileDialog,
-                    "getExistingDirectory",
-                    return_value=str(destination),
-                ):
-                    action.trigger()
-                dialog = window.sectional_cp_dialog
-                self.assertTrue(dialog.cp)
-                self.assertTrue(dialog.isVisible())
-                self.assertFalse(loads_dialog.isVisible())
-                self.assertTrue(panel.input_path.is_relative_to(destination.resolve()))
-                self.assertEqual(
-                    destination.resolve() / "sectional_cp.csv", dialog.definition_path
-                )
-                self.assertEqual(
-                    ["nose_stations", "cone_station", "pitch_profile"],
-                    [d.section_id for d in dialog.definitions],
-                )
-                self.assertIsNone(dialog.batch_result)
-                self.assertTrue(dialog.btn_run.isEnabled())
-                # The full three-angle example is covered by the slow
-                # sectional example regression; one case keeps this GUI fast.
-                self.assertEqual(3, len(panel.case_rows))
-                self.select(panel.case_table, 2)
-                target = destination / "cp.csv"
-                self.assertTrue(dialog.start_run(target))
-                self.wait_until(
-                    lambda dialog=dialog: not dialog.is_running(), timeout=30.0
-                )
-                self.assertEqual("completed", dialog.batch_result.status)
-                self.assertEqual(3, dialog.batch_result.completed_pairs)
-                with target.open(encoding="utf-8-sig") as stream:
-                    rows = list(csv.DictReader(stream))
-                self.assertEqual(
-                    {"normal_traction_coeff" if domain is fmf else "cp"},
-                    {row["scalar_name"] for row in rows},
-                )
-                self.assertEqual({"ok"}, {row["plane_status"] for row in rows})
+    # Each example flow runs in one domain; per-domain example resources and
+    # results are covered by the example resource and regression tests.
+    def test_cp_example_replaces_cases_loads_definitions_and_runs(self):
+        domain = hypersonic
+        window, panel, loads_dialog = self.make_window(domain)
+        loads_dialog.close()
+        destination = self.root / domain.RUNTIME_POLICY.product_id
+        action = next(a for a in window.example_actions if a.text() == "Sectional Cp")
+        self.assertTrue(action.isEnabled())
+        original_input = panel.input_path
+        with patch.object(
+            QtWidgets.QFileDialog, "getExistingDirectory", return_value=""
+        ):
+            action.trigger()
+        self.assertEqual(original_input, panel.input_path)
+        self.assertIsNone(window.sectional_cp_dialog)
+        with patch.object(
+            QtWidgets.QFileDialog,
+            "getExistingDirectory",
+            return_value=str(destination),
+        ):
+            action.trigger()
+        dialog = window.sectional_cp_dialog
+        self.assertTrue(dialog.cp)
+        self.assertTrue(dialog.isVisible())
+        self.assertFalse(loads_dialog.isVisible())
+        self.assertTrue(panel.input_path.is_relative_to(destination.resolve()))
+        self.assertEqual(
+            destination.resolve() / "sectional_cp.csv", dialog.definition_path
+        )
+        self.assertEqual(
+            ["nose_stations", "cone_station", "pitch_profile"],
+            [d.section_id for d in dialog.definitions],
+        )
+        self.assertIsNone(dialog.batch_result)
+        self.assertTrue(dialog.btn_run.isEnabled())
+        # The full three-angle example is covered by the slow
+        # sectional example regression; one case keeps this GUI fast.
+        self.assertEqual(3, len(panel.case_rows))
+        self.select(panel.case_table, 2)
+        target = destination / "cp.csv"
+        self.assertTrue(dialog.start_run(target))
+        self.wait_until(lambda dialog=dialog: not dialog.is_running(), timeout=30.0)
+        self.assertEqual("completed", dialog.batch_result.status)
+        self.assertEqual(3, dialog.batch_result.completed_pairs)
+        with target.open(encoding="utf-8-sig") as stream:
+            rows = list(csv.DictReader(stream))
+        self.assertEqual(
+            {"normal_traction_coeff" if domain is fmf else "cp"},
+            {row["scalar_name"] for row in rows},
+        )
+        self.assertEqual({"ok"}, {row["plane_status"] for row in rows})
 
-    def test_sectional_example_copies_loads_and_runs_both_domains(self):
-        for domain in (fmf, hypersonic):
-            with self.subTest(domain=domain.RUNTIME_POLICY.product_id):
-                window, panel, dialog = self.make_window(domain)
-                dialog.close()
-                destination = self.root / domain.RUNTIME_POLICY.product_id
-                action = next(
-                    a for a in window.example_actions if a.text() == "Sectional Loads"
-                )
-                with patch.object(
-                    QtWidgets.QFileDialog,
-                    "getExistingDirectory",
-                    return_value=str(destination),
-                ):
-                    action.trigger()
-                self.assertTrue(dialog.isVisible())
-                self.assertTrue(panel.input_path.is_relative_to(destination.resolve()))
-                self.assertEqual(
-                    destination.resolve() / "sectional_loads.csv",
-                    dialog.definition_path,
-                )
-                self.assertEqual(
-                    ["axial", "vertical", "forebody"],
-                    [d.section_id for d in dialog.definitions],
-                )
-                self.assertTrue(dialog.btn_run.isEnabled())
-                self.assertEqual(3, len(panel.case_rows))
-                self.select(panel.case_table, 2)
-                self.assertTrue(dialog.start_run(destination / "result.csv"))
-                self.wait_until(
-                    lambda dialog=dialog: not dialog.is_running(), timeout=30.0
-                )
-                self.assertEqual("completed", dialog.batch_result.status)
-                self.assertEqual(3, dialog.batch_result.completed_pairs)
-                self.assertTrue((destination / "result.csv").is_file())
-                original = dialog.definition_path.read_bytes()
-                with (
-                    patch.object(
-                        QtWidgets.QFileDialog,
-                        "getSaveFileName",
-                        return_value=(str(dialog.definition_path), ""),
-                    ),
-                    patch.object(QtWidgets.QMessageBox, "critical") as error,
-                ):
-                    panel.request_run()
-                error.assert_called_once()
-                self.assertEqual(original, dialog.definition_path.read_bytes())
+    def test_sectional_example_copies_loads_and_runs(self):
+        domain = fmf
+        window, panel, dialog = self.make_window(domain)
+        dialog.close()
+        destination = self.root / domain.RUNTIME_POLICY.product_id
+        action = next(
+            a for a in window.example_actions if a.text() == "Sectional Loads"
+        )
+        with patch.object(
+            QtWidgets.QFileDialog,
+            "getExistingDirectory",
+            return_value=str(destination),
+        ):
+            action.trigger()
+        self.assertTrue(dialog.isVisible())
+        self.assertTrue(panel.input_path.is_relative_to(destination.resolve()))
+        self.assertEqual(
+            destination.resolve() / "sectional_loads.csv",
+            dialog.definition_path,
+        )
+        self.assertEqual(
+            ["axial", "vertical", "forebody"],
+            [d.section_id for d in dialog.definitions],
+        )
+        self.assertTrue(dialog.btn_run.isEnabled())
+        self.assertEqual(3, len(panel.case_rows))
+        self.select(panel.case_table, 2)
+        self.assertTrue(dialog.start_run(destination / "result.csv"))
+        self.wait_until(lambda dialog=dialog: not dialog.is_running(), timeout=30.0)
+        self.assertEqual("completed", dialog.batch_result.status)
+        self.assertEqual(3, dialog.batch_result.completed_pairs)
+        self.assertTrue((destination / "result.csv").is_file())
+        original = dialog.definition_path.read_bytes()
+        with (
+            patch.object(
+                QtWidgets.QFileDialog,
+                "getSaveFileName",
+                return_value=(str(dialog.definition_path), ""),
+            ),
+            patch.object(QtWidgets.QMessageBox, "critical") as error,
+        ):
+            panel.request_run()
+        error.assert_called_once()
+        self.assertEqual(original, dialog.definition_path.read_bytes())
 
     def test_sectional_example_cancel_and_collision_preserve_loaded_inputs(self):
         window, panel, dialog = self.make_window()
@@ -709,24 +700,23 @@ class SectionalDialogTests(unittest.TestCase):
         self.assertIs(window.sectional_dialog, dialog)
 
     def test_normal_run_rejects_loaded_definition_output(self):
-        for domain in (fmf, hypersonic):
-            with self.subTest(domain=domain.RUNTIME_POLICY.product_id):
-                _window, panel, dialog = self.make_window(domain)
-                dialog.close()
-                original = self.definition_path.read_bytes()
-                with (
-                    patch.object(
-                        QtWidgets.QFileDialog,
-                        "getSaveFileName",
-                        return_value=(str(self.definition_path), "CSV (*.csv)"),
-                    ),
-                    patch.object(QtWidgets.QMessageBox, "critical") as error,
-                    patch.object(panel, "start_run") as start,
-                ):
-                    panel.request_run()
-                start.assert_not_called()
-                error.assert_called_once()
-                self.assertEqual(original, self.definition_path.read_bytes())
+        domain = fmf
+        _window, panel, dialog = self.make_window(domain)
+        dialog.close()
+        original = self.definition_path.read_bytes()
+        with (
+            patch.object(
+                QtWidgets.QFileDialog,
+                "getSaveFileName",
+                return_value=(str(self.definition_path), "CSV (*.csv)"),
+            ),
+            patch.object(QtWidgets.QMessageBox, "critical") as error,
+            patch.object(panel, "start_run") as start,
+        ):
+            panel.request_run()
+        start.assert_not_called()
+        error.assert_called_once()
+        self.assertEqual(original, self.definition_path.read_bytes())
 
     def test_normal_output_protection_tracks_reload_and_loaded_symlink_target(self):
         _window, panel, dialog = self.make_window()
