@@ -33,21 +33,30 @@ def _current_fmf_row() -> pd.DataFrame:
 
 class CaseIoPathCacheTests(unittest.TestCase):
     def test_stl_cache_does_not_lexically_collapse_parent_components(self) -> None:
-        frame = pd.DataFrame({"stl_path": ("same.stl", "linked/../same.stl")})
-        issues: list[tuple] = []
-        with patch.object(
-            Path,
-            "exists",
-            autospec=True,
-            return_value=False,
-        ) as exists:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "input").mkdir()
+            (root / "elsewhere" / "sub").mkdir(parents=True)
+            target = root / "elsewhere" / "same.stl"
+            shutil.copyfile(_INPUTS / "stl" / "plate.stl", target)
+            try:
+                (root / "input" / "linked").symlink_to(
+                    root / "elsewhere" / "sub", target_is_directory=True
+                )
+            except (NotImplementedError, OSError) as exc:
+                self.skipTest(f"directory symlink creation is unavailable: {exc}")
+            # Through the symlink, linked/../same.stl is elsewhere/same.stl; a
+            # lexical cache key would reuse the missing input/same.stl result.
+            frame = pd.DataFrame({"stl_path": ("same.stl", "linked/../same.stl")})
+            issues: list[tuple] = []
             _validate_and_resolve_stl_paths(
                 frame,
-                Path("input") / "cases.csv",
+                root / "input" / "cases.csv",
                 lambda *issue: issues.append(issue),
             )
-        self.assertEqual(2, exists.call_count)
-        self.assertEqual(2, len(issues))
+            resolved = str(target.resolve())
+        self.assertEqual([0], [issue[0] for issue in issues])
+        self.assertEqual(resolved, frame.iloc[1]["stl_path"])
 
     def test_repeated_tilde_stl_expands_to_home_and_keeps_component_order(
         self,

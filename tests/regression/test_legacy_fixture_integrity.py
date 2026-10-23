@@ -13,19 +13,68 @@ REPOSITORY_ROOT = Path(__file__).parents[2]
 FIXTURE_ROOT = REPOSITORY_ROOT / "tests" / "fixtures" / "phase1"
 GOLDEN_ROOT = FIXTURE_ROOT / "golden"
 MANIFEST = json.loads((FIXTURE_ROOT / "manifest.json").read_text(encoding="utf-8"))
+# SHA-256 of each read-only golden capture in canonical JSON form, so line
+# endings cannot matter. Any edit to captured evidence, including expected
+# coefficients, must be deliberate and documented (AGENTS.md).
+GOLDEN_CANONICAL_SHA256 = {
+    "fmfsolver/contracts.json": (
+        "f8f3dfc7744a3bb44bcd5acd6d1a1f2cf2108691c699a3c48d6a5cf543313513"
+    ),
+    "fmfsolver/fmf_bank_multicomponent.json": (
+        "66b5c61ea365d037c5fa1e28446fc0da7fb2c29ae6f7cabd6b2bb65ef071b6fe"
+    ),
+    "fmfsolver/fmf_beta_sin_boundary.json": (
+        "40092c40f9280344d2c7595022673189f3a8525e354671ef4030850ed3d3161a"
+    ),
+    "fmfsolver/fmf_mode_b_offset.json": (
+        "b988cfdeb2fb4fd018c03a1e09cea1500a7aee5a242b7f514a36270ad0d31506"
+    ),
+    "fmfsolver/fmf_shield_embree.json": (
+        "c5fbdd4e4c4122205b1e8072ce8d200bef0528eefdc1c8701932ad733a4a3089"
+    ),
+    "fmfsolver/fmf_shield_rtree.json": (
+        "3eaecb8e2a0937ff048c7113e16305f740af62d46285c36f5d44d8f72cfd4ae7"
+    ),
+    "fmfsolver/fmf_zero_plate.json": (
+        "adf44dc9dcdb8b78455a488222e641bda3e2701977c0b9177d37bff4fe4b0caf"
+    ),
+    "newtsolver/contracts.json": (
+        "1c38b8857122272bbfe5fcc74860b12f36225cf3672ba759537a4ee1918a6e1a"
+    ),
+    "newtsolver/newt_bank_multicomponent.json": (
+        "962e7576977461fe38e9785e0bab4db83335bd261a8d733cf2d37da02876f7b5"
+    ),
+    "newtsolver/newt_beta_sin_boundary.json": (
+        "f4ee2814f62d60f4cfe6fb38b1fa3117ca55c3ef4d67640c405675c6a751f2bd"
+    ),
+    "newtsolver/newt_modified_offset.json": (
+        "c47b364468fb6eef18fb014145eda222b7026e655b73ca2bfa26fd2fb21603d8"
+    ),
+    "newtsolver/newt_prandtl_meyer.json": (
+        "8b0259467cae751caeabbb8697d2a030e5c86f0673db59d533ac400bae7a9664"
+    ),
+    "newtsolver/newt_shield_embree.json": (
+        "8d7cb2b5adc546399560a280c0a2ac0bdc0ca04f07145ebcfebbe962cf142cd7"
+    ),
+    "newtsolver/newt_shield_rtree.json": (
+        "efaf81707e9f2c91e5b437cbb75ff26042005fe796338fc681ce8b8a68eab8ad"
+    ),
+    "newtsolver/newt_tangent_cone.json": (
+        "3f208a8ac87c8b58598723c44ca8afac36ad95e7b807bd023a207c5932bae0a5"
+    ),
+    "newtsolver/newt_tangent_wedge.json": (
+        "2c63e8d7063af73d41d4bf09adf6b378ed706f5e3bd883e308049759062a4e94"
+    ),
+    "newtsolver/newt_zero_newtonian.json": (
+        "04935a56a01cd33545a6ea70e9e315a1568e8f796ff5644ca062d9589c96b0e4"
+    ),
+}
 
 
 def _load_case(solver: str, case_id: str) -> dict:
     return json.loads(
         (GOLDEN_ROOT / solver / f"{case_id}.json").read_text(encoding="utf-8")
     )
-
-
-def _total_row(case: dict) -> dict:
-    rows = [row for row in case["csv"]["rows"] if row["scope"] == "total"]
-    if len(rows) != 1:
-        raise AssertionError("Expected one total row")
-    return rows[0]
 
 
 def _case_metadata(solver: str) -> dict[str, dict]:
@@ -263,13 +312,20 @@ class LegacyFixtureComparatorTests(unittest.TestCase):
 
 
 class LegacyFixtureSemanticIntegrityTests(unittest.TestCase):
-    def test_validation_reference_values_are_frozen(self) -> None:
-        fmf = _total_row(_load_case("fmfsolver", "fmf_zero_plate"))
-        newt = _total_row(_load_case("newtsolver", "newt_zero_newtonian"))
-        self.assertAlmostEqual(2.3944907701811076, float(fmf["CA"]), places=12)
-        self.assertAlmostEqual(float(fmf["CA"]), float(fmf["CD"]), places=12)
-        self.assertAlmostEqual(2.0, float(newt["CA"]), places=12)
-        self.assertAlmostEqual(float(newt["CA"]), float(newt["CD"]), places=12)
+    def test_golden_captures_are_unchanged(self) -> None:
+        actual = {}
+        for path in sorted(GOLDEN_ROOT.glob("*/*.json")):
+            payload = json.dumps(
+                json.loads(path.read_text(encoding="utf-8")),
+                sort_keys=True,
+                separators=(",", ":"),
+                ensure_ascii=True,
+                allow_nan=False,
+            )
+            actual[path.relative_to(GOLDEN_ROOT).as_posix()] = hashlib.sha256(
+                payload.encode("ascii")
+            ).hexdigest()
+        self.assertEqual(GOLDEN_CANONICAL_SHA256, actual)
 
 
 if __name__ == "__main__":
