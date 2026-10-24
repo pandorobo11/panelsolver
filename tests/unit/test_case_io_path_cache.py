@@ -32,6 +32,7 @@ def _current_fmf_row() -> pd.DataFrame:
 
 
 class CaseIoPathCacheTests(unittest.TestCase):
+    @unittest.skipUnless(os.name == "posix", "POSIX symlink/.. traversal semantics")
     def test_stl_cache_does_not_lexically_collapse_parent_components(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -45,8 +46,8 @@ class CaseIoPathCacheTests(unittest.TestCase):
                 )
             except (NotImplementedError, OSError) as exc:
                 self.skipTest(f"directory symlink creation is unavailable: {exc}")
-            # Through the symlink, linked/../same.stl is elsewhere/same.stl; a
-            # lexical cache key would reuse the missing input/same.stl result.
+            # POSIX follows the symlink before ..; Windows normalizes .. first.
+            # A lexical cache key would reuse the missing input/same.stl result.
             frame = pd.DataFrame({"stl_path": ("same.stl", "linked/../same.stl")})
             issues: list[tuple] = []
             _validate_and_resolve_stl_paths(
