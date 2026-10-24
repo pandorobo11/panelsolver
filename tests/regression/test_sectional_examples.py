@@ -32,7 +32,9 @@ def _sectional_rows(domain, rows, *, cp):
     return result.csv.rows
 
 
-@pytest.mark.parametrize("domain", DOMAINS)
+# Each example runs in one domain here and the other in the GUI example tests;
+# both models' conservation is covered by the sectional integration oracle.
+@pytest.mark.parametrize("domain", ["hypersonic"])
 def test_sectional_loads_example_spans_sum_to_summary_totals(domain, tmp_path):
     rows = _rows(domain, tmp_path)
     totals = {
@@ -89,7 +91,7 @@ def test_sectional_loads_example_spans_sum_to_summary_totals(domain, tmp_path):
                 )
 
 
-@pytest.mark.parametrize("domain", DOMAINS)
+@pytest.mark.parametrize("domain", ["fmf"])
 def test_sectional_cp_example_planes_are_clean_and_windward_is_higher(domain, tmp_path):
     rows = _sectional_rows(domain, _rows(domain, tmp_path), cp=True)
     assert {row["plane_status"] for row in rows} == {"ok"}

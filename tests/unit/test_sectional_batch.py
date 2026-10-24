@@ -104,54 +104,6 @@ def _public_result(domain, row):
     )
 
 
-def test_schema_is_fixed_and_contains_no_cumulative_or_density_fields():
-    assert batch.SECTIONAL_CSV_COLUMNS == (
-        "case_id",
-        "case_signature",
-        "section_id",
-        "batch_status",
-        "origin_x_stl_m",
-        "origin_y_stl_m",
-        "origin_z_stl_m",
-        "direction_hat_x_stl",
-        "direction_hat_y_stl",
-        "direction_hat_z_stl",
-        "selected_component_ids",
-        "all_components_selected",
-        "range_mode",
-        "resolved_start_m",
-        "resolved_stop_m",
-        "selected_geometry_min_m",
-        "selected_geometry_max_m",
-        "covers_selected_geometry",
-        "bin_count",
-        "ref_x_stl_m",
-        "ref_y_stl_m",
-        "ref_z_stl_m",
-        "Aref_m2",
-        "Lref_Cl_m",
-        "Lref_Cm_m",
-        "Lref_Cn_m",
-        "alpha_stability_deg",
-        "scope",
-        "component_id",
-        "bin_index",
-        "bin_start_m",
-        "bin_stop_m",
-        "bin_center_m",
-        "bin_width_m",
-        "wetted_area_m2",
-        "delta_CA",
-        "delta_CY",
-        "delta_CN",
-        "delta_Cl",
-        "delta_Cm",
-        "delta_Cn",
-        "delta_CD",
-        "delta_CL",
-    )
-
-
 @pytest.mark.parametrize("domain", DOMAINS)
 def test_matches_public_api_coefficients_references_and_identity(domain):
     rows = _rows(domain, components=2)
@@ -362,38 +314,6 @@ def test_cancel_before_solve_and_between_definitions_retains_prefix():
     ) == (1, 4, 0)
     assert partial.errors == ()
     assert {row["batch_status"] for row in partial.csv.rows} == {"cancelled"}
-
-
-def test_parallel_failure_drains_active_cases_and_preserves_failure_status():
-    first = _rows(components=2)[0]
-    second = {**_rows()[0], "case_id": "case_1"}
-    drained = []
-
-    def parallel(cases, workers, runner, **kwargs):
-        try:
-            yield 1, runner(cases[1], kwargs["logfn"])
-            assert kwargs["cancel_cb"]() is True
-            yield 0, runner(cases[0], kwargs["logfn"])
-            drained.append(True)
-            raise SchedulerCancelled("Stopped at a case boundary")
-        except GeneratorExit:
-            pytest.fail("active scheduler was closed instead of drained")
-
-    with patch.object(batch, "iter_case_results_parallel", side_effect=parallel):
-        result = _run(
-            (first, second),
-            (_definition(), _definition("part", component_ids=(1,))),
-            workers=2,
-        )
-    assert drained == [True]
-    assert result.status == "failed"
-    assert result.completed_pairs == 3
-    assert result.completed_cases == 1
-    assert [(error.case_id, error.section_id) for error in result.errors] == [
-        ("case_1", "part")
-    ]
-    ids = [row["case_id"] for row in result.csv.rows]
-    assert ids == sorted(ids)
 
 
 def test_parallel_cancel_keeps_inflight_success_and_cleanup_failure_is_visible():

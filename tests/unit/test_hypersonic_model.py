@@ -198,6 +198,8 @@ class HypersonicModelTests(unittest.TestCase):
                 cp_cap=cap,
             )[0]
         )
+        # Independent evaluation of the documented continuation in
+        # docs/methods/hypersonic.md#detached-branch-continuation.
         weight = (math.sin(theta) ** 2 - math.sin(theta_max) ** 2) / max(
             1.0 - math.sin(theta_max) ** 2,
             1.0e-12,

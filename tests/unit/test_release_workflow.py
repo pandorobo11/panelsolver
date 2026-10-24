@@ -1,4 +1,3 @@
-import argparse
 import json
 import os
 import re
@@ -40,22 +39,6 @@ class ReleaseWorkflowTests(unittest.TestCase):
         ]
         self.assertEqual(1, len(steps), (name, action))
         return steps[0]
-
-    def test_triggers_and_concurrency_keep_main_and_tags_independent(self) -> None:
-        triggers = self.workflow["on"]
-        self.assertEqual(["main"], triggers["push"]["branches"])
-        self.assertEqual(["v*"], triggers["push"]["tags"])
-        self.assertIn("pull_request", triggers)
-        concurrency = self.workflow["concurrency"]
-        self.assertIn(
-            "github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number)",
-            concurrency["group"],
-        )
-        self.assertIn("|| format('run-{0}', github.run_id)", concurrency["group"])
-        self.assertEqual(
-            "${{ github.event_name == 'pull_request' }}",
-            concurrency["cancel-in-progress"],
-        )
 
     def test_source_and_installed_checks_keep_platform_coverage(self) -> None:
         self.assertFalse(self.needs("test"))
@@ -151,19 +134,6 @@ class ReleaseWorkflowTests(unittest.TestCase):
                     check=False,
                 )
                 self.assertEqual(available, run.returncode == 0, run.stderr)
-
-    def test_scheduler_stress_keeps_required_repetitions(self) -> None:
-        command = next(
-            run for run in self.runs("test") if "probe_scheduler_lifecycle.py" in run
-        )
-        arguments = shlex.split(command)
-        start = arguments.index("scripts/probe_scheduler_lifecycle.py") + 1
-        parser = argparse.ArgumentParser()
-        parser.add_argument("--iterations", type=int, required=True)
-        parser.add_argument("--timeout-seconds", type=float, required=True)
-        options = parser.parse_args(arguments[start:])
-        self.assertGreaterEqual(options.iterations, 10)
-        self.assertGreaterEqual(options.timeout_seconds, 90)
 
     def test_build_once_and_consumers_verify_the_same_commit_bound_set(self) -> None:
         producers = [

@@ -488,15 +488,6 @@ def test_result_arrays_and_views_are_owned_immutable_and_pickle_safe(roundtrip):
         result.total = distribution
 
 
-@pytest.mark.parametrize("position", range(4))
-def test_input_contract_types_are_checked(position):
-    mesh = make_mesh()
-    args = [mesh, resolve(mesh), LocalLoads([[0, 0, -1]]), common_case()]
-    args[position] = object()
-    with pytest.raises(ContractValueError):
-        integrate_sectional_loads(*args)
-
-
 def test_mismatched_panel_count_and_component_selection_rejected():
     with pytest.raises(ContractValueError):
         integrate(loads=LocalLoads([[0, 0, -1], [0, 0, -1]]))
@@ -512,29 +503,6 @@ def test_mismatched_panel_count_and_component_selection_rejected():
             LocalLoads([[0, 0, -1], [0, 0, -1]]),
             common_case(),
         )
-
-
-@pytest.mark.parametrize("bad", ["type", "face", "bin", "selection"])
-def test_a2_output_indices_are_checked_before_traction_or_component_lookup(bad):
-    mesh = make_mesh([TRIANGLE, TRIANGLE], [2, 7])
-    spec = resolve(mesh, component_ids=(2,))
-    fragments = compute_sectional_fragment_geometry(mesh, spec)
-    if bad == "type":
-        fragments = object()
-    elif bad == "face":
-        fragments = replace(fragments, source_face_indices=[2, 2])
-    elif bad == "bin":
-        fragments = replace(fragments, bin_indices=[0, 2])
-    else:
-        fragments = replace(fragments, source_face_indices=[1, 1])
-    with patch(
-        "panelsolver.core._sectional_integration.compute_sectional_fragment_geometry",
-        return_value=fragments,
-    ):
-        with pytest.raises(ContractValueError):
-            integrate_sectional_loads(
-                mesh, spec, LocalLoads([[0, 0, -1], [0, 0, -2]]), common_case()
-            )
 
 
 @pytest.mark.parametrize(

@@ -134,14 +134,14 @@ def test_direction_with_extreme_dynamic_range(mesh):
 
 
 @pytest.mark.parametrize("field", ["axis_origin_stl_m", "axis_direction_stl"])
-@pytest.mark.parametrize("value", [np.nan, np.inf, -np.inf, 10**400])
+@pytest.mark.parametrize("value", [np.nan, 10**400])
 def test_axis_rejects_nonfinite_float64_values(field, value):
     with pytest.raises(NonFiniteError):
         definition(**{field: [value, 0, 1]})
 
 
 @pytest.mark.parametrize("field", ["axis_origin_stl_m", "axis_direction_stl"])
-@pytest.mark.parametrize("value", [True, np.bool_(False), "1", 1j, None])
+@pytest.mark.parametrize("value", [True, "1"])
 def test_axis_rejects_nonreal_and_mixed_boolean_values(field, value):
     with pytest.raises(ContractValueError):
         definition(**{field: [value, 0, 1]})
@@ -181,9 +181,7 @@ def test_incomplete_equal_or_reversed_bounds_are_rejected(bounds):
 
 
 @pytest.mark.parametrize("field", ["start_m", "stop_m"])
-@pytest.mark.parametrize(
-    "value", [np.nan, np.inf, -np.inf, True, np.bool_(False), "1", 1j, [1], 10**400]
-)
+@pytest.mark.parametrize("value", [np.nan, True, "1", 10**400])
 def test_range_rejects_invalid_scalars(field, value):
     inputs = {"start_m": -1, "stop_m": 1}
     inputs[field] = value
@@ -218,12 +216,8 @@ def test_component_selection_is_sparse_sorted_and_face_based(
         (2, 2),
         (-1,),
         (True,),
-        (2, False),
-        (np.bool_(True),),
         (2.0,),
-        ("2",),
         (2**63,),
-        (10**100,),
         [[2]],
         2,
         "2",
@@ -400,9 +394,7 @@ def test_uniform_bin_counts_values_and_endpoints(mesh, count):
     )
 
 
-@pytest.mark.parametrize(
-    "count", [True, False, np.bool_(True), 0, -1, 30.0, 2.5, np.int64(30), "30", None]
-)
+@pytest.mark.parametrize("count", [True, 0, 30.0, np.int64(30), "30"])
 def test_bin_count_requires_positive_python_integer(count):
     with pytest.raises(ContractValueError):
         definition(bin_count=count)

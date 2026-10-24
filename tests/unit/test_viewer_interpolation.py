@@ -172,8 +172,11 @@ def test_geometry_reuse_keeps_scalar_arrays_independent():
     assert not geometry[0].surface.cell_data
 
 
-@pytest.mark.parametrize("angle_deg", [0, 15, 29.9, 30.1, 90, 150, 180])
-@pytest.mark.parametrize("reverse", [False, True])
+@pytest.mark.parametrize(
+    "angle_deg,reverse",
+    # Straddle the 30 degree split threshold in both windings, plus a full fold.
+    [(29.9, False), (30.1, False), (150.1, True), (149.9, True), (180, False)],
+)
 def test_split_uses_original_normal_angle(angle_deg, reverse):
     angle = np.deg2rad(angle_deg)
     points = np.array(
@@ -258,9 +261,16 @@ def test_direct_group_construction_supports_mixed_polygon_sizes():
     )
 
 
-@pytest.mark.parametrize("folded", [False, True])
-@pytest.mark.parametrize("association", ["point", "cell", "both"])
-@pytest.mark.parametrize("separate_points", [False, True])
+@pytest.mark.parametrize(
+    "association,separate_points,folded",
+    # Each association, point layout, and fold state appears at least once.
+    [
+        ("both", False, False),
+        ("both", True, True),
+        ("point", False, True),
+        ("cell", True, False),
+    ],
+)
 def test_imported_normals_are_preserved_without_affecting_averages(
     association, separate_points, folded
 ):

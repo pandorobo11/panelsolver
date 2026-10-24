@@ -370,29 +370,35 @@ class ViewerPanelTests(unittest.TestCase):
         )
 
     def test_invalid_boundaries_still_allow_panel_inspection(self):
-        for smooth in (False, True):
-            for name in ("shielded", "stl_index"):
-                for values in ([[0, 1], [1, 0]], [0], [0, np.nan], ["a", "b"]):
-                    with self.subTest(smooth=smooth, name=name, values=values):
-                        viewer, plotter = self.make_viewer(spec=newt_solver_spec())
-                        viewer.chk_smooth_colors.setChecked(smooth)
-                        self.assertTrue(
-                            viewer.load_vtp(
-                                "/tmp/invalid.vtp",
-                                FakePoly({"cp": [0.0, 1.0], name: values}),
-                            )
-                        )
-                        self.assertNotEqual(
-                            ArtifactViewStatus.INVALID_DATA,
-                            viewer.artifact_view_state.status,
-                        )
-                        self.assertTrue(plotter.mesh_calls)
-                        self.assertNotIn("preference", plotter.mesh_calls[0][1])
-                        self.assertEqual(
-                            "interpolation failed"
-                            in plotter.mesh_calls[0][1]["scalar_bar_args"]["title"],
-                            smooth,
-                        )
+        # Every malformed form once, plus each boundary and smoothing state.
+        invalid = ([[0, 1], [1, 0]], [0], [0, np.nan], ["a", "b"])
+        cases = (
+            *((True, "shielded", values) for values in invalid),
+            (False, "shielded", [0, np.nan]),
+            (True, "stl_index", [0, np.nan]),
+            (False, "stl_index", ["a", "b"]),
+        )
+        for smooth, name, values in cases:
+            with self.subTest(smooth=smooth, name=name, values=values):
+                viewer, plotter = self.make_viewer(spec=newt_solver_spec())
+                viewer.chk_smooth_colors.setChecked(smooth)
+                self.assertTrue(
+                    viewer.load_vtp(
+                        "/tmp/invalid.vtp",
+                        FakePoly({"cp": [0.0, 1.0], name: values}),
+                    )
+                )
+                self.assertNotEqual(
+                    ArtifactViewStatus.INVALID_DATA,
+                    viewer.artifact_view_state.status,
+                )
+                self.assertTrue(plotter.mesh_calls)
+                self.assertNotIn("preference", plotter.mesh_calls[0][1])
+                self.assertEqual(
+                    "interpolation failed"
+                    in plotter.mesh_calls[0][1]["scalar_bar_args"]["title"],
+                    smooth,
+                )
 
     def test_boundary_validation_is_cached_and_disabled_parent_keeps_smooth(self):
         from panelsolver.app.viewer_data import _scalar_array

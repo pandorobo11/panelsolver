@@ -256,6 +256,8 @@ class GeometryAndFlowValidationTests(unittest.TestCase):
             [[1.0, 0.0, 0.0], [0.0, True, 0.0]],
             [np.array([1.0, 0.0, 0.0]), np.array([True, False, False])],
             ([1.0, 0.0, 0.0], (0.0, 0.0, np.bool_(True))),
+            np.array([0.0, 0.0, True], dtype=object),
+            np.array([True, False, True]),
         ):
             with (
                 self.subTest(value=repr(value)),

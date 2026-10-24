@@ -109,18 +109,25 @@ class ResolvedAttitudeInvariantTests(unittest.TestCase):
                 )
 
     def test_sideslip_limits_and_tangent_singularities(self) -> None:
+        # Only the beta_tan corners are singular; their neighbours stay finite.
+        for alpha in (-90, 90):
+            for beta in (-90, 90):
+                with (
+                    self.subTest(alpha=alpha, beta=beta),
+                    self.assertRaisesRegex(ValueError, "undefined"),
+                ):
+                    resolve_attitude(alpha, beta, "beta_tan")
+        for mode, alpha, beta in (
+            ("beta_tan", 90, 30),
+            ("beta_tan", -100, 90),
+            ("beta_tan", 460, -90),
+            ("beta_sin", 90, 90),
+            ("beta_sin", -180, -90),
+        ):
+            with self.subTest(mode=mode, alpha=alpha, beta=beta):
+                resolved = resolve_attitude(alpha, beta, mode)
+                self.assertTrue(np.isfinite(resolved.velocity_hat_stl).all())
         for mode in ("beta_tan", "beta_sin"):
-            for alpha in (-180, -100, -90, 0, 90, 100, 180, 460):
-                for beta in (-90, -30, 0, 30, 90):
-                    with self.subTest(mode=mode, alpha=alpha, beta=beta):
-                        if mode == "beta_tan" and abs(alpha) == 90 and abs(beta) == 90:
-                            with self.assertRaisesRegex(ValueError, "undefined"):
-                                resolve_attitude(alpha, beta, mode)
-                        else:
-                            resolved = resolve_attitude(alpha, beta, mode)
-                            self.assertTrue(
-                                np.isfinite(resolved.velocity_hat_stl).all()
-                            )
             for beta in (-91, 91, 360):
                 with self.assertRaisesRegex(ValueError, "beta_or_bank_deg"):
                     resolve_attitude(0, beta, mode)

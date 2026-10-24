@@ -261,12 +261,11 @@ class WorkbenchTests(test_cases_panel.CasesPanelFixture, unittest.TestCase):
                             font = self.app.font()
                             font.setPointSizeF(previous_font.pointSizeF() * scale)
                             self.app.setFont(font)
-                            for spec_factory in (
-                                test_cases_panel.fmf_solver_spec,
-                                test_cases_panel.newt_solver_spec,
-                            ):
-                                with self.subTest(domain=spec_factory.__module__):
-                                    self.assert_small_window_controls_fit(spec_factory)
+                            # Controls are domain-neutral; FMF has the longer
+                            # scalar labels (see the scalar selector width test).
+                            self.assert_small_window_controls_fit(
+                                test_cases_panel.fmf_solver_spec
+                            )
         finally:
             self.app.setStyle(previous_style)
             self.app.setStyleSheet(previous_qss)

@@ -32,47 +32,58 @@ def _write_case_table(frame: pd.DataFrame, path: Path) -> None:
 
 
 class CaseReaderCompatibilityTests(unittest.TestCase):
-    def test_readers_reject_removed_npz_field_regardless_of_flag_value(self) -> None:
+    def test_readers_reject_removed_fields_regardless_of_value(self) -> None:
         cases = (
-            (read_fmf_cases, "fmfsolver_cases.csv", ".csv", 0),
-            (read_newt_cases, "newtsolver_cases.csv", ".xlsx", 1),
+            (
+                read_fmf_cases,
+                "fmfsolver_cases.csv",
+                ".csv",
+                "save_npz_on",
+                0,
+                "no longer writes NPZ files",
+            ),
+            (
+                read_newt_cases,
+                "newtsolver_cases.csv",
+                ".xlsx",
+                "save_npz_on",
+                1,
+                "no longer writes NPZ files",
+            ),
+            (
+                read_fmf_cases,
+                "fmfsolver_cases.csv",
+                ".csv",
+                "out_dir",
+                "outputs",
+                "outputs directory beside the case table",
+            ),
+            (
+                read_newt_cases,
+                "newtsolver_cases.csv",
+                ".xlsx",
+                "out_dir",
+                "",
+                "outputs directory beside the case table",
+            ),
         )
-        for reader, filename, suffix, value in cases:
-            with self.subTest(filename=filename), tempfile.TemporaryDirectory() as td:
+        for reader, filename, suffix, field, value, guidance in cases:
+            with (
+                self.subTest(filename=filename, field=field),
+                tempfile.TemporaryDirectory() as td,
+            ):
                 frame = read_current_cases(reader, _INPUTS / filename).iloc[[0]].copy()
-                frame["save_npz_on"] = value
+                frame[field] = value
                 path = Path(td) / f"case{suffix}"
                 _write_case_table(frame, path)
                 with self.assertRaises(Exception) as caught:
                     reader(path)
                 error = caught.exception
                 self.assertEqual("InputValidationError", type(error).__name__)
-                self.assertEqual(
-                    ["save_npz_on"], [issue.field for issue in error.issues]
-                )
+                self.assertEqual([field], [issue.field for issue in error.issues])
                 self.assertIn("has been removed", str(error))
                 self.assertIn("Delete this field", str(error))
-                self.assertIn("no longer writes NPZ files", str(error))
-
-    def test_readers_reject_removed_out_dir_field_regardless_of_value(self) -> None:
-        cases = (
-            (read_fmf_cases, "fmfsolver_cases.csv", ".csv", "outputs"),
-            (read_newt_cases, "newtsolver_cases.csv", ".xlsx", ""),
-        )
-        for reader, filename, suffix, value in cases:
-            with self.subTest(filename=filename), tempfile.TemporaryDirectory() as td:
-                frame = read_current_cases(reader, _INPUTS / filename).iloc[[0]].copy()
-                frame["out_dir"] = value
-                path = Path(td) / f"case{suffix}"
-                _write_case_table(frame, path)
-                with self.assertRaises(Exception) as caught:
-                    reader(path)
-                error = caught.exception
-                self.assertEqual("InputValidationError", type(error).__name__)
-                self.assertEqual(["out_dir"], [issue.field for issue in error.issues])
-                self.assertIn("has been removed", str(error))
-                self.assertIn("Delete this field", str(error))
-                self.assertIn("outputs directory beside the case table", str(error))
+                self.assertIn(guidance, str(error))
 
     def test_csv_reader_accepts_bomless_bom_and_japanese_utf8(self) -> None:
         products = (
@@ -190,10 +201,8 @@ class CaseReaderCompatibilityTests(unittest.TestCase):
                     self.assertIn(".csv", message)
 
     def test_case_ids_use_one_portable_unicode_and_casefold_policy(self) -> None:
-        products = (
-            (read_fmf_cases, "fmfsolver_cases.csv"),
-            (read_newt_cases, "newtsolver_cases.csv"),
-        )
+        # Both readers share this validator; one domain owns the matrix.
+        products = ((read_fmf_cases, "fmfsolver_cases.csv"),)
         with tempfile.TemporaryDirectory() as temp_dir:
             temp = Path(temp_dir)
             for reader, filename in products:
@@ -266,10 +275,8 @@ class CaseReaderCompatibilityTests(unittest.TestCase):
                 self.assertEqual(2, len(paths))
 
     def test_attitude_domains_are_common_and_mode_specific(self) -> None:
-        products = (
-            (read_fmf_cases, "fmfsolver_cases.csv"),
-            (read_newt_cases, "newtsolver_cases.csv"),
-        )
+        # Both readers share this validator; one domain owns the matrix.
+        products = ((read_fmf_cases, "fmfsolver_cases.csv"),)
         rejected = (
             ("beta_tan", "beta_or_bank_deg", -90.001),
             ("beta_tan", "beta_or_bank_deg", 90.001),

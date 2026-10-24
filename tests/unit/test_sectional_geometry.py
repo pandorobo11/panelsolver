@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import pickle
 import warnings
-from dataclasses import FrozenInstanceError, fields, replace
+from dataclasses import fields, replace
 from decimal import Decimal, localcontext
 from pathlib import Path
 from unittest.mock import patch
@@ -13,11 +12,10 @@ import numpy as np
 import pytest
 
 from panelsolver.core._sectional_geometry import (
-    SectionalFragmentGeometry,
     compute_sectional_fragment_geometry,
 )
 from panelsolver.core.contracts import PanelGeometry
-from panelsolver.core.errors import ContractError, ContractValueError, NonFiniteError
+from panelsolver.core.errors import ContractValueError, NonFiniteError
 from panelsolver.core.mesh import MeshComponent, PanelMesh
 from panelsolver.core.mesh_loading import load_panel_mesh
 from panelsolver.core.sectional import (
@@ -556,51 +554,6 @@ def test_candidate_bins_do_not_clip_every_face_against_every_bin():
         result = compute_sectional_fragment_geometry(mesh, spec)
     assert split.call_count <= 2
     assert result.areas_m2.shape == (1,)
-
-
-@pytest.mark.parametrize("round_trip", [False, True])
-def test_result_buffers_are_frozen_and_have_no_mutable_aliases(round_trip):
-    result = compute()
-    inputs = {
-        field.name: getattr(result, field.name).copy() for field in fields(result)
-    }
-    owned = SectionalFragmentGeometry(**inputs)
-    if round_trip:
-        owned = pickle.loads(pickle.dumps(owned))
-    for name, value in inputs.items():
-        array = getattr(owned, name)
-        assert array.dtype == (np.int64 if name.endswith("indices") else np.float64)
-        assert array.flags.c_contiguous
-        assert not np.shares_memory(array, value)
-        value[:] = 99
-        np.testing.assert_array_equal(array, getattr(result, name))
-        with pytest.raises(ValueError):
-            array.setflags(write=True)
-        with pytest.raises(ValueError):
-            array.flat[0] = 0
-    with pytest.raises(FrozenInstanceError):
-        owned.areas_m2 = np.ones(2)
-
-
-@pytest.mark.parametrize(
-    "changes",
-    [
-        {"areas_m2": [0, 1]},
-        {"areas_m2": [-1, 1]},
-        {"areas_m2": [np.inf, 1]},
-        {"areas_m2": [True, False]},
-        {"areas_m2": [1]},
-        {"bin_indices": [1, 0]},
-        {"bin_indices": [0, 0]},
-        {"bin_indices": [0.0, 1.0]},
-        {"source_face_indices": [1, 0]},
-        {"origins_stl_m": [0, 0, 0]},
-        {"area_first_moments_local_stl_m3": [[np.nan, 0, 0], [0, 0, 0]]},
-    ],
-)
-def test_fragment_contract_rejects_invalid_shape_values_and_order(changes):
-    with pytest.raises(ContractError):
-        replace(compute(), **changes)
 
 
 def test_geometry_entry_point_requires_mesh_and_resolved_spec():

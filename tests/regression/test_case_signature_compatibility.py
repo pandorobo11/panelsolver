@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import json
 import unittest
 from pathlib import Path
@@ -9,21 +8,19 @@ import numpy as np
 
 from panelsolver.core import (
     CommonCasePayload,
-    MeshComponent,
     ModelCasePayload,
-    PanelGeometry,
-    PanelMesh,
     ResolvedShieldingConfig,
     build_case_signature,
     clear_mesh_cache,
-    geometry_fingerprint,
     load_panel_mesh,
 )
 from panelsolver.models import HypersonicModel, SentmanModel
 
 FIXTURE_ROOT = Path(__file__).parents[1] / "fixtures" / "phase1"
 GOLDEN_ROOT = FIXTURE_ROOT / "golden"
-EXPECTED_SIGNATURES = {
+# Historical schema v1 digests: frozen evidence that current artifacts must
+# never auto-match (ADR 0017).
+HISTORICAL_V1_SIGNATURES = {
     "fmfsolver/fmf_bank_multicomponent": (
         "7efb199123f26e31f1ea99d605945a82a49432490527635eab2b511b50832af0"
     ),
@@ -71,35 +68,65 @@ EXPECTED_SIGNATURES = {
     ),
 }
 
+# Current schema v2 digests, captured from the unchanged implementation at
+# be9e4da. ADR 0005 forbids silent field, normalization, or serialization
+# changes; an intended change needs a schema-version increment and migration.
+CURRENT_V2_SIGNATURES = {
+    "fmfsolver/fmf_bank_multicomponent": (
+        "58575f5181fa5e4739b779e8779c07fe80cc120dd2ce25f3288cdc7126879c12"
+    ),
+    "fmfsolver/fmf_beta_sin_boundary": (
+        "582a9c1c8adeddba7510e845bedffa57cf639722a824a273bf1625ca5d8edf96"
+    ),
+    "fmfsolver/fmf_mode_b_offset": (
+        "26c357efeac68e5e0facaf24d737ade784b0acaac5061cac65c16e7d58854019"
+    ),
+    "fmfsolver/fmf_shield_embree": (
+        "a91bc9b9c8a868a8de8f6ace6c56cb8a8c119be9d0ddb3a5b46c668837ccb375"
+    ),
+    "fmfsolver/fmf_shield_rtree": (
+        "b75d21aa802e168de14778b63eb28c1a8166db1f8e9b9db8a8ee72880f4b158a"
+    ),
+    "fmfsolver/fmf_zero_plate": (
+        "162f9c2ec843cbef6114ed3e952de6ac505891d455fec76cb3467531e14f3d1b"
+    ),
+    "newtsolver/newt_bank_multicomponent": (
+        "0bcf123e7b589512af95ed94ab9160556ab84c4400777760540109553d973cc7"
+    ),
+    "newtsolver/newt_beta_sin_boundary": (
+        "3e0cb0d50c7df2d17b911928b7e2e7608c407f5ebdbdba9652a01d6ac7abf3b8"
+    ),
+    "newtsolver/newt_modified_offset": (
+        "03abb65e1cd44c2e113a266011ee9a0b9541df1e43a23b838645062209352e78"
+    ),
+    "newtsolver/newt_prandtl_meyer": (
+        "eb5a9e5f953fb7415b45c1031f49618ca7d6f5c5c764914f7dbbf7683c4606d8"
+    ),
+    "newtsolver/newt_shield_embree": (
+        "07f590b15a324a8a97930efab9b956eb72ffb3d8b2f0bd898a004d2fc96bdb6a"
+    ),
+    "newtsolver/newt_shield_rtree": (
+        "d1392dc9b974de699896ed12b0dd22e3bf62842544a418edf3130a839e173afb"
+    ),
+    "newtsolver/newt_tangent_cone": (
+        "8138d75857da60d6ab3a0597184c3435d441f0669ba2c39bf4cfec66c4f37353"
+    ),
+    "newtsolver/newt_tangent_wedge": (
+        "f07272255c77f216a078214a9bb5cf0cbb4b020687119680ddb4a467e6ade3a6"
+    ),
+    "newtsolver/newt_zero_newtonian": (
+        "3af8c1f9077c01fe5f93956a54cc2fd0a8e042c110c7c9ae55dff7948bf1a9c0"
+    ),
+}
+
 
 def _array(case: dict, name: str) -> np.ndarray:
     record = case["npz"]["arrays"][name]
     return np.asarray(record["values"]).reshape(record["shape"])
 
 
-def _historical_geometry_fingerprint(golden: dict) -> str:
-    # Frozen v1 signatures describe the checked-in geometry, not whichever
-    # rounding the current mesh loader uses. Never reload its source STL here.
-    component_ids = _array(golden, "face_stl_index")
-    mesh = PanelMesh(
-        vertices_stl_m=_array(golden, "vertices"),
-        faces=_array(golden, "faces"),
-        geometry=PanelGeometry(
-            centers_stl_m=_array(golden, "centers_stl_m"),
-            normals_out_stl=_array(golden, "normals_out_stl"),
-            areas_m2=_array(golden, "areas_m2"),
-            component_ids=component_ids,
-        ),
-        components=tuple(
-            MeshComponent(component_id=int(index), source=f"historical-{index}.stl")
-            for index in np.unique(component_ids)
-        ),
-    )
-    return geometry_fingerprint(mesh)
-
-
 class CaseSignatureCompatibilityTests(unittest.TestCase):
-    def test_current_signatures_match_the_compatibility_inventory(self) -> None:
+    def test_current_signatures_are_frozen_and_never_match_v1(self) -> None:
         paths = sorted(GOLDEN_ROOT.glob("*/*.json"))
         paths = [path for path in paths if path.name != "contracts.json"]
 
@@ -153,36 +180,14 @@ class CaseSignatureCompatibilityTests(unittest.TestCase):
                     shielding_config=shielding,
                 )
                 signature_key = f"{path.parent.name}/{path.stem}"
-                # The checked-in v1 digests remain frozen historical evidence.
-                # Reconstruct that envelope independently, then verify v2 cannot
-                # auto-match the old artifacts (ADR 0017).
-                old = json.loads(signature.canonical_payload)
-                old["geometry"]["fingerprint_sha256"] = (
-                    _historical_geometry_fingerprint(golden)
-                )
-                old["schema"]["version"] = 1
-                old_common = old["common_case"]
-                old_common["alpha_t_deg"] = old_common.pop("alpha_stability_deg")
-                old_common["beta_t_deg"] = float(_array(golden, "beta_t_deg_resolved"))
-                del old_common["velocity_hat_stl"]
-                payload = json.dumps(
-                    old,
-                    sort_keys=True,
-                    separators=(",", ":"),
-                    ensure_ascii=True,
-                    allow_nan=False,
-                )
-                self.assertEqual(
-                    EXPECTED_SIGNATURES[signature_key],
-                    hashlib.sha256(payload.encode()).hexdigest(),
-                )
                 self.assertEqual(2, signature.envelope["schema"]["version"])
                 self.assertEqual(
                     loaded.geometry_fingerprint,
                     signature.envelope["geometry"]["fingerprint_sha256"],
                 )
+                self.assertEqual(CURRENT_V2_SIGNATURES[signature_key], signature.digest)
                 self.assertNotEqual(
-                    EXPECTED_SIGNATURES[signature_key], signature.digest
+                    HISTORICAL_V1_SIGNATURES[signature_key], signature.digest
                 )
 
 

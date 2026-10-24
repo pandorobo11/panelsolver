@@ -146,21 +146,15 @@ def test_component_tokens_require_semicolon_separated_integers(tmp_path, token):
 @pytest.mark.parametrize(
     "values,field",
     (
+        # One case per core-to-CSV field mapping; core owns the full rule matrix.
         ({"bin_count": "0"}, "bin_count"),
-        ({"bin_count": "-1"}, "bin_count"),
         ({"component_ids": "-1"}, "component_ids"),
         ({"component_ids": "1;01"}, "component_ids"),
-        ({"component_ids": str(2**70)}, "component_ids"),
         ({"origin_x_stl_m": "nan"}, "axis_origin_stl_m"),
-        ({"direction_z_stl": "inf"}, "axis_direction_stl"),
-        ({"origin_z_stl_m": "1e1000"}, "axis_origin_stl_m"),
         (
             {"direction_x_stl": "0", "direction_y_stl": "0", "direction_z_stl": "0"},
             "axis_direction_stl",
         ),
-        ({"start_m": "-1"}, "start_m/stop_m"),
-        ({"stop_m": "1"}, "start_m/stop_m"),
-        ({"start_m": "1", "stop_m": "1"}, "start_m/stop_m"),
         ({"start_m": "2", "stop_m": "1"}, "start_m/stop_m"),
         ({"start_m": "-1", "stop_m": "nan"}, "stop_m"),
     ),
@@ -173,8 +167,12 @@ def test_a1_owns_numerical_validation(tmp_path, values, field):
     assert f"row 2, section_id='right', field {field}" in str(error.value)
 
 
-@pytest.mark.parametrize("field", COLUMNS[1:7])
-@pytest.mark.parametrize("token", ("", "   ", "True", "nonsense"))
+@pytest.mark.parametrize(
+    "field,token",
+    # Every axis column is attributed; token kinds share one parser.
+    [(field, "") for field in COLUMNS[1:7]]
+    + [(COLUMNS[1], token) for token in ("   ", "True", "nonsense")],
+)
 def test_required_axis_cell_diagnostics_identify_csv_field(tmp_path, field, token):
     with pytest.raises(ValueError, match=f"field {field}"):
         read_sectional_definitions(_write(tmp_path, [ROW | {field: token}]))

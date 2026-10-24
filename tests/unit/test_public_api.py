@@ -286,12 +286,8 @@ class PublicApiTests(unittest.TestCase):
                 (1, 0.5, -2.0),
                 factory([1, np.float32(0.5), -2.0]).moment_reference_stl_m,
             )
-            for reference in (
-                (True, 0.0, 0.0),
-                [0.0, np.bool_(False), 0.0],
-                np.array([0.0, 0.0, True], dtype=object),
-                np.array([True, False, True]),
-            ):
+            # Container forms are covered by the shared validator tests.
+            for reference in ((True, 0.0, 0.0),):
                 with (
                     self.subTest(factory=factory.__name__, reference=repr(reference)),
                     self.assertRaisesRegex(ValueError, "moment_reference_stl_m"),

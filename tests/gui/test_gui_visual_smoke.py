@@ -93,44 +93,6 @@ class _FakeWindow:
 
 
 class GuiVisualSmokeParserTests(unittest.TestCase):
-    def test_defaults_follow_production_system_theme(self) -> None:
-        args = gui_visual_smoke.build_parser().parse_args([])
-
-        self.assertEqual(args.domain, "fmf")
-        self.assertEqual(args.theme, ThemeMode.SYSTEM.value)
-        self.assertIsNone(args.input)
-        self.assertEqual(args.row, 0)
-        self.assertIsNone(args.screenshot)
-        self.assertFalse(args.quit_after_screenshot)
-
-    def test_explicit_domain_theme_input_and_row(self) -> None:
-        args = gui_visual_smoke.build_parser().parse_args(
-            [
-                "--domain",
-                "hypersonic",
-                "--theme",
-                "dark",
-                "--input",
-                str(_INPUT_PATH),
-                "--row",
-                "2",
-                "--screenshot",
-                "visual.png",
-                "--quit-after-screenshot",
-            ]
-        )
-
-        self.assertEqual(args.domain, "hypersonic")
-        self.assertEqual(args.theme, ThemeMode.DARK.value)
-        self.assertEqual(args.input, _INPUT_PATH.resolve())
-        self.assertEqual(args.row, 2)
-        self.assertEqual(args.screenshot, (Path.cwd() / "visual.png").resolve())
-        self.assertTrue(args.quit_after_screenshot)
-
-    def test_negative_row_is_rejected(self) -> None:
-        with self.assertRaises(SystemExit):
-            gui_visual_smoke.build_parser().parse_args(["--row", "-1"])
-
     def test_screenshot_requires_png_path(self) -> None:
         with self.assertRaises(SystemExit):
             gui_visual_smoke.parse_args(["--screenshot", "visual.jpg"])

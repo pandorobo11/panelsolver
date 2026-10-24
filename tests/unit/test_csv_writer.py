@@ -8,6 +8,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from panelsolver.app.artifact_io import write_vtp_projection
 from panelsolver.app.csv_writer import (
     CSV_ENCODING,
     CsvAppendRollbackError,
@@ -17,13 +18,22 @@ from panelsolver.app.csv_writer import (
     write_csv_atomic,
 )
 from panelsolver.app.temp_files import create_replacement_temp
-from panelsolver.core import CsvProjection
+from panelsolver.core import (
+    ArtifactProjectionPolicy,
+    CsvProjection,
+    project_vtp_artifact,
+)
 from panelsolver.domains import fmf as fmf_csv
-from panelsolver.domains import hypersonic as hypersonic_csv
 from panelsolver.domains.fmf import CLI_POLICY as FMF_CLI_POLICY
 from panelsolver.domains.fmf import GUI_ADAPTERS as FMF_GUI_ADAPTERS
 from panelsolver.domains.hypersonic import CLI_POLICY as HYPERSONIC_CLI_POLICY
 from panelsolver.domains.hypersonic import GUI_ADAPTERS as HYPERSONIC_GUI_ADAPTERS
+
+from .test_artifacts import fixture as vtp_fixture
+
+# Both domains delegate to one summary-path validator. The CLI/GUI wiring test
+# below covers every domain entry point; path rules are checked once here.
+SHARED_VALIDATOR_ADAPTERS = (fmf_csv,)
 
 
 def projection() -> CsvProjection:
@@ -218,22 +228,42 @@ class CsvWriterTests(unittest.TestCase):
             self.assertEqual([output], list(Path(td).iterdir()))
 
     @unittest.skipIf(os.name != "posix", "POSIX permission bits")
-    def test_atomic_writer_creates_and_replaces_with_umask_mode(self) -> None:
+    def test_atomic_writers_create_and_replace_with_umask_mode(self) -> None:
+        # Both atomic writers share the replacement temporary-file helper.
+        mesh, results = vtp_fixture()
+        vtp = project_vtp_artifact(
+            mesh,
+            results,
+            ArtifactProjectionPolicy("beta_tan", "signature", "not_used", "1.0"),
+        )
+        writers = (
+            (".csv", lambda path: write_csv_atomic(path, projection())),
+            (".vtp", lambda path: write_vtp_projection(path, vtp)),
+        )
         for mask in (0o022, 0o027, 0o077):
-            with self.subTest(umask=oct(mask)), tempfile.TemporaryDirectory() as td:
-                created = Path(td) / "created.csv"
-                replaced = Path(td) / "replaced.csv"
-                replaced.write_text("previous\n", encoding="utf-8")
-                replaced.chmod(0o600)
-                previous_mask = os.umask(mask)
-                try:
-                    write_csv_atomic(created, projection())
-                    write_csv_atomic(replaced, projection())
-                finally:
-                    os.umask(previous_mask)
-                for output in (created, replaced):
-                    self.assertEqual(0o666 & ~mask, stat.S_IMODE(output.stat().st_mode))
-                self.assertEqual(created.read_bytes(), replaced.read_bytes())
+            for suffix, write in writers:
+                with (
+                    self.subTest(umask=oct(mask), suffix=suffix),
+                    tempfile.TemporaryDirectory() as td,
+                ):
+                    created = Path(td) / f"created{suffix}"
+                    replaced = Path(td) / f"replaced{suffix}"
+                    replaced.write_text("previous\n", encoding="utf-8")
+                    replaced.chmod(0o600)
+                    previous_mask = os.umask(mask)
+                    try:
+                        write(created)
+                        write(replaced)
+                    finally:
+                        os.umask(previous_mask)
+                    for output in (created, replaced):
+                        self.assertEqual(
+                            0o666 & ~mask, stat.S_IMODE(output.stat().st_mode)
+                        )
+                    self.assertEqual(created.read_bytes(), replaced.read_bytes())
+                    self.assertEqual(
+                        sorted([created, replaced]), sorted(Path(td).iterdir())
+                    )
 
     def test_atomic_writer_preserves_output_and_cleans_temp_on_failure(self) -> None:
         for target, message in (
@@ -255,38 +285,6 @@ class CsvWriterTests(unittest.TestCase):
                 self.assertEqual("original\n", output.read_text(encoding="utf-8"))
                 self.assertEqual([output], list(Path(td).iterdir()))
 
-    def test_collision_scope_is_shared_and_ignores_save_flags(self) -> None:
-        with tempfile.TemporaryDirectory() as td:
-            root = Path(td)
-            input_path = root / "cases.csv"
-            stl_path = root / "mesh.stl"
-            second_stl_path = root / "mesh-2.stl"
-            out_dir = root / "outputs"
-            case_rows = (
-                {
-                    "case_id": "case_a",
-                    "stl_path": f"{stl_path};{second_stl_path}",
-                    "save_vtp_on": 0,
-                },
-            )
-
-            for adapter in (fmf_csv, hypersonic_csv):
-                for protected in (
-                    input_path,
-                    stl_path,
-                    second_stl_path,
-                    out_dir / "case_a.vtp",
-                ):
-                    with (
-                        self.subTest(adapter=adapter.__name__, protected=protected),
-                        self.assertRaisesRegex(ValueError, "protected path"),
-                    ):
-                        adapter.validate_results_output_path(
-                            protected,
-                            input_path,
-                            case_rows,
-                        )
-
     def test_relative_protected_paths_use_the_input_directory(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
@@ -297,7 +295,7 @@ class CsvWriterTests(unittest.TestCase):
                     "stl_path": "geometry/mesh.stl",
                 },
             )
-            for adapter in (fmf_csv, hypersonic_csv):
+            for adapter in SHARED_VALIDATOR_ADAPTERS:
                 for protected in (
                     input_path.parent / "geometry" / "mesh.stl",
                     input_path.parent / "outputs" / "case_a.vtp",
@@ -361,7 +359,7 @@ class CsvWriterTests(unittest.TestCase):
                     stl_nfc,
                 ),
             )
-            for adapter in (fmf_csv, hypersonic_csv):
+            for adapter in SHARED_VALIDATOR_ADAPTERS:
                 for output, input_file, rows, role, protected in cases:
                     with self.subTest(adapter=adapter.__name__, role=role):
                         with self.assertRaises(ValueError) as caught:
@@ -388,7 +386,7 @@ class CsvWriterTests(unittest.TestCase):
                 summary.symlink_to(input_path)
             except (NotImplementedError, OSError) as exc:
                 self.skipTest(f"symlink creation is unavailable: {exc}")
-            for adapter in (fmf_csv, hypersonic_csv):
+            for adapter in SHARED_VALIDATOR_ADAPTERS:
                 with self.assertRaises(ValueError) as caught:
                     adapter.validate_results_output_path(summary, input_path, ())
                 self.assertIn("summary path", str(caught.exception))
@@ -404,7 +402,7 @@ class CsvWriterTests(unittest.TestCase):
                 os.link(input_path, summary)
             except (NotImplementedError, OSError) as exc:
                 self.skipTest(f"hardlink creation is unavailable: {exc}")
-            for adapter in (fmf_csv, hypersonic_csv):
+            for adapter in SHARED_VALIDATOR_ADAPTERS:
                 with self.assertRaises(ValueError) as caught:
                     adapter.validate_results_output_path(summary, input_path, ())
                 self.assertIn("summary path", str(caught.exception))
@@ -427,7 +425,7 @@ class CsvWriterTests(unittest.TestCase):
                     "save_vtp_on": 0,
                 },
             )
-            for adapter in (fmf_csv, hypersonic_csv):
+            for adapter in SHARED_VALIDATOR_ADAPTERS:
                 with (
                     self.subTest(adapter=adapter.__name__),
                     self.assertRaisesRegex(
@@ -461,7 +459,7 @@ class CsvWriterTests(unittest.TestCase):
                         "stl_path": str(root / "mesh-b.stl"),
                     },
                 )
-                for adapter in (fmf_csv, hypersonic_csv):
+                for adapter in SHARED_VALIDATOR_ADAPTERS:
                     with (
                         self.subTest(
                             adapter=adapter.__name__,
@@ -487,7 +485,7 @@ class CsvWriterTests(unittest.TestCase):
                 },
             )
             expected = (root / "summary.csv").resolve()
-            for adapter in (fmf_csv, hypersonic_csv):
+            for adapter in SHARED_VALIDATOR_ADAPTERS:
                 self.assertEqual(
                     expected,
                     adapter.validate_results_output_path(
@@ -502,11 +500,13 @@ class CsvWriterTests(unittest.TestCase):
             root = Path(td)
             input_path = root / "cases.csv"
             stl_path = root / "mesh.stl"
+            second_stl_path = root / "mesh-2.stl"
             artifact = root / "outputs" / "CASE_A.VTP"
+            # A disabled VTP flag still reserves the planned artifact path.
             rows = (
                 {
                     "case_id": "case_a",
-                    "stl_path": str(stl_path),
+                    "stl_path": f"{stl_path};{second_stl_path}",
                     "save_vtp_on": 0,
                 },
             )
@@ -517,7 +517,7 @@ class CsvWriterTests(unittest.TestCase):
                 HYPERSONIC_GUI_ADAPTERS.validate_output_path,
             )
             for validator in validators:
-                for protected in (input_path, stl_path, artifact):
+                for protected in (input_path, stl_path, second_stl_path, artifact):
                     with (
                         self.subTest(validator=validator, protected=protected),
                         self.assertRaisesRegex(ValueError, "protected path"),

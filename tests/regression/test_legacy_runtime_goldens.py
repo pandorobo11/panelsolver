@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import copy
 import csv
 import importlib.metadata
 import importlib.util
@@ -10,7 +9,6 @@ import tempfile
 import unittest
 from pathlib import Path
 
-import numpy as np
 import pyvista as pv
 
 from panelsolver.app import resolve_output_dir, run_and_write_product_cases
@@ -23,29 +21,13 @@ from panelsolver.domains.hypersonic import (
     build_case_signature as build_hypersonic_signature,
 )
 from panelsolver.domains.hypersonic import read_cases as read_newt_cases
+from scripts import smoke_installed_wheel as SMOKE
 from tests.current_case_fixtures import read_current_cases
 
 REPOSITORY_ROOT = Path(__file__).parents[2]
 FIXTURE_ROOT = REPOSITORY_ROOT / "tests" / "fixtures" / "phase1"
 GOLDEN_ROOT = FIXTURE_ROOT / "golden"
 MANIFEST = json.loads((FIXTURE_ROOT / "manifest.json").read_text(encoding="utf-8"))
-
-
-def _record_array(record: dict) -> np.ndarray:
-    return np.asarray(record["values"]).reshape(record["shape"])
-
-
-def _npz_array(golden: dict, name: str) -> np.ndarray:
-    return _record_array(golden["npz"]["arrays"][name])
-
-
-def _array_record(value: np.ndarray) -> dict[str, object]:
-    array = np.asarray(value)
-    return {
-        "dtype": f"float{array.dtype.itemsize * 8}",
-        "shape": list(array.shape),
-        "values": array.tolist(),
-    }
 
 
 def _load_comparator_module():
@@ -132,101 +114,22 @@ class LegacyRuntimeGoldenTests(unittest.TestCase):
                                 roots=roots,
                             ),
                         }
+                        # One schema migration (ADRs 0017 and 0021) is shared with
+                        # the installed-wheel smoke; physical values stay frozen.
                         expected = {
                             "csv": {
-                                "columns": [
-                                    name
-                                    for name in golden["csv"]["columns"]
-                                    if name
-                                    not in {"save_npz_on", "npz_path", "out_dir"}
-                                ],
-                                "rows": [
-                                    {
-                                        name: value
-                                        for name, value in expected_row.items()
-                                        if name
-                                        not in {"save_npz_on", "npz_path", "out_dir"}
-                                    }
-                                    for expected_row in golden["csv"]["rows"]
-                                ],
+                                "columns": SMOKE._current_expected_columns(
+                                    golden["csv"]["columns"]
+                                ),
+                                "rows": SMOKE._current_expected_csv_rows(golden),
                             },
-                            "vtp": copy.deepcopy(golden["vtp"]),
+                            "vtp": SMOKE._current_expected_vtp(product, golden),
                         }
-                        # ADR 0017 migrates only the in-memory schema expectation;
-                        # physical golden values and tolerances remain frozen.
-                        vector = _npz_array(golden, "Vhat_stl").reshape(3)
-                        vector_fields = {
-                            f"velocity_hat_{axis}_stl": float(value)
-                            for axis, value in zip("xyz", vector, strict=True)
-                        }
-                        columns = []
-                        for name in expected["csv"]["columns"]:
-                            if name == "alpha_t_deg_resolved":
-                                columns.append("alpha_stability_deg")
-                            elif name == "beta_t_deg_resolved":
-                                columns.extend(vector_fields)
-                            else:
-                                columns.append(name)
-                        expected["csv"]["columns"] = columns
-                        for expected_row in expected["csv"]["rows"]:
-                            expected_row["alpha_stability_deg"] = expected_row.pop(
-                                "alpha_t_deg_resolved"
-                            )
-                            del expected_row["beta_t_deg_resolved"]
-                            expected_row.update(vector_fields)
-                        field_data = expected["vtp"]["field_data"]
-                        field_data["alpha_stability_deg"] = field_data.pop(
-                            "alpha_t_deg_resolved"
-                        )
-                        del field_data["beta_t_deg_resolved"]
-                        for name, value in {
-                            **vector_fields,
-                            "alpha_deg": row["alpha_deg"],
-                            "beta_or_bank_deg": row["beta_or_bank_deg"],
-                        }.items():
-                            field_data[name] = _array_record(
-                                np.asarray([value], dtype=np.float64)
-                            )
-                        # Phase 1 remains immutable historical evidence. Adjust only
-                        # the in-memory expectation for the accepted current artifact
-                        # provenance contract.
                         for expected_row in expected["csv"]["rows"]:
                             expected_row["solver_version"] = installed_version
                         expected["vtp"]["field_data"]["solver_version"]["values"] = [
                             installed_version
                         ]
-                        legacy_normal = expected["vtp"]["cell_data"].pop("Cp_n")
-                        if product == "fmfsolver":
-                            expected["vtp"]["cell_data"]["normal_traction_coeff"] = (
-                                legacy_normal
-                            )
-                            normals = _npz_array(golden, "normals_out_stl")
-                            velocity = _npz_array(golden, "Vhat_stl")
-                            normal_dot_velocity = normals @ velocity
-                            tangent = (
-                                velocity[None, :]
-                                - normal_dot_velocity[:, None] * normals
-                            )
-                            tangent_norm = np.linalg.norm(tangent, axis=1)
-                            tangent_hat = np.zeros_like(tangent)
-                            defined = tangent_norm > 1.0e-12
-                            tangent_hat[defined] = (
-                                tangent[defined] / tangent_norm[defined, None]
-                            )
-                            traction = (
-                                _record_array(golden["vtp"]["cell_data"]["C_face_stl"])
-                                * (
-                                    golden["normalized_input"]["Aref_m2"]
-                                    / _npz_array(golden, "areas_m2")
-                                )[:, None]
-                            )
-                            expected["vtp"]["cell_data"][
-                                "tangential_traction_coeff"
-                            ] = _array_record(
-                                np.einsum("ij,ij->i", traction, tangent_hat)
-                            )
-                        else:
-                            expected["vtp"]["cell_data"]["cp"] = legacy_normal
                         differences = self.comparator._compare_values(
                             expected,
                             actual,

@@ -192,29 +192,9 @@ class SentmanModelTests(unittest.TestCase):
                         integrated.total.CA, expected_ca, delta=1e-10
                     )
 
-    def test_shielded_faces_are_exact_zero_but_keep_geometry_scalar(self) -> None:
-        geometry = _geometry(np.array([[-1.0, 0.0, 0.0], [-1.0, 0.0, 0.0]]))
-        flow = PanelFlowState(
-            np.array([1.0, 0.0, 0.0]),
-            np.array([False, True]),
-        )
-        loads = SentmanModel().evaluate(geometry, flow, _mode_a_case())
-
-        np.testing.assert_array_equal(
-            loads.traction_coeff_stl[1],
-            np.zeros(3),
-        )
-        self.assertEqual(0.0, loads.cell_scalars["normal_traction_coeff"][1])
-        self.assertEqual(0.0, loads.cell_scalars["tangential_traction_coeff"][1])
-        self.assertEqual(180.0, loads.cell_scalars["theta_deg"][1])
-
     def test_mode_b_resolves_the_pinned_atmosphere_values(self) -> None:
+        # The atmosphere table itself is pinned by test_sentman_atmosphere.
         case = _mode_b_case()
-        atmosphere = sample_at_altitude_km(100.0)
-        self.assertEqual(
-            {"T_K": 195.081, "c_ms": 280.0, "Vmean_ms": 381.36},
-            atmosphere,
-        )
         loads = SentmanModel().evaluate(
             _geometry(np.array([[-1.0, 0.0, 0.0]])),
             PanelFlowState(
@@ -402,6 +382,9 @@ class SentmanModelTests(unittest.TestCase):
         np.testing.assert_array_equal(
             integrated_mixed.face_force_coeff_stl[1], np.zeros(3)
         )
+        for name in ("normal_traction_coeff", "tangential_traction_coeff"):
+            self.assertEqual(0.0, mixed.cell_scalars[name][1])
+        self.assertNotEqual(0.0, mixed.cell_scalars["normal_traction_coeff"][0])
 
 
 if __name__ == "__main__":
