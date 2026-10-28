@@ -26,60 +26,29 @@ Before changing code, read in this order:
 5. only the historical evidence in `devdocs/history/` needed for the task;
 6. the current issue or task.
 
-## GUI visual smoke on macOS
+## GUI visual smoke and evidence
 
-When inspecting the real PySide6/PyVista GUI through Computer Use, resolve the
-helper in the current checkout from the repository root and use that same
-absolute path for both launch and the Computer Use app target:
+Before inspecting the real PySide6/PyVista GUI through Computer Use, follow
+[`devdocs/development/gui-visual-smoke.md`](devdocs/development/gui-visual-smoke.md).
+Use a normal macOS display; do not set `QT_QPA_PLATFORM=offscreen` or
+`PYVISTA_OFF_SCREEN`. Pass the same absolute app path printed at launch to
+Computer Use.
 
-```bash
-.venv/bin/python scripts/build_macos_visual_app.py
-visual_app="$(pwd -P)/tools/macos/PanelSolverVisual.app"
-printf '%s\n' "$visual_app"
-open "$visual_app" --args --domain fmf --theme system
-```
-
-Pass the printed path to Computer Use. The bundle ID
-`io.github.pandorobo11.panelsolver.visual-smoke` is a convenient target only
-when it identifies one bundle; if Computer Use reports an ambiguous app
-identifier, switch to the current checkout's absolute path. Use a normal macOS
-display; do not set `QT_QPA_PLATFORM=offscreen` or `PYVISTA_OFF_SCREEN`. See
-[`devdocs/development/gui-visual-smoke.md`](devdocs/development/gui-visual-smoke.md)
-for representative loaded-state and light/dark capture commands.
-
-### GUI evidence privacy
-
-Before uploading a GUI screenshot, recording, or companion evidence to GitHub,
-remove developer- and machine-specific paths from every value the artifact or
-capture tooling can emit. For a pixel screenshot, sanitize rendered widgets,
-table cells, visible logs, and captured tooltip or status text. When uploading
-an accessibility/UI-tree or text dump, also sanitize emitted accessible text,
-hidden serialized text, What's This content, and other captured metadata.
-Prefer a runtime-only sanitized capture from the real GUI, and never upload a
-raw Computer Use capture first and attempt to redact it afterward.
-
-Sanitization must preserve the geometry and state being evaluated. Do not let
-redaction trigger autosizing, column resizing, reflow, wrapping, minimum-size
-changes, control repositioning or visibility changes, or changes to focus,
-checked, or running state. Preserve representative text width, or sanitize
-after layout and width calculation without retriggering autosizing or reflow.
-
-Inspect each upload candidate visually and, where available and practical, use
-text and metadata checks such as OCR, embedded-string scanning, and metadata
-inspection. Cover macOS, Linux, and Windows user-profile, checkout/worktree,
-and temporary paths, including drive-letter and environment-based Windows
-forms, as well as local usernames and temporary output paths. Upload only the
-verified sanitized files.
+Before uploading any GUI screenshot, recording, or UI-tree/text dump to GitHub,
+apply its [GUI evidence privacy](devdocs/development/gui-visual-smoke.md#gui-evidence-privacy)
+rules: sanitize at capture time without changing layout or state, and never
+upload a raw capture to redact afterward.
 
 ## Legacy references
 
-The legacy implementations are read-only references. Their authoritative URLs
-and commits are in `devdocs/history/migration/MIGRATION_SOURCES.md`. Local checkouts may live at
-`.reference/fmfsolver`, `.reference/newtsolver`, or the workspace sibling paths.
-Do not edit them during migration work. If the implementations differ, report
-both behaviors and their effects. Apply ADR 0008 when deciding whether the
-difference belongs to the supported product contract; historical observation
-alone does not require preserving invalid-input or Python-internal behavior.
+The `fmfsolver` and `newtsolver` migration is historical. Consult those
+implementations only when a task needs their recorded behavior; their URLs and
+pinned commits are in `devdocs/history/migration/MIGRATION_SOURCES.md`, and local
+checkouts, when present, live under `.reference/` or as workspace siblings.
+Never edit them. If they differ, report both behaviors and their effects. Apply
+ADR 0008 when deciding whether the difference belongs to the supported product
+contract; historical observation alone does not require preserving
+invalid-input or Python-internal behavior.
 
 ## Dependency direction
 
@@ -116,7 +85,7 @@ integration.
   validation boundary.
 - Do not change signs, axes, or normalization conventions without an accepted ADR
   and compatibility plan.
-- Never mix a numerical-formula change with a structural migration PR.
+- Never mix a numerical-formula change with a structural or refactoring PR.
 
 ## Regression and compatibility
 
@@ -144,7 +113,7 @@ contracts unless another ADR explicitly promotes a neutral API.
 
 ## Verification
 
-Use the cross-platform local validation runner as the primary workflow:
+Use the cross-platform local validation runner:
 
 ```bash
 python scripts/check.py --quick  # during development
@@ -152,33 +121,11 @@ python scripts/check.py          # before push or pull request
 python scripts/check.py --full   # deeper packaging/process validation
 ```
 
-On POSIX systems, `scripts/check.sh` accepts the same arguments and only forwards
-them to the Python runner. Each mode begins with the locked dependency sync.
-The runner reports each step and elapsed time and stops at the first failure.
-
-The quick mode runs Ruff formatting and lint, scoped mypy, and
-`pytest -m "not slow"`. The default standard mode substitutes the authoritative
-full pytest suite, then checks generated sources and plots, builds strict docs,
-and builds the distributions. Full additionally runs the scheduler lifecycle
-probe, distribution verification, and installed-wheel smoke in a temporary
-clean environment.
-
-For targeted typing troubleshooting, the exact checked boundary remains:
-
-```bash
-uv run --no-sync mypy src/panelsolver/core/contracts.py src/panelsolver/core/execution.py src/panelsolver/models/registry.py src/panelsolver/app/execution.py src/panelsolver/api.py src/panelsolver/__init__.py
-```
-
-This checks only the explicit model-contract, registry, execution, and
-package-root solve API boundary shown above; it is not a repository-wide typing
-guarantee.
-
-Most existing tests remain written with `unittest`; use pytest as the standard
-test runner.
-
-For targeted test troubleshooting, the fast command is
-`uv run --no-sync pytest -m "not slow"` and the full command is
-`uv run --no-sync pytest`. The unfiltered pytest suite remains authoritative.
+The unfiltered pytest suite is authoritative; the mypy check covers only a
+scoped boundary, not the whole repository. Use pytest as the runner, although
+most existing tests are written with `unittest`. Mode contents and targeted
+pytest/mypy commands are in
+[`devdocs/development/setup-and-testing.md`](devdocs/development/setup-and-testing.md).
 
 As applicable, also test the changed CLI's `--help`, the built wheel, the GUI,
 Embree and rtree backends, and model-specific golden regressions.
